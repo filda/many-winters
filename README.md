@@ -1,2 +1,1 @@
-# many-winters
-Of Folks and Many Winters
+# Of Folks and Many Winters
