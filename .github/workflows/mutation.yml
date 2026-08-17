@@ -1,0 +1,34 @@
+name: Mutation Testing
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  stryker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Restore solution
+        run: dotnet restore OfFolk.sln
+
+      - name: Run Stryker.NET
+        working-directory: src/OfFolk.Tests
+        run: dotnet tool run dotnet-stryker
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: src/OfFolk.Tests/StrykerOutput/**/reports/mutation-report.html

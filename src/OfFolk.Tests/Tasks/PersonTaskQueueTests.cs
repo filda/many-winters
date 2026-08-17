@@ -20,6 +20,16 @@ public class PersonTaskQueueTests
     }
 
     [Fact]
+    public void AdvanceIfCompleteOnEmptyQueueLeavesCurrentNull()
+    {
+        var queue = new PersonTaskQueue();
+
+        queue.AdvanceIfComplete();
+
+        Assert.Null(queue.Current);
+    }
+
+    [Fact]
     public void AdvanceIfCompletePullsNextTaskWhenNoneIsCurrent()
     {
         var queue = new PersonTaskQueue();

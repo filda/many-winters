@@ -70,6 +70,20 @@ To run the game with rendering, open `src/OfFolk.Godot` in the Godot editor, or 
 godot --path src/OfFolk.Godot
 ```
 
+## Mutation testing
+
+[Stryker.NET](https://stryker-mutator.io/docs/stryker-net/introduction/) is set up as a pinned local .NET tool (`.config/dotnet-tools.json`). It checks that the test suite actually fails when the code is subtly broken, not just that it runs.
+
+```powershell
+dotnet tool restore
+cd src/OfFolk.Tests
+dotnet tool run dotnet-stryker
+```
+
+Configuration lives in `src/OfFolk.Tests/stryker-config.json`. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
+
+This is slow enough that it isn't part of the main `ci.yml` gate; it runs daily and on manual dispatch via `.github/workflows/mutation.yml`.
+
 ## Development notes
 
 - Keep simulation logic out of `OfFolk.Godot` — the presentation layer only reads simulation state and sends commands (see the plan's "Commands Instead of Direct Manipulation" section). Never mutate simulation state directly from UI code.

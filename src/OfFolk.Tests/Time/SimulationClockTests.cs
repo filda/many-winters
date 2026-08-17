@@ -38,6 +38,8 @@ public class SimulationClockTests
     {
         var clock = new SimulationClock();
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => clock.Advance(-1));
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => clock.Advance(-1));
+
+        Assert.Contains("negative", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }

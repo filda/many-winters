@@ -10,6 +10,7 @@ public static class SaveGameService
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
+        // Stryker disable once Boolean: cosmetic formatting only, doesn't affect round-trip behavior
         WriteIndented = true,
     };
 

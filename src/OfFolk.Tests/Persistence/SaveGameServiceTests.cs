@@ -58,4 +58,22 @@ public class SaveGameServiceTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void LoadThrowsInvalidDataExceptionForNullContent()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"offolk-savetest-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, "null");
+
+        try
+        {
+            var ex = Assert.Throws<InvalidDataException>(() => SaveGameService.Load(path));
+
+            Assert.Contains(path, ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

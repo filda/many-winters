@@ -4,6 +4,9 @@ obj/
 *.user
 .vs/
 
+# Stryker.NET mutation testing output
+StrykerOutput/
+
 # Godot 4+ specific ignores
 .godot/
 .nomedia
