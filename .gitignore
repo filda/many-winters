@@ -19,3 +19,6 @@ mono_crash.*.json
 /.idea/modules.xml
 /.idea/php.xml
 /.idea/vcs.xml
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
