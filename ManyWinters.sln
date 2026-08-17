@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{788E0590-FBC9-4B2D-A0DB-A1C0A38D1394}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManyWinters.Core", "src\ManyWinters.Core\ManyWinters.Core.csproj", "{55D7DC8F-103F-4534-9A51-DECBBE1F9787}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManyWinters.Tests", "src\ManyWinters.Tests\ManyWinters.Tests.csproj", "{D142325F-8562-4E14-BAFC-A75E8CF3296C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ManyWinters.Tools", "ManyWinters.Tools", "{834D2715-5E70-48EB-9669-ECF0DBD82AC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManyWinters.Tools.SimulationRunner", "src\ManyWinters.Tools\SimulationRunner\ManyWinters.Tools.SimulationRunner.csproj", "{163626AF-C175-4991-B04E-981D0638E6A9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManyWinters.Godot", "src\ManyWinters.Godot\ManyWinters.Godot.csproj", "{2EA6FB96-9698-4512-AC7E-2C537C39D646}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{55D7DC8F-103F-4534-9A51-DECBBE1F9787}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55D7DC8F-103F-4534-9A51-DECBBE1F9787}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55D7DC8F-103F-4534-9A51-DECBBE1F9787}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55D7DC8F-103F-4534-9A51-DECBBE1F9787}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D142325F-8562-4E14-BAFC-A75E8CF3296C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D142325F-8562-4E14-BAFC-A75E8CF3296C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D142325F-8562-4E14-BAFC-A75E8CF3296C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D142325F-8562-4E14-BAFC-A75E8CF3296C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{163626AF-C175-4991-B04E-981D0638E6A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{163626AF-C175-4991-B04E-981D0638E6A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{163626AF-C175-4991-B04E-981D0638E6A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{163626AF-C175-4991-B04E-981D0638E6A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2EA6FB96-9698-4512-AC7E-2C537C39D646}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EA6FB96-9698-4512-AC7E-2C537C39D646}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EA6FB96-9698-4512-AC7E-2C537C39D646}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EA6FB96-9698-4512-AC7E-2C537C39D646}.Release|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{55D7DC8F-103F-4534-9A51-DECBBE1F9787} = {788E0590-FBC9-4B2D-A0DB-A1C0A38D1394}
+		{D142325F-8562-4E14-BAFC-A75E8CF3296C} = {788E0590-FBC9-4B2D-A0DB-A1C0A38D1394}
+		{834D2715-5E70-48EB-9669-ECF0DBD82AC1} = {788E0590-FBC9-4B2D-A0DB-A1C0A38D1394}
+		{163626AF-C175-4991-B04E-981D0638E6A9} = {834D2715-5E70-48EB-9669-ECF0DBD82AC1}
+		{2EA6FB96-9698-4512-AC7E-2C537C39D646} = {788E0590-FBC9-4B2D-A0DB-A1C0A38D1394}
+	EndGlobalSection
+EndGlobal

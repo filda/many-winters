@@ -4,7 +4,7 @@ A real-time strategy game about the birth and long-term evolution of a single pe
 
 ## Status
 
-The simulation skeleton (Step 2 of the roadmap) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `OfFolk.Core` with no Godot dependency. Next up is Step 3 — a richer headless runner.
+The simulation skeleton (Step 2 of the roadmap) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency. Next up is Step 3 — a richer headless runner.
 
 ## Prerequisites
 
@@ -42,14 +42,14 @@ Per the [technical implementation plan](<docs/Of Folk and Many Winters — Techn
 
 ```text
 src/
-├── OfFolk.Core/               # Pure C# simulation — no Godot dependency, ever
-├── OfFolk.Godot/              # Godot project: presentation, rendering, input, UI, audio
-├── OfFolk.Tools/
+├── ManyWinters.Core/          # Pure C# simulation — no Godot dependency, ever
+├── ManyWinters.Godot/         # Godot project: presentation, rendering, input, UI, audio
+├── ManyWinters.Tools/
 │   └── SimulationRunner/      # Headless console runner (no Godot required)
-└── OfFolk.Tests/              # Tests for OfFolk.Core
+└── ManyWinters.Tests/         # Tests for ManyWinters.Core
 ```
 
-`OfFolk.Core` must never reference `OfFolk.Godot`. The simulation must be runnable and testable headlessly, without the engine.
+`ManyWinters.Core` must never reference `ManyWinters.Godot`. The simulation must be runnable and testable headlessly, without the engine.
 
 ## Building and running
 
@@ -58,16 +58,16 @@ src/
 dotnet build
 
 # Run the headless simulation runner (no Godot required)
-dotnet run --project src/OfFolk.Tools/SimulationRunner
+dotnet run --project src/ManyWinters.Tools/SimulationRunner
 
 # Run tests
 dotnet test
 ```
 
-To run the game with rendering, open `src/OfFolk.Godot` in the Godot editor, or launch it directly:
+To run the game with rendering, open `src/ManyWinters.Godot` in the Godot editor, or launch it directly:
 
 ```powershell
-godot --path src/OfFolk.Godot
+godot --path src/ManyWinters.Godot
 ```
 
 ## Mutation testing
@@ -76,16 +76,16 @@ godot --path src/OfFolk.Godot
 
 ```powershell
 dotnet tool restore
-cd src/OfFolk.Tests
+cd src/ManyWinters.Tests
 dotnet tool run dotnet-stryker
 ```
 
-Configuration lives in `src/OfFolk.Tests/stryker-config.json`. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
+Configuration lives in `src/ManyWinters.Tests/stryker-config.json`. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
 
 This is slow enough that it isn't part of the main `ci.yml` gate; it runs daily and on manual dispatch via `.github/workflows/mutation.yml`.
 
 ## Development notes
 
-- Keep simulation logic out of `OfFolk.Godot` — the presentation layer only reads simulation state and sends commands (see the plan's "Commands Instead of Direct Manipulation" section). Never mutate simulation state directly from UI code.
+- Keep simulation logic out of `ManyWinters.Godot` — the presentation layer only reads simulation state and sends commands (see the plan's "Commands Instead of Direct Manipulation" section). Never mutate simulation state directly from UI code.
 - Prefer adding a headless test or `SimulationRunner` scenario over manually verifying behavior in the editor when possible — it's faster to iterate and easier to keep deterministic.
 - See [`docs/roadmap.md`](docs/roadmap.md) before starting new work — it defines the current priority order and what is explicitly out of scope for now.

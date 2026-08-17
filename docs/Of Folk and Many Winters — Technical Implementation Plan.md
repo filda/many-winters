@@ -76,11 +76,11 @@ The Godot layer may create a visual representation for that person, but the repr
 ## 3. Proposed Repository Structure
 
 ```text
-OfFolkAndManyWinters/
+many-winters/
 │
 ├── src/
 │   │
-│   ├── OfFolk.Core/
+│   ├── ManyWinters.Core/
 │   │   ├── World/
 │   │   ├── Population/
 │   │   ├── Households/
@@ -94,7 +94,7 @@ OfFolkAndManyWinters/
 │   │   ├── Commands/
 │   │   └── Events/
 │   │
-│   ├── OfFolk.Godot/
+│   ├── ManyWinters.Godot/
 │   │   ├── Scenes/
 │   │   ├── Rendering/
 │   │   ├── Input/
@@ -102,13 +102,13 @@ OfFolkAndManyWinters/
 │   │   ├── Audio/
 │   │   └── Assets/
 │   │
-│   ├── OfFolk.Tools/
+│   ├── ManyWinters.Tools/
 │   │   ├── WorldGenerator/
 │   │   ├── SimulationRunner/
 │   │   ├── SaveInspector/
 │   │   └── Benchmarks/
 │   │
-│   └── OfFolk.Tests/
+│   └── ManyWinters.Tests/
 │
 ├── design/
 ├── docs/
@@ -118,23 +118,23 @@ OfFolkAndManyWinters/
 The exact structure can evolve, but dependency direction should remain strict:
 
 ```text
-OfFolk.Core
+ManyWinters.Core
     ▲
     │
-OfFolk.Godot
+ManyWinters.Godot
 
-OfFolk.Core
+ManyWinters.Core
     ▲
     │
-OfFolk.Tools
+ManyWinters.Tools
 
-OfFolk.Core
+ManyWinters.Core
     ▲
     │
-OfFolk.Tests
+ManyWinters.Tests
 ```
 
-`OfFolk.Core` must never reference `OfFolk.Godot`.
+`ManyWinters.Core` must never reference `ManyWinters.Godot`.
 
 ---
 
@@ -346,7 +346,7 @@ One of the first important tools should be a console application capable of runn
 Example:
 
 ```text
-dotnet run --project OfFolk.Tools.SimulationRunner
+dotnet run --project ManyWinters.Tools.SimulationRunner
 ```
 
 It should eventually support commands such as:

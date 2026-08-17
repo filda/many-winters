@@ -8,8 +8,8 @@ Guiding decision: the simulation core must stay independent from Godot at all ti
 
 ## 1. Repository and Project Skeleton
 
-- `OfFolk.Core`, `OfFolk.Godot`, `OfFolk.Tools`, `OfFolk.Tests` projects.
-- Strict dependency direction: `OfFolk.Core` never references `OfFolk.Godot`.
+- `ManyWinters.Core`, `ManyWinters.Godot`, `ManyWinters.Tools`, `ManyWinters.Tests` projects.
+- Strict dependency direction: `ManyWinters.Core` never references `ManyWinters.Godot`.
 
 ## 2. Simulation Skeleton
 
@@ -25,7 +25,7 @@ Goal: people exist, move, receive tasks, and persist.
 
 ## 3. Headless Runner
 
-- Console application (`OfFolk.Tools.SimulationRunner`) running the simulation without Godot.
+- Console application (`ManyWinters.Tools.SimulationRunner`) running the simulation without Godot.
 - Basic commands: generate world, create N people, simulate N years, print population/food/discoveries.
 
 Goal: the simulation can be tested and tuned independently of rendering, from the start.
