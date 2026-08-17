@@ -1,3 +1,9 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+.vs/
+
 # Godot 4+ specific ignores
 .godot/
 .nomedia

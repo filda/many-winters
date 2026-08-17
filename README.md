@@ -4,7 +4,7 @@ A real-time strategy game about the birth and long-term evolution of a single pe
 
 ## Status
 
-This project is in the planning stage. The project skeleton described below (`OfFolk.Core`, `OfFolk.Godot`, `OfFolk.Tools`, `OfFolk.Tests`) has not been created yet — that is Step 1 of the roadmap. This README documents the toolchain and the workflow that will apply once it exists.
+The project skeleton (`OfFolk.Core`, `OfFolk.Godot`, `OfFolk.Tools.SimulationRunner`, `OfFolk.Tests`) exists and builds, but contains no simulation logic yet — that's Step 2 of the roadmap.
 
 ## Prerequisites
 
@@ -42,17 +42,16 @@ Per the [technical implementation plan](<docs/Of Folk and Many Winters — Techn
 
 ```text
 src/
-├── OfFolk.Core/      # Pure C# simulation — no Godot dependency, ever
-├── OfFolk.Godot/      # Presentation: rendering, input, UI, audio
-├── OfFolk.Tools/      # Headless simulation runner, world generator, benchmarks
-└── OfFolk.Tests/      # Tests for OfFolk.Core
+├── OfFolk.Core/               # Pure C# simulation — no Godot dependency, ever
+├── OfFolk.Godot/              # Godot project: presentation, rendering, input, UI, audio
+├── OfFolk.Tools/
+│   └── SimulationRunner/      # Headless console runner (no Godot required)
+└── OfFolk.Tests/              # Tests for OfFolk.Core
 ```
 
 `OfFolk.Core` must never reference `OfFolk.Godot`. The simulation must be runnable and testable headlessly, without the engine.
 
 ## Building and running
-
-Once the solution exists:
 
 ```powershell
 # Build everything
@@ -65,10 +64,10 @@ dotnet run --project src/OfFolk.Tools/SimulationRunner
 dotnet test
 ```
 
-To run the game with rendering, open the project folder in the Godot editor (`godot --editor` from the repo root, or launch Godot and select "Import"), or launch it directly:
+To run the game with rendering, open `src/OfFolk.Godot` in the Godot editor, or launch it directly:
 
 ```powershell
-godot --path .
+godot --path src/OfFolk.Godot
 ```
 
 ## Development notes
