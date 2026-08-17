@@ -4,7 +4,7 @@ A real-time strategy game about the birth and long-term evolution of a single pe
 
 ## Status
 
-The project skeleton (`OfFolk.Core`, `OfFolk.Godot`, `OfFolk.Tools.SimulationRunner`, `OfFolk.Tests`) exists and builds, but contains no simulation logic yet — that's Step 2 of the roadmap.
+The simulation skeleton (Step 2 of the roadmap) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `OfFolk.Core` with no Godot dependency. Next up is Step 3 — a richer headless runner.
 
 ## Prerequisites
 

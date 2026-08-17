@@ -9,6 +9,10 @@ indent_style = space
 [*.cs]
 indent_size = 4
 
+# CA1711: this is a private game simulation library, not a public API surface —
+# domain terms like "...Queue" are clearer than avoiding the suffix.
+dotnet_diagnostic.CA1711.severity = none
+
 [*.{csproj,sln}]
 indent_size = 2
 
