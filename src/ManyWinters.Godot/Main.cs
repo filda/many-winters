@@ -84,21 +84,51 @@ public partial class Main : Node3D
         var canvas = new CanvasLayer();
         AddChild(canvas);
 
-        var box = new VBoxContainer
+        var panel = new PanelContainer
         {
             Position = new Vector2(16, 16),
         };
-        canvas.AddChild(box);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0f, 0f, 0f, 0.6f),
+            ContentMarginLeft = 12,
+            ContentMarginRight = 12,
+            ContentMarginTop = 10,
+            ContentMarginBottom = 10,
+            CornerRadiusTopLeft = 6,
+            CornerRadiusTopRight = 6,
+            CornerRadiusBottomLeft = 6,
+            CornerRadiusBottomRight = 6,
+        });
+        canvas.AddChild(panel);
+
+        var box = new VBoxContainer();
+        panel.AddChild(box);
+
+        box.AddChild(new Label
+        {
+            Text = "Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person).",
+            CustomMinimumSize = new Vector2(360, 0),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        });
 
         _tickLabel = new Label { Text = "Tick: 0" };
         box.AddChild(_tickLabel);
 
-        _infoLabel = new Label { Text = "No selection." };
-        box.AddChild(_infoLabel);
-
         var spawnButton = new Button { Text = "Spawn Person" };
         spawnButton.Pressed += OnSpawnButtonPressed;
         box.AddChild(spawnButton);
+
+        box.AddChild(new HSeparator());
+
+        box.AddChild(new Label
+        {
+            Text = "Inspector",
+            LabelSettings = new LabelSettings { FontSize = 18 },
+        });
+
+        _infoLabel = new Label { Text = "No selection." };
+        box.AddChild(_infoLabel);
     }
 
     private void SpawnPerson(string name, Position position)
@@ -106,7 +136,7 @@ public partial class Main : Node3D
         _world.Execute(new SpawnPersonCommand(name, position));
         var person = _world.People[^1];
 
-        var view = new PersonView(person.Id, OnPersonSelected)
+        var view = new PersonView(person.Id, OnPersonClicked)
         {
             Name = person.Name,
             Position = new Vector3(position.X, PersonView.Height / 2f, position.Y),
@@ -135,9 +165,36 @@ public partial class Main : Node3D
         SpawnPerson($"Person {_world.People.Count + 1}", new Position(x, y));
     }
 
-    private void OnPersonSelected(PersonId id)
+    private void OnPersonClicked(PersonId id, MouseButton button)
     {
+        if (button == MouseButton.Right)
+        {
+            TeachFromSelectedPersonTo(id);
+            return;
+        }
+
         _selectedPersonId = id;
+        RefreshInfoLabel();
+    }
+
+    private void TeachFromSelectedPersonTo(PersonId studentId)
+    {
+        if (_selectedPersonId is not { } teacherId || teacherId == studentId)
+        {
+            return;
+        }
+
+        var teacher = _world.People.FirstOrDefault(p => p.Id == teacherId);
+        if (teacher is null)
+        {
+            return;
+        }
+
+        foreach (var technique in teacher.KnownTechniques)
+        {
+            _world.Execute(new TeachCommand(teacherId, studentId, technique));
+        }
+
         RefreshInfoLabel();
     }
 
@@ -171,6 +228,14 @@ public partial class Main : Node3D
         }
 
         var status = person.IsAlive ? string.Empty : " [dead]";
-        _infoLabel.Text = $"{person.Id}  {person.Name}{status}\nPosition: {person.Position}\nHunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}";
+        var techniques = person.KnownTechniques.Count > 0
+            ? string.Join(", ", person.KnownTechniques)
+            : "none";
+        _infoLabel.Text =
+            $"{person.Id}  {person.Name}{status}\n" +
+            $"Position: {person.Position}\n" +
+            $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
+            $"Gathering skill: {person.Skills.Gathering}\n" +
+            $"Known techniques: {techniques}";
     }
 }

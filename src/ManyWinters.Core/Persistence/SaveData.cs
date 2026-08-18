@@ -1,3 +1,4 @@
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Persistence;
@@ -17,7 +18,9 @@ public sealed record PersonSaveData(
     float PositionY,
     bool IsAlive,
     float Hunger,
-    float Fatigue);
+    float Fatigue,
+    float GatheringSkill,
+    IReadOnlyList<Technique> KnownTechniques);
 
 public sealed record ResourceNodeSaveData(
     int Id,

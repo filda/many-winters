@@ -9,12 +9,12 @@ public partial class PersonView : Area3D
     public const float Height = 1.8f;
 
     private readonly PersonId _personId;
-    private readonly Action<PersonId> _onSelected;
+    private readonly Action<PersonId, MouseButton> _onClicked;
 
-    public PersonView(PersonId personId, Action<PersonId> onSelected)
+    public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked)
     {
         _personId = personId;
-        _onSelected = onSelected;
+        _onClicked = onClicked;
     }
 
     public override void _Ready()
@@ -36,9 +36,9 @@ public partial class PersonView : Area3D
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        if (@event is InputEventMouseButton { Pressed: true } mouseEvent)
         {
-            _onSelected(_personId);
+            _onClicked(_personId, mouseEvent.ButtonIndex);
         }
     }
 }

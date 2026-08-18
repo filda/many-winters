@@ -1,3 +1,4 @@
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
@@ -14,6 +15,10 @@ public sealed class Person
     public bool IsAlive { get; set; } = true;
 
     public Needs Needs { get; init; } = new();
+
+    public Skills Skills { get; init; } = new();
+
+    public HashSet<Technique> KnownTechniques { get; init; } = new();
 
     public PersonTaskQueue Tasks { get; init; } = new();
 }

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.Commands;
@@ -17,6 +18,7 @@ public class GatherCommandTests
 
         Assert.Equal(30f, person.Needs.Hunger);
         Assert.Equal(80f, node.RemainingAmount);
+        Assert.Equal(1f, person.Skills.Gathering);
     }
 
     [Fact]
@@ -58,6 +60,7 @@ public class GatherCommandTests
 
         Assert.Equal(50f, person.Needs.Hunger);
         Assert.Equal(0f, node.RemainingAmount);
+        Assert.Equal(0f, person.Skills.Gathering);
     }
 
     [Fact]
@@ -88,5 +91,40 @@ public class GatherCommandTests
 
         Assert.Equal(50f, person.Needs.Hunger);
         Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void FiveGathersDiscoverEfficientGathering()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 1000);
+
+        for (var i = 0; i < 4; i++)
+        {
+            world.Execute(new GatherCommand(person.Id, node.Id));
+        }
+
+        Assert.DoesNotContain(Technique.EfficientGathering, person.KnownTechniques);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(5f, person.Skills.Gathering);
+        Assert.Contains(Technique.EfficientGathering, person.KnownTechniques);
+    }
+
+    [Fact]
+    public void KnowingEfficientGatheringHarvestsMorePerAction()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(Technique.EfficientGathering);
+        person.Needs.Hunger = 100;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 1000);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(60f, person.Needs.Hunger);
+        Assert.Equal(960f, node.RemainingAmount);
     }
 }

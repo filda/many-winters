@@ -1,3 +1,4 @@
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Persistence;
 using ManyWinters.Core.World;
 
@@ -13,6 +14,8 @@ public class SaveGameServiceTests
         var ava = world.AddPerson("Ava", new Position(1.5f, 2.5f));
         ava.Needs.Hunger = 30;
         ava.Needs.Fatigue = 10;
+        ava.Skills.Gathering = 3.5f;
+        ava.KnownTechniques.Add(Technique.EfficientGathering);
         var bran = world.AddPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
@@ -33,6 +36,8 @@ public class SaveGameServiceTests
             Assert.True(restoredAva.IsAlive);
             Assert.Equal(ava.Needs.Hunger, restoredAva.Needs.Hunger);
             Assert.Equal(ava.Needs.Fatigue, restoredAva.Needs.Fatigue);
+            Assert.Equal(ava.Skills.Gathering, restoredAva.Skills.Gathering);
+            Assert.Equal(ava.KnownTechniques, restoredAva.KnownTechniques);
 
             var restoredBran = restored.People.Single(p => p.Name == "Bran");
             Assert.False(restoredBran.IsAlive);

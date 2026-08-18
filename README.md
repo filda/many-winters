@@ -4,7 +4,13 @@ A real-time strategy game about the birth and long-term evolution of a single pe
 
 ## Status
 
-The simulation skeleton (Step 2) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency. The headless runner (Step 3) can now run scripted commands (`generate`, `create <n>`, `simulate <ticks>`, `print population`, `save`/`load`) against the simulation with no Godot involved. The Godot presentation layer (Step 4) now renders people as placeholder capsules you can click to inspect, and a "Spawn Person" button that goes through a real `ICommand` (`SpawnPersonCommand`) rather than touching simulation state directly. Step 5 (environment and survival) has started: hunger now increases every tick and can kill a person, resource nodes (green boxes) can be gathered from — select a person, then click a node to issue a `GatherCommand` — and the node disappears once depleted. Terrain/weather/fire/shelter are intentionally deferred to their own later steps.
+Progress against [`docs/roadmap.md`](docs/roadmap.md):
+
+- **Step 2 — Simulation skeleton**: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency.
+- **Step 3 — Headless runner**: `generate`, `create <n>`, `simulate <ticks>`, `print population`, `save`/`load` — runs the simulation with no Godot involved.
+- **Step 4 — Godot presentation**: people render as placeholder capsules you can click to inspect; a "Spawn Person" button goes through a real `ICommand` (`SpawnPersonCommand`) instead of touching simulation state directly.
+- **Step 5 — Environment and survival** (partial): hunger increases every tick and can kill a person; resource nodes (green boxes) can be gathered from — select a person, then click a node to issue a `GatherCommand` — and the node disappears once depleted. Terrain/weather/fire/shelter are intentionally deferred to their own later steps.
+- **Step 7 — Skills and knowledge** (partial): `Skills.Gathering` grows with each gather action, discovering `Technique.EfficientGathering` after enough practice (bigger harvests afterward); right-click one person onto another to `TeachCommand` them anything the first person knows — knowledge lives in people, not a global tech tree. Shown in the Godot info panel. A full prerequisite graph and additional skills are deferred.
 
 ## Prerequisites
 
