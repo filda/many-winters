@@ -26,14 +26,19 @@ public partial class Main : Node3D
         SetUpGround();
         SetUpUi();
 
-        for (var i = 0; i < 5; i++)
+        const int columns = 5;
+        for (var i = 0; i < 15; i++)
         {
-            SpawnPerson($"Person {i + 1}", new Position((i - 2) * 1.5f, 0));
+            var x = ((i % columns) - (columns / 2f) + 0.5f) * 2f;
+            var z = ((i / columns) - 1) * 2f;
+            SpawnPerson($"Person {i + 1}", new Position(x, z));
         }
 
-        SpawnResourceNode(new Position(-4f, 3f), 100f);
-        SpawnResourceNode(new Position(0f, -3f), 100f);
-        SpawnResourceNode(new Position(4f, 3f), 100f);
+        SpawnResourceNode(new Position(-6f, 5f), 200f);
+        SpawnResourceNode(new Position(0f, -5f), 200f);
+        SpawnResourceNode(new Position(6f, 5f), 200f);
+        SpawnResourceNode(new Position(-6f, -5f), 200f);
+        SpawnResourceNode(new Position(6f, -5f), 200f);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -50,6 +55,15 @@ public partial class Main : Node3D
         _world.Advance(1);
         _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}";
         RefreshInfoLabel();
+
+        foreach (var person in _world.People)
+        {
+            if (_views.TryGetValue(person.Id, out var view))
+            {
+                view.SetAlive(person.IsAlive);
+            }
+        }
+
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
     }
 
@@ -160,9 +174,32 @@ public partial class Main : Node3D
 
     private void OnSpawnButtonPressed()
     {
-        var x = (GD.Randf() - 0.5f) * 16f;
-        var y = (GD.Randf() - 0.5f) * 16f;
-        SpawnPerson($"Person {_world.People.Count + 1}", new Position(x, y));
+        SpawnPerson($"Person {_world.People.Count + 1}", FindFreeSpawnPosition());
+    }
+
+    private Position FindFreeSpawnPosition()
+    {
+        const float minDistance = 1.2f;
+        const int maxAttempts = 20;
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var candidate = new Position((GD.Randf() - 0.5f) * 16f, (GD.Randf() - 0.5f) * 16f);
+            var tooClose = _world.People.Any(p => Distance(p.Position, candidate) < minDistance);
+            if (!tooClose)
+            {
+                return candidate;
+            }
+        }
+
+        return new Position((GD.Randf() - 0.5f) * 16f, (GD.Randf() - 0.5f) * 16f);
+    }
+
+    private static float Distance(Position a, Position b)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        return MathF.Sqrt((dx * dx) + (dy * dy));
     }
 
     private void OnPersonClicked(PersonId id, MouseButton button)

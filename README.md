@@ -11,6 +11,7 @@ Progress against [`docs/roadmap.md`](docs/roadmap.md):
 - **Step 4 — Godot presentation**: people render as placeholder capsules you can click to inspect; a "Spawn Person" button goes through a real `ICommand` (`SpawnPersonCommand`) instead of touching simulation state directly.
 - **Step 5 — Environment and survival** (partial): hunger increases every tick and can kill a person; resource nodes (green boxes) can be gathered from — select a person, then click a node to issue a `GatherCommand` — and the node disappears once depleted. Terrain/weather/fire/shelter are intentionally deferred to their own later steps.
 - **Step 7 — Skills and knowledge** (partial): `Skills.Gathering` grows with each gather action, discovering `Technique.EfficientGathering` after enough practice (bigger harvests afterward); right-click one person onto another to `TeachCommand` them anything the first person knows — knowledge lives in people, not a global tech tree. Shown in the Godot info panel. A full prerequisite graph and additional skills are deferred.
+- **Step 6 — Headless + visual milestone**: `SurvivalMilestoneTests` (`src/ManyWinters.Tests/Milestones/`) proves 10–20 people survive 300 ticks with regular gathering and starve within 150 ticks without it. Seasons/winter don't exist yet (Step 9), so this validates the underlying survival pressure rather than a literal winter. The Godot scene now spawns 15 people and 5 resource nodes to match.
 
 ## Prerequisites
 
