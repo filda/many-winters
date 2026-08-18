@@ -6,6 +6,9 @@ namespace ManyWinters.Core.World;
 
 public sealed class WorldState
 {
+    private const float HungerPerTick = 1f;
+    private const float MaxHunger = 100f;
+
     private readonly List<Person> _people = new();
     private int _nextPersonId = 1;
 
@@ -29,6 +32,22 @@ public sealed class WorldState
     }
 
     public void Execute(ICommand command) => command.Execute(this);
+
+    public void Advance(long ticks)
+    {
+        Clock.Advance(ticks);
+
+        foreach (var person in _people)
+        {
+            var hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * ticks), MaxHunger);
+            person.Needs.Hunger = hunger;
+
+            if (hunger >= MaxHunger)
+            {
+                person.IsAlive = false;
+            }
+        }
+    }
 
     internal void RestorePerson(Person person) => _people.Add(person);
 

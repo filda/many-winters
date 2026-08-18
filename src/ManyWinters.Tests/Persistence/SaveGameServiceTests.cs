@@ -13,7 +13,9 @@ public class SaveGameServiceTests
         var ava = world.AddPerson("Ava", new Position(1.5f, 2.5f));
         ava.Needs.Hunger = 30;
         ava.Needs.Fatigue = 10;
-        world.AddPerson("Bran", new Position(-3f, 0f));
+        var bran = world.AddPerson("Bran", new Position(-3f, 0f));
+        bran.IsAlive = false;
+        bran.Needs.Hunger = 100;
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -27,8 +29,12 @@ public class SaveGameServiceTests
             var restoredAva = restored.People.Single(p => p.Name == "Ava");
             Assert.Equal(ava.Id, restoredAva.Id);
             Assert.Equal(ava.Position, restoredAva.Position);
+            Assert.True(restoredAva.IsAlive);
             Assert.Equal(ava.Needs.Hunger, restoredAva.Needs.Hunger);
             Assert.Equal(ava.Needs.Fatigue, restoredAva.Needs.Fatigue);
+
+            var restoredBran = restored.People.Single(p => p.Name == "Bran");
+            Assert.False(restoredBran.IsAlive);
         }
         finally
         {

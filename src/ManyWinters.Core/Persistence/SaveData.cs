@@ -11,5 +11,6 @@ public sealed record PersonSaveData(
     string Name,
     float PositionX,
     float PositionY,
+    bool IsAlive,
     float Hunger,
     float Fatigue);

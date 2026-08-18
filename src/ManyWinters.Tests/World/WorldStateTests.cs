@@ -36,4 +36,51 @@ public class WorldStateTests
         Assert.Empty(world.People);
         Assert.Equal(0, world.Clock.CurrentTick);
     }
+
+    [Fact]
+    public void AdvanceMovesTheClockForward()
+    {
+        var world = new WorldState();
+
+        world.Advance(5);
+
+        Assert.Equal(5, world.Clock.CurrentTick);
+    }
+
+    [Fact]
+    public void AdvanceIncreasesHungerForEveryPerson()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(3);
+
+        Assert.Equal(3f, person.Needs.Hunger);
+        Assert.True(person.IsAlive);
+    }
+
+    [Fact]
+    public void AdvanceClampsHungerAtItsMaximum()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(1000);
+
+        Assert.Equal(100f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void AdvanceKillsAPersonWhoseHungerReachesTheMaximum()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(99);
+        Assert.True(person.IsAlive);
+
+        world.Advance(1);
+
+        Assert.False(person.IsAlive);
+    }
 }

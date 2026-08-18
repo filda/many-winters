@@ -22,6 +22,7 @@ public static class SaveGameService
                 person.Name,
                 person.Position.X,
                 person.Position.Y,
+                person.IsAlive,
                 person.Needs.Hunger,
                 person.Needs.Fatigue))
             .ToList();
@@ -41,6 +42,7 @@ public static class SaveGameService
                 Id = new PersonId(personData.Id),
                 Name = personData.Name,
                 Position = new Position(personData.PositionX, personData.PositionY),
+                IsAlive = personData.IsAlive,
             };
             person.Needs.Hunger = personData.Hunger;
             person.Needs.Fatigue = personData.Fatigue;

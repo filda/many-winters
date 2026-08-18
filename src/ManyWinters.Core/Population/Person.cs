@@ -11,6 +11,8 @@ public sealed class Person
 
     public Position Position { get; set; }
 
+    public bool IsAlive { get; set; } = true;
+
     public Needs Needs { get; init; } = new();
 
     public PersonTaskQueue Tasks { get; init; } = new();

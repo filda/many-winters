@@ -86,15 +86,17 @@ public sealed class SimulationScript
                     break;
                 }
 
-                World.Clock.Advance(ticks);
+                World.Advance(ticks);
                 output.Add($"Advanced {ticks} ticks. Current tick is {World.Clock.CurrentTick}.");
                 break;
 
             case "print" when parts.Length > 1 && parts[1].Equals("population", StringComparison.OrdinalIgnoreCase):
-                output.Add($"Tick {World.Clock.CurrentTick}: {World.People.Count} people alive.");
+                var aliveCount = World.People.Count(p => p.IsAlive);
+                output.Add($"Tick {World.Clock.CurrentTick}: {aliveCount} of {World.People.Count} people alive.");
                 foreach (var person in World.People)
                 {
-                    output.Add($"  {person.Id} {person.Name} at {person.Position}");
+                    var status = person.IsAlive ? string.Empty : " [dead]";
+                    output.Add($"  {person.Id} {person.Name} at {person.Position}{status}");
                 }
 
                 break;

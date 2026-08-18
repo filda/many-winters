@@ -165,9 +165,36 @@ public class SimulationScriptTests
 
         var output = script.Run(["print population"]);
 
-        Assert.Contains("Tick 0: 2 people alive.", output);
+        Assert.Contains("Tick 0: 2 of 2 people alive.", output);
         Assert.Contains(output, line => line.Contains("Person 1"));
         Assert.Contains(output, line => line.Contains("Person 2"));
+    }
+
+    [Fact]
+    public void SimulatingLongEnoughStarvesPeopleToDeath()
+    {
+        var script = new SimulationScript();
+        script.Run(["create 1", "simulate 100"]);
+
+        var output = script.Run(["print population"]);
+
+        Assert.Contains("Tick 100: 0 of 1 people alive.", output);
+        Assert.Contains(output, line => line.Contains("[dead]"));
+    }
+
+    [Fact]
+    public void PrintPopulationMarksOnlyDeadPeopleAndLeavesLivingLinesUnsuffixed()
+    {
+        var script = new SimulationScript();
+        script.Run(["create 1"]);
+        script.Run(["simulate 60"]);
+        script.Run(["create 1"]);
+        script.Run(["simulate 40"]);
+
+        var output = script.Run(["print population"]);
+
+        Assert.Contains("  1 Person 1 at Position { X = 0, Y = 0 } [dead]", output);
+        Assert.Contains("  2 Person 2 at Position { X = 0, Y = 0 }", output);
     }
 
     [Fact]
