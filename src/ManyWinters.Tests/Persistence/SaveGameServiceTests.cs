@@ -16,6 +16,7 @@ public class SaveGameServiceTests
         var bran = world.AddPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(4f, 5f), 42f);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -35,6 +36,13 @@ public class SaveGameServiceTests
 
             var restoredBran = restored.People.Single(p => p.Name == "Bran");
             Assert.False(restoredBran.IsAlive);
+
+            Assert.Equal(world.ResourceNodes.Count, restored.ResourceNodes.Count);
+            var restoredNode = Assert.Single(restored.ResourceNodes);
+            Assert.Equal(node.Id, restoredNode.Id);
+            Assert.Equal(node.Kind, restoredNode.Kind);
+            Assert.Equal(node.Position, restoredNode.Position);
+            Assert.Equal(node.RemainingAmount, restoredNode.RemainingAmount);
         }
         finally
         {
@@ -58,6 +66,29 @@ public class SaveGameServiceTests
             var newPerson = restored.AddPerson("Cora", new Position(0, 0));
 
             Assert.DoesNotContain(restored.People, p => p != newPerson && p.Id == newPerson.Id);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void RestoredWorldContinuesResourceNodeIdSequenceWithoutCollisions()
+    {
+        var world = new WorldState();
+        world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 10);
+        world.AddResourceNode(ResourceKind.Food, new Position(1, 1), 10);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path);
+
+            var newNode = restored.AddResourceNode(ResourceKind.Food, new Position(2, 2), 10);
+
+            Assert.DoesNotContain(restored.ResourceNodes, n => n != newNode && n.Id == newNode.Id);
         }
         finally
         {

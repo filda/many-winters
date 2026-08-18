@@ -1,0 +1,92 @@
+using ManyWinters.Core.Commands;
+using ManyWinters.Core.World;
+
+namespace ManyWinters.Tests.Commands;
+
+public class GatherCommandTests
+{
+    [Fact]
+    public void GatheringReducesHungerAndDepletesTheNode()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(30f, person.Needs.Hunger);
+        Assert.Equal(80f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void GatheringNeverReducesHungerBelowZero()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 5;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(0f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void GatheringNeverTakesMoreThanTheNodeHasRemaining()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 5);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(45f, person.Needs.Hunger);
+        Assert.Equal(0f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void GatheringFromAnAlreadyEmptyNodeDoesNothing()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 0);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(0f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void GatheringByADeadPersonDoesNothing()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.IsAlive = false;
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void GatheringWithAnUnknownPersonOrNodeDoesNothing()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(new PersonId(999), node.Id));
+        world.Execute(new GatherCommand(person.Id, new ResourceNodeId(999)));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+}

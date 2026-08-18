@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -6,12 +7,13 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 1;
+    private const int CurrentVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         // Stryker disable once Boolean: cosmetic formatting only, doesn't affect round-trip behavior
         WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() },
     };
 
     public static SaveData ToSaveData(WorldState world)
@@ -27,7 +29,22 @@ public static class SaveGameService
                 person.Needs.Fatigue))
             .ToList();
 
-        return new SaveData(CurrentVersion, world.Clock.CurrentTick, world.NextPersonId, people);
+        var resourceNodes = world.ResourceNodes
+            .Select(node => new ResourceNodeSaveData(
+                node.Id.Value,
+                node.Kind,
+                node.Position.X,
+                node.Position.Y,
+                node.RemainingAmount))
+            .ToList();
+
+        return new SaveData(
+            CurrentVersion,
+            world.Clock.CurrentTick,
+            world.NextPersonId,
+            people,
+            world.NextResourceNodeId,
+            resourceNodes);
     }
 
     public static WorldState FromSaveData(SaveData data)
@@ -51,6 +68,21 @@ public static class SaveGameService
         }
 
         world.SetNextPersonId(data.NextPersonId);
+
+        foreach (var nodeData in data.ResourceNodes)
+        {
+            var node = new ResourceNode
+            {
+                Id = new ResourceNodeId(nodeData.Id),
+                Kind = nodeData.Kind,
+                Position = new Position(nodeData.PositionX, nodeData.PositionY),
+                RemainingAmount = nodeData.RemainingAmount,
+            };
+
+            world.RestoreResourceNode(node);
+        }
+
+        world.SetNextResourceNodeId(data.NextResourceNodeId);
         return world;
     }
 
@@ -63,7 +95,7 @@ public static class SaveGameService
     public static WorldState Load(string path)
     {
         var json = File.ReadAllText(path);
-        var data = JsonSerializer.Deserialize<SaveData>(json)
+        var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
 
         return FromSaveData(data);

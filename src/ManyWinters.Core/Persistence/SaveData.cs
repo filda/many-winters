@@ -1,10 +1,14 @@
+using ManyWinters.Core.World;
+
 namespace ManyWinters.Core.Persistence;
 
 public sealed record SaveData(
     int Version,
     long Tick,
     int NextPersonId,
-    IReadOnlyList<PersonSaveData> People);
+    IReadOnlyList<PersonSaveData> People,
+    int NextResourceNodeId,
+    IReadOnlyList<ResourceNodeSaveData> ResourceNodes);
 
 public sealed record PersonSaveData(
     int Id,
@@ -14,3 +18,10 @@ public sealed record PersonSaveData(
     bool IsAlive,
     float Hunger,
     float Fatigue);
+
+public sealed record ResourceNodeSaveData(
+    int Id,
+    ResourceKind Kind,
+    float PositionX,
+    float PositionY,
+    float RemainingAmount);
