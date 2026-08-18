@@ -2,5 +2,8 @@ namespace ManyWinters.Core.World;
 
 public enum ResourceKind
 {
-    Food,
+    Apple,
+    Pear,
+    Mushroom,
+    Potato,
 }

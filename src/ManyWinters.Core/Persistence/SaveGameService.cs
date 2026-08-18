@@ -7,7 +7,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 3;
+    private const int CurrentVersion = 4;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -27,7 +27,7 @@ public static class SaveGameService
                 person.IsAlive,
                 person.Needs.Hunger,
                 person.Needs.Fatigue,
-                person.Skills.Gathering,
+                person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
                 person.KnownTechniques.ToList()))
             .ToList();
 
@@ -65,7 +65,11 @@ public static class SaveGameService
             };
             person.Needs.Hunger = personData.Hunger;
             person.Needs.Fatigue = personData.Fatigue;
-            person.Skills.Gathering = personData.GatheringSkill;
+            foreach (var skillData in personData.Skills)
+            {
+                person.Skills.Increase(skillData.Type, skillData.Level);
+            }
+
             foreach (var technique in personData.KnownTechniques)
             {
                 person.KnownTechniques.Add(technique);

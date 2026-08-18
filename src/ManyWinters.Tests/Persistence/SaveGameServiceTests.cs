@@ -14,12 +14,12 @@ public class SaveGameServiceTests
         var ava = world.AddPerson("Ava", new Position(1.5f, 2.5f));
         ava.Needs.Hunger = 30;
         ava.Needs.Fatigue = 10;
-        ava.Skills.Gathering = 3.5f;
-        ava.KnownTechniques.Add(Technique.EfficientGathering);
+        ava.Skills.Increase(SkillType.Foraging, 3.5f);
+        ava.KnownTechniques.Add(Technique.EfficientForaging);
         var bran = world.AddPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
-        var node = world.AddResourceNode(ResourceKind.Food, new Position(4f, 5f), 42f);
+        var node = world.AddResourceNode(ResourceKind.Apple, new Position(4f, 5f), 42f);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -36,7 +36,7 @@ public class SaveGameServiceTests
             Assert.True(restoredAva.IsAlive);
             Assert.Equal(ava.Needs.Hunger, restoredAva.Needs.Hunger);
             Assert.Equal(ava.Needs.Fatigue, restoredAva.Needs.Fatigue);
-            Assert.Equal(ava.Skills.Gathering, restoredAva.Skills.Gathering);
+            Assert.Equal(ava.Skills.Get(SkillType.Foraging), restoredAva.Skills.Get(SkillType.Foraging));
             Assert.Equal(ava.KnownTechniques, restoredAva.KnownTechniques);
 
             var restoredBran = restored.People.Single(p => p.Name == "Bran");
@@ -82,8 +82,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesResourceNodeIdSequenceWithoutCollisions()
     {
         var world = new WorldState();
-        world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 10);
-        world.AddResourceNode(ResourceKind.Food, new Position(1, 1), 10);
+        world.AddResourceNode(ResourceKind.Apple, new Position(0, 0), 10);
+        world.AddResourceNode(ResourceKind.Apple, new Position(1, 1), 10);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -91,7 +91,7 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path);
 
-            var newNode = restored.AddResourceNode(ResourceKind.Food, new Position(2, 2), 10);
+            var newNode = restored.AddResourceNode(ResourceKind.Apple, new Position(2, 2), 10);
 
             Assert.DoesNotContain(restored.ResourceNodes, n => n != newNode && n.Id == newNode.Id);
         }

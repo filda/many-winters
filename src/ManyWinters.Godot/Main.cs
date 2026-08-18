@@ -34,11 +34,11 @@ public partial class Main : Node3D
             SpawnPerson($"Person {i + 1}", new Position(x, z));
         }
 
-        SpawnResourceNode(new Position(-6f, 5f), 200f);
-        SpawnResourceNode(new Position(0f, -5f), 200f);
-        SpawnResourceNode(new Position(6f, 5f), 200f);
-        SpawnResourceNode(new Position(-6f, -5f), 200f);
-        SpawnResourceNode(new Position(6f, -5f), 200f);
+        SpawnResourceNode(ResourceKind.Apple, new Position(-6f, 5f), 200f);
+        SpawnResourceNode(ResourceKind.Pear, new Position(0f, -5f), 200f);
+        SpawnResourceNode(ResourceKind.Mushroom, new Position(6f, 5f), 200f);
+        SpawnResourceNode(ResourceKind.Potato, new Position(-6f, -5f), 200f);
+        SpawnResourceNode(ResourceKind.Apple, new Position(6f, -5f), 200f);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -159,12 +159,12 @@ public partial class Main : Node3D
         _views[person.Id] = view;
     }
 
-    private void SpawnResourceNode(Position position, float amount)
+    private void SpawnResourceNode(ResourceKind kind, Position position, float amount)
     {
-        _world.Execute(new SpawnResourceNodeCommand(ResourceKind.Food, position, amount));
+        _world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
         var node = _world.ResourceNodes[^1];
 
-        var view = new ResourceNodeView(node.Id, OnResourceNodeSelected)
+        var view = new ResourceNodeView(node.Id, node.Kind, OnResourceNodeSelected)
         {
             Position = new Vector3(position.X, ResourceNodeView.Size / 2f, position.Y),
         };
@@ -265,6 +265,9 @@ public partial class Main : Node3D
         }
 
         var status = person.IsAlive ? string.Empty : " [dead]";
+        var skills = person.Skills.Levels.Count > 0
+            ? string.Join(", ", person.Skills.Levels.Select(kv => $"{kv.Key}: {kv.Value}"))
+            : "none";
         var techniques = person.KnownTechniques.Count > 0
             ? string.Join(", ", person.KnownTechniques)
             : "none";
@@ -272,7 +275,7 @@ public partial class Main : Node3D
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
-            $"Gathering skill: {person.Skills.Gathering}\n" +
+            $"Skills: {skills}\n" +
             $"Known techniques: {techniques}";
     }
 }

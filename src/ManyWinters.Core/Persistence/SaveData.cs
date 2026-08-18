@@ -19,8 +19,10 @@ public sealed record PersonSaveData(
     bool IsAlive,
     float Hunger,
     float Fatigue,
-    float GatheringSkill,
+    IReadOnlyList<SkillLevelSaveData> Skills,
     IReadOnlyList<Technique> KnownTechniques);
+
+public sealed record SkillLevelSaveData(SkillType Type, float Level);
 
 public sealed record ResourceNodeSaveData(
     int Id,

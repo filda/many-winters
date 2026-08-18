@@ -24,7 +24,7 @@ public class SurvivalMilestoneTests
             people.Add(world.AddPerson($"Person {i + 1}", new Position(0, 0)));
         }
 
-        var node = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 1_000_000f);
+        var node = world.AddResourceNode(ResourceKind.Apple, new Position(0, 0), 1_000_000f);
 
         for (var tick = 0; tick < 300; tick++)
         {

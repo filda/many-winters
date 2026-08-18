@@ -89,8 +89,8 @@ public class WorldStateTests
     {
         var world = new WorldState();
 
-        var first = world.AddResourceNode(ResourceKind.Food, new Position(0, 0), 50);
-        var second = world.AddResourceNode(ResourceKind.Food, new Position(1, 1), 50);
+        var first = world.AddResourceNode(ResourceKind.Apple, new Position(0, 0), 50);
+        var second = world.AddResourceNode(ResourceKind.Apple, new Position(1, 1), 50);
 
         Assert.NotEqual(first.Id, second.Id);
         Assert.Equal(1, first.Id.Value);
@@ -102,11 +102,11 @@ public class WorldStateTests
     {
         var world = new WorldState();
 
-        var node = world.AddResourceNode(ResourceKind.Food, new Position(2, 3), 40);
+        var node = world.AddResourceNode(ResourceKind.Apple, new Position(2, 3), 40);
 
         var tracked = Assert.Single(world.ResourceNodes);
         Assert.Same(node, tracked);
-        Assert.Equal(ResourceKind.Food, tracked.Kind);
+        Assert.Equal(ResourceKind.Apple, tracked.Kind);
         Assert.Equal(new Position(2, 3), tracked.Position);
         Assert.Equal(40f, tracked.RemainingAmount);
     }
