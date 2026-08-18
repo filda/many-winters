@@ -4,7 +4,7 @@ A real-time strategy game about the birth and long-term evolution of a single pe
 
 ## Status
 
-The simulation skeleton (Step 2) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency. The headless runner (Step 3) can now run scripted commands (`generate`, `create <n>`, `simulate <ticks>`, `print population`, `save`/`load`) against the simulation with no Godot involved. Next up is Step 4 — connecting the Godot presentation layer.
+The simulation skeleton (Step 2) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency. The headless runner (Step 3) can now run scripted commands (`generate`, `create <n>`, `simulate <ticks>`, `print population`, `save`/`load`) against the simulation with no Godot involved. The Godot presentation layer (Step 4) now renders people as placeholder capsules you can click to inspect, and a "Spawn Person" button that goes through a real `ICommand` (`SpawnPersonCommand`) rather than touching simulation state directly. Next up is Step 5 — environment and survival.
 
 ## Prerequisites
 

@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Time;
 
@@ -26,6 +27,8 @@ public sealed class WorldState
         _people.Add(person);
         return person;
     }
+
+    public void Execute(ICommand command) => command.Execute(this);
 
     internal void RestorePerson(Person person) => _people.Add(person);
 
