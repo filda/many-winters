@@ -6,10 +6,16 @@ namespace ManyWinters.Godot;
 
 public partial class Main : Node3D
 {
+    private const double TickIntervalSeconds = 1.0;
+
     private readonly WorldState _world = new();
     private readonly Dictionary<PersonId, PersonView> _views = new();
+    private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
 
     private Label _infoLabel = null!;
+    private Label _tickLabel = null!;
+    private PersonId? _selectedPersonId;
+    private double _tickAccumulator;
 
     public override void _Ready()
     {
@@ -25,7 +31,26 @@ public partial class Main : Node3D
             SpawnPerson($"Person {i + 1}", new Position((i - 2) * 1.5f, 0));
         }
 
-        GD.Print($"Main ready. World has {_world.People.Count} people at tick {_world.Clock.CurrentTick}.");
+        SpawnResourceNode(new Position(-4f, 3f), 100f);
+        SpawnResourceNode(new Position(0f, -3f), 100f);
+        SpawnResourceNode(new Position(4f, 3f), 100f);
+
+        GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
+    }
+
+    public override void _Process(double delta)
+    {
+        _tickAccumulator += delta;
+        if (_tickAccumulator < TickIntervalSeconds)
+        {
+            return;
+        }
+
+        _tickAccumulator -= TickIntervalSeconds;
+        _world.Advance(1);
+        _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}";
+        RefreshInfoLabel();
+        GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
     }
 
     private void SetUpCamera()
@@ -65,6 +90,9 @@ public partial class Main : Node3D
         };
         canvas.AddChild(box);
 
+        _tickLabel = new Label { Text = "Tick: 0" };
+        box.AddChild(_tickLabel);
+
         _infoLabel = new Label { Text = "No selection." };
         box.AddChild(_infoLabel);
 
@@ -87,6 +115,19 @@ public partial class Main : Node3D
         _views[person.Id] = view;
     }
 
+    private void SpawnResourceNode(Position position, float amount)
+    {
+        _world.Execute(new SpawnResourceNodeCommand(ResourceKind.Food, position, amount));
+        var node = _world.ResourceNodes[^1];
+
+        var view = new ResourceNodeView(node.Id, OnResourceNodeSelected)
+        {
+            Position = new Vector3(position.X, ResourceNodeView.Size / 2f, position.Y),
+        };
+        AddChild(view);
+        _resourceNodeViews[node.Id] = view;
+    }
+
     private void OnSpawnButtonPressed()
     {
         var x = (GD.Randf() - 0.5f) * 16f;
@@ -96,9 +137,40 @@ public partial class Main : Node3D
 
     private void OnPersonSelected(PersonId id)
     {
-        var person = _world.People.FirstOrDefault(p => p.Id == id);
-        _infoLabel.Text = person is null
-            ? "No selection."
-            : $"{person.Id}  {person.Name}\nPosition: {person.Position}\nHunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}";
+        _selectedPersonId = id;
+        RefreshInfoLabel();
+    }
+
+    private void OnResourceNodeSelected(ResourceNodeId id)
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then click a resource node to gather.";
+            return;
+        }
+
+        _world.Execute(new GatherCommand(personId, id));
+
+        var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == id);
+        if (node is { RemainingAmount: <= 0 } && _resourceNodeViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _resourceNodeViews.Remove(id);
+        }
+
+        RefreshInfoLabel();
+    }
+
+    private void RefreshInfoLabel()
+    {
+        var person = _selectedPersonId is { } id ? _world.People.FirstOrDefault(p => p.Id == id) : null;
+        if (person is null)
+        {
+            _infoLabel.Text = "No selection.";
+            return;
+        }
+
+        var status = person.IsAlive ? string.Empty : " [dead]";
+        _infoLabel.Text = $"{person.Id}  {person.Name}{status}\nPosition: {person.Position}\nHunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}";
     }
 }
