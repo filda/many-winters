@@ -1,5 +1,6 @@
 {
   "stryker-config": {
+    "mutate": ["**/*.cs", "!**/Program.cs"],
     "reporters": ["html", "progress"],
     "thresholds": {
       "high": 100,

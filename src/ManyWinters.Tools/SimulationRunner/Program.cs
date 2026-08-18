@@ -1,24 +1,20 @@
-using ManyWinters.Core.Persistence;
-using ManyWinters.Core.Tasks;
-using ManyWinters.Core.World;
+using ManyWinters.Tools.SimulationRunner;
 
-var world = new WorldState();
-var ava = world.AddPerson("Ava", new Position(0, 0));
-var bran = world.AddPerson("Bran", new Position(1, 0));
-ava.Tasks.Enqueue(new IdleTask());
-bran.Tasks.Enqueue(new IdleTask());
-
-world.Clock.Advance(10);
-
-Console.WriteLine($"Tick {world.Clock.CurrentTick}: {world.People.Count} people alive.");
-foreach (var person in world.People)
+if (args.Length == 0)
 {
-    Console.WriteLine($"  {person.Id} {person.Name} at {person.Position}");
+    Console.WriteLine("Usage: dotnet run --project src/ManyWinters.Tools/SimulationRunner -- <command> [<command> ...]");
+    Console.WriteLine("Commands:");
+    Console.WriteLine("  generate            Start a fresh world");
+    Console.WriteLine("  create <n>          Add n people to the current world");
+    Console.WriteLine("  simulate <ticks>    Advance the simulation clock by <ticks>");
+    Console.WriteLine("  print population    Print the current tick and every person");
+    Console.WriteLine("  save <path>         Save the current world to <path>");
+    Console.WriteLine("  load <path>         Load a world from <path>");
+    return;
 }
 
-var savePath = Path.Combine(Path.GetTempPath(), "manywinters-demo-save.json");
-SaveGameService.Save(world, savePath);
-Console.WriteLine($"Saved to {savePath}");
-
-var restored = SaveGameService.Load(savePath);
-Console.WriteLine($"Loaded back: tick {restored.Clock.CurrentTick}, {restored.People.Count} people.");
+var script = new SimulationScript();
+foreach (var line in script.Run(SimulationScript.SplitIntoCommands(args)))
+{
+    Console.WriteLine(line);
+}

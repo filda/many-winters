@@ -22,9 +22,13 @@ jobs:
       - name: Restore solution
         run: dotnet restore ManyWinters.sln
 
-      - name: Run Stryker.NET
+      - name: Run Stryker.NET (ManyWinters.Core)
         working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker
+        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj
+
+      - name: Run Stryker.NET (ManyWinters.Tools.SimulationRunner)
+        working-directory: src/ManyWinters.Tests
+        run: dotnet tool run dotnet-stryker --project ManyWinters.Tools.SimulationRunner.csproj
 
       - name: Upload mutation report
         if: always()

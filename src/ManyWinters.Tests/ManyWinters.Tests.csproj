@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ManyWinters.Core\ManyWinters.Core.csproj" />
+    <ProjectReference Include="..\ManyWinters.Tools\SimulationRunner\ManyWinters.Tools.SimulationRunner.csproj" />
   </ItemGroup>
 
 </Project>

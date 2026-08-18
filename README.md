@@ -4,7 +4,7 @@ A real-time strategy game about the birth and long-term evolution of a single pe
 
 ## Status
 
-The simulation skeleton (Step 2 of the roadmap) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency. Next up is Step 3 — a richer headless runner.
+The simulation skeleton (Step 2) is in place: a simulation clock, stable person IDs, a minimal `Person`/`Needs`/task-queue model, and JSON-based save/load, all in `ManyWinters.Core` with no Godot dependency. The headless runner (Step 3) can now run scripted commands (`generate`, `create <n>`, `simulate <ticks>`, `print population`, `save`/`load`) against the simulation with no Godot involved. Next up is Step 4 — connecting the Godot presentation layer.
 
 ## Prerequisites
 
@@ -64,6 +64,33 @@ dotnet run --project src/ManyWinters.Tools/SimulationRunner
 dotnet test
 ```
 
+Every run of the tool starts a fresh, empty world — nothing persists between separate invocations unless you explicitly `save`/`load` it. Chain as many commands as you want into a single invocation, unquoted:
+
+```powershell
+dotnet run --project src/ManyWinters.Tools/SimulationRunner -- generate create 100 simulate 1 print population
+```
+
+To carry state across multiple invocations (e.g. separate sessions), bridge it through a save file:
+
+```powershell
+dotnet run --project src/ManyWinters.Tools/SimulationRunner -- generate create 100 simulate 1 save world.json
+# ...later...
+dotnet run --project src/ManyWinters.Tools/SimulationRunner -- load world.json print population
+```
+
+`dotnet run` re-checks whether a rebuild is needed on every invocation, which costs about a second even when nothing changed. For faster manual iteration on the runner, skip that check:
+
+```powershell
+# Option 1: skip the up-to-date check (still runs the build system)
+dotnet run --project src/ManyWinters.Tools/SimulationRunner --no-build -- <command> [<command> ...]
+
+# Option 2: build once, then invoke the compiled executable directly
+dotnet build src/ManyWinters.Tools/SimulationRunner
+./src/ManyWinters.Tools/SimulationRunner/bin/Debug/net8.0/ManyWinters.Tools.SimulationRunner.exe <command> [<command> ...]
+```
+
+Both require a build to already exist (`--no-build` fails otherwise) and skip re-checking that it's current — rebuild manually after changing code.
+
 To run the game with rendering, open `src/ManyWinters.Godot` in the Godot editor, or launch it directly:
 
 ```powershell
@@ -77,7 +104,10 @@ godot --path src/ManyWinters.Godot
 ```powershell
 dotnet tool restore
 cd src/ManyWinters.Tests
-dotnet tool run dotnet-stryker
+
+# ManyWinters.Tests references more than one project, so tell Stryker which one to mutate:
+dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj
+dotnet tool run dotnet-stryker --project ManyWinters.Tools.SimulationRunner.csproj
 ```
 
 Configuration lives in `src/ManyWinters.Tests/stryker-config.json`. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
