@@ -4,11 +4,11 @@ namespace ManyWinters.Core.Population;
 
 public sealed class Skills
 {
-    private readonly Dictionary<SkillType, float> _levels = new();
+    private readonly Dictionary<SkillTypeId, float> _levels = new();
 
-    public IReadOnlyDictionary<SkillType, float> Levels => _levels;
+    public IReadOnlyDictionary<SkillTypeId, float> Levels => _levels;
 
-    public float Get(SkillType type) => _levels.GetValueOrDefault(type);
+    public float Get(SkillTypeId type) => _levels.GetValueOrDefault(type);
 
-    public void Increase(SkillType type, float amount) => _levels[type] = Get(type) + amount;
+    public void Increase(SkillTypeId type, float amount) => _levels[type] = Get(type) + amount;
 }

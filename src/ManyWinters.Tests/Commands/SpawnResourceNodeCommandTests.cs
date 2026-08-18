@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Commands;
 
@@ -10,10 +11,10 @@ public class SpawnResourceNodeCommandTests
     {
         var world = new WorldState();
 
-        world.Execute(new SpawnResourceNodeCommand(ResourceKind.Apple, new Position(3, 4), 50f));
+        world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(3, 4), 50f));
 
         var node = Assert.Single(world.ResourceNodes);
-        Assert.Equal(ResourceKind.Apple, node.Kind);
+        Assert.Equal(TestCatalogs.Apple, node.Kind);
         Assert.Equal(new Position(3, 4), node.Position);
         Assert.Equal(50f, node.RemainingAmount);
     }
@@ -23,8 +24,8 @@ public class SpawnResourceNodeCommandTests
     {
         var world = new WorldState();
 
-        world.Execute(new SpawnResourceNodeCommand(ResourceKind.Apple, new Position(0, 0), 10f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceKind.Apple, new Position(1, 1), 10f));
+        world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(0, 0), 10f));
+        world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(1, 1), 10f));
 
         Assert.Equal(2, world.ResourceNodes.Count);
         Assert.NotEqual(world.ResourceNodes[0].Id, world.ResourceNodes[1].Id);

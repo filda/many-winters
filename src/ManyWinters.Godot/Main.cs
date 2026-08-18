@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot;
@@ -8,7 +9,7 @@ public partial class Main : Node3D
 {
     private const double TickIntervalSeconds = 1.0;
 
-    private readonly WorldState _world = new();
+    private WorldState _world = null!;
     private readonly Dictionary<PersonId, PersonView> _views = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
 
@@ -19,6 +20,11 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
+        var contentRoot = ProjectSettings.GlobalizePath("res://Content");
+        var resourceCatalog = ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources"));
+        var skillCatalog = SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills"));
+        _world = new WorldState(resourceCatalog, skillCatalog);
+
         GetViewport().PhysicsObjectPicking = true;
 
         SetUpCamera();
@@ -34,11 +40,11 @@ public partial class Main : Node3D
             SpawnPerson($"Person {i + 1}", new Position(x, z));
         }
 
-        SpawnResourceNode(ResourceKind.Apple, new Position(-6f, 5f), 200f);
-        SpawnResourceNode(ResourceKind.Pear, new Position(0f, -5f), 200f);
-        SpawnResourceNode(ResourceKind.Mushroom, new Position(6f, 5f), 200f);
-        SpawnResourceNode(ResourceKind.Potato, new Position(-6f, -5f), 200f);
-        SpawnResourceNode(ResourceKind.Apple, new Position(6f, -5f), 200f);
+        SpawnResourceNode(new ResourceKindId("apple"), new Position(-6f, 5f), 200f);
+        SpawnResourceNode(new ResourceKindId("pear"), new Position(0f, -5f), 200f);
+        SpawnResourceNode(new ResourceKindId("mushroom"), new Position(6f, 5f), 200f);
+        SpawnResourceNode(new ResourceKindId("potato"), new Position(-6f, -5f), 200f);
+        SpawnResourceNode(new ResourceKindId("apple"), new Position(6f, -5f), 200f);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -159,7 +165,7 @@ public partial class Main : Node3D
         _views[person.Id] = view;
     }
 
-    private void SpawnResourceNode(ResourceKind kind, Position position, float amount)
+    private void SpawnResourceNode(ResourceKindId kind, Position position, float amount)
     {
         _world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
         var node = _world.ResourceNodes[^1];

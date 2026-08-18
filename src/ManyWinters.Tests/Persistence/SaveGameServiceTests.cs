@@ -1,6 +1,6 @@
-using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Persistence;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Persistence;
 
@@ -14,12 +14,12 @@ public class SaveGameServiceTests
         var ava = world.AddPerson("Ava", new Position(1.5f, 2.5f));
         ava.Needs.Hunger = 30;
         ava.Needs.Fatigue = 10;
-        ava.Skills.Increase(SkillType.Foraging, 3.5f);
-        ava.KnownTechniques.Add(Technique.EfficientForaging);
+        ava.Skills.Increase(TestCatalogs.Foraging, 3.5f);
+        ava.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         var bran = world.AddPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
-        var node = world.AddResourceNode(ResourceKind.Apple, new Position(4f, 5f), 42f);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -36,7 +36,7 @@ public class SaveGameServiceTests
             Assert.True(restoredAva.IsAlive);
             Assert.Equal(ava.Needs.Hunger, restoredAva.Needs.Hunger);
             Assert.Equal(ava.Needs.Fatigue, restoredAva.Needs.Fatigue);
-            Assert.Equal(ava.Skills.Get(SkillType.Foraging), restoredAva.Skills.Get(SkillType.Foraging));
+            Assert.Equal(ava.Skills.Get(TestCatalogs.Foraging), restoredAva.Skills.Get(TestCatalogs.Foraging));
             Assert.Equal(ava.KnownTechniques, restoredAva.KnownTechniques);
 
             var restoredBran = restored.People.Single(p => p.Name == "Bran");
@@ -82,8 +82,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesResourceNodeIdSequenceWithoutCollisions()
     {
         var world = new WorldState();
-        world.AddResourceNode(ResourceKind.Apple, new Position(0, 0), 10);
-        world.AddResourceNode(ResourceKind.Apple, new Position(1, 1), 10);
+        world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 10);
+        world.AddResourceNode(TestCatalogs.Apple, new Position(1, 1), 10);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -91,9 +91,50 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path);
 
-            var newNode = restored.AddResourceNode(ResourceKind.Apple, new Position(2, 2), 10);
+            var newNode = restored.AddResourceNode(TestCatalogs.Apple, new Position(2, 2), 10);
 
             Assert.DoesNotContain(restored.ResourceNodes, n => n != newNode && n.Id == newNode.Id);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadWithBothCatalogsProvidedWiresThemIntoTheRestoredWorld()
+    {
+        var world = new WorldState();
+        world.AddPerson("Ava", new Position(0, 0));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog());
+
+            var definition = restored.ResourceCatalog.Get(TestCatalogs.Apple);
+            Assert.Equal("Apple", definition.DisplayName);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadWithOnlyOneCatalogProvidedFallsBackToEmptyDefaultsForBoth()
+    {
+        var world = new WorldState();
+        world.AddPerson("Ava", new Position(0, 0));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateResourceCatalog(), skillCatalog: null);
+
+            Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
         }
         finally
         {

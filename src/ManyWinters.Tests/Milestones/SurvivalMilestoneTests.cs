@@ -1,6 +1,7 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Milestones;
 
@@ -17,14 +18,14 @@ public class SurvivalMilestoneTests
     [InlineData(20)]
     public void PeopleSurviveThreeHundredTicksWithRegularGathering(int populationSize)
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
         var people = new List<Person>();
         for (var i = 0; i < populationSize; i++)
         {
             people.Add(world.AddPerson($"Person {i + 1}", new Position(0, 0)));
         }
 
-        var node = world.AddResourceNode(ResourceKind.Apple, new Position(0, 0), 1_000_000f);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1_000_000f);
 
         for (var tick = 0; tick < 300; tick++)
         {

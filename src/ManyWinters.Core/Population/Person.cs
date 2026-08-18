@@ -18,7 +18,7 @@ public sealed class Person
 
     public Skills Skills { get; init; } = new();
 
-    public HashSet<Technique> KnownTechniques { get; init; } = new();
+    public HashSet<TechniqueId> KnownTechniques { get; init; } = new();
 
     public PersonTaskQueue Tasks { get; init; } = new();
 }

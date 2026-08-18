@@ -20,13 +20,13 @@ public sealed record PersonSaveData(
     float Hunger,
     float Fatigue,
     IReadOnlyList<SkillLevelSaveData> Skills,
-    IReadOnlyList<Technique> KnownTechniques);
+    IReadOnlyList<TechniqueId> KnownTechniques);
 
-public sealed record SkillLevelSaveData(SkillType Type, float Level);
+public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
 public sealed record ResourceNodeSaveData(
     int Id,
-    ResourceKind Kind,
+    ResourceKindId Kind,
     float PositionX,
     float PositionY,
     float RemainingAmount);

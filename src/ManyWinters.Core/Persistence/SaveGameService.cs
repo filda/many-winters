@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -13,7 +13,6 @@ public static class SaveGameService
     {
         // Stryker disable once Boolean: cosmetic formatting only, doesn't affect round-trip behavior
         WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() },
     };
 
     public static SaveData ToSaveData(WorldState world)
@@ -49,9 +48,11 @@ public static class SaveGameService
             resourceNodes);
     }
 
-    public static WorldState FromSaveData(SaveData data)
+    public static WorldState FromSaveData(SaveData data, ResourceCatalog? resourceCatalog = null, SkillCatalog? skillCatalog = null)
     {
-        var world = new WorldState();
+        var world = resourceCatalog is not null && skillCatalog is not null
+            ? new WorldState(resourceCatalog, skillCatalog)
+            : new WorldState();
         world.Clock.Advance(data.Tick);
 
         foreach (var personData in data.People)
@@ -103,12 +104,12 @@ public static class SaveGameService
         File.WriteAllText(path, json);
     }
 
-    public static WorldState Load(string path)
+    public static WorldState Load(string path, ResourceCatalog? resourceCatalog = null, SkillCatalog? skillCatalog = null)
     {
         var json = File.ReadAllText(path);
         var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
 
-        return FromSaveData(data);
+        return FromSaveData(data, resourceCatalog, skillCatalog);
     }
 }

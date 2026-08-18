@@ -1,4 +1,3 @@
-using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -20,8 +19,10 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
             return;
         }
 
-        var skill = ResourceKindSkills.SkillFor(node.Kind);
-        var technique = SkillTechniques.EfficientTechniqueFor(skill);
+        var resource = world.ResourceCatalog.Get(node.Kind);
+        var skill = resource.Skill;
+        var skillDefinition = world.SkillCatalog.Get(skill);
+        var technique = skillDefinition.EfficientTechnique;
 
         var harvestAmount = person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
 

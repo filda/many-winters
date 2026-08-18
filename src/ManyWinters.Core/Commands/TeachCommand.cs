@@ -3,7 +3,7 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record TeachCommand(PersonId TeacherId, PersonId StudentId, Technique Technique) : ICommand
+public sealed record TeachCommand(PersonId TeacherId, PersonId StudentId, TechniqueId Technique) : ICommand
 {
     public void Execute(WorldState world)
     {
