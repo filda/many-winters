@@ -36,15 +36,12 @@ public partial class ResourceNodeView : Area3D
         InputEvent += OnInputEvent;
     }
 
-    // Placeholder until visuals move to per-resource .tres definitions under Content/resources/<id>/.
-    private static Color ColorFor(ResourceKindId kind) => kind.Value switch
+    private static Color ColorFor(ResourceKindId kind)
     {
-        "apple" => new Color(0.8f, 0.1f, 0.1f),
-        "pear" => new Color(0.7f, 0.85f, 0.2f),
-        "mushroom" => new Color(0.55f, 0.35f, 0.2f),
-        "potato" => new Color(0.8f, 0.65f, 0.35f),
-        _ => new Color(0.2f, 0.8f, 0.2f),
-    };
+        var path = $"res://Content/resources/{kind.Value}/{kind.Value}.tres";
+        var visual = ResourceLoader.Exists(path) ? ResourceLoader.Load<ResourceVisualDefinition>(path) : null;
+        return visual?.Color ?? new Color(0.2f, 0.8f, 0.2f);
+    }
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
