@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.World;
@@ -23,7 +24,8 @@ public partial class Main : Node3D
         var contentRoot = ProjectSettings.GlobalizePath("res://Content");
         var resourceCatalog = ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources"));
         var skillCatalog = SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills"));
-        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog);
+        var recipeCatalog = RecipeCatalog.LoadFromDirectory(Path.Combine(contentRoot, "recipes"));
+        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog);
         _world = map.World;
 
         GetViewport().PhysicsObjectPicking = true;
@@ -125,6 +127,10 @@ public partial class Main : Node3D
         spawnButton.Pressed += OnSpawnButtonPressed;
         box.AddChild(spawnButton);
 
+        var craftButton = new Button { Text = "Craft Axe (selected person, 5 Wood)" };
+        craftButton.Pressed += OnCraftButtonPressed;
+        box.AddChild(craftButton);
+
         box.AddChild(new HSeparator());
 
         box.AddChild(new Label
@@ -140,6 +146,18 @@ public partial class Main : Node3D
     private void OnSpawnButtonPressed()
     {
         _world.Execute(new SpawnPersonCommand($"Person {_world.People.Count + 1}", FindFreeSpawnPosition()));
+    }
+
+    private void OnCraftButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then craft.";
+            return;
+        }
+
+        _world.Execute(new CraftCommand(personId, new ItemKindId("axe")));
+        RefreshInfoLabel();
     }
 
     private Position FindFreeSpawnPosition()
@@ -235,11 +253,15 @@ public partial class Main : Node3D
         var techniques = person.KnownTechniques.Count > 0
             ? string.Join(", ", person.KnownTechniques)
             : "none";
+        var inventory = person.Inventory.Counts.Count > 0
+            ? string.Join(", ", person.Inventory.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
+            : "empty";
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
-            $"Known techniques: {techniques}";
+            $"Known techniques: {techniques}\n" +
+            $"Inventory: {inventory}";
     }
 }

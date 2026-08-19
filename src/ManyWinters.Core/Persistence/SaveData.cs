@@ -1,3 +1,4 @@
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
@@ -20,9 +21,12 @@ public sealed record PersonSaveData(
     float Hunger,
     float Fatigue,
     IReadOnlyList<SkillLevelSaveData> Skills,
-    IReadOnlyList<TechniqueId> KnownTechniques);
+    IReadOnlyList<TechniqueId> KnownTechniques,
+    IReadOnlyList<ItemStackSaveData> Inventory);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
+
+public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 
 public sealed record ResourceNodeSaveData(
     int Id,

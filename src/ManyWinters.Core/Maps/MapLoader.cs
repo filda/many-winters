@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
@@ -6,9 +7,9 @@ namespace ManyWinters.Core.Maps;
 
 public static class MapLoader
 {
-    public static LoadedMap LoadDefault(ResourceCatalog resourceCatalog, SkillCatalog skillCatalog)
+    public static LoadedMap LoadDefault(ResourceCatalog resourceCatalog, SkillCatalog skillCatalog, RecipeCatalog recipeCatalog)
     {
-        var world = new WorldState(resourceCatalog, skillCatalog);
+        var world = new WorldState(resourceCatalog, skillCatalog, recipeCatalog);
 
         const int columns = 5;
         for (var i = 0; i < 15; i++)
@@ -23,6 +24,7 @@ public static class MapLoader
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("mushroom"), new Position(6f, 5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("potato"), new Position(-6f, -5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), new Position(6f, -5f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("wood"), new Position(0f, 8f), 300f));
 
         return new LoadedMap(world, TerrainWidth: 20f, TerrainDepth: 20f);
     }

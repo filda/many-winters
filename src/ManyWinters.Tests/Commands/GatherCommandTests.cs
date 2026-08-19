@@ -172,4 +172,46 @@ public class GatherCommandTests
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
         Assert.DoesNotContain(TestCatalogs.EfficientMushroomForaging, person.KnownTechniques);
     }
+
+    [Fact]
+    public void GatheringWoodAddsItToInventoryInsteadOfReducingHunger()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(80f, node.RemainingAmount);
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void HavingAnAxeInInventoryHarvestsMoreWoodPerAction()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.Axe, 1);
+        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 1000);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(20 + TestCatalogs.AxeHarvestBonus, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(1000f - (20 + TestCatalogs.AxeHarvestBonus), node.RemainingAmount);
+    }
+
+    [Fact]
+    public void TheAxeBonusDoesNotApplyToASkillWithNoAssociatedTool()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.Axe, 1);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(980f, node.RemainingAmount);
+    }
 }

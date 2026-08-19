@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Time;
@@ -16,14 +17,20 @@ public sealed class WorldState
     private int _nextResourceNodeId = 1;
 
     public WorldState()
-        : this(new ResourceCatalog([]), new SkillCatalog([]))
+        : this(new ResourceCatalog([]), new SkillCatalog([]), new RecipeCatalog([]))
     {
     }
 
     public WorldState(ResourceCatalog resourceCatalog, SkillCatalog skillCatalog)
+        : this(resourceCatalog, skillCatalog, new RecipeCatalog([]))
+    {
+    }
+
+    public WorldState(ResourceCatalog resourceCatalog, SkillCatalog skillCatalog, RecipeCatalog recipeCatalog)
     {
         ResourceCatalog = resourceCatalog;
         SkillCatalog = skillCatalog;
+        RecipeCatalog = recipeCatalog;
     }
 
     public SimulationClock Clock { get; } = new();
@@ -31,6 +38,8 @@ public sealed class WorldState
     public ResourceCatalog ResourceCatalog { get; }
 
     public SkillCatalog SkillCatalog { get; }
+
+    public RecipeCatalog RecipeCatalog { get; }
 
     public IReadOnlyList<Person> People => _people;
 

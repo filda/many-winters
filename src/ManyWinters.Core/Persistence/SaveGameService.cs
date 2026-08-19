@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -7,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 4;
+    private const int CurrentVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -27,7 +28,8 @@ public static class SaveGameService
                 person.Needs.Hunger,
                 person.Needs.Fatigue,
                 person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
-                person.KnownTechniques.ToList()))
+                person.KnownTechniques.ToList(),
+                person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList()))
             .ToList();
 
         var resourceNodes = world.ResourceNodes
@@ -48,10 +50,14 @@ public static class SaveGameService
             resourceNodes);
     }
 
-    public static WorldState FromSaveData(SaveData data, ResourceCatalog? resourceCatalog = null, SkillCatalog? skillCatalog = null)
+    public static WorldState FromSaveData(
+        SaveData data,
+        ResourceCatalog? resourceCatalog = null,
+        SkillCatalog? skillCatalog = null,
+        RecipeCatalog? recipeCatalog = null)
     {
-        var world = resourceCatalog is not null && skillCatalog is not null
-            ? new WorldState(resourceCatalog, skillCatalog)
+        var world = resourceCatalog is not null && skillCatalog is not null && recipeCatalog is not null
+            ? new WorldState(resourceCatalog, skillCatalog, recipeCatalog)
             : new WorldState();
         world.Clock.Advance(data.Tick);
 
@@ -74,6 +80,11 @@ public static class SaveGameService
             foreach (var technique in personData.KnownTechniques)
             {
                 person.KnownTechniques.Add(technique);
+            }
+
+            foreach (var stack in personData.Inventory)
+            {
+                person.Inventory.Add(stack.Kind, stack.Count);
             }
 
             world.RestorePerson(person);
@@ -104,12 +115,16 @@ public static class SaveGameService
         File.WriteAllText(path, json);
     }
 
-    public static WorldState Load(string path, ResourceCatalog? resourceCatalog = null, SkillCatalog? skillCatalog = null)
+    public static WorldState Load(
+        string path,
+        ResourceCatalog? resourceCatalog = null,
+        SkillCatalog? skillCatalog = null,
+        RecipeCatalog? recipeCatalog = null)
     {
         var json = File.ReadAllText(path);
         var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
 
-        return FromSaveData(data, resourceCatalog, skillCatalog);
+        return FromSaveData(data, resourceCatalog, skillCatalog, recipeCatalog);
     }
 }

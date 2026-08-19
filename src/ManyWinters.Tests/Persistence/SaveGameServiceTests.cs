@@ -16,6 +16,7 @@ public class SaveGameServiceTests
         ava.Needs.Fatigue = 10;
         ava.Skills.Increase(TestCatalogs.Foraging, 3.5f);
         ava.KnownTechniques.Add(TestCatalogs.EfficientForaging);
+        ava.Inventory.Add(TestCatalogs.WoodItem, 7);
         var bran = world.AddPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
@@ -38,6 +39,7 @@ public class SaveGameServiceTests
             Assert.Equal(ava.Needs.Fatigue, restoredAva.Needs.Fatigue);
             Assert.Equal(ava.Skills.Get(TestCatalogs.Foraging), restoredAva.Skills.Get(TestCatalogs.Foraging));
             Assert.Equal(ava.KnownTechniques, restoredAva.KnownTechniques);
+            Assert.Equal(ava.Inventory.Get(TestCatalogs.WoodItem), restoredAva.Inventory.Get(TestCatalogs.WoodItem));
 
             var restoredBran = restored.People.Single(p => p.Name == "Bran");
             Assert.False(restoredBran.IsAlive);
@@ -102,7 +104,7 @@ public class SaveGameServiceTests
     }
 
     [Fact]
-    public void LoadWithBothCatalogsProvidedWiresThemIntoTheRestoredWorld()
+    public void LoadWithAllCatalogsProvidedWiresThemIntoTheRestoredWorld()
     {
         var world = new WorldState();
         world.AddPerson("Ava", new Position(0, 0));
@@ -111,10 +113,17 @@ public class SaveGameServiceTests
         try
         {
             SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(path, TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog());
+            var restored = SaveGameService.Load(
+                path,
+                TestCatalogs.CreateResourceCatalog(),
+                TestCatalogs.CreateSkillCatalog(),
+                TestCatalogs.CreateRecipeCatalog());
 
             var definition = restored.ResourceCatalog.Get(TestCatalogs.Apple);
             Assert.Equal("Apple", definition.DisplayName);
+
+            var recipe = restored.RecipeCatalog.Get(TestCatalogs.Axe);
+            Assert.Equal(TestCatalogs.WoodItem, recipe.InputItem);
         }
         finally
         {
@@ -123,7 +132,7 @@ public class SaveGameServiceTests
     }
 
     [Fact]
-    public void LoadWithOnlyOneCatalogProvidedFallsBackToEmptyDefaultsForBoth()
+    public void LoadWithAnyCatalogMissingFallsBackToEmptyDefaultsForAll()
     {
         var world = new WorldState();
         world.AddPerson("Ava", new Position(0, 0));
@@ -132,7 +141,36 @@ public class SaveGameServiceTests
         try
         {
             SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(path, TestCatalogs.CreateResourceCatalog(), skillCatalog: null);
+            var restored = SaveGameService.Load(
+                path,
+                TestCatalogs.CreateResourceCatalog(),
+                TestCatalogs.CreateSkillCatalog(),
+                recipeCatalog: null);
+
+            Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
+            Assert.Throws<KeyNotFoundException>(() => restored.RecipeCatalog.Get(TestCatalogs.Axe));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadWithOnlyResourceCatalogMissingStillFallsBackToEmptyDefaultsForAll()
+    {
+        var world = new WorldState();
+        world.AddPerson("Ava", new Position(0, 0));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(
+                path,
+                resourceCatalog: null,
+                TestCatalogs.CreateSkillCatalog(),
+                TestCatalogs.CreateRecipeCatalog());
 
             Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
         }

@@ -25,10 +25,22 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         var technique = skillDefinition.EfficientTechnique;
 
         var harvestAmount = person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
+        if (skillDefinition.Tool is { } tool && person.Inventory.Get(tool) > 0)
+        {
+            harvestAmount += skillDefinition.ToolHarvestBonus;
+        }
 
         var consumed = Math.Min(node.RemainingAmount, harvestAmount);
         node.RemainingAmount -= consumed;
-        person.Needs.Hunger = Math.Max(0f, person.Needs.Hunger - consumed);
+
+        if (resource.YieldsItem is { } item)
+        {
+            person.Inventory.Add(item, (int)consumed);
+        }
+        else
+        {
+            person.Needs.Hunger = Math.Max(0f, person.Needs.Hunger - consumed);
+        }
 
         person.Skills.Increase(skill, SkillGainPerGather);
         if (person.Skills.Get(skill) >= DiscoveryThreshold)

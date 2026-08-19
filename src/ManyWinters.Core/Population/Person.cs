@@ -20,5 +20,7 @@ public sealed class Person
 
     public HashSet<TechniqueId> KnownTechniques { get; init; } = new();
 
+    public Inventory Inventory { get; init; } = new();
+
     public PersonTaskQueue Tasks { get; init; } = new();
 }

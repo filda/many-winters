@@ -9,7 +9,7 @@ public class MapLoaderTests
     [Fact]
     public void LoadDefaultReturnsTheExpectedTerrainSize()
     {
-        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog());
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog(), TestCatalogs.CreateRecipeCatalog());
 
         Assert.Equal(20f, map.TerrainWidth);
         Assert.Equal(20f, map.TerrainDepth);
@@ -20,17 +20,19 @@ public class MapLoaderTests
     {
         var resourceCatalog = TestCatalogs.CreateResourceCatalog();
         var skillCatalog = TestCatalogs.CreateSkillCatalog();
+        var recipeCatalog = TestCatalogs.CreateRecipeCatalog();
 
-        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog);
+        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog);
 
         Assert.Same(resourceCatalog, map.World.ResourceCatalog);
         Assert.Same(skillCatalog, map.World.SkillCatalog);
+        Assert.Same(recipeCatalog, map.World.RecipeCatalog);
     }
 
     [Fact]
     public void LoadDefaultPopulatesTheWorldWithFifteenPeopleArrangedInAFiveColumnGrid()
     {
-        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog());
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog(), TestCatalogs.CreateRecipeCatalog());
 
         var expectedNames = Enumerable.Range(1, 15).Select(i => $"Person {i}");
         var expectedPositions = new[]
@@ -48,7 +50,7 @@ public class MapLoaderTests
     [Fact]
     public void LoadDefaultPopulatesTheWorldWithTheExpectedResourceNodes()
     {
-        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog());
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog(), TestCatalogs.CreateRecipeCatalog());
 
         var expected = new[]
         {
@@ -57,9 +59,10 @@ public class MapLoaderTests
             (TestCatalogs.Mushroom, new Position(6f, 5f), 200f),
             (TestCatalogs.Potato, new Position(-6f, -5f), 200f),
             (TestCatalogs.Apple, new Position(6f, -5f), 200f),
+            (TestCatalogs.Wood, new Position(0f, 8f), 300f),
         };
 
-        Assert.Equal(5, map.World.ResourceNodes.Count);
+        Assert.Equal(6, map.World.ResourceNodes.Count);
         Assert.Equal(expected, map.World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)));
     }
 }
