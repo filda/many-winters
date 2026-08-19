@@ -115,6 +115,16 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AddResourceNodeSetsMaxAmountToTheSpawnedAmount()
+    {
+        var world = new WorldState();
+
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 40);
+
+        Assert.Equal(40f, node.MaxAmount);
+    }
+
+    [Fact]
     public void AddPersonRaisesPersonAddedWithTheNewPerson()
     {
         var world = new WorldState();
@@ -284,5 +294,43 @@ public class WorldStateTests
         world.Advance(2);
 
         Assert.Equal(3f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void AdvanceRegrowsADepletedResourceNodeTowardItsMaxAmount()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
+        node.RemainingAmount = 50;
+
+        world.Advance(10);
+
+        Assert.Equal(50f + (TestCatalogs.FoodRegenPerTick * 10), node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AdvanceNeverRegrowsAResourceNodeAboveItsMaxAmount()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
+        node.RemainingAmount = 199;
+
+        world.Advance(10);
+
+        Assert.Equal(200f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotRegrowResourceNodesDuringWinter()
+    {
+        var world = TestCatalogs.CreateWorld();
+        world.Advance(225);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
+        node.RemainingAmount = 50;
+
+        world.Advance(10);
+
+        Assert.Equal(Season.Winter, world.CurrentSeason);
+        Assert.Equal(50f, node.RemainingAmount);
     }
 }

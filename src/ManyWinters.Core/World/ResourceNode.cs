@@ -9,4 +9,6 @@ public sealed class ResourceNode
     public Position Position { get; set; }
 
     public float RemainingAmount { get; set; }
+
+    public float MaxAmount { get; set; }
 }

@@ -21,6 +21,7 @@ public class SaveGameServiceTests
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
+        node.RemainingAmount = 10f;
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
         building.Condition = 63f;
 
@@ -52,6 +53,7 @@ public class SaveGameServiceTests
             Assert.Equal(node.Kind, restoredNode.Kind);
             Assert.Equal(node.Position, restoredNode.Position);
             Assert.Equal(node.RemainingAmount, restoredNode.RemainingAmount);
+            Assert.Equal(node.MaxAmount, restoredNode.MaxAmount);
 
             Assert.Equal(world.Buildings.Count, restored.Buildings.Count);
             var restoredBuilding = Assert.Single(restored.Buildings);

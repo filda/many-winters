@@ -8,4 +8,5 @@ public sealed record ResourceDefinition(
     string DisplayName,
     SkillTypeId Skill,
     ItemKindId? YieldsItem = null,
-    float WinterYieldMultiplier = 1f);
+    float WinterYieldMultiplier = 1f,
+    float RegenPerTick = 0f);

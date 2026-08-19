@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 7;
+    private const int CurrentVersion = 8;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -39,7 +39,8 @@ public static class SaveGameService
                 node.Kind,
                 node.Position.X,
                 node.Position.Y,
-                node.RemainingAmount))
+                node.RemainingAmount,
+                node.MaxAmount))
             .ToList();
 
         var buildings = world.Buildings
@@ -113,6 +114,7 @@ public static class SaveGameService
                 Kind = nodeData.Kind,
                 Position = new Position(nodeData.PositionX, nodeData.PositionY),
                 RemainingAmount = nodeData.RemainingAmount,
+                MaxAmount = nodeData.MaxAmount,
             };
 
             world.RestoreResourceNode(node);

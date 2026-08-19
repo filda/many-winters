@@ -2,5 +2,6 @@
   "id": "potato",
   "displayName": "Potato",
   "skill": "root_digging",
-  "winterYieldMultiplier": 0.4
+  "winterYieldMultiplier": 0.4,
+  "regenPerTick": 1
 }

@@ -36,7 +36,8 @@ public sealed record ResourceNodeSaveData(
     ResourceKindId Kind,
     float PositionX,
     float PositionY,
-    float RemainingAmount);
+    float RemainingAmount,
+    float MaxAmount);
 
 public sealed record BuildingSaveData(
     int Id,

@@ -34,14 +34,16 @@ public static class TestCatalogs
     public const int StorageHutInputAmount = 20;
 
     public const float WinterFoodYieldMultiplier = 0.4f;
+    public const float FoodRegenPerTick = 1f;
+    public const float WoodRegenPerTick = 0.5f;
 
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
-        new ResourceDefinition(Pear, "Pear", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
-        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
-        new ResourceDefinition(Potato, "Potato", RootDigging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
-        new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem),
+        new ResourceDefinition(Apple, "Apple", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Pear, "Pear", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Potato, "Potato", RootDigging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
     });
 
     public static SkillCatalog CreateSkillCatalog() => new(new[]

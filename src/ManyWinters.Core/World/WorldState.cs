@@ -103,6 +103,7 @@ public sealed class WorldState
             Kind = kind,
             Position = position,
             RemainingAmount = amount,
+            MaxAmount = amount,
         };
 
         _resourceNodes.Add(node);
@@ -133,7 +134,8 @@ public sealed class WorldState
 
         for (var i = 0L; i < ticks; i++)
         {
-            var hungerPerTick = SeasonAt(startTick + i) == Season.Winter ? WinterHungerPerTick : HungerPerTick;
+            var isWinter = SeasonAt(startTick + i) == Season.Winter;
+            var hungerPerTick = isWinter ? WinterHungerPerTick : HungerPerTick;
 
             foreach (var person in _people)
             {
@@ -143,6 +145,15 @@ public sealed class WorldState
                 if (hunger >= MaxHunger)
                 {
                     person.IsAlive = false;
+                }
+            }
+
+            if (!isWinter)
+            {
+                foreach (var node in _resourceNodes)
+                {
+                    var regenPerTick = ResourceCatalog.Get(node.Kind).RegenPerTick;
+                    node.RemainingAmount = Math.Min(node.MaxAmount, node.RemainingAmount + regenPerTick);
                 }
             }
         }

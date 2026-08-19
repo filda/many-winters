@@ -1,1 +1,1 @@
-{ "id": "wood", "displayName": "Wood", "skill": "woodcutting", "yieldsItem": "wood" }
+{ "id": "wood", "displayName": "Wood", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5 }
