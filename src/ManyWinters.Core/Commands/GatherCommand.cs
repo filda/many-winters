@@ -30,6 +30,11 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
             harvestAmount += skillDefinition.ToolHarvestBonus;
         }
 
+        if (world.CurrentSeason == Season.Winter)
+        {
+            harvestAmount *= resource.WinterYieldMultiplier;
+        }
+
         var consumed = Math.Min(node.RemainingAmount, harvestAmount);
         node.RemainingAmount -= consumed;
 

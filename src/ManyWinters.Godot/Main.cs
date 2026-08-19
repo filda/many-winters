@@ -53,7 +53,7 @@ public partial class Main : Node3D
 
         _tickAccumulator -= TickIntervalSeconds;
         _world.Advance(1);
-        _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}";
+        _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}  Season: {_world.CurrentSeason}";
         RefreshInfoLabel();
         RefreshBuildingsLabel();
 
@@ -132,7 +132,7 @@ public partial class Main : Node3D
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
 
-        _tickLabel = new Label { Text = "Tick: 0" };
+        _tickLabel = new Label { Text = $"Tick: 0  Season: {_world.CurrentSeason}" };
         box.AddChild(_tickLabel);
 
         var spawnButton = new Button { Text = "Spawn Person" };

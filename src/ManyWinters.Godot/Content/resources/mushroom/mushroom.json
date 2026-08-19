@@ -1,5 +1,6 @@
 {
   "id": "mushroom",
   "displayName": "Mushroom",
-  "skill": "mushroom_foraging"
+  "skill": "mushroom_foraging",
+  "winterYieldMultiplier": 0.4
 }

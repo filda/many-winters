@@ -231,4 +231,58 @@ public class WorldStateTests
 
         Assert.Equal(0f, building.Condition);
     }
+
+    [Fact]
+    public void NewWorldStartsInSpring()
+    {
+        var world = new WorldState();
+
+        Assert.Equal(Season.Spring, world.CurrentSeason);
+    }
+
+    [Theory]
+    [InlineData(0, Season.Spring)]
+    [InlineData(74, Season.Spring)]
+    [InlineData(75, Season.Summer)]
+    [InlineData(149, Season.Summer)]
+    [InlineData(150, Season.Autumn)]
+    [InlineData(224, Season.Autumn)]
+    [InlineData(225, Season.Winter)]
+    [InlineData(299, Season.Winter)]
+    [InlineData(300, Season.Spring)]
+    public void SeasonChangesAtEachSeasonBoundary(long tick, Season expected)
+    {
+        var world = new WorldState();
+
+        world.Advance(tick);
+
+        Assert.Equal(expected, world.CurrentSeason);
+    }
+
+    [Fact]
+    public void AdvanceAppliesDoubleHungerRateDuringWinter()
+    {
+        var world = new WorldState();
+        world.Advance(225);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(1);
+
+        Assert.Equal(Season.Winter, world.CurrentSeason);
+        Assert.Equal(2f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void AdvanceAcrossTheWinterBoundaryAppliesEachTicksOwnRate()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        // Ticks 224 (Autumn) and 225 (Winter): 1 + 2 = 3 hunger, not a flat rate for both.
+        world.Advance(224);
+        person.Needs.Hunger = 0;
+        world.Advance(2);
+
+        Assert.Equal(3f, person.Needs.Hunger);
+    }
 }

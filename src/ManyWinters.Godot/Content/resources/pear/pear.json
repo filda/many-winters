@@ -1,5 +1,6 @@
 {
   "id": "pear",
   "displayName": "Pear",
-  "skill": "foraging"
+  "skill": "foraging",
+  "winterYieldMultiplier": 0.4
 }

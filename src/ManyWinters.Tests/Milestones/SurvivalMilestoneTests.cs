@@ -7,9 +7,11 @@ namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
 /// Roadmap Step 6 ("First Headless + Visual Milestone"): can 10-20 people survive
-/// through repeated gathering, and do they actually starve without it? Seasons/winter
-/// don't exist yet (Step 9), so this validates the underlying survival pressure instead
-/// of a literal winter.
+/// through repeated gathering, and do they actually starve without it? Written before
+/// seasons existed (Step 9); the 300-tick run now spans a full year including one
+/// winter, so this doubles as a basic "survive the winter" check for regular gathering.
+/// See <see cref="WinterSurvivalMilestoneTests"/> for a check targeted specifically at
+/// winter's harsher pressure.
 /// </summary>
 public class SurvivalMilestoneTests
 {

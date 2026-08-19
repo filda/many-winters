@@ -10,9 +10,12 @@ namespace ManyWinters.Core.World;
 public sealed class WorldState
 {
     private const float HungerPerTick = 1f;
+    private const float WinterHungerPerTick = 2f;
     private const float MaxHunger = 100f;
     private const float ConditionDecayPerTick = 0.05f;
     private const float MinCondition = 0f;
+    private const long TicksPerSeason = 75;
+    private const long SeasonsPerYear = 4;
 
     private readonly List<Person> _people = new();
     private readonly List<ResourceNode> _resourceNodes = new();
@@ -70,6 +73,8 @@ public sealed class WorldState
 
     public int NextBuildingId => _nextBuildingId;
 
+    public Season CurrentSeason => SeasonAt(Clock.CurrentTick);
+
     public event Action<Person>? PersonAdded;
 
     public event Action<ResourceNode>? ResourceNodeAdded;
@@ -123,16 +128,22 @@ public sealed class WorldState
 
     public void Advance(long ticks)
     {
+        var startTick = Clock.CurrentTick;
         Clock.Advance(ticks);
 
-        foreach (var person in _people)
+        for (var i = 0L; i < ticks; i++)
         {
-            var hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * ticks), MaxHunger);
-            person.Needs.Hunger = hunger;
+            var hungerPerTick = SeasonAt(startTick + i) == Season.Winter ? WinterHungerPerTick : HungerPerTick;
 
-            if (hunger >= MaxHunger)
+            foreach (var person in _people)
             {
-                person.IsAlive = false;
+                var hunger = Math.Min(person.Needs.Hunger + hungerPerTick, MaxHunger);
+                person.Needs.Hunger = hunger;
+
+                if (hunger >= MaxHunger)
+                {
+                    person.IsAlive = false;
+                }
             }
         }
 
@@ -141,6 +152,8 @@ public sealed class WorldState
             building.Condition = Math.Max(MinCondition, building.Condition - (ConditionDecayPerTick * ticks));
         }
     }
+
+    private static Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 
     internal void RestorePerson(Person person) => _people.Add(person);
 

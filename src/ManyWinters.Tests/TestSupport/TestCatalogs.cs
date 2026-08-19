@@ -33,12 +33,14 @@ public static class TestCatalogs
     public static readonly BuildingKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
 
+    public const float WinterFoodYieldMultiplier = 0.4f;
+
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging),
-        new ResourceDefinition(Pear, "Pear", Foraging),
-        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging),
-        new ResourceDefinition(Potato, "Potato", RootDigging),
+        new ResourceDefinition(Apple, "Apple", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
+        new ResourceDefinition(Pear, "Pear", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
+        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
+        new ResourceDefinition(Potato, "Potato", RootDigging, WinterYieldMultiplier: WinterFoodYieldMultiplier),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem),
     });
 

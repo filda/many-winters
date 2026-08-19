@@ -214,4 +214,36 @@ public class GatherCommandTests
 
         Assert.Equal(980f, node.RemainingAmount);
     }
+
+    [Fact]
+    public void GatheringInWinterYieldsLessForASeasonalResource()
+    {
+        var world = TestCatalogs.CreateWorld();
+        world.Advance(225);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(Season.Winter, world.CurrentSeason);
+        var expectedHarvest = 20f * TestCatalogs.WinterFoodYieldMultiplier;
+        Assert.Equal(50f - expectedHarvest, person.Needs.Hunger);
+        Assert.Equal(100f - expectedHarvest, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void GatheringWoodInWinterIsUnaffectedBySeasonalYield()
+    {
+        var world = TestCatalogs.CreateWorld();
+        world.Advance(225);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(Season.Winter, world.CurrentSeason);
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(80f, node.RemainingAmount);
+    }
 }
