@@ -159,6 +159,9 @@ public class SaveGameServiceTests
             var buildingDefinition = restored.BuildingCatalog.Get(TestCatalogs.StorageHut);
             Assert.Equal(TestCatalogs.WoodItem, buildingDefinition.RequiredItem);
 
+            var itemDefinition = restored.ItemCatalog.Get(TestCatalogs.WarmClothing);
+            Assert.Equal(TestCatalogs.WarmClothingInsulation, itemDefinition.Insulation);
+
             Assert.Same(configuration.SeasonParameters, restored.SeasonParameters);
         }
         finally
@@ -182,6 +185,7 @@ public class SaveGameServiceTests
             Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
             Assert.Throws<KeyNotFoundException>(() => restored.RecipeCatalog.Get(TestCatalogs.Axe));
             Assert.Throws<KeyNotFoundException>(() => restored.BuildingCatalog.Get(TestCatalogs.StorageHut));
+            Assert.Throws<KeyNotFoundException>(() => restored.ItemCatalog.Get(TestCatalogs.WarmClothing));
         }
         finally
         {

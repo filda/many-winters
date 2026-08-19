@@ -333,4 +333,31 @@ public class WorldStateTests
         Assert.Equal(Season.Winter, world.CurrentSeason);
         Assert.Equal(50f, node.RemainingAmount);
     }
+
+    [Fact]
+    public void AdvanceReducesHungerRateInWinterWhenPersonHasInsulatingClothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        world.Advance(225);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WarmClothing, 1);
+
+        world.Advance(1);
+
+        Assert.Equal(Season.Winter, world.CurrentSeason);
+        Assert.Equal(1f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void AdvanceInsulationNeverReducesHungerRateBelowNormal()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WarmClothing, 1);
+
+        world.Advance(1);
+
+        Assert.Equal(Season.Spring, world.CurrentSeason);
+        Assert.Equal(1f, person.Needs.Hunger);
+    }
 }

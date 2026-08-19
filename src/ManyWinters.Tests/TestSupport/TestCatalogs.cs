@@ -26,9 +26,12 @@ public static class TestCatalogs
 
     public static readonly ItemKindId WoodItem = new("wood");
     public static readonly ItemKindId Axe = new("axe");
+    public static readonly ItemKindId WarmClothing = new("warm_clothing");
 
     public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
+    public const float WarmClothingInsulation = 1f;
+    public const int WarmClothingInputAmount = 10;
 
     public static readonly BuildingKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
@@ -59,6 +62,7 @@ public static class TestCatalogs
     public static RecipeCatalog CreateRecipeCatalog() => new(new[]
     {
         new RecipeDefinition(Axe, WoodItem, AxeInputAmount),
+        new RecipeDefinition(WarmClothing, WoodItem, WarmClothingInputAmount),
     });
 
     public static BuildingCatalog CreateBuildingCatalog() => new(new[]
@@ -66,11 +70,17 @@ public static class TestCatalogs
         new BuildingDefinition(StorageHut, "Storage Hut", WoodItem, StorageHutInputAmount),
     });
 
+    public static ItemCatalog CreateItemCatalog() => new(new[]
+    {
+        new ItemDefinition(WarmClothing, "Warm Clothing", WarmClothingInsulation),
+    });
+
     public static WorldConfiguration CreateConfiguration() => new(
         CreateResourceCatalog(),
         CreateSkillCatalog(),
         CreateRecipeCatalog(),
         CreateBuildingCatalog(),
+        CreateItemCatalog(),
         SeasonParameters.Default);
 
     public static WorldState CreateWorld() => new(CreateConfiguration());

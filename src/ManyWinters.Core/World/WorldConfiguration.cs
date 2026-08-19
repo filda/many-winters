@@ -9,6 +9,7 @@ public sealed record WorldConfiguration(
     SkillCatalog SkillCatalog,
     RecipeCatalog RecipeCatalog,
     BuildingCatalog BuildingCatalog,
+    ItemCatalog ItemCatalog,
     SeasonParameters SeasonParameters)
 {
     public static WorldConfiguration Empty { get; } = new(
@@ -16,5 +17,6 @@ public sealed record WorldConfiguration(
         new SkillCatalog([]),
         new RecipeCatalog([]),
         new BuildingCatalog([]),
+        new ItemCatalog([]),
         SeasonParameters.Default);
 }

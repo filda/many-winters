@@ -29,6 +29,7 @@ public partial class Main : Node3D
             SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills")),
             RecipeCatalog.LoadFromDirectory(Path.Combine(contentRoot, "recipes")),
             BuildingCatalog.LoadFromDirectory(Path.Combine(contentRoot, "buildings")),
+            ItemCatalog.LoadFromDirectory(Path.Combine(contentRoot, "items")),
             SeasonParameters.Default);
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
@@ -145,6 +146,10 @@ public partial class Main : Node3D
         craftButton.Pressed += OnCraftButtonPressed;
         box.AddChild(craftButton);
 
+        var craftClothingButton = new Button { Text = "Craft Warm Clothing (selected person, 10 Wood)" };
+        craftClothingButton.Pressed += OnCraftClothingButtonPressed;
+        box.AddChild(craftClothingButton);
+
         var buildButton = new Button { Text = "Build Storage Hut (selected person, 20 Wood)" };
         buildButton.Pressed += OnBuildButtonPressed;
         box.AddChild(buildButton);
@@ -203,6 +208,18 @@ public partial class Main : Node3D
         }
 
         _world.Execute(new CraftCommand(personId, new ItemKindId("axe")));
+        RefreshInfoLabel();
+    }
+
+    private void OnCraftClothingButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then craft.";
+            return;
+        }
+
+        _world.Execute(new CraftCommand(personId, new ItemKindId("warm_clothing")));
         RefreshInfoLabel();
     }
 

@@ -28,6 +28,7 @@ public class MapLoaderTests
         Assert.Same(configuration.SkillCatalog, map.World.SkillCatalog);
         Assert.Same(configuration.RecipeCatalog, map.World.RecipeCatalog);
         Assert.Same(configuration.BuildingCatalog, map.World.BuildingCatalog);
+        Assert.Same(configuration.ItemCatalog, map.World.ItemCatalog);
         Assert.Same(configuration.SeasonParameters, map.World.SeasonParameters);
     }
 

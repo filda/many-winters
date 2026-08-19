@@ -34,6 +34,7 @@ public sealed class WorldState
         SkillCatalog = configuration.SkillCatalog;
         RecipeCatalog = configuration.RecipeCatalog;
         BuildingCatalog = configuration.BuildingCatalog;
+        ItemCatalog = configuration.ItemCatalog;
         SeasonParameters = configuration.SeasonParameters;
     }
 
@@ -46,6 +47,8 @@ public sealed class WorldState
     public RecipeCatalog RecipeCatalog { get; }
 
     public BuildingCatalog BuildingCatalog { get; }
+
+    public ItemCatalog ItemCatalog { get; }
 
     public SeasonParameters SeasonParameters { get; }
 
@@ -123,12 +126,14 @@ public sealed class WorldState
         for (var i = 0L; i < ticks; i++)
         {
             var climate = SeasonParameters.ClimateFor(SeasonAt(startTick + i));
-            var hungerPerTick = HungerPerTick * SeasonParameters.HungerMultiplierFor(climate);
+            var baseHungerMultiplier = SeasonParameters.HungerMultiplierFor(climate);
             var regenMultiplier = SeasonParameters.RegenMultiplierFor(climate);
 
             foreach (var person in _people)
             {
-                var hunger = Math.Min(person.Needs.Hunger + hungerPerTick, MaxHunger);
+                var insulation = person.Inventory.Counts.Keys.Sum(kind => ItemCatalog.InsulationFor(kind));
+                var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
+                var hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);
                 person.Needs.Hunger = hunger;
 
                 if (hunger >= MaxHunger)
