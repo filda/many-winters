@@ -6,7 +6,8 @@ namespace ManyWinters.Godot;
 public partial class BuildingView : Node3D
 {
     public const float Size = 1.2f;
-    private const float MaxRotationDegrees = 25f;
+    private const float MinScale = 0.9f;
+    private const float MaxScale = 1.1f;
 
     private readonly BuildingId _buildingId;
     private readonly BuildingKindId _kind;
@@ -19,15 +20,14 @@ public partial class BuildingView : Node3D
 
     public override void _Ready()
     {
-        var color = EntityVisualVariation.Tint(ColorFor(_kind), _buildingId.Value);
-        RotationDegrees = new Vector3(0f, EntityVisualVariation.RotationDegrees(_buildingId.Value, MaxRotationDegrees), 0f);
+        var fallbackColor = EntityVisualVariation.Tint(ColorFor(_kind), _buildingId.Value);
+        Scale = Vector3.One * EntityVisualVariation.Scale(_buildingId.Value, MinScale, MaxScale);
 
-        AddChild(new MeshInstance3D
-        {
-            Mesh = new BoxMesh { Size = new Vector3(Size, Size, Size) },
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = color },
-        });
+        AddChild(BillboardSprite.Create(TexturePathFor(_kind), Size, fallbackColor));
     }
+
+    private static string TexturePathFor(BuildingKindId kind)
+        => $"res://Content/buildings/{kind.Value}/{kind.Value}.png";
 
     private static Color ColorFor(BuildingKindId kind)
     {

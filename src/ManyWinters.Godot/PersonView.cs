@@ -7,13 +7,18 @@ public partial class PersonView : Area3D
 {
     public const float Radius = 0.3f;
     public const float Height = 1.8f;
+    private const float MinScale = 0.92f;
+    private const float MaxScale = 1.08f;
+
+    private const string AliveTexturePath = "res://Content/people/person.png";
+    private const string DeadTexturePath = "res://Content/people/person_dead.png";
 
     private static readonly Color AliveColor = new(0.9f, 0.7f, 0.5f);
     private static readonly Color DeadColor = new(0.3f, 0.3f, 0.3f);
 
     private readonly PersonId _personId;
     private readonly Action<PersonId, MouseButton> _onClicked;
-    private StandardMaterial3D _material = null!;
+    private Sprite3D _sprite = null!;
 
     public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked)
     {
@@ -25,12 +30,10 @@ public partial class PersonView : Area3D
     {
         InputRayPickable = true;
 
-        _material = new StandardMaterial3D { AlbedoColor = AliveColor };
-        AddChild(new MeshInstance3D
-        {
-            Mesh = new CapsuleMesh { Radius = Radius, Height = Height },
-            MaterialOverride = _material,
-        });
+        Scale = Vector3.One * EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
+
+        _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
+        AddChild(_sprite);
 
         AddChild(new CollisionShape3D
         {
@@ -42,7 +45,11 @@ public partial class PersonView : Area3D
 
     public void SetAlive(bool isAlive)
     {
-        _material.AlbedoColor = isAlive ? AliveColor : DeadColor;
+        BillboardSprite.Apply(
+            _sprite,
+            isAlive ? AliveTexturePath : DeadTexturePath,
+            Height,
+            isAlive ? AliveColor : DeadColor);
     }
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)

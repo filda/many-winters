@@ -3,7 +3,7 @@ using Godot;
 namespace ManyWinters.Godot;
 
 // Deterministic per-instance variety: same seed (an entity's stable id) always produces the same
-// tint/rotation, so repeated saves/reloads don't reshuffle how things look, but instances of the
+// tint/scale, so repeated saves/reloads don't reshuffle how things look, but instances of the
 // same kind don't render as identical clones either.
 public static class EntityVisualVariation
 {
@@ -18,9 +18,9 @@ public static class EntityVisualVariation
         return Color.FromHsv(hue, baseColor.S, value, baseColor.A);
     }
 
-    public static float RotationDegrees(int seed, float maxDegrees)
+    public static float Scale(int seed, float minScale, float maxScale)
     {
         var random = new Random(seed);
-        return ((float)random.NextDouble() - 0.5f) * 2f * maxDegrees;
+        return minScale + ((float)random.NextDouble() * (maxScale - minScale));
     }
 }
