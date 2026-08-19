@@ -1,6 +1,7 @@
 using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Maps;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot;
@@ -10,8 +11,7 @@ public partial class Main : Node3D
     private const double TickIntervalSeconds = 1.0;
 
     private WorldState _world = null!;
-    private readonly Dictionary<PersonId, PersonView> _views = new();
-    private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
+    private WorldPresenter _presenter = null!;
 
     private Label _infoLabel = null!;
     private Label _tickLabel = null!;
@@ -23,28 +23,17 @@ public partial class Main : Node3D
         var contentRoot = ProjectSettings.GlobalizePath("res://Content");
         var resourceCatalog = ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources"));
         var skillCatalog = SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills"));
-        _world = new WorldState(resourceCatalog, skillCatalog);
+        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog);
+        _world = map.World;
 
         GetViewport().PhysicsObjectPicking = true;
 
         SetUpCamera();
         SetUpLighting();
-        SetUpGround();
+        SetUpGround(map.TerrainWidth, map.TerrainDepth);
         SetUpUi();
 
-        const int columns = 5;
-        for (var i = 0; i < 15; i++)
-        {
-            var x = ((i % columns) - (columns / 2f) + 0.5f) * 2f;
-            var z = ((i / columns) - 1) * 2f;
-            SpawnPerson($"Person {i + 1}", new Position(x, z));
-        }
-
-        SpawnResourceNode(new ResourceKindId("apple"), new Position(-6f, 5f), 200f);
-        SpawnResourceNode(new ResourceKindId("pear"), new Position(0f, -5f), 200f);
-        SpawnResourceNode(new ResourceKindId("mushroom"), new Position(6f, 5f), 200f);
-        SpawnResourceNode(new ResourceKindId("potato"), new Position(-6f, -5f), 200f);
-        SpawnResourceNode(new ResourceKindId("apple"), new Position(6f, -5f), 200f);
+        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -64,10 +53,7 @@ public partial class Main : Node3D
 
         foreach (var person in _world.People)
         {
-            if (_views.TryGetValue(person.Id, out var view))
-            {
-                view.SetAlive(person.IsAlive);
-            }
+            _presenter.SetPersonAlive(person.Id, person.IsAlive);
         }
 
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
@@ -91,11 +77,11 @@ public partial class Main : Node3D
         });
     }
 
-    private void SetUpGround()
+    private void SetUpGround(float width, float depth)
     {
         AddChild(new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(20, 20) },
+            Mesh = new PlaneMesh { Size = new Vector2(width, depth) },
         });
     }
 
@@ -151,36 +137,9 @@ public partial class Main : Node3D
         box.AddChild(_infoLabel);
     }
 
-    private void SpawnPerson(string name, Position position)
-    {
-        _world.Execute(new SpawnPersonCommand(name, position));
-        var person = _world.People[^1];
-
-        var view = new PersonView(person.Id, OnPersonClicked)
-        {
-            Name = person.Name,
-            Position = new Vector3(position.X, PersonView.Height / 2f, position.Y),
-        };
-        AddChild(view);
-        _views[person.Id] = view;
-    }
-
-    private void SpawnResourceNode(ResourceKindId kind, Position position, float amount)
-    {
-        _world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
-        var node = _world.ResourceNodes[^1];
-
-        var view = new ResourceNodeView(node.Id, node.Kind, OnResourceNodeSelected)
-        {
-            Position = new Vector3(position.X, ResourceNodeView.Size / 2f, position.Y),
-        };
-        AddChild(view);
-        _resourceNodeViews[node.Id] = view;
-    }
-
     private void OnSpawnButtonPressed()
     {
-        SpawnPerson($"Person {_world.People.Count + 1}", FindFreeSpawnPosition());
+        _world.Execute(new SpawnPersonCommand($"Person {_world.People.Count + 1}", FindFreeSpawnPosition()));
     }
 
     private Position FindFreeSpawnPosition()
@@ -252,10 +211,9 @@ public partial class Main : Node3D
         _world.Execute(new GatherCommand(personId, id));
 
         var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == id);
-        if (node is { RemainingAmount: <= 0 } && _resourceNodeViews.TryGetValue(id, out var view))
+        if (node is { RemainingAmount: <= 0 })
         {
-            view.QueueFree();
-            _resourceNodeViews.Remove(id);
+            _presenter.RemoveResourceNodeView(id);
         }
 
         RefreshInfoLabel();

@@ -40,6 +40,10 @@ public sealed class WorldState
 
     public int NextResourceNodeId => _nextResourceNodeId;
 
+    public event Action<Person>? PersonAdded;
+
+    public event Action<ResourceNode>? ResourceNodeAdded;
+
     public Person AddPerson(string name, Position position)
     {
         var person = new Person
@@ -50,6 +54,7 @@ public sealed class WorldState
         };
 
         _people.Add(person);
+        PersonAdded?.Invoke(person);
         return person;
     }
 
@@ -64,6 +69,7 @@ public sealed class WorldState
         };
 
         _resourceNodes.Add(node);
+        ResourceNodeAdded?.Invoke(node);
         return node;
     }
 

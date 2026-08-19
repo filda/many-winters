@@ -1,3 +1,4 @@
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -110,5 +111,45 @@ public class WorldStateTests
         Assert.Equal(TestCatalogs.Apple, tracked.Kind);
         Assert.Equal(new Position(2, 3), tracked.Position);
         Assert.Equal(40f, tracked.RemainingAmount);
+    }
+
+    [Fact]
+    public void AddPersonRaisesPersonAddedWithTheNewPerson()
+    {
+        var world = new WorldState();
+        Person? raised = null;
+        world.PersonAdded += p => raised = p;
+
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        Assert.Same(person, raised);
+    }
+
+    [Fact]
+    public void AddPersonDoesNotThrowWhenNothingIsSubscribedToPersonAdded()
+    {
+        var world = new WorldState();
+
+        world.AddPerson("Ava", new Position(0, 0));
+    }
+
+    [Fact]
+    public void AddResourceNodeRaisesResourceNodeAddedWithTheNewNode()
+    {
+        var world = new WorldState();
+        ResourceNode? raised = null;
+        world.ResourceNodeAdded += n => raised = n;
+
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(2, 3), 40);
+
+        Assert.Same(node, raised);
+    }
+
+    [Fact]
+    public void AddResourceNodeDoesNotThrowWhenNothingIsSubscribedToResourceNodeAdded()
+    {
+        var world = new WorldState();
+
+        world.AddResourceNode(TestCatalogs.Apple, new Position(2, 3), 40);
     }
 }
