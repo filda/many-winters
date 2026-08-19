@@ -24,6 +24,7 @@ public class SaveGameServiceTests
         node.RemainingAmount = 10f;
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
         building.Condition = 63f;
+        building.Inventory.Add(TestCatalogs.WoodItem, 12);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -61,6 +62,7 @@ public class SaveGameServiceTests
             Assert.Equal(building.Kind, restoredBuilding.Kind);
             Assert.Equal(building.Position, restoredBuilding.Position);
             Assert.Equal(building.Condition, restoredBuilding.Condition);
+            Assert.Equal(building.Inventory.Get(TestCatalogs.WoodItem), restoredBuilding.Inventory.Get(TestCatalogs.WoodItem));
         }
         finally
         {

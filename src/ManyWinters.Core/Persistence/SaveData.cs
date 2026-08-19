@@ -44,4 +44,5 @@ public sealed record BuildingSaveData(
     BuildingKindId Kind,
     float PositionX,
     float PositionY,
-    float Condition);
+    float Condition,
+    IReadOnlyList<ItemStackSaveData> Inventory);

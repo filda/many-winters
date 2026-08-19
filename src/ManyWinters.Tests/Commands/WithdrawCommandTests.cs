@@ -1,0 +1,75 @@
+using ManyWinters.Core.Commands;
+using ManyWinters.Core.Construction;
+using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
+
+namespace ManyWinters.Tests.Commands;
+
+public class WithdrawCommandTests
+{
+    [Fact]
+    public void WithdrawingMovesItemsFromBuildingToPerson()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+
+        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+
+        Assert.Equal(5, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(15, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void WithdrawingWithoutEnoughItemsDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+
+        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+
+        Assert.Equal(5, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void WithdrawingByADeadPersonDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.IsAlive = false;
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+
+        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+
+        Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void WithdrawingFromAnUnknownBuildingDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Execute(new WithdrawCommand(person.Id, new BuildingId(999), TestCatalogs.WoodItem, 15));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void WithdrawingByAnUnknownPersonDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+
+        world.Execute(new WithdrawCommand(new PersonId(999), building.Id, TestCatalogs.WoodItem, 15));
+
+        Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
+    }
+}

@@ -191,6 +191,16 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AddBuildingStartsWithAnEmptyInventory()
+    {
+        var world = new WorldState();
+
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Empty(building.Inventory.Counts);
+    }
+
+    [Fact]
     public void AddBuildingRaisesBuildingAddedWithTheNewBuilding()
     {
         var world = new WorldState();

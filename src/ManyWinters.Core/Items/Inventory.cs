@@ -1,6 +1,4 @@
-using ManyWinters.Core.Items;
-
-namespace ManyWinters.Core.Population;
+namespace ManyWinters.Core.Items;
 
 public sealed class Inventory
 {

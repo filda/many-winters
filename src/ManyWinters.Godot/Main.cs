@@ -158,6 +158,14 @@ public partial class Main : Node3D
         repairButton.Pressed += OnRepairButtonPressed;
         box.AddChild(repairButton);
 
+        var depositButton = new Button { Text = "Deposit Wood (selected person -> nearest building)" };
+        depositButton.Pressed += OnDepositButtonPressed;
+        box.AddChild(depositButton);
+
+        var withdrawButton = new Button { Text = "Withdraw Wood (nearest building -> selected person)" };
+        withdrawButton.Pressed += OnWithdrawButtonPressed;
+        box.AddChild(withdrawButton);
+
         _buildingsLabel = new Label { Text = "Buildings: none" };
         box.AddChild(_buildingsLabel);
     }
@@ -257,9 +265,7 @@ public partial class Main : Node3D
             return;
         }
 
-        var nearestBuilding = _world.Buildings
-            .OrderBy(b => Distance(b.Position, person.Position))
-            .FirstOrDefault();
+        var nearestBuilding = FindNearestBuilding(person.Position);
         if (nearestBuilding is null)
         {
             _infoLabel.Text = "No buildings to repair yet.";
@@ -270,6 +276,79 @@ public partial class Main : Node3D
         RefreshInfoLabel();
         RefreshBuildingsLabel();
     }
+
+    private void OnDepositButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then deposit.";
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var nearestBuilding = FindNearestBuilding(person.Position);
+        if (nearestBuilding is null)
+        {
+            _infoLabel.Text = "No buildings to deposit into yet.";
+            return;
+        }
+
+        var woodItem = new ItemKindId("wood");
+        var amount = person.Inventory.Get(woodItem);
+        if (amount <= 0)
+        {
+            _infoLabel.Text = "No wood to deposit.";
+            return;
+        }
+
+        _world.Execute(new DepositCommand(personId, nearestBuilding.Id, woodItem, amount));
+        RefreshInfoLabel();
+        RefreshBuildingsLabel();
+    }
+
+    private void OnWithdrawButtonPressed()
+    {
+        const int withdrawAmount = 20;
+
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then withdraw.";
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var nearestBuilding = FindNearestBuilding(person.Position);
+        if (nearestBuilding is null)
+        {
+            _infoLabel.Text = "No buildings to withdraw from yet.";
+            return;
+        }
+
+        var woodItem = new ItemKindId("wood");
+        var amount = Math.Min(withdrawAmount, nearestBuilding.Inventory.Get(woodItem));
+        if (amount <= 0)
+        {
+            _infoLabel.Text = "No wood to withdraw.";
+            return;
+        }
+
+        _world.Execute(new WithdrawCommand(personId, nearestBuilding.Id, woodItem, amount));
+        RefreshInfoLabel();
+        RefreshBuildingsLabel();
+    }
+
+    private Building? FindNearestBuilding(Position position) =>
+        _world.Buildings.OrderBy(b => Distance(b.Position, position)).FirstOrDefault();
 
     private Position FindFreeSpawnPosition()
     {
@@ -401,7 +480,15 @@ public partial class Main : Node3D
     private void RefreshBuildingsLabel()
     {
         _buildingsLabel.Text = "Buildings: " + (_world.Buildings.Count > 0
-            ? string.Join(", ", _world.Buildings.Select(b => $"{b.Kind} #{b.Id} ({b.Condition:0}%)"))
+            ? string.Join(", ", _world.Buildings.Select(BuildingSummary))
             : "none");
+    }
+
+    private static string BuildingSummary(Building building)
+    {
+        var inventory = building.Inventory.Counts.Count > 0
+            ? string.Join(", ", building.Inventory.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
+            : "empty";
+        return $"{building.Kind} #{building.Id} ({building.Condition:0}%) [{inventory}]";
     }
 }

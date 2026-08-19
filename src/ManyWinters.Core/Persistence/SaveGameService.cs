@@ -7,7 +7,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 8;
+    private const int CurrentVersion = 9;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -47,7 +47,8 @@ public static class SaveGameService
                 building.Kind,
                 building.Position.X,
                 building.Position.Y,
-                building.Condition))
+                building.Condition,
+                building.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList()))
             .ToList();
 
         return new SaveData(
@@ -122,6 +123,11 @@ public static class SaveGameService
                 Position = new Position(buildingData.PositionX, buildingData.PositionY),
                 Condition = buildingData.Condition,
             };
+
+            foreach (var stack in buildingData.Inventory)
+            {
+                building.Inventory.Add(stack.Kind, stack.Count);
+            }
 
             world.RestoreBuilding(building);
         }

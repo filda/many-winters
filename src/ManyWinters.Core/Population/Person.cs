@@ -1,3 +1,4 @@
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
