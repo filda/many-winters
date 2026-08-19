@@ -6,11 +6,7 @@ namespace ManyWinters.Tests.Maps;
 
 public class MapLoaderTests
 {
-    private static LoadedMap LoadDefault() => MapLoader.LoadDefault(
-        TestCatalogs.CreateResourceCatalog(),
-        TestCatalogs.CreateSkillCatalog(),
-        TestCatalogs.CreateRecipeCatalog(),
-        TestCatalogs.CreateBuildingCatalog());
+    private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
 
     [Fact]
     public void LoadDefaultReturnsTheExpectedTerrainSize()
@@ -22,19 +18,17 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultWiresTheGivenCatalogsIntoTheReturnedWorld()
+    public void LoadDefaultWiresTheGivenConfigurationIntoTheReturnedWorld()
     {
-        var resourceCatalog = TestCatalogs.CreateResourceCatalog();
-        var skillCatalog = TestCatalogs.CreateSkillCatalog();
-        var recipeCatalog = TestCatalogs.CreateRecipeCatalog();
-        var buildingCatalog = TestCatalogs.CreateBuildingCatalog();
+        var configuration = TestCatalogs.CreateConfiguration();
 
-        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
+        var map = MapLoader.LoadDefault(configuration);
 
-        Assert.Same(resourceCatalog, map.World.ResourceCatalog);
-        Assert.Same(skillCatalog, map.World.SkillCatalog);
-        Assert.Same(recipeCatalog, map.World.RecipeCatalog);
-        Assert.Same(buildingCatalog, map.World.BuildingCatalog);
+        Assert.Same(configuration.ResourceCatalog, map.World.ResourceCatalog);
+        Assert.Same(configuration.SkillCatalog, map.World.SkillCatalog);
+        Assert.Same(configuration.RecipeCatalog, map.World.RecipeCatalog);
+        Assert.Same(configuration.BuildingCatalog, map.World.BuildingCatalog);
+        Assert.Same(configuration.SeasonParameters, map.World.SeasonParameters);
     }
 
     [Fact]

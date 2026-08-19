@@ -24,11 +24,13 @@ public partial class Main : Node3D
     public override void _Ready()
     {
         var contentRoot = ProjectSettings.GlobalizePath("res://Content");
-        var resourceCatalog = ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources"));
-        var skillCatalog = SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills"));
-        var recipeCatalog = RecipeCatalog.LoadFromDirectory(Path.Combine(contentRoot, "recipes"));
-        var buildingCatalog = BuildingCatalog.LoadFromDirectory(Path.Combine(contentRoot, "buildings"));
-        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
+        var configuration = new WorldConfiguration(
+            ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources")),
+            SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills")),
+            RecipeCatalog.LoadFromDirectory(Path.Combine(contentRoot, "recipes")),
+            BuildingCatalog.LoadFromDirectory(Path.Combine(contentRoot, "buildings")),
+            SeasonParameters.Default);
+        var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
 
         GetViewport().PhysicsObjectPicking = true;

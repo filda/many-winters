@@ -227,7 +227,7 @@ public class GatherCommandTests
         world.Execute(new GatherCommand(person.Id, node.Id));
 
         Assert.Equal(Season.Winter, world.CurrentSeason);
-        var expectedHarvest = 20f * TestCatalogs.WinterFoodYieldMultiplier;
+        var expectedHarvest = 20f * TestCatalogs.ColdFoodYieldMultiplier;
         Assert.Equal(50f - expectedHarvest, person.Needs.Hunger);
         Assert.Equal(100f - expectedHarvest, node.RemainingAmount);
     }

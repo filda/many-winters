@@ -33,16 +33,18 @@ public static class TestCatalogs
     public static readonly BuildingKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
 
-    public const float WinterFoodYieldMultiplier = 0.4f;
+    public const float ColdFoodYieldMultiplier = 0.4f;
     public const float FoodRegenPerTick = 1f;
     public const float WoodRegenPerTick = 0.5f;
 
+    private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
+
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
-        new ResourceDefinition(Pear, "Pear", Foraging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
-        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
-        new ResourceDefinition(Potato, "Potato", RootDigging, WinterYieldMultiplier: WinterFoodYieldMultiplier, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Apple, "Apple", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Pear, "Pear", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Potato, "Potato", RootDigging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
     });
 
@@ -64,9 +66,12 @@ public static class TestCatalogs
         new BuildingDefinition(StorageHut, "Storage Hut", WoodItem, StorageHutInputAmount),
     });
 
-    public static WorldState CreateWorld() => new(
+    public static WorldConfiguration CreateConfiguration() => new(
         CreateResourceCatalog(),
         CreateSkillCatalog(),
         CreateRecipeCatalog(),
-        CreateBuildingCatalog());
+        CreateBuildingCatalog(),
+        SeasonParameters.Default);
+
+    public static WorldState CreateWorld() => new(CreateConfiguration());
 }

@@ -1,20 +1,13 @@
 using ManyWinters.Core.Commands;
-using ManyWinters.Core.Construction;
-using ManyWinters.Core.Items;
-using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Maps;
 
 public static class MapLoader
 {
-    public static LoadedMap LoadDefault(
-        ResourceCatalog resourceCatalog,
-        SkillCatalog skillCatalog,
-        RecipeCatalog recipeCatalog,
-        BuildingCatalog buildingCatalog)
+    public static LoadedMap LoadDefault(WorldConfiguration configuration)
     {
-        var world = new WorldState(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
+        var world = new WorldState(configuration);
 
         const int columns = 5;
         for (var i = 0; i < 15; i++)

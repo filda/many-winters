@@ -10,7 +10,6 @@ namespace ManyWinters.Core.World;
 public sealed class WorldState
 {
     private const float HungerPerTick = 1f;
-    private const float WinterHungerPerTick = 2f;
     private const float MaxHunger = 100f;
     private const float ConditionDecayPerTick = 0.05f;
     private const float MinCondition = 0f;
@@ -25,30 +24,17 @@ public sealed class WorldState
     private int _nextBuildingId = 1;
 
     public WorldState()
-        : this(new ResourceCatalog([]), new SkillCatalog([]), new RecipeCatalog([]), new BuildingCatalog([]))
+        : this(WorldConfiguration.Empty)
     {
     }
 
-    public WorldState(ResourceCatalog resourceCatalog, SkillCatalog skillCatalog)
-        : this(resourceCatalog, skillCatalog, new RecipeCatalog([]), new BuildingCatalog([]))
+    public WorldState(WorldConfiguration configuration)
     {
-    }
-
-    public WorldState(ResourceCatalog resourceCatalog, SkillCatalog skillCatalog, RecipeCatalog recipeCatalog)
-        : this(resourceCatalog, skillCatalog, recipeCatalog, new BuildingCatalog([]))
-    {
-    }
-
-    public WorldState(
-        ResourceCatalog resourceCatalog,
-        SkillCatalog skillCatalog,
-        RecipeCatalog recipeCatalog,
-        BuildingCatalog buildingCatalog)
-    {
-        ResourceCatalog = resourceCatalog;
-        SkillCatalog = skillCatalog;
-        RecipeCatalog = recipeCatalog;
-        BuildingCatalog = buildingCatalog;
+        ResourceCatalog = configuration.ResourceCatalog;
+        SkillCatalog = configuration.SkillCatalog;
+        RecipeCatalog = configuration.RecipeCatalog;
+        BuildingCatalog = configuration.BuildingCatalog;
+        SeasonParameters = configuration.SeasonParameters;
     }
 
     public SimulationClock Clock { get; } = new();
@@ -60,6 +46,8 @@ public sealed class WorldState
     public RecipeCatalog RecipeCatalog { get; }
 
     public BuildingCatalog BuildingCatalog { get; }
+
+    public SeasonParameters SeasonParameters { get; }
 
     public IReadOnlyList<Person> People => _people;
 
@@ -134,8 +122,9 @@ public sealed class WorldState
 
         for (var i = 0L; i < ticks; i++)
         {
-            var isWinter = SeasonAt(startTick + i) == Season.Winter;
-            var hungerPerTick = isWinter ? WinterHungerPerTick : HungerPerTick;
+            var climate = SeasonParameters.ClimateFor(SeasonAt(startTick + i));
+            var hungerPerTick = HungerPerTick * SeasonParameters.HungerMultiplierFor(climate);
+            var regenMultiplier = SeasonParameters.RegenMultiplierFor(climate);
 
             foreach (var person in _people)
             {
@@ -148,13 +137,10 @@ public sealed class WorldState
                 }
             }
 
-            if (!isWinter)
+            foreach (var node in _resourceNodes)
             {
-                foreach (var node in _resourceNodes)
-                {
-                    var regenPerTick = ResourceCatalog.Get(node.Kind).RegenPerTick;
-                    node.RemainingAmount = Math.Min(node.MaxAmount, node.RemainingAmount + regenPerTick);
-                }
+                var regenPerTick = ResourceCatalog.Get(node.Kind).RegenPerTick * regenMultiplier;
+                node.RemainingAmount = Math.Min(node.MaxAmount, node.RemainingAmount + regenPerTick);
             }
         }
 

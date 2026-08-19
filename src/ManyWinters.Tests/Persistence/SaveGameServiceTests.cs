@@ -138,7 +138,7 @@ public class SaveGameServiceTests
     }
 
     [Fact]
-    public void LoadWithAllCatalogsProvidedWiresThemIntoTheRestoredWorld()
+    public void LoadWithConfigurationProvidedWiresItIntoTheRestoredWorld()
     {
         var world = new WorldState();
         world.AddPerson("Ava", new Position(0, 0));
@@ -147,12 +147,8 @@ public class SaveGameServiceTests
         try
         {
             SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(
-                path,
-                TestCatalogs.CreateResourceCatalog(),
-                TestCatalogs.CreateSkillCatalog(),
-                TestCatalogs.CreateRecipeCatalog(),
-                TestCatalogs.CreateBuildingCatalog());
+            var configuration = TestCatalogs.CreateConfiguration();
+            var restored = SaveGameService.Load(path, configuration);
 
             var definition = restored.ResourceCatalog.Get(TestCatalogs.Apple);
             Assert.Equal("Apple", definition.DisplayName);
@@ -162,6 +158,8 @@ public class SaveGameServiceTests
 
             var buildingDefinition = restored.BuildingCatalog.Get(TestCatalogs.StorageHut);
             Assert.Equal(TestCatalogs.WoodItem, buildingDefinition.RequiredItem);
+
+            Assert.Same(configuration.SeasonParameters, restored.SeasonParameters);
         }
         finally
         {
@@ -170,7 +168,7 @@ public class SaveGameServiceTests
     }
 
     [Fact]
-    public void LoadWithAnyCatalogMissingFallsBackToEmptyDefaultsForAll()
+    public void LoadWithoutConfigurationFallsBackToEmptyDefaults()
     {
         var world = new WorldState();
         world.AddPerson("Ava", new Position(0, 0));
@@ -179,66 +177,10 @@ public class SaveGameServiceTests
         try
         {
             SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(
-                path,
-                TestCatalogs.CreateResourceCatalog(),
-                TestCatalogs.CreateSkillCatalog(),
-                recipeCatalog: null,
-                TestCatalogs.CreateBuildingCatalog());
+            var restored = SaveGameService.Load(path);
 
             Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
             Assert.Throws<KeyNotFoundException>(() => restored.RecipeCatalog.Get(TestCatalogs.Axe));
-            Assert.Throws<KeyNotFoundException>(() => restored.BuildingCatalog.Get(TestCatalogs.StorageHut));
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void LoadWithOnlyResourceCatalogMissingStillFallsBackToEmptyDefaultsForAll()
-    {
-        var world = new WorldState();
-        world.AddPerson("Ava", new Position(0, 0));
-
-        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
-        try
-        {
-            SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(
-                path,
-                resourceCatalog: null,
-                TestCatalogs.CreateSkillCatalog(),
-                TestCatalogs.CreateRecipeCatalog(),
-                TestCatalogs.CreateBuildingCatalog());
-
-            Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void LoadWithOnlyBuildingCatalogMissingStillFallsBackToEmptyDefaultsForAll()
-    {
-        var world = new WorldState();
-        world.AddPerson("Ava", new Position(0, 0));
-
-        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
-        try
-        {
-            SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(
-                path,
-                TestCatalogs.CreateResourceCatalog(),
-                TestCatalogs.CreateSkillCatalog(),
-                TestCatalogs.CreateRecipeCatalog(),
-                buildingCatalog: null);
-
-            Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
             Assert.Throws<KeyNotFoundException>(() => restored.BuildingCatalog.Get(TestCatalogs.StorageHut));
         }
         finally

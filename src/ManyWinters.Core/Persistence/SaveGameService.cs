@@ -1,7 +1,5 @@
 using System.Text.Json;
 using ManyWinters.Core.Construction;
-using ManyWinters.Core.Items;
-using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -63,16 +61,9 @@ public static class SaveGameService
             buildings);
     }
 
-    public static WorldState FromSaveData(
-        SaveData data,
-        ResourceCatalog? resourceCatalog = null,
-        SkillCatalog? skillCatalog = null,
-        RecipeCatalog? recipeCatalog = null,
-        BuildingCatalog? buildingCatalog = null)
+    public static WorldState FromSaveData(SaveData data, WorldConfiguration? configuration = null)
     {
-        var world = resourceCatalog is not null && skillCatalog is not null && recipeCatalog is not null && buildingCatalog is not null
-            ? new WorldState(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog)
-            : new WorldState();
+        var world = new WorldState(configuration ?? WorldConfiguration.Empty);
         world.Clock.Advance(data.Tick);
 
         foreach (var personData in data.People)
@@ -145,17 +136,12 @@ public static class SaveGameService
         File.WriteAllText(path, json);
     }
 
-    public static WorldState Load(
-        string path,
-        ResourceCatalog? resourceCatalog = null,
-        SkillCatalog? skillCatalog = null,
-        RecipeCatalog? recipeCatalog = null,
-        BuildingCatalog? buildingCatalog = null)
+    public static WorldState Load(string path, WorldConfiguration? configuration = null)
     {
         var json = File.ReadAllText(path);
         var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
 
-        return FromSaveData(data, resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
+        return FromSaveData(data, configuration);
     }
 }
