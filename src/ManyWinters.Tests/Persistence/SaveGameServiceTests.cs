@@ -21,6 +21,7 @@ public class SaveGameServiceTests
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -50,6 +51,12 @@ public class SaveGameServiceTests
             Assert.Equal(node.Kind, restoredNode.Kind);
             Assert.Equal(node.Position, restoredNode.Position);
             Assert.Equal(node.RemainingAmount, restoredNode.RemainingAmount);
+
+            Assert.Equal(world.Buildings.Count, restored.Buildings.Count);
+            var restoredBuilding = Assert.Single(restored.Buildings);
+            Assert.Equal(building.Id, restoredBuilding.Id);
+            Assert.Equal(building.Kind, restoredBuilding.Kind);
+            Assert.Equal(building.Position, restoredBuilding.Position);
         }
         finally
         {
@@ -104,6 +111,29 @@ public class SaveGameServiceTests
     }
 
     [Fact]
+    public void RestoredWorldContinuesBuildingIdSequenceWithoutCollisions()
+    {
+        var world = new WorldState();
+        world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        world.AddBuilding(TestCatalogs.StorageHut, new Position(1, 1));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path);
+
+            var newBuilding = restored.AddBuilding(TestCatalogs.StorageHut, new Position(2, 2));
+
+            Assert.DoesNotContain(restored.Buildings, b => b != newBuilding && b.Id == newBuilding.Id);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void LoadWithAllCatalogsProvidedWiresThemIntoTheRestoredWorld()
     {
         var world = new WorldState();
@@ -117,13 +147,17 @@ public class SaveGameServiceTests
                 path,
                 TestCatalogs.CreateResourceCatalog(),
                 TestCatalogs.CreateSkillCatalog(),
-                TestCatalogs.CreateRecipeCatalog());
+                TestCatalogs.CreateRecipeCatalog(),
+                TestCatalogs.CreateBuildingCatalog());
 
             var definition = restored.ResourceCatalog.Get(TestCatalogs.Apple);
             Assert.Equal("Apple", definition.DisplayName);
 
             var recipe = restored.RecipeCatalog.Get(TestCatalogs.Axe);
             Assert.Equal(TestCatalogs.WoodItem, recipe.InputItem);
+
+            var buildingDefinition = restored.BuildingCatalog.Get(TestCatalogs.StorageHut);
+            Assert.Equal(TestCatalogs.WoodItem, buildingDefinition.RequiredItem);
         }
         finally
         {
@@ -145,10 +179,12 @@ public class SaveGameServiceTests
                 path,
                 TestCatalogs.CreateResourceCatalog(),
                 TestCatalogs.CreateSkillCatalog(),
-                recipeCatalog: null);
+                recipeCatalog: null,
+                TestCatalogs.CreateBuildingCatalog());
 
             Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
             Assert.Throws<KeyNotFoundException>(() => restored.RecipeCatalog.Get(TestCatalogs.Axe));
+            Assert.Throws<KeyNotFoundException>(() => restored.BuildingCatalog.Get(TestCatalogs.StorageHut));
         }
         finally
         {
@@ -170,9 +206,36 @@ public class SaveGameServiceTests
                 path,
                 resourceCatalog: null,
                 TestCatalogs.CreateSkillCatalog(),
-                TestCatalogs.CreateRecipeCatalog());
+                TestCatalogs.CreateRecipeCatalog(),
+                TestCatalogs.CreateBuildingCatalog());
 
             Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void LoadWithOnlyBuildingCatalogMissingStillFallsBackToEmptyDefaultsForAll()
+    {
+        var world = new WorldState();
+        world.AddPerson("Ava", new Position(0, 0));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(
+                path,
+                TestCatalogs.CreateResourceCatalog(),
+                TestCatalogs.CreateSkillCatalog(),
+                TestCatalogs.CreateRecipeCatalog(),
+                buildingCatalog: null);
+
+            Assert.Throws<KeyNotFoundException>(() => restored.ResourceCatalog.Get(TestCatalogs.Apple));
+            Assert.Throws<KeyNotFoundException>(() => restored.BuildingCatalog.Get(TestCatalogs.StorageHut));
         }
         finally
         {

@@ -6,10 +6,16 @@ namespace ManyWinters.Tests.Maps;
 
 public class MapLoaderTests
 {
+    private static LoadedMap LoadDefault() => MapLoader.LoadDefault(
+        TestCatalogs.CreateResourceCatalog(),
+        TestCatalogs.CreateSkillCatalog(),
+        TestCatalogs.CreateRecipeCatalog(),
+        TestCatalogs.CreateBuildingCatalog());
+
     [Fact]
     public void LoadDefaultReturnsTheExpectedTerrainSize()
     {
-        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog(), TestCatalogs.CreateRecipeCatalog());
+        var map = LoadDefault();
 
         Assert.Equal(20f, map.TerrainWidth);
         Assert.Equal(20f, map.TerrainDepth);
@@ -21,18 +27,20 @@ public class MapLoaderTests
         var resourceCatalog = TestCatalogs.CreateResourceCatalog();
         var skillCatalog = TestCatalogs.CreateSkillCatalog();
         var recipeCatalog = TestCatalogs.CreateRecipeCatalog();
+        var buildingCatalog = TestCatalogs.CreateBuildingCatalog();
 
-        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog);
+        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
 
         Assert.Same(resourceCatalog, map.World.ResourceCatalog);
         Assert.Same(skillCatalog, map.World.SkillCatalog);
         Assert.Same(recipeCatalog, map.World.RecipeCatalog);
+        Assert.Same(buildingCatalog, map.World.BuildingCatalog);
     }
 
     [Fact]
     public void LoadDefaultPopulatesTheWorldWithFifteenPeopleArrangedInAFiveColumnGrid()
     {
-        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog(), TestCatalogs.CreateRecipeCatalog());
+        var map = LoadDefault();
 
         var expectedNames = Enumerable.Range(1, 15).Select(i => $"Person {i}");
         var expectedPositions = new[]
@@ -50,7 +58,7 @@ public class MapLoaderTests
     [Fact]
     public void LoadDefaultPopulatesTheWorldWithTheExpectedResourceNodes()
     {
-        var map = MapLoader.LoadDefault(TestCatalogs.CreateResourceCatalog(), TestCatalogs.CreateSkillCatalog(), TestCatalogs.CreateRecipeCatalog());
+        var map = LoadDefault();
 
         var expected = new[]
         {
@@ -64,5 +72,13 @@ public class MapLoaderTests
 
         Assert.Equal(6, map.World.ResourceNodes.Count);
         Assert.Equal(expected, map.World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)));
+    }
+
+    [Fact]
+    public void LoadDefaultStartsWithNoBuildings()
+    {
+        var map = LoadDefault();
+
+        Assert.Empty(map.World.Buildings);
     }
 }

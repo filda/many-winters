@@ -1,3 +1,4 @@
+using ManyWinters.Core.Construction;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
@@ -151,5 +152,51 @@ public class WorldStateTests
         var world = new WorldState();
 
         world.AddResourceNode(TestCatalogs.Apple, new Position(2, 3), 40);
+    }
+
+    [Fact]
+    public void AddBuildingAssignsSequentialUniqueIds()
+    {
+        var world = new WorldState();
+
+        var first = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var second = world.AddBuilding(TestCatalogs.StorageHut, new Position(1, 1));
+
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.Equal(1, first.Id.Value);
+        Assert.Equal(2, second.Id.Value);
+    }
+
+    [Fact]
+    public void AddBuildingTracksItInBuildings()
+    {
+        var world = new WorldState();
+
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
+
+        var tracked = Assert.Single(world.Buildings);
+        Assert.Same(building, tracked);
+        Assert.Equal(TestCatalogs.StorageHut, tracked.Kind);
+        Assert.Equal(new Position(2, 3), tracked.Position);
+    }
+
+    [Fact]
+    public void AddBuildingRaisesBuildingAddedWithTheNewBuilding()
+    {
+        var world = new WorldState();
+        Building? raised = null;
+        world.BuildingAdded += b => raised = b;
+
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
+
+        Assert.Same(building, raised);
+    }
+
+    [Fact]
+    public void AddBuildingDoesNotThrowWhenNothingIsSubscribedToBuildingAdded()
+    {
+        var world = new WorldState();
+
+        world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
     }
 }

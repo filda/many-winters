@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
@@ -25,7 +26,8 @@ public partial class Main : Node3D
         var resourceCatalog = ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources"));
         var skillCatalog = SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills"));
         var recipeCatalog = RecipeCatalog.LoadFromDirectory(Path.Combine(contentRoot, "recipes"));
-        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog);
+        var buildingCatalog = BuildingCatalog.LoadFromDirectory(Path.Combine(contentRoot, "buildings"));
+        var map = MapLoader.LoadDefault(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
         _world = map.World;
 
         GetViewport().PhysicsObjectPicking = true;
@@ -131,6 +133,10 @@ public partial class Main : Node3D
         craftButton.Pressed += OnCraftButtonPressed;
         box.AddChild(craftButton);
 
+        var buildButton = new Button { Text = "Build Storage Hut (selected person, 20 Wood)" };
+        buildButton.Pressed += OnBuildButtonPressed;
+        box.AddChild(buildButton);
+
         box.AddChild(new HSeparator());
 
         box.AddChild(new Label
@@ -157,6 +163,24 @@ public partial class Main : Node3D
         }
 
         _world.Execute(new CraftCommand(personId, new ItemKindId("axe")));
+        RefreshInfoLabel();
+    }
+
+    private void OnBuildButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then build.";
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        _world.Execute(new ConstructCommand(personId, new BuildingKindId("storage_hut"), person.Position));
         RefreshInfoLabel();
     }
 

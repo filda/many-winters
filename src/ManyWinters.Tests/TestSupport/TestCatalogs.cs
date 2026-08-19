@@ -1,3 +1,4 @@
+using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
@@ -29,6 +30,9 @@ public static class TestCatalogs
     public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
 
+    public static readonly BuildingKindId StorageHut = new("storage_hut");
+    public const int StorageHutInputAmount = 20;
+
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
         new ResourceDefinition(Apple, "Apple", Foraging),
@@ -51,5 +55,14 @@ public static class TestCatalogs
         new RecipeDefinition(Axe, WoodItem, AxeInputAmount),
     });
 
-    public static WorldState CreateWorld() => new(CreateResourceCatalog(), CreateSkillCatalog(), CreateRecipeCatalog());
+    public static BuildingCatalog CreateBuildingCatalog() => new(new[]
+    {
+        new BuildingDefinition(StorageHut, "Storage Hut", WoodItem, StorageHutInputAmount),
+    });
+
+    public static WorldState CreateWorld() => new(
+        CreateResourceCatalog(),
+        CreateSkillCatalog(),
+        CreateRecipeCatalog(),
+        CreateBuildingCatalog());
 }

@@ -1,4 +1,5 @@
 using Godot;
+using ManyWinters.Core.Construction;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -11,6 +12,7 @@ public sealed class WorldPresenter
     private readonly Action<ResourceNodeId> _onResourceNodeSelected;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
+    private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
 
     public WorldPresenter(
         Node3D container,
@@ -24,6 +26,7 @@ public sealed class WorldPresenter
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
+        world.BuildingAdded += CreateBuildingView;
 
         foreach (var person in world.People)
         {
@@ -33,6 +36,11 @@ public sealed class WorldPresenter
         foreach (var node in world.ResourceNodes)
         {
             CreateResourceNodeView(node);
+        }
+
+        foreach (var building in world.Buildings)
+        {
+            CreateBuildingView(building);
         }
     }
 
@@ -72,5 +80,15 @@ public sealed class WorldPresenter
         };
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
+    }
+
+    private void CreateBuildingView(Building building)
+    {
+        var view = new BuildingView(building.Kind)
+        {
+            Position = new Vector3(building.Position.X, BuildingView.Size / 2f, building.Position.Y),
+        };
+        _container.AddChild(view);
+        _buildingViews[building.Id] = view;
     }
 }

@@ -1,3 +1,4 @@
+using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
@@ -10,7 +11,9 @@ public sealed record SaveData(
     int NextPersonId,
     IReadOnlyList<PersonSaveData> People,
     int NextResourceNodeId,
-    IReadOnlyList<ResourceNodeSaveData> ResourceNodes);
+    IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
+    int NextBuildingId,
+    IReadOnlyList<BuildingSaveData> Buildings);
 
 public sealed record PersonSaveData(
     int Id,
@@ -34,3 +37,9 @@ public sealed record ResourceNodeSaveData(
     float PositionX,
     float PositionY,
     float RemainingAmount);
+
+public sealed record BuildingSaveData(
+    int Id,
+    BuildingKindId Kind,
+    float PositionX,
+    float PositionY);

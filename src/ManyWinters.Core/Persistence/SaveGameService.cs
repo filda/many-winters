@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
@@ -8,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 5;
+    private const int CurrentVersion = 6;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,23 +42,34 @@ public static class SaveGameService
                 node.RemainingAmount))
             .ToList();
 
+        var buildings = world.Buildings
+            .Select(building => new BuildingSaveData(
+                building.Id.Value,
+                building.Kind,
+                building.Position.X,
+                building.Position.Y))
+            .ToList();
+
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
             world.NextPersonId,
             people,
             world.NextResourceNodeId,
-            resourceNodes);
+            resourceNodes,
+            world.NextBuildingId,
+            buildings);
     }
 
     public static WorldState FromSaveData(
         SaveData data,
         ResourceCatalog? resourceCatalog = null,
         SkillCatalog? skillCatalog = null,
-        RecipeCatalog? recipeCatalog = null)
+        RecipeCatalog? recipeCatalog = null,
+        BuildingCatalog? buildingCatalog = null)
     {
-        var world = resourceCatalog is not null && skillCatalog is not null && recipeCatalog is not null
-            ? new WorldState(resourceCatalog, skillCatalog, recipeCatalog)
+        var world = resourceCatalog is not null && skillCatalog is not null && recipeCatalog is not null && buildingCatalog is not null
+            ? new WorldState(resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog)
             : new WorldState();
         world.Clock.Advance(data.Tick);
 
@@ -106,6 +118,20 @@ public static class SaveGameService
         }
 
         world.SetNextResourceNodeId(data.NextResourceNodeId);
+
+        foreach (var buildingData in data.Buildings)
+        {
+            var building = new Building
+            {
+                Id = new BuildingId(buildingData.Id),
+                Kind = buildingData.Kind,
+                Position = new Position(buildingData.PositionX, buildingData.PositionY),
+            };
+
+            world.RestoreBuilding(building);
+        }
+
+        world.SetNextBuildingId(data.NextBuildingId);
         return world;
     }
 
@@ -119,12 +145,13 @@ public static class SaveGameService
         string path,
         ResourceCatalog? resourceCatalog = null,
         SkillCatalog? skillCatalog = null,
-        RecipeCatalog? recipeCatalog = null)
+        RecipeCatalog? recipeCatalog = null,
+        BuildingCatalog? buildingCatalog = null)
     {
         var json = File.ReadAllText(path);
         var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
 
-        return FromSaveData(data, resourceCatalog, skillCatalog, recipeCatalog);
+        return FromSaveData(data, resourceCatalog, skillCatalog, recipeCatalog, buildingCatalog);
     }
 }
