@@ -9,4 +9,6 @@ public sealed class Building
     public required BuildingKindId Kind { get; init; }
 
     public Position Position { get; set; }
+
+    public float Condition { get; set; } = 100f;
 }

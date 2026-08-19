@@ -67,7 +67,7 @@ public class MapLoaderTests
             (TestCatalogs.Mushroom, new Position(6f, 5f), 200f),
             (TestCatalogs.Potato, new Position(-6f, -5f), 200f),
             (TestCatalogs.Apple, new Position(6f, -5f), 200f),
-            (TestCatalogs.Wood, new Position(0f, 8f), 300f),
+            (TestCatalogs.Wood, new Position(0f, 5f), 300f),
         };
 
         Assert.Equal(6, map.World.ResourceNodes.Count);

@@ -17,6 +17,7 @@ public partial class Main : Node3D
 
     private Label _infoLabel = null!;
     private Label _tickLabel = null!;
+    private Label _buildingsLabel = null!;
     private PersonId? _selectedPersonId;
     private double _tickAccumulator;
 
@@ -54,6 +55,7 @@ public partial class Main : Node3D
         _world.Advance(1);
         _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}";
         RefreshInfoLabel();
+        RefreshBuildingsLabel();
 
         foreach (var person in _world.People)
         {
@@ -94,22 +96,30 @@ public partial class Main : Node3D
         var canvas = new CanvasLayer();
         AddChild(canvas);
 
+        SetUpControlsPanel(canvas);
+        SetUpInspectorPanel(canvas);
+    }
+
+    private static StyleBoxFlat PanelBackground() => new()
+    {
+        BgColor = new Color(0f, 0f, 0f, 0.6f),
+        ContentMarginLeft = 12,
+        ContentMarginRight = 12,
+        ContentMarginTop = 10,
+        ContentMarginBottom = 10,
+        CornerRadiusTopLeft = 6,
+        CornerRadiusTopRight = 6,
+        CornerRadiusBottomLeft = 6,
+        CornerRadiusBottomRight = 6,
+    };
+
+    private void SetUpControlsPanel(CanvasLayer canvas)
+    {
         var panel = new PanelContainer
         {
             Position = new Vector2(16, 16),
         };
-        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-        {
-            BgColor = new Color(0f, 0f, 0f, 0.6f),
-            ContentMarginLeft = 12,
-            ContentMarginRight = 12,
-            ContentMarginTop = 10,
-            ContentMarginBottom = 10,
-            CornerRadiusTopLeft = 6,
-            CornerRadiusTopRight = 6,
-            CornerRadiusBottomLeft = 6,
-            CornerRadiusBottomRight = 6,
-        });
+        panel.AddThemeStyleboxOverride("panel", PanelBackground());
         canvas.AddChild(panel);
 
         var box = new VBoxContainer();
@@ -137,7 +147,30 @@ public partial class Main : Node3D
         buildButton.Pressed += OnBuildButtonPressed;
         box.AddChild(buildButton);
 
-        box.AddChild(new HSeparator());
+        var repairButton = new Button { Text = "Repair Nearest Building (selected person, 5 Wood)" };
+        repairButton.Pressed += OnRepairButtonPressed;
+        box.AddChild(repairButton);
+
+        _buildingsLabel = new Label { Text = "Buildings: none" };
+        box.AddChild(_buildingsLabel);
+    }
+
+    private void SetUpInspectorPanel(CanvasLayer canvas)
+    {
+        const float width = 340f;
+        const float margin = 16f;
+        var viewportWidth = GetViewport().GetVisibleRect().Size.X;
+
+        var panel = new PanelContainer
+        {
+            Position = new Vector2(viewportWidth - width - margin, margin),
+            CustomMinimumSize = new Vector2(width, 0),
+        };
+        panel.AddThemeStyleboxOverride("panel", PanelBackground());
+        canvas.AddChild(panel);
+
+        var box = new VBoxContainer();
+        panel.AddChild(box);
 
         box.AddChild(new Label
         {
@@ -145,7 +178,12 @@ public partial class Main : Node3D
             LabelSettings = new LabelSettings { FontSize = 18 },
         });
 
-        _infoLabel = new Label { Text = "No selection." };
+        _infoLabel = new Label
+        {
+            Text = "No selection.",
+            CustomMinimumSize = new Vector2(width, 0),
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
         box.AddChild(_infoLabel);
     }
 
@@ -180,8 +218,38 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new ConstructCommand(personId, new BuildingKindId("storage_hut"), person.Position));
+        var buildPosition = FindFreeBuildingPosition(person.Position);
+        _world.Execute(new ConstructCommand(personId, new BuildingKindId("storage_hut"), buildPosition));
         RefreshInfoLabel();
+        RefreshBuildingsLabel();
+    }
+
+    private void OnRepairButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then repair.";
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var nearestBuilding = _world.Buildings
+            .OrderBy(b => Distance(b.Position, person.Position))
+            .FirstOrDefault();
+        if (nearestBuilding is null)
+        {
+            _infoLabel.Text = "No buildings to repair yet.";
+            return;
+        }
+
+        _world.Execute(new RepairCommand(personId, nearestBuilding.Id));
+        RefreshInfoLabel();
+        RefreshBuildingsLabel();
     }
 
     private Position FindFreeSpawnPosition()
@@ -200,6 +268,28 @@ public partial class Main : Node3D
         }
 
         return new Position((GD.Randf() - 0.5f) * 16f, (GD.Randf() - 0.5f) * 16f);
+    }
+
+    private Position FindFreeBuildingPosition(Position near)
+    {
+        const float minDistance = 1.5f;
+        const float spread = 4f;
+        const int maxAttempts = 20;
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var candidate = new Position(
+                near.X + ((GD.Randf() - 0.5f) * spread),
+                near.Y + ((GD.Randf() - 0.5f) * spread));
+            var blocked = _world.Buildings.Any(b => Distance(b.Position, candidate) < minDistance)
+                || _world.People.Any(p => Distance(p.Position, candidate) < minDistance);
+            if (!blocked)
+            {
+                return candidate;
+            }
+        }
+
+        return new Position(near.X + ((GD.Randf() - 0.5f) * spread), near.Y + ((GD.Randf() - 0.5f) * spread));
     }
 
     private static float Distance(Position a, Position b)
@@ -287,5 +377,12 @@ public partial class Main : Node3D
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
             $"Inventory: {inventory}";
+    }
+
+    private void RefreshBuildingsLabel()
+    {
+        _buildingsLabel.Text = "Buildings: " + (_world.Buildings.Count > 0
+            ? string.Join(", ", _world.Buildings.Select(b => $"{b.Kind} #{b.Id} ({b.Condition:0}%)"))
+            : "none");
     }
 }

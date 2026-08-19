@@ -105,6 +105,14 @@ To run the game with rendering, open `src/ManyWinters.Godot` in the Godot editor
 godot --path src/ManyWinters.Godot
 ```
 
+If Godot reports that the C# project needs to be built (e.g. right after cloning, or after pulling changes), build it and try again:
+
+```powershell
+dotnet build src/ManyWinters.Godot
+```
+
+`dotnet build` writes straight into the assembly Godot loads (`src/ManyWinters.Godot/.godot/mono/temp/bin/`), so no separate editor-side build step is needed.
+
 ## Mutation testing
 
 [Stryker.NET](https://stryker-mutator.io/docs/stryker-net/introduction/) is set up as a pinned local .NET tool (`.config/dotnet-tools.json`). It checks that the test suite actually fails when the code is subtly broken, not just that it runs.

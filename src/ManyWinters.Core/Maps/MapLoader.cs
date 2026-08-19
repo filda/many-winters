@@ -29,7 +29,7 @@ public static class MapLoader
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("mushroom"), new Position(6f, 5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("potato"), new Position(-6f, -5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), new Position(6f, -5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("wood"), new Position(0f, 8f), 300f));
+        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("wood"), new Position(0f, 5f), 300f));
 
         return new LoadedMap(world, TerrainWidth: 20f, TerrainDepth: 20f);
     }

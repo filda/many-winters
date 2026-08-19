@@ -199,4 +199,36 @@ public class WorldStateTests
 
         world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
     }
+
+    [Fact]
+    public void AddBuildingStartsAtFullCondition()
+    {
+        var world = new WorldState();
+
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Equal(100f, building.Condition);
+    }
+
+    [Fact]
+    public void AdvanceDecaysBuildingCondition()
+    {
+        var world = new WorldState();
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        world.Advance(100);
+
+        Assert.Equal(95f, building.Condition);
+    }
+
+    [Fact]
+    public void AdvanceNeverDecaysBuildingConditionBelowZero()
+    {
+        var world = new WorldState();
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        world.Advance(1_000_000);
+
+        Assert.Equal(0f, building.Condition);
+    }
 }

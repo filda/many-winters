@@ -42,4 +42,5 @@ public sealed record BuildingSaveData(
     int Id,
     BuildingKindId Kind,
     float PositionX,
-    float PositionY);
+    float PositionY,
+    float Condition);

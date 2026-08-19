@@ -84,7 +84,7 @@ public sealed class WorldPresenter
 
     private void CreateBuildingView(Building building)
     {
-        var view = new BuildingView(building.Kind)
+        var view = new BuildingView(building.Id, building.Kind)
         {
             Position = new Vector3(building.Position.X, BuildingView.Size / 2f, building.Position.Y),
         };

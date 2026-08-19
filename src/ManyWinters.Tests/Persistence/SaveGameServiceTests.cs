@@ -22,6 +22,7 @@ public class SaveGameServiceTests
         bran.Needs.Hunger = 100;
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
+        building.Condition = 63f;
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -57,6 +58,7 @@ public class SaveGameServiceTests
             Assert.Equal(building.Id, restoredBuilding.Id);
             Assert.Equal(building.Kind, restoredBuilding.Kind);
             Assert.Equal(building.Position, restoredBuilding.Position);
+            Assert.Equal(building.Condition, restoredBuilding.Condition);
         }
         finally
         {

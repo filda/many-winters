@@ -11,6 +11,8 @@ public sealed class WorldState
 {
     private const float HungerPerTick = 1f;
     private const float MaxHunger = 100f;
+    private const float ConditionDecayPerTick = 0.05f;
+    private const float MinCondition = 0f;
 
     private readonly List<Person> _people = new();
     private readonly List<ResourceNode> _resourceNodes = new();
@@ -132,6 +134,11 @@ public sealed class WorldState
             {
                 person.IsAlive = false;
             }
+        }
+
+        foreach (var building in _buildings)
+        {
+            building.Condition = Math.Max(MinCondition, building.Condition - (ConditionDecayPerTick * ticks));
         }
     }
 

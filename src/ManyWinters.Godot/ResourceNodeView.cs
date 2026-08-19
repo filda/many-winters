@@ -6,6 +6,7 @@ namespace ManyWinters.Godot;
 public partial class ResourceNodeView : Area3D
 {
     public const float Size = 0.6f;
+    private const float MaxRotationDegrees = 25f;
 
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
@@ -22,10 +23,13 @@ public partial class ResourceNodeView : Area3D
     {
         InputRayPickable = true;
 
+        var color = EntityVisualVariation.Tint(ColorFor(_kind), _nodeId.Value);
+        RotationDegrees = new Vector3(0f, EntityVisualVariation.RotationDegrees(_nodeId.Value, MaxRotationDegrees), 0f);
+
         AddChild(new MeshInstance3D
         {
             Mesh = new BoxMesh { Size = new Vector3(Size, Size, Size) },
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = ColorFor(_kind) },
+            MaterialOverride = new StandardMaterial3D { AlbedoColor = color },
         });
 
         AddChild(new CollisionShape3D
