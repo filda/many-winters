@@ -85,7 +85,12 @@ public sealed class WorldState
 
     public event Action<Grave>? GraveAdded;
 
-    public Person AddPerson(string name, Position position, long initialAgeTicks = 0)
+    public Person AddPerson(
+        string name,
+        Position position,
+        long initialAgeTicks = 0,
+        PersonId? motherId = null,
+        PersonId? fatherId = null)
     {
         var person = new Person
         {
@@ -93,6 +98,8 @@ public sealed class WorldState
             Name = name,
             Position = position,
             BirthTick = Clock.CurrentTick - initialAgeTicks,
+            MotherId = motherId,
+            FatherId = fatherId,
         };
 
         _people.Add(person);
@@ -135,6 +142,9 @@ public sealed class WorldState
         bool isMarked,
         string? name,
         int? ageAtDeath,
+        DeathCause? causeOfDeath,
+        string? motherName,
+        string? fatherName,
         IReadOnlyList<TechniqueId> knownTechniques)
     {
         var grave = new Grave
@@ -144,6 +154,9 @@ public sealed class WorldState
             IsMarked = isMarked,
             Name = name,
             AgeAtDeath = ageAtDeath,
+            CauseOfDeath = causeOfDeath,
+            MotherName = motherName,
+            FatherName = fatherName,
             KnownTechniques = knownTechniques,
         };
 
@@ -191,10 +204,12 @@ public sealed class WorldState
                 person.Needs.Hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);
 
                 var age = (currentTick - person.BirthTick) / TicksPerYear;
-                if (person.Needs.Hunger >= MaxHunger || age >= MaxLifespanYears)
+                var diedOfOldAge = age >= MaxLifespanYears;
+                if (person.Needs.Hunger >= MaxHunger || diedOfOldAge)
                 {
                     person.IsAlive = false;
                     person.DeathTick = currentTick;
+                    person.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
                 }
             }
 

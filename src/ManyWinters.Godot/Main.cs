@@ -213,6 +213,10 @@ public partial class Main : Node3D
         buryButton.Pressed += OnBuryButtonPressed;
         box.AddChild(buryButton);
 
+        var lootButton = new Button { Text = "Loot Nearest Dead Person (selected person)" };
+        lootButton.Pressed += OnLootButtonPressed;
+        box.AddChild(lootButton);
+
         _buildingsLabel = new Label { Text = "Buildings: none" };
         box.AddChild(_buildingsLabel);
 
@@ -448,12 +452,49 @@ public partial class Main : Node3D
         RefreshGravesLabel();
     }
 
+    private void OnLootButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then loot.";
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var deceased = FindNearestLootableDeceased(person.Position);
+        if (deceased is null)
+        {
+            _infoLabel.Text = "Nothing left to loot.";
+            return;
+        }
+
+        if (WorldState.Distance(person.Position, deceased.Position) > WorldState.MaxInteractionDistance)
+        {
+            _infoLabel.Text = "The nearest belongings are too far away.";
+            return;
+        }
+
+        _world.Execute(new LootCommand(personId, deceased.Id));
+        RefreshInfoLabel();
+    }
+
     private Building? FindNearestBuilding(Position position) =>
         _world.Buildings.OrderBy(b => WorldState.Distance(b.Position, position)).FirstOrDefault();
 
     private Person? FindNearestUnburiedDeceased(Position position) =>
         _world.People
             .Where(p => !p.IsAlive && !p.IsBuried)
+            .OrderBy(p => WorldState.Distance(p.Position, position))
+            .FirstOrDefault();
+
+    private Person? FindNearestLootableDeceased(Position position) =>
+        _world.People
+            .Where(p => !p.IsAlive && p.Inventory.Counts.Count > 0)
             .OrderBy(p => WorldState.Distance(p.Position, position))
             .FirstOrDefault();
 
@@ -637,11 +678,29 @@ public partial class Main : Node3D
         var techniques = grave.KnownTechniques.Count > 0
             ? string.Join(", ", grave.KnownTechniques)
             : "none";
+        var causeText = grave.CauseOfDeath switch
+        {
+            DeathCause.Hunger => " of hunger",
+            DeathCause.OldAge => " of old age",
+            _ => string.Empty,
+        };
         return
             $"{grave.Id}\n" +
             $"Position: {grave.Position}\n" +
-            $"{grave.Name}, died at age {grave.AgeAtDeath} winter{(grave.AgeAtDeath == 1 ? "" : "s")}\n" +
+            $"{grave.Name}, died at age {grave.AgeAtDeath} winter{(grave.AgeAtDeath == 1 ? "" : "s")}{causeText}\n" +
+            $"{ParentsText(grave.MotherName, grave.FatherName)}" +
             $"Known techniques: {techniques}";
+    }
+
+    private static string ParentsText(string? motherName, string? fatherName)
+    {
+        if (motherName is null && fatherName is null)
+        {
+            return string.Empty;
+        }
+
+        var parents = string.Join(" and ", new[] { motherName, fatherName }.Where(name => name is not null));
+        return $"Child of {parents}\n";
     }
 
     private void RefreshBuildingsLabel()

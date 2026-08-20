@@ -259,12 +259,98 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceRecordsHungerAsTheCauseOfDeathWhenHungerReachesMaximum()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(100);
+
+        Assert.Equal(DeathCause.Hunger, person.CauseOfDeath);
+    }
+
+    [Fact]
+    public void AdvanceRecordsOldAgeAsTheCauseOfDeathWhenTheMaximumLifespanIsReached()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        for (var tick = 0; tick < (WorldState.TicksPerYear * 10) - 1; tick++)
+        {
+            world.Advance(1);
+            person.Needs.Hunger = 0;
+        }
+
+        world.Advance(1);
+
+        Assert.Equal(DeathCause.OldAge, person.CauseOfDeath);
+    }
+
+    [Fact]
+    public void AdvancePrioritizesOldAgeAsTheCauseOfDeathWhenBothConditionsAreMetSimultaneously()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        for (var tick = 0; tick < (WorldState.TicksPerYear * 10) - 1; tick++)
+        {
+            world.Advance(1);
+            person.Needs.Hunger = 0;
+        }
+
+        person.Needs.Hunger = 99;
+        world.Advance(1);
+
+        Assert.Equal(DeathCause.OldAge, person.CauseOfDeath);
+    }
+
+    [Fact]
+    public void AdvanceLeavesADeceasedPersonsInventoryUntouchedRatherThanTransferringItAutomatically()
+    {
+        var world = new WorldState();
+        var parent = world.AddPerson("Ava", new Position(0, 0));
+        parent.Needs.Hunger = 99;
+        parent.Inventory.Add(TestCatalogs.WoodItem, 5);
+        var child = world.AddPerson("Bran", new Position(0, 0), motherId: parent.Id);
+
+        world.Advance(1);
+
+        Assert.False(parent.IsAlive);
+        Assert.Equal(5, parent.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(0, child.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void AddPersonAssignsMotherAndFatherIdsWhenProvided()
+    {
+        var world = new WorldState();
+        var mother = world.AddPerson("Sela", new Position(0, 0));
+        var father = world.AddPerson("Bran", new Position(0, 0));
+
+        var child = world.AddPerson("Ava", new Position(0, 0), motherId: mother.Id, fatherId: father.Id);
+
+        Assert.Equal(mother.Id, child.MotherId);
+        Assert.Equal(father.Id, child.FatherId);
+    }
+
+    [Fact]
+    public void AddPersonLeavesMotherAndFatherIdsNullByDefault()
+    {
+        var world = new WorldState();
+
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        Assert.Null(person.MotherId);
+        Assert.Null(person.FatherId);
+    }
+
+    [Fact]
     public void AddGraveAssignsSequentialUniqueIds()
     {
         var world = new WorldState();
 
-        var first = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
-        var second = world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+        var first = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        var second = world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
         Assert.NotEqual(first.Id, second.Id);
         Assert.Equal(1, first.Id.Value);
@@ -276,7 +362,7 @@ public class WorldStateTests
     {
         var world = new WorldState();
 
-        var grave = world.AddGrave(new Position(2, 3), isMarked: true, name: "Ava", ageAtDeath: 5, knownTechniques: []);
+        var grave = world.AddGrave(new Position(2, 3), isMarked: true, name: "Ava", ageAtDeath: 5, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
         var tracked = Assert.Single(world.Graves);
         Assert.Same(grave, tracked);
@@ -293,7 +379,7 @@ public class WorldStateTests
         Grave? raised = null;
         world.GraveAdded += g => raised = g;
 
-        var grave = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+        var grave = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
         Assert.Same(grave, raised);
     }
@@ -303,7 +389,7 @@ public class WorldStateTests
     {
         var world = new WorldState();
 
-        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
     }
 
     [Fact]

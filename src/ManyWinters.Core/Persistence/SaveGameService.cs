@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 11;
+    private const int CurrentVersion = 12;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -32,7 +32,10 @@ public static class SaveGameService
                 person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
                 person.BirthTick,
                 person.DeathTick,
-                person.IsBuried))
+                person.CauseOfDeath,
+                person.IsBuried,
+                person.MotherId?.Value,
+                person.FatherId?.Value))
             .ToList();
 
         var resourceNodes = world.ResourceNodes
@@ -63,6 +66,9 @@ public static class SaveGameService
                 grave.IsMarked,
                 grave.Name,
                 grave.AgeAtDeath,
+                grave.CauseOfDeath,
+                grave.MotherName,
+                grave.FatherName,
                 grave.KnownTechniques))
             .ToList();
 
@@ -94,7 +100,10 @@ public static class SaveGameService
                 IsAlive = personData.IsAlive,
                 BirthTick = personData.BirthTick,
                 DeathTick = personData.DeathTick,
+                CauseOfDeath = personData.CauseOfDeath,
                 IsBuried = personData.IsBuried,
+                MotherId = personData.MotherId is { } motherId ? new PersonId(motherId) : null,
+                FatherId = personData.FatherId is { } fatherId ? new PersonId(fatherId) : null,
             };
             person.Needs.Hunger = personData.Hunger;
             person.Needs.Fatigue = personData.Fatigue;
@@ -163,6 +172,9 @@ public static class SaveGameService
                 IsMarked = graveData.IsMarked,
                 Name = graveData.Name,
                 AgeAtDeath = graveData.AgeAtDeath,
+                CauseOfDeath = graveData.CauseOfDeath,
+                MotherName = graveData.MotherName,
+                FatherName = graveData.FatherName,
                 KnownTechniques = graveData.KnownTechniques,
             };
 

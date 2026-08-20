@@ -19,7 +19,13 @@ public sealed class Person
 
     public long? DeathTick { get; set; }
 
+    public DeathCause? CauseOfDeath { get; set; }
+
     public bool IsBuried { get; set; }
+
+    public PersonId? MotherId { get; init; }
+
+    public PersonId? FatherId { get; init; }
 
     public Needs Needs { get; init; } = new();
 

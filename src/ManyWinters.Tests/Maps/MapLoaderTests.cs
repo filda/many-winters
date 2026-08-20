@@ -64,6 +64,41 @@ public class MapLoaderTests
     }
 
     [Fact]
+    public void LoadDefaultAssignsFamilyTiesForEachOfTheThreeStartingCouplesChildren()
+    {
+        var map = LoadDefault();
+        var byName = map.World.People.ToDictionary(p => p.Name);
+
+        Assert.Equal(byName["Sela"].Id, byName["Ava"].MotherId);
+        Assert.Equal(byName["Bran"].Id, byName["Ava"].FatherId);
+        Assert.Equal(byName["Sela"].Id, byName["Faro"].MotherId);
+        Assert.Equal(byName["Bran"].Id, byName["Faro"].FatherId);
+
+        Assert.Equal(byName["Tora"].Id, byName["Mira"].MotherId);
+        Assert.Equal(byName["Liska"].Id, byName["Mira"].FatherId);
+        Assert.Equal(byName["Tora"].Id, byName["Vessa"].MotherId);
+        Assert.Equal(byName["Liska"].Id, byName["Vessa"].FatherId);
+
+        Assert.Equal(byName["Ivy"].Id, byName["Doran"].MotherId);
+        Assert.Equal(byName["Bodin"].Id, byName["Doran"].FatherId);
+        Assert.Equal(byName["Ivy"].Id, byName["Corin"].MotherId);
+        Assert.Equal(byName["Bodin"].Id, byName["Corin"].FatherId);
+    }
+
+    [Fact]
+    public void LoadDefaultLeavesSomeStartingPeopleWithNoRecordedParents()
+    {
+        var map = LoadDefault();
+        var byName = map.World.People.ToDictionary(p => p.Name);
+
+        foreach (var name in new[] { "Kael", "Rask", "Yara" })
+        {
+            Assert.Null(byName[name].MotherId);
+            Assert.Null(byName[name].FatherId);
+        }
+    }
+
+    [Fact]
     public void LoadDefaultPopulatesTheWorldWithTheExpectedResourceNodes()
     {
         var map = LoadDefault();

@@ -1,6 +1,7 @@
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Persistence;
@@ -30,7 +31,10 @@ public sealed record PersonSaveData(
     IReadOnlyList<ItemStackSaveData> Inventory,
     long BirthTick,
     long? DeathTick,
-    bool IsBuried);
+    DeathCause? CauseOfDeath,
+    bool IsBuried,
+    int? MotherId,
+    int? FatherId);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
@@ -59,4 +63,7 @@ public sealed record GraveSaveData(
     bool IsMarked,
     string? Name,
     int? AgeAtDeath,
+    DeathCause? CauseOfDeath,
+    string? MotherName,
+    string? FatherName,
     IReadOnlyList<TechniqueId> KnownTechniques);

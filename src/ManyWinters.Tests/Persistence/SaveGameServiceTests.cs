@@ -1,4 +1,5 @@
 using ManyWinters.Core.Persistence;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -79,6 +80,39 @@ public class SaveGameServiceTests
     }
 
     [Fact]
+    public void RoundTripPreservesFamilyTiesAndCauseOfDeath()
+    {
+        var world = new WorldState();
+        var mother = world.AddPerson("Sela", new Position(0, 0));
+        var father = world.AddPerson("Bran", new Position(0, 0));
+        var child = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        child.IsAlive = false;
+        child.DeathTick = 10;
+        child.CauseOfDeath = DeathCause.Hunger;
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path);
+
+            var restoredMother = restored.People.Single(p => p.Name == "Sela");
+            var restoredFather = restored.People.Single(p => p.Name == "Bran");
+            var restoredChild = restored.People.Single(p => p.Name == "Ava");
+
+            Assert.Equal(restoredMother.Id, restoredChild.MotherId);
+            Assert.Equal(restoredFather.Id, restoredChild.FatherId);
+            Assert.Equal(DeathCause.Hunger, restoredChild.CauseOfDeath);
+            Assert.Null(restoredMother.MotherId);
+            Assert.Null(restoredMother.FatherId);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void RoundTripPreservesGraves()
     {
         var world = new WorldState();
@@ -87,12 +121,18 @@ public class SaveGameServiceTests
             isMarked: true,
             name: "Ava",
             ageAtDeath: 5,
+            causeOfDeath: DeathCause.OldAge,
+            motherName: "Sela",
+            fatherName: "Bran",
             knownTechniques: [TestCatalogs.EfficientForaging]);
         var anonymousGrave = world.AddGrave(
             new Position(3f, 4f),
             isMarked: false,
             name: null,
             ageAtDeath: null,
+            causeOfDeath: null,
+            motherName: null,
+            fatherName: null,
             knownTechniques: []);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
@@ -108,12 +148,18 @@ public class SaveGameServiceTests
             Assert.True(restoredMarked.IsMarked);
             Assert.Equal("Ava", restoredMarked.Name);
             Assert.Equal(5, restoredMarked.AgeAtDeath);
+            Assert.Equal(DeathCause.OldAge, restoredMarked.CauseOfDeath);
+            Assert.Equal("Sela", restoredMarked.MotherName);
+            Assert.Equal("Bran", restoredMarked.FatherName);
             Assert.Equal(markedGrave.KnownTechniques, restoredMarked.KnownTechniques);
 
             var restoredAnonymous = restored.Graves.Single(g => g.Id == anonymousGrave.Id);
             Assert.False(restoredAnonymous.IsMarked);
             Assert.Null(restoredAnonymous.Name);
             Assert.Null(restoredAnonymous.AgeAtDeath);
+            Assert.Null(restoredAnonymous.CauseOfDeath);
+            Assert.Null(restoredAnonymous.MotherName);
+            Assert.Null(restoredAnonymous.FatherName);
             Assert.Empty(restoredAnonymous.KnownTechniques);
         }
         finally
@@ -126,8 +172,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesGraveIdSequenceWithoutCollisions()
     {
         var world = new WorldState();
-        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
-        world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -135,7 +181,7 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path);
 
-            var newGrave = restored.AddGrave(new Position(2, 2), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+            var newGrave = restored.AddGrave(new Position(2, 2), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
             Assert.DoesNotContain(restored.Graves, g => g != newGrave && g.Id == newGrave.Id);
         }

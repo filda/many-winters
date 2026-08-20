@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -46,6 +47,99 @@ public class BuryCommandTests
         Assert.Equal("Ava", grave.Name);
         Assert.Equal(3, grave.AgeAtDeath);
         Assert.Contains(TestCatalogs.EfficientForaging, grave.KnownTechniques);
+    }
+
+    [Fact]
+    public void BuryingWithTheTechniqueRecordsCauseOfDeathAndParentNames()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
+        var mother = world.AddPerson("Sela", new Position(0, 0));
+        var father = world.AddPerson("Doran", new Position(0, 0));
+        var deceased = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        deceased.IsAlive = false;
+        deceased.CauseOfDeath = DeathCause.OldAge;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.Equal(DeathCause.OldAge, grave.CauseOfDeath);
+        Assert.Equal("Sela", grave.MotherName);
+        Assert.Equal("Doran", grave.FatherName);
+    }
+
+    [Fact]
+    public void BuryingWithTheTechniqueLeavesParentNamesNullWhenNoneAreRecorded()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
+        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        deceased.IsAlive = false;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.Null(grave.CauseOfDeath);
+        Assert.Null(grave.MotherName);
+        Assert.Null(grave.FatherName);
+    }
+
+    [Fact]
+    public void BuryingWithTheTechniqueLeavesParentNamesNullWhenTheRecordedParentIdDoesNotExist()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
+        var deceased = world.AddPerson(
+            "Ava",
+            new Position(1, 1),
+            motherId: new PersonId(999),
+            fatherId: new PersonId(998));
+        deceased.IsAlive = false;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.Null(grave.MotherName);
+        Assert.Null(grave.FatherName);
+    }
+
+    [Fact]
+    public void BuryingWithTheTechniqueFindsAParentsNameEvenWhenThatParentIsAlsoDeadButUnburied()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
+        var mother = world.AddPerson("Sela", new Position(0, 0));
+        mother.IsAlive = false;
+        var deceased = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id);
+        deceased.IsAlive = false;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.Equal("Sela", grave.MotherName);
+    }
+
+    [Fact]
+    public void BuryingWithoutTheTechniqueLeavesCauseOfDeathAndParentNamesNullEvenWhenRecorded()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var mother = world.AddPerson("Sela", new Position(0, 0));
+        var father = world.AddPerson("Doran", new Position(0, 0));
+        var deceased = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        deceased.IsAlive = false;
+        deceased.CauseOfDeath = DeathCause.Hunger;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.Null(grave.CauseOfDeath);
+        Assert.Null(grave.MotherName);
+        Assert.Null(grave.FatherName);
     }
 
     [Fact]
