@@ -19,6 +19,8 @@ public partial class PersonView : Area3D
     private readonly PersonId _personId;
     private readonly Action<PersonId, MouseButton> _onClicked;
     private Sprite3D _sprite = null!;
+    private Vector3 _targetPosition;
+    private float _interpolationSpeed;
 
     public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked)
     {
@@ -31,6 +33,7 @@ public partial class PersonView : Area3D
         InputRayPickable = true;
 
         Scale = Vector3.One * EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
+        _targetPosition = Position;
 
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
         AddChild(_sprite);
@@ -41,6 +44,21 @@ public partial class PersonView : Area3D
         });
 
         InputEvent += OnInputEvent;
+    }
+
+    // Only the simulation tick moves a person; this just plays that motion back smoothly
+    // between ticks instead of snapping once per tick, so speed always matches how far the
+    // simulation actually moved them over that tick - never guessed or hardcoded.
+    public override void _Process(double delta)
+    {
+        Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
+    }
+
+    public void SetTargetPosition(Vector3 target, float overSeconds)
+    {
+        var distance = Position.DistanceTo(target);
+        _targetPosition = target;
+        _interpolationSpeed = overSeconds > 0f ? distance / overSeconds : float.MaxValue;
     }
 
     public void SetAlive(bool isAlive)

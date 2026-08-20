@@ -69,7 +69,7 @@ public partial class Main : Node3D
         foreach (var person in _world.People)
         {
             _presenter.SetPersonAlive(person.Id, person.IsAlive);
-            _presenter.SetPersonPosition(person.Id, person.Position);
+            _presenter.SetPersonPosition(person.Id, person.Position, (float)TickIntervalSeconds);
         }
 
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
