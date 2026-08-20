@@ -8,7 +8,7 @@ public sealed record ConstructCommand(PersonId PersonId, BuildingKindId Kind, Po
     public void Execute(WorldState world)
     {
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
-        if (person is null)
+        if (person is null || WorldState.Distance(person.Position, Position) > WorldState.MaxInteractionDistance)
         {
             return;
         }

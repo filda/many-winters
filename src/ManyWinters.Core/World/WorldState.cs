@@ -11,6 +11,7 @@ namespace ManyWinters.Core.World;
 public sealed class WorldState
 {
     public const long TicksPerYear = TicksPerSeason * SeasonsPerYear;
+    public const float MaxInteractionDistance = 2f;
 
     private const long TicksPerSeason = 75;
     private const long SeasonsPerYear = 4;
@@ -152,6 +153,13 @@ public sealed class WorldState
     }
 
     public void Execute(ICommand command) => command.Execute(this);
+
+    public static float Distance(Position a, Position b)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        return MathF.Sqrt((dx * dx) + (dy * dy));
+    }
 
     public long AgeInYears(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerYear;
 

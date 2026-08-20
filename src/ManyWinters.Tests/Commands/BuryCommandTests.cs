@@ -159,6 +159,33 @@ public class BuryCommandTests
     }
 
     [Fact]
+    public void BuryingAtExactlyTheMaxInteractionDistanceStillWorks()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var deceased = world.AddPerson("Ava", new Position(WorldState.MaxInteractionDistance, 0));
+        deceased.IsAlive = false;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        Assert.Single(world.Graves);
+    }
+
+    [Fact]
+    public void BuryingBeyondTheMaxInteractionDistanceDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var deceased = world.AddPerson("Ava", new Position(WorldState.MaxInteractionDistance + 1, 0));
+        deceased.IsAlive = false;
+
+        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+
+        Assert.Empty(world.Graves);
+        Assert.False(deceased.IsBuried);
+    }
+
+    [Fact]
     public void BuryingWithUnknownPersonIdsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();

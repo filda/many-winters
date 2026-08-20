@@ -81,6 +81,35 @@ public class RepairCommandTests
     }
 
     [Fact]
+    public void RepairingAtExactlyTheMaxInteractionDistanceStillWorks()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 5);
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance, 0));
+        building.Condition = 50f;
+
+        world.Execute(new RepairCommand(person.Id, building.Id));
+
+        Assert.Equal(75f, building.Condition);
+    }
+
+    [Fact]
+    public void RepairingBeyondTheMaxInteractionDistanceDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 5);
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance + 1, 0));
+        building.Condition = 50f;
+
+        world.Execute(new RepairCommand(person.Id, building.Id));
+
+        Assert.Equal(50f, building.Condition);
+        Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
     public void RepairingAnUnknownBuildingDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();

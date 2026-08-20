@@ -9,7 +9,10 @@ public sealed record TeachCommand(PersonId TeacherId, PersonId StudentId, Techni
     {
         var teacher = world.People.FirstOrDefault(p => p.Id == TeacherId && p.IsAlive);
         var student = world.People.FirstOrDefault(p => p.Id == StudentId && p.IsAlive);
-        if (teacher is null || student is null || !teacher.KnownTechniques.Contains(Technique))
+        if (teacher is null
+            || student is null
+            || !teacher.KnownTechniques.Contains(Technique)
+            || WorldState.Distance(teacher.Position, student.Position) > WorldState.MaxInteractionDistance)
         {
             return;
         }

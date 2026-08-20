@@ -10,6 +10,39 @@ namespace ManyWinters.Tests.World;
 public class WorldStateTests
 {
     [Fact]
+    public void DistanceBetweenTheSamePositionIsZero()
+    {
+        Assert.Equal(0f, WorldState.Distance(new Position(3, 4), new Position(3, 4)));
+    }
+
+    [Fact]
+    public void DistanceMeasuresAlongTheXAxis()
+    {
+        Assert.Equal(5f, WorldState.Distance(new Position(0, 0), new Position(5, 0)));
+    }
+
+    [Fact]
+    public void DistanceMeasuresAlongTheYAxis()
+    {
+        Assert.Equal(5f, WorldState.Distance(new Position(0, 0), new Position(0, 5)));
+    }
+
+    [Fact]
+    public void DistanceMeasuresDiagonally()
+    {
+        Assert.Equal(5f, WorldState.Distance(new Position(0, 0), new Position(3, 4)));
+    }
+
+    [Fact]
+    public void DistanceIsSymmetric()
+    {
+        var a = new Position(1, 2);
+        var b = new Position(4, 6);
+
+        Assert.Equal(WorldState.Distance(a, b), WorldState.Distance(b, a));
+    }
+
+    [Fact]
     public void AddPersonAssignsSequentialUniqueIds()
     {
         var world = new WorldState();

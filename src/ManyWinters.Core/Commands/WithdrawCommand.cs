@@ -10,7 +10,7 @@ public sealed record WithdrawCommand(PersonId PersonId, BuildingId BuildingId, I
     {
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
         var building = world.Buildings.FirstOrDefault(b => b.Id == BuildingId);
-        if (person is null || building is null)
+        if (person is null || building is null || WorldState.Distance(person.Position, building.Position) > WorldState.MaxInteractionDistance)
         {
             return;
         }

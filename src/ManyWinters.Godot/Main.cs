@@ -295,6 +295,12 @@ public partial class Main : Node3D
             return;
         }
 
+        if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
+        {
+            _infoLabel.Text = "The nearest building is too far away.";
+            return;
+        }
+
         _world.Execute(new RepairCommand(personId, nearestBuilding.Id));
         RefreshInfoLabel();
         RefreshBuildingsLabel();
@@ -318,6 +324,12 @@ public partial class Main : Node3D
         if (nearestBuilding is null)
         {
             _infoLabel.Text = "No buildings to deposit into yet.";
+            return;
+        }
+
+        if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
+        {
+            _infoLabel.Text = "The nearest building is too far away.";
             return;
         }
 
@@ -357,6 +369,12 @@ public partial class Main : Node3D
             return;
         }
 
+        if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
+        {
+            _infoLabel.Text = "The nearest building is too far away.";
+            return;
+        }
+
         var woodItem = new ItemKindId("wood");
         var amount = Math.Min(withdrawAmount, nearestBuilding.Inventory.Get(woodItem));
         if (amount <= 0)
@@ -391,6 +409,12 @@ public partial class Main : Node3D
             return;
         }
 
+        if (WorldState.Distance(person.Position, deceased.Position) > WorldState.MaxInteractionDistance)
+        {
+            _infoLabel.Text = "The nearest deceased person is too far away.";
+            return;
+        }
+
         _world.Execute(new BuryCommand(personId, deceased.Id));
         _presenter.RemovePersonView(deceased.Id);
         RefreshInfoLabel();
@@ -398,12 +422,12 @@ public partial class Main : Node3D
     }
 
     private Building? FindNearestBuilding(Position position) =>
-        _world.Buildings.OrderBy(b => Distance(b.Position, position)).FirstOrDefault();
+        _world.Buildings.OrderBy(b => WorldState.Distance(b.Position, position)).FirstOrDefault();
 
     private Person? FindNearestUnburiedDeceased(Position position) =>
         _world.People
             .Where(p => !p.IsAlive && !p.IsBuried)
-            .OrderBy(p => Distance(p.Position, position))
+            .OrderBy(p => WorldState.Distance(p.Position, position))
             .FirstOrDefault();
 
     private Position FindFreeSpawnPosition()
@@ -414,7 +438,7 @@ public partial class Main : Node3D
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             var candidate = new Position((GD.Randf() - 0.5f) * 16f, (GD.Randf() - 0.5f) * 16f);
-            var tooClose = _world.People.Any(p => Distance(p.Position, candidate) < minDistance);
+            var tooClose = _world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance);
             if (!tooClose)
             {
                 return candidate;
@@ -427,7 +451,10 @@ public partial class Main : Node3D
     private Position FindFreeBuildingPosition(Position near)
     {
         const float minDistance = 1.5f;
-        const float spread = 4f;
+        // Kept within MaxInteractionDistance's worst-case diagonal (spread/2 * sqrt(2)) so a freshly
+        // picked spot is never too far away to actually construct on, since ConstructCommand itself
+        // now requires proximity.
+        const float spread = WorldState.MaxInteractionDistance;
         const int maxAttempts = 20;
 
         for (var attempt = 0; attempt < maxAttempts; attempt++)
@@ -435,8 +462,8 @@ public partial class Main : Node3D
             var candidate = new Position(
                 near.X + ((GD.Randf() - 0.5f) * spread),
                 near.Y + ((GD.Randf() - 0.5f) * spread));
-            var blocked = _world.Buildings.Any(b => Distance(b.Position, candidate) < minDistance)
-                || _world.People.Any(p => Distance(p.Position, candidate) < minDistance);
+            var blocked = _world.Buildings.Any(b => WorldState.Distance(b.Position, candidate) < minDistance)
+                || _world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance);
             if (!blocked)
             {
                 return candidate;
@@ -444,13 +471,6 @@ public partial class Main : Node3D
         }
 
         return new Position(near.X + ((GD.Randf() - 0.5f) * spread), near.Y + ((GD.Randf() - 0.5f) * spread));
-    }
-
-    private static float Distance(Position a, Position b)
-    {
-        var dx = a.X - b.X;
-        var dy = a.Y - b.Y;
-        return MathF.Sqrt((dx * dx) + (dy * dy));
     }
 
     private void OnPersonClicked(PersonId id, MouseButton button)

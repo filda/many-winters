@@ -14,7 +14,9 @@ public sealed record BuryCommand(PersonId BuryingPersonId, PersonId DeceasedPers
     {
         var buryingPerson = world.People.FirstOrDefault(p => p.Id == BuryingPersonId && p.IsAlive);
         var deceased = world.People.FirstOrDefault(p => p.Id == DeceasedPersonId && !p.IsAlive && !p.IsBuried);
-        if (buryingPerson is null || deceased is null)
+        if (buryingPerson is null
+            || deceased is null
+            || WorldState.Distance(buryingPerson.Position, deceased.Position) > WorldState.MaxInteractionDistance)
         {
             return;
         }

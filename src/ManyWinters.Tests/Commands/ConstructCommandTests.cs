@@ -13,12 +13,12 @@ public class ConstructCommandTests
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(3, 4)));
+        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(1, 1)));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
         var building = Assert.Single(world.Buildings);
         Assert.Equal(TestCatalogs.StorageHut, building.Kind);
-        Assert.Equal(new Position(3, 4), building.Position);
+        Assert.Equal(new Position(1, 1), building.Position);
     }
 
     [Fact]
@@ -59,6 +59,31 @@ public class ConstructCommandTests
 
         Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Empty(world.Buildings);
+    }
+
+    [Fact]
+    public void ConstructingAtExactlyTheMaxInteractionDistanceStillWorks()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+
+        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance, 0)));
+
+        Assert.Single(world.Buildings);
+    }
+
+    [Fact]
+    public void ConstructingBeyondTheMaxInteractionDistanceDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+
+        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance + 1, 0)));
+
+        Assert.Empty(world.Buildings);
+        Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]

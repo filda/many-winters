@@ -79,6 +79,33 @@ public class GatherCommandTests
     }
 
     [Fact]
+    public void GatheringAtExactlyTheMaxInteractionDistanceStillWorks()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(30f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void GatheringBeyondTheMaxInteractionDistanceDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance + 1, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
     public void GatheringWithAnUnknownPersonOrNodeDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();

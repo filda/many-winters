@@ -14,7 +14,7 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
         // Stryker disable once Equality: RemainingAmount never goes negative, and consuming zero is already a no-op below, so > 0 and >= 0 are indistinguishable here
         var node = world.ResourceNodes.FirstOrDefault(n => n.Id == ResourceNodeId && n.RemainingAmount > 0);
-        if (person is null || node is null)
+        if (person is null || node is null || WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
         {
             return;
         }

@@ -60,6 +60,32 @@ public class TeachCommandTests
     }
 
     [Fact]
+    public void TeachingAtExactlyTheMaxInteractionDistanceStillWorks()
+    {
+        var world = new WorldState();
+        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
+        var student = world.AddPerson("Bran", new Position(WorldState.MaxInteractionDistance, 0));
+
+        world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
+
+        Assert.Contains(TestCatalogs.EfficientForaging, student.KnownTechniques);
+    }
+
+    [Fact]
+    public void TeachingBeyondTheMaxInteractionDistanceDoesNothing()
+    {
+        var world = new WorldState();
+        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
+        var student = world.AddPerson("Bran", new Position(WorldState.MaxInteractionDistance + 1, 0));
+
+        world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
+
+        Assert.DoesNotContain(TestCatalogs.EfficientForaging, student.KnownTechniques);
+    }
+
+    [Fact]
     public void TeachingWithAnUnknownTeacherOrStudentDoesNothing()
     {
         var world = new WorldState();
