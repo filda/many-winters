@@ -56,6 +56,18 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AddPersonWithAnInitialAgeBackdatesTheBirthTick()
+    {
+        var world = new WorldState();
+        world.Clock.Advance(1000);
+
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: 300);
+
+        Assert.Equal(700, person.BirthTick);
+        Assert.Equal(1, world.AgeInYears(person));
+    }
+
+    [Fact]
     public void AddPersonTracksThemInPeople()
     {
         var world = new WorldState();

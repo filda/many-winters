@@ -10,6 +10,17 @@ public static class MapLoader
     // so the camp sits on dry ground rather than in the middle of a real river.
     private static readonly Position CampCenter = new(5, 250);
 
+    private static readonly string[] StartingNames =
+    [
+        "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
+        "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
+    ];
+
+    // A small band's age spread (winters) rather than fifteen newborns or fifteen near-identical
+    // ages - mostly young/middle, with a couple of elders (MaxLifespanYears is 10). Fixed, not
+    // randomized, for the same determinism reason as EntityVisualVariation's seeding.
+    private static readonly long[] StartingAgesInWinters = [2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5];
+
     public static LoadedMap LoadDefault(WorldConfiguration configuration)
     {
         var world = new WorldState(configuration);
@@ -19,7 +30,8 @@ public static class MapLoader
         {
             var x = (((i % columns) - (columns / 2f) + 0.5f) * 2f) + CampCenter.X;
             var z = (((i / columns) - 1) * 2f) + CampCenter.Y;
-            world.Execute(new SpawnPersonCommand($"Person {i + 1}", new Position(x, z)));
+            var initialAgeTicks = StartingAgesInWinters[i] * WorldState.TicksPerYear;
+            world.Execute(new SpawnPersonCommand(StartingNames[i], new Position(x, z), initialAgeTicks));
         }
 
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(-6f, 5f), 200f));

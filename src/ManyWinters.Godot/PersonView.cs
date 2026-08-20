@@ -12,13 +12,18 @@ public partial class PersonView : Area3D
 
     private const string AliveTexturePath = "res://Content/people/person.png";
     private const string DeadTexturePath = "res://Content/people/person_dead.png";
+    private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
+    private const float SelectionMarkerHeight = 0.5f;
+    private const float SelectionMarkerGap = 0.2f;
 
     private static readonly Color AliveColor = new(0.9f, 0.7f, 0.5f);
     private static readonly Color DeadColor = new(0.3f, 0.3f, 0.3f);
+    private static readonly Color SelectionMarkerFallbackColor = new(0.95f, 0.78f, 0.20f);
 
     private readonly PersonId _personId;
     private readonly Action<PersonId, MouseButton> _onClicked;
     private Sprite3D _sprite = null!;
+    private Sprite3D _selectionMarker = null!;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
 
@@ -37,6 +42,11 @@ public partial class PersonView : Area3D
 
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
         AddChild(_sprite);
+
+        _selectionMarker = BillboardSprite.Create(SelectionMarkerTexturePath, SelectionMarkerHeight, SelectionMarkerFallbackColor);
+        _selectionMarker.Position = new Vector3(0, (Height / 2f) + SelectionMarkerGap + (SelectionMarkerHeight / 2f), 0);
+        _selectionMarker.Visible = false;
+        AddChild(_selectionMarker);
 
         AddChild(new CollisionShape3D
         {
@@ -68,6 +78,11 @@ public partial class PersonView : Area3D
             isAlive ? AliveTexturePath : DeadTexturePath,
             Height,
             isAlive ? AliveColor : DeadColor);
+    }
+
+    public void SetSelected(bool selected)
+    {
+        _selectionMarker.Visible = selected;
     }
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)

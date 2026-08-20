@@ -36,7 +36,11 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        var expectedNames = Enumerable.Range(1, 15).Select(i => $"Person {i}");
+        var expectedNames = new[]
+        {
+            "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
+            "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
+        };
         var expectedPositions = new[]
         {
             new Position(1f, 248f), new Position(3f, 248f), new Position(5f, 248f), new Position(7f, 248f), new Position(9f, 248f),
@@ -47,6 +51,16 @@ public class MapLoaderTests
         Assert.Equal(15, map.World.People.Count);
         Assert.Equal(expectedNames, map.World.People.Select(p => p.Name));
         Assert.Equal(expectedPositions, map.World.People.Select(p => p.Position));
+    }
+
+    [Fact]
+    public void LoadDefaultGivesStartingPeopleAVariedNonZeroAgeSpread()
+    {
+        var map = LoadDefault();
+
+        var expectedAges = new long[] { 2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5 };
+
+        Assert.Equal(expectedAges, map.World.People.Select(p => map.World.AgeInYears(p)));
     }
 
     [Fact]

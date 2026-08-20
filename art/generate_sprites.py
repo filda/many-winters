@@ -367,6 +367,16 @@ def rock_pile():
     return c
 
 
+def selection_marker():
+    """A bright downward-pointing marker floated above a selected unit's head."""
+    c = Canvas()
+    gold = rgb(0.95, 0.78, 0.20)
+    tip = poly([(32, 46), (18, 18), (46, 18)])
+    c.shape(tip, gold, shade=3, light=0.35, dark=0.30)
+    c.outline(rgb(40, 28, 6))
+    return c
+
+
 SPRITES = {
     "person": person,
     "person_dead": person_dead,
@@ -380,6 +390,7 @@ SPRITES = {
     "grave_marked": grave_marked,
     "conifer_tree": conifer_tree,
     "rock_pile": rock_pile,
+    "selection_marker": selection_marker,
 }
 
 

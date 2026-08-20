@@ -515,6 +515,7 @@ public partial class Main : Node3D
 
         _selectedPersonId = id;
         _selectedGraveId = null;
+        _presenter.SetSelectedPerson(id);
         RefreshInfoLabel();
     }
 
@@ -522,6 +523,7 @@ public partial class Main : Node3D
     {
         _selectedGraveId = id;
         _selectedPersonId = null;
+        _presenter.SetSelectedPerson(null);
         RefreshInfoLabel();
     }
 

@@ -17,6 +17,7 @@ public sealed class WorldPresenter
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
+    private PersonId? _selectedPersonId;
 
     public WorldPresenter(
         Node3D container,
@@ -80,6 +81,26 @@ public sealed class WorldPresenter
         {
             view.QueueFree();
             _personViews.Remove(id);
+        }
+
+        if (_selectedPersonId == id)
+        {
+            _selectedPersonId = null;
+        }
+    }
+
+    public void SetSelectedPerson(PersonId? id)
+    {
+        if (_selectedPersonId is { } previousId && _personViews.TryGetValue(previousId, out var previousView))
+        {
+            previousView.SetSelected(false);
+        }
+
+        _selectedPersonId = id;
+
+        if (id is { } newId && _personViews.TryGetValue(newId, out var newView))
+        {
+            newView.SetSelected(true);
         }
     }
 

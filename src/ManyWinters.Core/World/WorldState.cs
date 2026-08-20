@@ -85,14 +85,14 @@ public sealed class WorldState
 
     public event Action<Grave>? GraveAdded;
 
-    public Person AddPerson(string name, Position position)
+    public Person AddPerson(string name, Position position, long initialAgeTicks = 0)
     {
         var person = new Person
         {
             Id = new PersonId(_nextPersonId++),
             Name = name,
             Position = position,
-            BirthTick = Clock.CurrentTick,
+            BirthTick = Clock.CurrentTick - initialAgeTicks,
         };
 
         _people.Add(person);
