@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 10;
+    private const int CurrentVersion = 11;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

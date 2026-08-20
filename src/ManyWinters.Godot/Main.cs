@@ -15,8 +15,31 @@ public partial class Main : Node3D
 {
     private const double TickIntervalSeconds = 1.0;
 
+    private const string HeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
+    private const string WaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
+    private const string GroundTexturePath = "res://Content/terrain/ground.png";
+    private const string ConiferTreePath = "res://Content/terrain/conifer_tree.png";
+    private const string RockPilePath = "res://Content/terrain/rock_pile.png";
+    private const int TreeCount = 90;
+    private const int RockCount = 35;
+    private const float TreeHeightMeters = 8f;
+    private const float RockHeightMeters = 1.5f;
+    private const float DecorationMinScale = 0.8f;
+    private const float DecorationMaxScale = 1.3f;
+    private const int DecorationScatterSeed = 1;
+
+    private const float InitialZoomDistance = 60f;
+    private const float MinZoom = 3f;
+    private const float MaxZoom = 2000f;
+
+    private static readonly Color TreeFallbackColor = new(0.20f, 0.32f, 0.18f);
+    private static readonly Color RockFallbackColor = new(0.5f, 0.5f, 0.52f);
+
     private WorldState _world = null!;
     private WorldPresenter _presenter = null!;
+    private TerrainRenderer _terrain = null!;
+    private FreeCameraRig _cameraRig = null!;
+    private Position _campCenter;
 
     private Label _infoLabel = null!;
     private Label _tickLabel = null!;
@@ -38,21 +61,24 @@ public partial class Main : Node3D
             SeasonParameters.Default);
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
+        _campCenter = map.CampCenter;
 
         GetViewport().PhysicsObjectPicking = true;
 
-        SetUpCamera();
         SetUpLighting();
-        SetUpGround(map.TerrainWidth, map.TerrainDepth);
+        SetUpTerrain();
+        SetUpCamera();
         SetUpUi();
 
-        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected);
+        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, _terrain.SampleHeight);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
 
     public override void _Process(double delta)
     {
+        _cameraRig.HandleInput((float)delta);
+
         _tickAccumulator += delta;
         if (_tickAccumulator < TickIntervalSeconds)
         {
@@ -75,14 +101,12 @@ public partial class Main : Node3D
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
     }
 
-    private void SetUpCamera()
+    public override void _Input(InputEvent @event)
     {
-        var camera = new Camera3D
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.T })
         {
-            Position = new Vector3(0, 8, 8),
-        };
-        AddChild(camera);
-        camera.LookAt(Vector3.Zero, Vector3.Up);
+            _cameraRig.ToggleProjection();
+        }
     }
 
     private void SetUpLighting()
@@ -93,21 +117,24 @@ public partial class Main : Node3D
         });
     }
 
-    private void SetUpGround(float width, float depth)
+    private void SetUpTerrain()
     {
-        AddChild(new MeshInstance3D
-        {
-            Mesh = new PlaneMesh { Size = new Vector2(width, depth) },
-        });
-
-        var groundBody = new StaticBody3D { InputRayPickable = true };
-        groundBody.AddChild(new CollisionShape3D
-        {
-            Shape = new BoxShape3D { Size = new Vector3(width, 0.1f, depth) },
-            Position = new Vector3(0, -0.05f, 0),
-        });
+        _terrain = new TerrainRenderer(HeightmapPath, WaterwaysPath, GroundTexturePath);
+        var groundBody = _terrain.BuildTerrainMesh(this);
         groundBody.InputEvent += OnGroundInputEvent;
-        AddChild(groundBody);
+        _terrain.BuildWaterways(this);
+
+        var rng = new Random(DecorationScatterSeed);
+        _terrain.ScatterDecoration(this, rng, TreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale);
+        _terrain.ScatterDecoration(this, rng, RockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale);
+    }
+
+    private void SetUpCamera()
+    {
+        var campX = (float)_campCenter.X;
+        var campZ = (float)_campCenter.Y;
+        var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
+        _cameraRig = new FreeCameraRig(this, campPosition, InitialZoomDistance, MinZoom, MaxZoom);
     }
 
     private void SetUpUi()
@@ -146,7 +173,7 @@ public partial class Main : Node3D
 
         box.AddChild(new Label
         {
-            Text = "Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person). Click a grave: view its record. Click empty ground: walk there (needs a selected person).",
+            Text = "WASD/arrows: pan camera. Q/E: rotate. R/F: zoom. T: toggle ortho/perspective. Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person). Click a grave: view its record. Click empty ground: walk there (needs a selected person).",
             CustomMinimumSize = new Vector2(360, 0),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
@@ -433,11 +460,14 @@ public partial class Main : Node3D
     private Position FindFreeSpawnPosition()
     {
         const float minDistance = 1.2f;
+        const float spread = 16f;
         const int maxAttempts = 20;
 
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
-            var candidate = new Position((GD.Randf() - 0.5f) * 16f, (GD.Randf() - 0.5f) * 16f);
+            var candidate = new Position(
+                _campCenter.X + ((GD.Randf() - 0.5f) * spread),
+                _campCenter.Y + ((GD.Randf() - 0.5f) * spread));
             var tooClose = _world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance);
             if (!tooClose)
             {
@@ -445,7 +475,9 @@ public partial class Main : Node3D
             }
         }
 
-        return new Position((GD.Randf() - 0.5f) * 16f, (GD.Randf() - 0.5f) * 16f);
+        return new Position(
+            _campCenter.X + ((GD.Randf() - 0.5f) * spread),
+            _campCenter.Y + ((GD.Randf() - 0.5f) * spread));
     }
 
     private Position FindFreeBuildingPosition(Position near)

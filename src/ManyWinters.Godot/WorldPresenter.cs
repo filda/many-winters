@@ -12,6 +12,7 @@ public sealed class WorldPresenter
     private readonly Action<PersonId, MouseButton> _onPersonClicked;
     private readonly Action<ResourceNodeId> _onResourceNodeSelected;
     private readonly Action<GraveId> _onGraveSelected;
+    private readonly Func<float, float, float> _sampleHeight;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
@@ -22,12 +23,14 @@ public sealed class WorldPresenter
         WorldState world,
         Action<PersonId, MouseButton> onPersonClicked,
         Action<ResourceNodeId> onResourceNodeSelected,
-        Action<GraveId> onGraveSelected)
+        Action<GraveId> onGraveSelected,
+        Func<float, float, float>? sampleHeight = null)
     {
         _container = container;
         _onPersonClicked = onPersonClicked;
         _onResourceNodeSelected = onResourceNodeSelected;
         _onGraveSelected = onGraveSelected;
+        _sampleHeight = sampleHeight ?? ((x, z) => 0f);
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
@@ -67,7 +70,7 @@ public sealed class WorldPresenter
     {
         if (_personViews.TryGetValue(id, out var view))
         {
-            view.SetTargetPosition(new Vector3(position.X, PersonView.Height / 2f, position.Y), overSeconds);
+            view.SetTargetPosition(ToVector3(position, PersonView.Height / 2f), overSeconds);
         }
     }
 
@@ -94,7 +97,7 @@ public sealed class WorldPresenter
         var view = new PersonView(person.Id, _onPersonClicked)
         {
             Name = person.Name,
-            Position = new Vector3(person.Position.X, PersonView.Height / 2f, person.Position.Y),
+            Position = ToVector3(person.Position, PersonView.Height / 2f),
         };
         _container.AddChild(view);
         _personViews[person.Id] = view;
@@ -104,7 +107,7 @@ public sealed class WorldPresenter
     {
         var view = new ResourceNodeView(node.Id, node.Kind, _onResourceNodeSelected)
         {
-            Position = new Vector3(node.Position.X, ResourceNodeView.Size / 2f, node.Position.Y),
+            Position = ToVector3(node.Position, ResourceNodeView.Size / 2f),
         };
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
@@ -114,7 +117,7 @@ public sealed class WorldPresenter
     {
         var view = new BuildingView(building.Id, building.Kind)
         {
-            Position = new Vector3(building.Position.X, BuildingView.Size / 2f, building.Position.Y),
+            Position = ToVector3(building.Position, BuildingView.Size / 2f),
         };
         _container.AddChild(view);
         _buildingViews[building.Id] = view;
@@ -124,9 +127,21 @@ public sealed class WorldPresenter
     {
         var view = new GraveView(grave.Id, grave.IsMarked, _onGraveSelected)
         {
-            Position = new Vector3(grave.Position.X, GraveView.Size / 2f, grave.Position.Y),
+            Position = ToVector3(grave.Position, GraveView.Size / 2f),
         };
         _container.AddChild(view);
         _graveViews[grave.Id] = view;
+    }
+
+    // Position is double (real-world meters, see docs/terrain-and-world-scale-architecture.md);
+    // Godot's render space stays float. Safe as long as everything stays within one small local
+    // patch - true continent-scale coordinates would need a floating-origin conversion here instead.
+    // The ground itself is real terrain (or flat, if no height sampler was given), so the vertical
+    // offset is measured from the actual terrain height under (x, z), not from a flat y = 0.
+    private Vector3 ToVector3(Position position, float y)
+    {
+        var x = (float)position.X;
+        var z = (float)position.Y;
+        return new Vector3(x, _sampleHeight(x, z) + y, z);
     }
 }

@@ -23,15 +23,14 @@ EPSG:3035 coordinates across Europe run roughly X: 1.5–7.4 million, Y: 0.9–5
 
 ## 3. Terrain data source
 
-Candidates to validate against licensing/practicality when actually fetching data — not locked in stone, but this is the shortlist:
-
-- **Elevation**: EU-DEM v1.1 (EEA, 25 m, already in EPSG:3035) as the primary source; Copernicus DEM GLO-30 as a fallback for coverage EU-DEM lacks.
-- **Hydrology / coastline**: EU-Hydro (EEA) for rivers; EU-Hydro or Natural Earth for the coastline.
+- **Elevation**: EU-DEM v1.1 (EEA, 25 m, already in EPSG:3035), queried via the public OpenTopoData API (`api.opentopodata.org`, dataset `eudem25m`) rather than downloading/parsing a raw GeoTIFF — a pragmatic substitution for the first patch; a bulk pipeline is still open if/when more patches are needed.
+- **Hydrology**: not EU-Hydro after all — real waterway centerlines (name, type, width) come from OpenStreetMap via the public Overpass API (`overpass-api.de`), which turned out to have exactly what was needed (including the actual named river running through the first patch) without needing a GIS toolchain. EU-Hydro/coastline sourcing remains open for whenever coastal patches matter.
+- Both are one-off fetches (`art/fetch_terrain.py`, `art/fetch_stream.py`) writing static JSON the game loads locally — never a runtime network call.
 
 ## 4. Simulation truth vs. visual-only detail
 
-- **Simulation truth** (Core, no Godot dependency): elevation samples at the DEM's native resolution (~25 m), exposed through a height-sampling abstraction (e.g. `ITerrainHeightSource`) that Core queries by `Position`. Tests inject a trivial flat implementation — nothing in the existing 200+ tests needs real terrain data, and none of them break from this.
-- **Visual-only** (Godot layer): anything finer than the DEM's native resolution — including the "1 m" figure from the visual plan — is mesh/rendering embellishment, not new simulation-relevant ground truth. This resolves that document's ambiguity: 1 m is a rendering target, not a data resolution.
+- **Currently visual-only, by choice**: elevation sampling (`TerrainRenderer.SampleHeight` in `ManyWinters.Godot`) stays entirely in the Godot layer for now. `ManyWinters.Core`'s simulation still only reasons in flat `(X, Y)` — nothing in it queries height. This deviates from this document's original framing (a Core-side `ITerrainHeightSource` "that Core queries"): that abstraction would be speculative with zero consumers today, which the project's own conventions argue against. It gets added *when* something real needs it (e.g. slope-affected movement speed), not ahead of that need.
+- **Visual-only, by necessity**: anything finer than the DEM's native resolution — including the "1 m" figure from the visual plan — is mesh/rendering embellishment, not new simulation-relevant ground truth. This resolves that document's ambiguity: 1 m is a rendering target, not a data resolution.
 
 ## 5. Level of detail / hierarchy
 
@@ -53,13 +52,20 @@ Not "all of Europe" — a real but small area:
 
 ## Impact on existing code
 
-- `Position`: `float` → `double`. Existing construction call sites keep compiling unchanged. Save-data records (`PersonSaveData.PositionX/Y` and the equivalents on resource nodes, buildings, and graves) change type, bumping `SaveGameService.CurrentVersion` again.
-- No behavior change to existing gameplay logic or tests — nothing today reads real-world coordinates meaningfully, so this is a type-width change, not a logic change.
+- `Position`: `float` → `double`. **Done.** Existing construction call sites kept compiling unchanged, as predicted; all 260 tests passed without modification. Save-data records (`PersonSaveData.PositionX/Y` and the equivalents on resource nodes, buildings, and graves) changed type, bumping `SaveGameService.CurrentVersion` to 11.
+- No behavior change to existing gameplay logic or tests — nothing reads real-world coordinates meaningfully yet, so this was a type-width change, not a logic change.
+- One thing this document didn't anticipate: the real EPSG:3035 *absolute* coordinate switch (multi-million-meter values) is still deferred. `Position` values today are local meters relative to the one loaded patch's own center — small numbers, safe to cast to `float` for rendering without a floating-origin conversion. That conversion becomes necessary once a second patch/tile needs to coexist with the first; until then it would be speculative.
 
 ---
 
-## Explicitly out of scope here (tracked separately)
+## Decided since this document was written
 
-- **Movement/pathfinding.** Core has no movement system today (`Position` never changes on its own tick-over-tick). Needs its own planning pass before terrain can actually "move characters," which was the original motivation for this work.
+- **Camera projection: perspective.** Deliberately left open here to be settled by experimentation once real terrain existed (`TerrainSandbox.cs`) rather than decided up front. Both were implemented and compared directly against the real elevation patch (toggle key `T`); perspective — ordinary 3D foreshortening — was kept as the default. Orthographic stays available (in both `TerrainSandbox.cs` and the live game) for future comparison.
+- **Movement.** `PersonTaskQueue`/`MoveTask`/`MoveCommand` drive `Person.Position` over real ticks in `ManyWinters.Core` (see the README's Step 2 entry).
+- **Terrain wired into the live game.** `Main.tscn` now renders the same real elevation/water/decoration `TerrainRenderer` builds for `TerrainSandbox.tscn` (both share that class, plus `FreeCameraRig` for camera controls), replacing the old flat 20×20 test plane. `MapLoader.LoadDefault`'s camp was relocated onto dry ground away from the real waterway. `WorldPresenter` samples real terrain height when placing every entity, via a height-sampling delegate passed in from `Main.cs` — Core itself still has no height concept (see section 4).
+
+## Still out of scope here (tracked separately)
+
 - **Fog of war.** Naturally maps onto the tier boundaries above (visible = Tier 2, discovered = explored Tier 1 tiles, unknown = everything else) but isn't designed yet.
-- **Camera projection** (orthographic vs. perspective). Left deliberately open — expected to be settled by experimentation against real terrain, not decided up front by a document.
+- **Terrain height affecting gameplay** (movement speed on slopes, sightlines). See section 4 — deliberately not added until something real needs it.
+- **Continent-scale coordinates / floating origin.** See "Impact on existing code" above.

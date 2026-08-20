@@ -340,6 +340,33 @@ def grave_marked():
     return c
 
 
+def conifer_tree():
+    c = Canvas()
+    trunk = rgb(0.32, 0.22, 0.14)
+    foliage = rgb(0.20, 0.34, 0.20)
+    c.shape(rect(29, 46, 35, 58), trunk, shade=1)
+    tier3 = poly([(32, 28), (56, 54), (8, 54)])
+    tier2 = poly([(32, 16), (52, 40), (12, 40)])
+    tier1 = poly([(32, 4), (48, 26), (16, 26)])
+    c.shape(tier3, foliage, shade=3, light=0.22, dark=0.30)
+    c.shape(tier2, lighten(foliage, 0.06), shade=3, light=0.24, dark=0.28)
+    c.shape(tier1, lighten(foliage, 0.12), shade=2, light=0.26, dark=0.26)
+    c.outline(rgb(14, 22, 12))
+    return c
+
+
+def rock_pile():
+    c = Canvas()
+    stone = rgb(0.5, 0.5, 0.52)
+    c.shape(ellipse(22, 44, 14, 11), stone, shade=2)
+    c.shape(ellipse(40, 46, 13, 10), darken(stone, 0.08), shade=2)
+    c.shape(ellipse(32, 36, 11, 10), lighten(stone, 0.1), shade=1)
+    c.flat(rect(19, 42, 25, 43), darken(stone, 0.35))
+    c.flat(rect(36, 44, 42, 45), darken(stone, 0.35))
+    c.outline(rgb(30, 30, 32))
+    return c
+
+
 SPRITES = {
     "person": person,
     "person_dead": person_dead,
@@ -351,6 +378,8 @@ SPRITES = {
     "storage_hut": storage_hut,
     "grave_unmarked": grave_unmarked,
     "grave_marked": grave_marked,
+    "conifer_tree": conifer_tree,
+    "rock_pile": rock_pile,
 }
 
 

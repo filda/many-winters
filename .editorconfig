@@ -13,6 +13,11 @@ indent_size = 4
 # domain terms like "...Queue" are clearer than avoiding the suffix.
 dotnet_diagnostic.CA1711.severity = none
 
+# CA1001: Godot Node/Camera3D lifetime is managed by the scene tree (freed via QueueFree
+# through their parent), not by C# IDisposable/using - implementing IDisposable on a class
+# that merely holds node references for scene composition would be misleading, not a real fix.
+dotnet_diagnostic.CA1001.severity = none
+
 [*.{csproj,sln}]
 indent_size = 2
 

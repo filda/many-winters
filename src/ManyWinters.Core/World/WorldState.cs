@@ -154,11 +154,11 @@ public sealed class WorldState
 
     public void Execute(ICommand command) => command.Execute(this);
 
-    public static float Distance(Position a, Position b)
+    public static double Distance(Position a, Position b)
     {
         var dx = a.X - b.X;
         var dy = a.Y - b.Y;
-        return MathF.Sqrt((dx * dx) + (dy * dy));
+        return Math.Sqrt((dx * dx) + (dy * dy));
     }
 
     public long AgeInYears(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerYear;

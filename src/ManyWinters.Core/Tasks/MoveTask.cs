@@ -27,7 +27,7 @@ public sealed class MoveTask : PersonTask
 
         var dx = Destination.X - person.Position.X;
         var dy = Destination.Y - person.Position.Y;
-        var distance = MathF.Sqrt((dx * dx) + (dy * dy));
+        var distance = Math.Sqrt((dx * dx) + (dy * dy));
 
         if (distance <= _speedPerTick)
         {

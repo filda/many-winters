@@ -9,12 +9,11 @@ public class MapLoaderTests
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
 
     [Fact]
-    public void LoadDefaultReturnsTheExpectedTerrainSize()
+    public void LoadDefaultReturnsTheCampCenterUsedToPlaceEverything()
     {
         var map = LoadDefault();
 
-        Assert.Equal(20f, map.TerrainWidth);
-        Assert.Equal(20f, map.TerrainDepth);
+        Assert.Equal(new Position(5, 250), map.CampCenter);
     }
 
     [Fact]
@@ -40,9 +39,9 @@ public class MapLoaderTests
         var expectedNames = Enumerable.Range(1, 15).Select(i => $"Person {i}");
         var expectedPositions = new[]
         {
-            new Position(-4f, -2f), new Position(-2f, -2f), new Position(0f, -2f), new Position(2f, -2f), new Position(4f, -2f),
-            new Position(-4f, 0f), new Position(-2f, 0f), new Position(0f, 0f), new Position(2f, 0f), new Position(4f, 0f),
-            new Position(-4f, 2f), new Position(-2f, 2f), new Position(0f, 2f), new Position(2f, 2f), new Position(4f, 2f),
+            new Position(1f, 248f), new Position(3f, 248f), new Position(5f, 248f), new Position(7f, 248f), new Position(9f, 248f),
+            new Position(1f, 250f), new Position(3f, 250f), new Position(5f, 250f), new Position(7f, 250f), new Position(9f, 250f),
+            new Position(1f, 252f), new Position(3f, 252f), new Position(5f, 252f), new Position(7f, 252f), new Position(9f, 252f),
         };
 
         Assert.Equal(15, map.World.People.Count);
@@ -57,12 +56,12 @@ public class MapLoaderTests
 
         var expected = new[]
         {
-            (TestCatalogs.Apple, new Position(-6f, 5f), 200f),
-            (TestCatalogs.Pear, new Position(0f, -5f), 200f),
-            (TestCatalogs.Mushroom, new Position(6f, 5f), 200f),
-            (TestCatalogs.Potato, new Position(-6f, -5f), 200f),
-            (TestCatalogs.Apple, new Position(6f, -5f), 200f),
-            (TestCatalogs.Wood, new Position(0f, 5f), 300f),
+            (TestCatalogs.Apple, new Position(-1f, 255f), 200f),
+            (TestCatalogs.Pear, new Position(5f, 245f), 200f),
+            (TestCatalogs.Mushroom, new Position(11f, 255f), 200f),
+            (TestCatalogs.Potato, new Position(-1f, 245f), 200f),
+            (TestCatalogs.Apple, new Position(11f, 245f), 200f),
+            (TestCatalogs.Wood, new Position(5f, 255f), 300f),
         };
 
         Assert.Equal(6, map.World.ResourceNodes.Count);

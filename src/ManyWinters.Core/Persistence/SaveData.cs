@@ -20,8 +20,8 @@ public sealed record SaveData(
 public sealed record PersonSaveData(
     int Id,
     string Name,
-    float PositionX,
-    float PositionY,
+    double PositionX,
+    double PositionY,
     bool IsAlive,
     float Hunger,
     float Fatigue,
@@ -39,23 +39,23 @@ public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 public sealed record ResourceNodeSaveData(
     int Id,
     ResourceKindId Kind,
-    float PositionX,
-    float PositionY,
+    double PositionX,
+    double PositionY,
     float RemainingAmount,
     float MaxAmount);
 
 public sealed record BuildingSaveData(
     int Id,
     BuildingKindId Kind,
-    float PositionX,
-    float PositionY,
+    double PositionX,
+    double PositionY,
     float Condition,
     IReadOnlyList<ItemStackSaveData> Inventory);
 
 public sealed record GraveSaveData(
     int Id,
-    float PositionX,
-    float PositionY,
+    double PositionX,
+    double PositionY,
     bool IsMarked,
     string? Name,
     int? AgeAtDeath,
