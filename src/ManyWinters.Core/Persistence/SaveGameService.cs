@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -7,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 9;
+    private const int CurrentVersion = 10;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -28,7 +29,10 @@ public static class SaveGameService
                 person.Needs.Fatigue,
                 person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
                 person.KnownTechniques.ToList(),
-                person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList()))
+                person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
+                person.BirthTick,
+                person.DeathTick,
+                person.IsBuried))
             .ToList();
 
         var resourceNodes = world.ResourceNodes
@@ -51,6 +55,17 @@ public static class SaveGameService
                 building.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList()))
             .ToList();
 
+        var graves = world.Graves
+            .Select(grave => new GraveSaveData(
+                grave.Id.Value,
+                grave.Position.X,
+                grave.Position.Y,
+                grave.IsMarked,
+                grave.Name,
+                grave.AgeAtDeath,
+                grave.KnownTechniques))
+            .ToList();
+
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
@@ -59,7 +74,9 @@ public static class SaveGameService
             world.NextResourceNodeId,
             resourceNodes,
             world.NextBuildingId,
-            buildings);
+            buildings,
+            world.NextGraveId,
+            graves);
     }
 
     public static WorldState FromSaveData(SaveData data, WorldConfiguration? configuration = null)
@@ -75,6 +92,9 @@ public static class SaveGameService
                 Name = personData.Name,
                 Position = new Position(personData.PositionX, personData.PositionY),
                 IsAlive = personData.IsAlive,
+                BirthTick = personData.BirthTick,
+                DeathTick = personData.DeathTick,
+                IsBuried = personData.IsBuried,
             };
             person.Needs.Hunger = personData.Hunger;
             person.Needs.Fatigue = personData.Fatigue;
@@ -133,6 +153,23 @@ public static class SaveGameService
         }
 
         world.SetNextBuildingId(data.NextBuildingId);
+
+        foreach (var graveData in data.Graves)
+        {
+            var grave = new Grave
+            {
+                Id = new GraveId(graveData.Id),
+                Position = new Position(graveData.PositionX, graveData.PositionY),
+                IsMarked = graveData.IsMarked,
+                Name = graveData.Name,
+                AgeAtDeath = graveData.AgeAtDeath,
+                KnownTechniques = graveData.KnownTechniques,
+            };
+
+            world.RestoreGrave(grave);
+        }
+
+        world.SetNextGraveId(data.NextGraveId);
         return world;
     }
 

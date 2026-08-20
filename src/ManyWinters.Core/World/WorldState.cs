@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
@@ -9,19 +10,24 @@ namespace ManyWinters.Core.World;
 
 public sealed class WorldState
 {
+    public const long TicksPerYear = TicksPerSeason * SeasonsPerYear;
+
+    private const long TicksPerSeason = 75;
+    private const long SeasonsPerYear = 4;
     private const float HungerPerTick = 1f;
     private const float MaxHunger = 100f;
     private const float ConditionDecayPerTick = 0.05f;
     private const float MinCondition = 0f;
-    private const long TicksPerSeason = 75;
-    private const long SeasonsPerYear = 4;
+    private const long MaxLifespanYears = 10;
 
     private readonly List<Person> _people = new();
     private readonly List<ResourceNode> _resourceNodes = new();
     private readonly List<Building> _buildings = new();
+    private readonly List<Grave> _graves = new();
     private int _nextPersonId = 1;
     private int _nextResourceNodeId = 1;
     private int _nextBuildingId = 1;
+    private int _nextGraveId = 1;
 
     public WorldState()
         : this(WorldConfiguration.Empty)
@@ -58,11 +64,15 @@ public sealed class WorldState
 
     public IReadOnlyList<Building> Buildings => _buildings;
 
+    public IReadOnlyList<Grave> Graves => _graves;
+
     public int NextPersonId => _nextPersonId;
 
     public int NextResourceNodeId => _nextResourceNodeId;
 
     public int NextBuildingId => _nextBuildingId;
+
+    public int NextGraveId => _nextGraveId;
 
     public Season CurrentSeason => SeasonAt(Clock.CurrentTick);
 
@@ -72,6 +82,8 @@ public sealed class WorldState
 
     public event Action<Building>? BuildingAdded;
 
+    public event Action<Grave>? GraveAdded;
+
     public Person AddPerson(string name, Position position)
     {
         var person = new Person
@@ -79,6 +91,7 @@ public sealed class WorldState
             Id = new PersonId(_nextPersonId++),
             Name = name,
             Position = position,
+            BirthTick = Clock.CurrentTick,
         };
 
         _people.Add(person);
@@ -116,7 +129,33 @@ public sealed class WorldState
         return building;
     }
 
+    public Grave AddGrave(
+        Position position,
+        bool isMarked,
+        string? name,
+        int? ageAtDeath,
+        IReadOnlyList<TechniqueId> knownTechniques)
+    {
+        var grave = new Grave
+        {
+            Id = new GraveId(_nextGraveId++),
+            Position = position,
+            IsMarked = isMarked,
+            Name = name,
+            AgeAtDeath = ageAtDeath,
+            KnownTechniques = knownTechniques,
+        };
+
+        _graves.Add(grave);
+        GraveAdded?.Invoke(grave);
+        return grave;
+    }
+
     public void Execute(ICommand command) => command.Execute(this);
+
+    public long AgeInYears(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerYear;
+
+    public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerSeason;
 
     public void Advance(long ticks)
     {
@@ -125,20 +164,27 @@ public sealed class WorldState
 
         for (var i = 0L; i < ticks; i++)
         {
+            var currentTick = startTick + i + 1;
             var climate = SeasonParameters.ClimateFor(SeasonAt(startTick + i));
             var baseHungerMultiplier = SeasonParameters.HungerMultiplierFor(climate);
             var regenMultiplier = SeasonParameters.RegenMultiplierFor(climate);
 
             foreach (var person in _people)
             {
+                if (!person.IsAlive)
+                {
+                    continue;
+                }
+
                 var insulation = person.Inventory.Counts.Keys.Sum(kind => ItemCatalog.InsulationFor(kind));
                 var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
-                var hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);
-                person.Needs.Hunger = hunger;
+                person.Needs.Hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);
 
-                if (hunger >= MaxHunger)
+                var age = (currentTick - person.BirthTick) / TicksPerYear;
+                if (person.Needs.Hunger >= MaxHunger || age >= MaxLifespanYears)
                 {
                     person.IsAlive = false;
+                    person.DeathTick = currentTick;
                 }
             }
 
@@ -168,4 +214,8 @@ public sealed class WorldState
     internal void RestoreBuilding(Building building) => _buildings.Add(building);
 
     internal void SetNextBuildingId(int value) => _nextBuildingId = value;
+
+    internal void RestoreGrave(Grave grave) => _graves.Add(grave);
+
+    internal void SetNextGraveId(int value) => _nextGraveId = value;
 }

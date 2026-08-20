@@ -13,7 +13,9 @@ public sealed record SaveData(
     int NextResourceNodeId,
     IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
     int NextBuildingId,
-    IReadOnlyList<BuildingSaveData> Buildings);
+    IReadOnlyList<BuildingSaveData> Buildings,
+    int NextGraveId,
+    IReadOnlyList<GraveSaveData> Graves);
 
 public sealed record PersonSaveData(
     int Id,
@@ -25,7 +27,10 @@ public sealed record PersonSaveData(
     float Fatigue,
     IReadOnlyList<SkillLevelSaveData> Skills,
     IReadOnlyList<TechniqueId> KnownTechniques,
-    IReadOnlyList<ItemStackSaveData> Inventory);
+    IReadOnlyList<ItemStackSaveData> Inventory,
+    long BirthTick,
+    long? DeathTick,
+    bool IsBuried);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
@@ -46,3 +51,12 @@ public sealed record BuildingSaveData(
     float PositionY,
     float Condition,
     IReadOnlyList<ItemStackSaveData> Inventory);
+
+public sealed record GraveSaveData(
+    int Id,
+    float PositionX,
+    float PositionY,
+    bool IsMarked,
+    string? Name,
+    int? AgeAtDeath,
+    IReadOnlyList<TechniqueId> KnownTechniques);

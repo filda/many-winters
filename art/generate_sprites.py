@@ -308,6 +308,38 @@ def storage_hut():
     return c
 
 
+def grave_unmarked():
+    """A bare dirt mound - no stone, no name, nothing left to read."""
+    c = Canvas()
+    dirt = rgb(0.36, 0.26, 0.16)
+    dirt_dark = darken(dirt, 0.32)
+    mound = (ellipse(32, 46, 24, 15) | ellipse(18, 50, 12, 9) | ellipse(47, 49, 12, 9)) & ~rect(0, 0, S, 32)
+    c.shape(mound, dirt, shade=3, light=0.30, dark=0.30)
+    for px, py in ((22, 42), (36, 38), (46, 44), (26, 52), (42, 52)):
+        c.flat(ellipse(px, py, 3, 2) & mound, dirt_dark)
+    stone = rgb(0.5, 0.5, 0.52)
+    for px, py, r in ((16, 46, 3), (49, 44, 2), (30, 34, 2)):
+        c.shape(ellipse(px, py, r, r - 1), stone, shade=1)
+    c.outline(rgb(18, 12, 6))
+    return c
+
+
+def grave_marked():
+    """A carved headstone planted in a small mound - the record survives."""
+    c = Canvas()
+    dirt = rgb(0.36, 0.26, 0.16)
+    stone = rgb(0.62, 0.62, 0.66)
+    rune = darken(stone, 0.45)
+    mound = ellipse(32, 54, 20, 8) & ~rect(0, 0, S, 48)
+    c.shape(mound, dirt, shade=2, light=0.22, dark=0.30)
+    slab = rect(22, 24, 42, 50) | (ellipse(32, 24, 10, 10) & ~rect(0, 24, S, S))
+    c.shape(slab, stone, shade=4, light=0.32, dark=0.26)
+    c.flat(rect(30, 28, 34, 44) & slab, rune)
+    c.flat(rect(25, 33, 39, 37) & slab, rune)
+    c.outline(rgb(18, 18, 20))
+    return c
+
+
 SPRITES = {
     "person": person,
     "person_dead": person_dead,
@@ -317,6 +349,8 @@ SPRITES = {
     "potato": potato,
     "mushroom": mushroom,
     "storage_hut": storage_hut,
+    "grave_unmarked": grave_unmarked,
+    "grave_marked": grave_marked,
 }
 
 

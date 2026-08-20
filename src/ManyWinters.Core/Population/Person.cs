@@ -15,6 +15,12 @@ public sealed class Person
 
     public bool IsAlive { get; set; } = true;
 
+    public required long BirthTick { get; init; }
+
+    public long? DeathTick { get; set; }
+
+    public bool IsBuried { get; set; }
+
     public Needs Needs { get; init; } = new();
 
     public Skills Skills { get; init; } = new();

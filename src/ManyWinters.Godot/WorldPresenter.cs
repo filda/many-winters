@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -10,23 +11,28 @@ public sealed class WorldPresenter
     private readonly Node3D _container;
     private readonly Action<PersonId, MouseButton> _onPersonClicked;
     private readonly Action<ResourceNodeId> _onResourceNodeSelected;
+    private readonly Action<GraveId> _onGraveSelected;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
+    private readonly Dictionary<GraveId, GraveView> _graveViews = new();
 
     public WorldPresenter(
         Node3D container,
         WorldState world,
         Action<PersonId, MouseButton> onPersonClicked,
-        Action<ResourceNodeId> onResourceNodeSelected)
+        Action<ResourceNodeId> onResourceNodeSelected,
+        Action<GraveId> onGraveSelected)
     {
         _container = container;
         _onPersonClicked = onPersonClicked;
         _onResourceNodeSelected = onResourceNodeSelected;
+        _onGraveSelected = onGraveSelected;
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
         world.BuildingAdded += CreateBuildingView;
+        world.GraveAdded += CreateGraveView;
 
         foreach (var person in world.People)
         {
@@ -42,6 +48,11 @@ public sealed class WorldPresenter
         {
             CreateBuildingView(building);
         }
+
+        foreach (var grave in world.Graves)
+        {
+            CreateGraveView(grave);
+        }
     }
 
     public void SetPersonAlive(PersonId id, bool isAlive)
@@ -49,6 +60,15 @@ public sealed class WorldPresenter
         if (_personViews.TryGetValue(id, out var view))
         {
             view.SetAlive(isAlive);
+        }
+    }
+
+    public void RemovePersonView(PersonId id)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _personViews.Remove(id);
         }
     }
 
@@ -90,5 +110,15 @@ public sealed class WorldPresenter
         };
         _container.AddChild(view);
         _buildingViews[building.Id] = view;
+    }
+
+    private void CreateGraveView(Grave grave)
+    {
+        var view = new GraveView(grave.Id, grave.IsMarked, _onGraveSelected)
+        {
+            Position = new Vector3(grave.Position.X, GraveView.Size / 2f, grave.Position.Y),
+        };
+        _container.AddChild(view);
+        _graveViews[grave.Id] = view;
     }
 }

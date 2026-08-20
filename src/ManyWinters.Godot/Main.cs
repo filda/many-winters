@@ -1,9 +1,11 @@
 using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot;
@@ -18,7 +20,9 @@ public partial class Main : Node3D
     private Label _infoLabel = null!;
     private Label _tickLabel = null!;
     private Label _buildingsLabel = null!;
+    private Label _gravesLabel = null!;
     private PersonId? _selectedPersonId;
+    private GraveId? _selectedGraveId;
     private double _tickAccumulator;
 
     public override void _Ready()
@@ -41,7 +45,7 @@ public partial class Main : Node3D
         SetUpGround(map.TerrainWidth, map.TerrainDepth);
         SetUpUi();
 
-        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected);
+        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -59,6 +63,7 @@ public partial class Main : Node3D
         _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}  Season: {_world.CurrentSeason}";
         RefreshInfoLabel();
         RefreshBuildingsLabel();
+        RefreshGravesLabel();
 
         foreach (var person in _world.People)
         {
@@ -130,7 +135,7 @@ public partial class Main : Node3D
 
         box.AddChild(new Label
         {
-            Text = "Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person).",
+            Text = "Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person). Click a grave: view its record.",
             CustomMinimumSize = new Vector2(360, 0),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
@@ -166,8 +171,15 @@ public partial class Main : Node3D
         withdrawButton.Pressed += OnWithdrawButtonPressed;
         box.AddChild(withdrawButton);
 
+        var buryButton = new Button { Text = "Bury Nearest Dead Person (selected person)" };
+        buryButton.Pressed += OnBuryButtonPressed;
+        box.AddChild(buryButton);
+
         _buildingsLabel = new Label { Text = "Buildings: none" };
         box.AddChild(_buildingsLabel);
+
+        _gravesLabel = new Label { Text = "Graves: none" };
+        box.AddChild(_gravesLabel);
     }
 
     private void SetUpInspectorPanel(CanvasLayer canvas)
@@ -347,8 +359,41 @@ public partial class Main : Node3D
         RefreshBuildingsLabel();
     }
 
+    private void OnBuryButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then bury.";
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var deceased = FindNearestUnburiedDeceased(person.Position);
+        if (deceased is null)
+        {
+            _infoLabel.Text = "No one left to bury.";
+            return;
+        }
+
+        _world.Execute(new BuryCommand(personId, deceased.Id));
+        _presenter.RemovePersonView(deceased.Id);
+        RefreshInfoLabel();
+        RefreshGravesLabel();
+    }
+
     private Building? FindNearestBuilding(Position position) =>
         _world.Buildings.OrderBy(b => Distance(b.Position, position)).FirstOrDefault();
+
+    private Person? FindNearestUnburiedDeceased(Position position) =>
+        _world.People
+            .Where(p => !p.IsAlive && !p.IsBuried)
+            .OrderBy(p => Distance(p.Position, position))
+            .FirstOrDefault();
 
     private Position FindFreeSpawnPosition()
     {
@@ -406,6 +451,14 @@ public partial class Main : Node3D
         }
 
         _selectedPersonId = id;
+        _selectedGraveId = null;
+        RefreshInfoLabel();
+    }
+
+    private void OnGraveSelected(GraveId id)
+    {
+        _selectedGraveId = id;
+        _selectedPersonId = null;
         RefreshInfoLabel();
     }
 
@@ -451,6 +504,13 @@ public partial class Main : Node3D
 
     private void RefreshInfoLabel()
     {
+        if (_selectedGraveId is { } graveId)
+        {
+            var grave = _world.Graves.FirstOrDefault(g => g.Id == graveId);
+            _infoLabel.Text = grave is null ? "No selection." : GraveText(grave);
+            return;
+        }
+
         var person = _selectedPersonId is { } id ? _world.People.FirstOrDefault(p => p.Id == id) : null;
         if (person is null)
         {
@@ -471,10 +531,28 @@ public partial class Main : Node3D
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
+            $"Age: {AgeText(person)}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
             $"Inventory: {inventory}";
+    }
+
+    private static string GraveText(Grave grave)
+    {
+        if (!grave.IsMarked)
+        {
+            return $"{grave.Id}\nPosition: {grave.Position}\nUnmarked grave - no record survives.";
+        }
+
+        var techniques = grave.KnownTechniques.Count > 0
+            ? string.Join(", ", grave.KnownTechniques)
+            : "none";
+        return
+            $"{grave.Id}\n" +
+            $"Position: {grave.Position}\n" +
+            $"{grave.Name}, died at age {grave.AgeAtDeath} winter{(grave.AgeAtDeath == 1 ? "" : "s")}\n" +
+            $"Known techniques: {techniques}";
     }
 
     private void RefreshBuildingsLabel()
@@ -482,6 +560,23 @@ public partial class Main : Node3D
         _buildingsLabel.Text = "Buildings: " + (_world.Buildings.Count > 0
             ? string.Join(", ", _world.Buildings.Select(BuildingSummary))
             : "none");
+    }
+
+    private string AgeText(Person person)
+    {
+        var winters = _world.AgeInYears(person);
+        if (winters >= 1)
+        {
+            return $"{winters} winter{(winters == 1 ? "" : "s")}";
+        }
+
+        var seasons = _world.AgeInSeasons(person);
+        return $"{seasons} season{(seasons == 1 ? "" : "s")}";
+    }
+
+    private void RefreshGravesLabel()
+    {
+        _gravesLabel.Text = $"Graves: {_world.Graves.Count}";
     }
 
     private static string BuildingSummary(Building building)

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
@@ -85,6 +86,178 @@ public class WorldStateTests
         world.Advance(1);
 
         Assert.False(person.IsAlive);
+    }
+
+    [Fact]
+    public void AgeInYearsIsZeroForANewbornPerson()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(0, world.AgeInYears(person));
+    }
+
+    [Fact]
+    public void AgeInYearsIncreasesAfterAFullYearPasses()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(WorldState.TicksPerYear);
+
+        Assert.Equal(1, world.AgeInYears(person));
+    }
+
+    [Fact]
+    public void AgeInSeasonsIsZeroForANewbornPerson()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(0, world.AgeInSeasons(person));
+    }
+
+    [Fact]
+    public void AgeInSeasonsIncreasesAfterASeasonPasses()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(75);
+
+        Assert.Equal(1, world.AgeInSeasons(person));
+    }
+
+    [Fact]
+    public void AgeInSeasonsAccountsForThePersonsBirthTickNotJustElapsedWorldTime()
+    {
+        var world = new WorldState();
+        world.Advance(75);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(75);
+
+        Assert.Equal(1, world.AgeInSeasons(person));
+    }
+
+    [Fact]
+    public void AgeInYearsAccountsForThePersonsBirthTickNotJustElapsedWorldTime()
+    {
+        var world = new WorldState();
+        world.Advance(WorldState.TicksPerYear);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(WorldState.TicksPerYear);
+
+        Assert.Equal(1, world.AgeInYears(person));
+    }
+
+    [Fact]
+    public void AdvanceAssignsTheExactCurrentTickWhenDeathOccursMidwayThroughAMultiTickAdvance()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 98;
+
+        world.Advance(3);
+
+        Assert.Equal(2, person.DeathTick);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotKeepUpdatingDeathTickForAnAlreadyDeadPerson()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(100);
+        Assert.Equal(100, person.DeathTick);
+
+        world.Advance(10);
+
+        Assert.Equal(100, person.DeathTick);
+    }
+
+    [Fact]
+    public void AdvanceSubtractsBirthTickRatherThanAddingItWhenCheckingOldAgeDeath()
+    {
+        var world = new WorldState();
+        world.Clock.Advance(2900);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(1);
+
+        Assert.True(person.IsAlive);
+    }
+
+    [Fact]
+    public void AdvanceKillsAPersonWhoReachesTheMaximumLifespanEvenWhenNeverHungry()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        // MaxLifespanYears is 10; feed the person back to zero after every tick so only
+        // old age - never hunger - can be responsible for their death.
+        for (var tick = 0; tick < (WorldState.TicksPerYear * 10) - 1; tick++)
+        {
+            world.Advance(1);
+            person.Needs.Hunger = 0;
+        }
+
+        Assert.True(person.IsAlive);
+
+        world.Advance(1);
+
+        Assert.False(person.IsAlive);
+        Assert.Equal(WorldState.TicksPerYear * 10, person.DeathTick);
+    }
+
+    [Fact]
+    public void AddGraveAssignsSequentialUniqueIds()
+    {
+        var world = new WorldState();
+
+        var first = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+        var second = world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.Equal(1, first.Id.Value);
+        Assert.Equal(2, second.Id.Value);
+    }
+
+    [Fact]
+    public void AddGraveTracksItInGraves()
+    {
+        var world = new WorldState();
+
+        var grave = world.AddGrave(new Position(2, 3), isMarked: true, name: "Ava", ageAtDeath: 5, knownTechniques: []);
+
+        var tracked = Assert.Single(world.Graves);
+        Assert.Same(grave, tracked);
+        Assert.Equal(new Position(2, 3), tracked.Position);
+        Assert.True(tracked.IsMarked);
+        Assert.Equal("Ava", tracked.Name);
+        Assert.Equal(5, tracked.AgeAtDeath);
+    }
+
+    [Fact]
+    public void AddGraveRaisesGraveAddedWithTheNewGrave()
+    {
+        var world = new WorldState();
+        Grave? raised = null;
+        world.GraveAdded += g => raised = g;
+
+        var grave = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+
+        Assert.Same(grave, raised);
+    }
+
+    [Fact]
+    public void AddGraveDoesNotThrowWhenNothingIsSubscribedToGraveAdded()
+    {
+        var world = new WorldState();
+
+        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
     }
 
     [Fact]
@@ -296,11 +469,10 @@ public class WorldStateTests
     public void AdvanceAcrossTheWinterBoundaryAppliesEachTicksOwnRate()
     {
         var world = new WorldState();
+        world.Advance(224);
         var person = world.AddPerson("Ava", new Position(0, 0));
 
         // Ticks 224 (Autumn) and 225 (Winter): 1 + 2 = 3 hunger, not a flat rate for both.
-        world.Advance(224);
-        person.Needs.Hunger = 0;
         world.Advance(2);
 
         Assert.Equal(3f, person.Needs.Hunger);

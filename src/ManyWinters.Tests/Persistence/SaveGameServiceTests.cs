@@ -20,6 +20,8 @@ public class SaveGameServiceTests
         var bran = world.AddPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
+        bran.DeathTick = 42;
+        bran.IsBuried = true;
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
         node.RemainingAmount = 10f;
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
@@ -44,9 +46,15 @@ public class SaveGameServiceTests
             Assert.Equal(ava.Skills.Get(TestCatalogs.Foraging), restoredAva.Skills.Get(TestCatalogs.Foraging));
             Assert.Equal(ava.KnownTechniques, restoredAva.KnownTechniques);
             Assert.Equal(ava.Inventory.Get(TestCatalogs.WoodItem), restoredAva.Inventory.Get(TestCatalogs.WoodItem));
+            Assert.Equal(ava.BirthTick, restoredAva.BirthTick);
+            Assert.Null(restoredAva.DeathTick);
+            Assert.False(restoredAva.IsBuried);
 
             var restoredBran = restored.People.Single(p => p.Name == "Bran");
             Assert.False(restoredBran.IsAlive);
+            Assert.Equal(bran.BirthTick, restoredBran.BirthTick);
+            Assert.Equal(42, restoredBran.DeathTick);
+            Assert.True(restoredBran.IsBuried);
 
             Assert.Equal(world.ResourceNodes.Count, restored.ResourceNodes.Count);
             var restoredNode = Assert.Single(restored.ResourceNodes);
@@ -63,6 +71,73 @@ public class SaveGameServiceTests
             Assert.Equal(building.Position, restoredBuilding.Position);
             Assert.Equal(building.Condition, restoredBuilding.Condition);
             Assert.Equal(building.Inventory.Get(TestCatalogs.WoodItem), restoredBuilding.Inventory.Get(TestCatalogs.WoodItem));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void RoundTripPreservesGraves()
+    {
+        var world = new WorldState();
+        var markedGrave = world.AddGrave(
+            new Position(1f, 2f),
+            isMarked: true,
+            name: "Ava",
+            ageAtDeath: 5,
+            knownTechniques: [TestCatalogs.EfficientForaging]);
+        var anonymousGrave = world.AddGrave(
+            new Position(3f, 4f),
+            isMarked: false,
+            name: null,
+            ageAtDeath: null,
+            knownTechniques: []);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path);
+
+            Assert.Equal(2, restored.Graves.Count);
+
+            var restoredMarked = restored.Graves.Single(g => g.Id == markedGrave.Id);
+            Assert.Equal(markedGrave.Position, restoredMarked.Position);
+            Assert.True(restoredMarked.IsMarked);
+            Assert.Equal("Ava", restoredMarked.Name);
+            Assert.Equal(5, restoredMarked.AgeAtDeath);
+            Assert.Equal(markedGrave.KnownTechniques, restoredMarked.KnownTechniques);
+
+            var restoredAnonymous = restored.Graves.Single(g => g.Id == anonymousGrave.Id);
+            Assert.False(restoredAnonymous.IsMarked);
+            Assert.Null(restoredAnonymous.Name);
+            Assert.Null(restoredAnonymous.AgeAtDeath);
+            Assert.Empty(restoredAnonymous.KnownTechniques);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void RestoredWorldContinuesGraveIdSequenceWithoutCollisions()
+    {
+        var world = new WorldState();
+        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+        world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path);
+
+            var newGrave = restored.AddGrave(new Position(2, 2), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+
+            Assert.DoesNotContain(restored.Graves, g => g != newGrave && g.Id == newGrave.Id);
         }
         finally
         {

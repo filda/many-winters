@@ -18,11 +18,13 @@ public static class TestCatalogs
     public static readonly SkillTypeId MushroomForaging = new("mushroom_foraging");
     public static readonly SkillTypeId RootDigging = new("root_digging");
     public static readonly SkillTypeId Woodcutting = new("woodcutting");
+    public static readonly SkillTypeId Burial = new("burial");
 
     public static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     public static readonly TechniqueId EfficientMushroomForaging = new("efficient_mushroom_foraging");
     public static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
+    public static readonly TechniqueId EfficientBurial = new("efficient_burial");
 
     public static readonly ItemKindId WoodItem = new("wood");
     public static readonly ItemKindId Axe = new("axe");
@@ -57,6 +59,7 @@ public static class TestCatalogs
         new SkillDefinition(MushroomForaging, "Mushroom Foraging", EfficientMushroomForaging),
         new SkillDefinition(RootDigging, "Root Digging", EfficientRootDigging),
         new SkillDefinition(Woodcutting, "Woodcutting", EfficientWoodcutting, Axe, AxeHarvestBonus),
+        new SkillDefinition(Burial, "Burial", EfficientBurial),
     });
 
     public static RecipeCatalog CreateRecipeCatalog() => new(new[]
