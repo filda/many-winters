@@ -63,6 +63,14 @@ public sealed class WorldPresenter
         }
     }
 
+    public void SetPersonPosition(PersonId id, Position position)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.Position = new Vector3(position.X, PersonView.Height / 2f, position.Y);
+        }
+    }
+
     public void RemovePersonView(PersonId id)
     {
         if (_personViews.TryGetValue(id, out var view))

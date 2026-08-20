@@ -176,6 +176,8 @@ public sealed class WorldState
                     continue;
                 }
 
+                person.Tasks.Advance(person);
+
                 var insulation = person.Inventory.Counts.Keys.Sum(kind => ItemCatalog.InsulationFor(kind));
                 var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
                 person.Needs.Hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);

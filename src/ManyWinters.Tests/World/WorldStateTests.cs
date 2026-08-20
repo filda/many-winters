@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
@@ -258,6 +259,46 @@ public class WorldStateTests
         var world = new WorldState();
 
         world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, knownTechniques: []);
+    }
+
+    [Fact]
+    public void AdvanceMovesAPersonWithAnActiveMoveTaskTowardTheirDestination()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new MoveCommand(person.Id, new Position(10, 0)));
+
+        world.Advance(3);
+
+        Assert.Equal(new Position(3, 0), person.Position);
+    }
+
+    [Fact]
+    public void AdvanceStopsMovingAPersonOnceTheyReachTheirDestination()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
+
+        world.Advance(10);
+
+        Assert.Equal(new Position(2, 0), person.Position);
+    }
+
+    [Fact]
+    public void AdvanceStopsMovingAPersonOnceTheyDieFromHunger()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new MoveCommand(person.Id, new Position(1000, 0)));
+
+        world.Advance(100);
+        Assert.False(person.IsAlive);
+        var positionAtDeath = person.Position;
+
+        world.Advance(10);
+
+        Assert.Equal(positionAtDeath, person.Position);
     }
 
     [Fact]

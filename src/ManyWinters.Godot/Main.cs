@@ -6,6 +6,7 @@ using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot;
@@ -68,6 +69,7 @@ public partial class Main : Node3D
         foreach (var person in _world.People)
         {
             _presenter.SetPersonAlive(person.Id, person.IsAlive);
+            _presenter.SetPersonPosition(person.Id, person.Position);
         }
 
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
@@ -97,6 +99,15 @@ public partial class Main : Node3D
         {
             Mesh = new PlaneMesh { Size = new Vector2(width, depth) },
         });
+
+        var groundBody = new StaticBody3D { InputRayPickable = true };
+        groundBody.AddChild(new CollisionShape3D
+        {
+            Shape = new BoxShape3D { Size = new Vector3(width, 0.1f, depth) },
+            Position = new Vector3(0, -0.05f, 0),
+        });
+        groundBody.InputEvent += OnGroundInputEvent;
+        AddChild(groundBody);
     }
 
     private void SetUpUi()
@@ -135,7 +146,7 @@ public partial class Main : Node3D
 
         box.AddChild(new Label
         {
-            Text = "Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person). Click a grave: view its record.",
+            Text = "Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person). Click a grave: view its record. Click empty ground: walk there (needs a selected person).",
             CustomMinimumSize = new Vector2(360, 0),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
@@ -502,6 +513,23 @@ public partial class Main : Node3D
         RefreshInfoLabel();
     }
 
+    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
+    {
+        if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        {
+            return;
+        }
+
+        if (_selectedPersonId is not { } personId)
+        {
+            _infoLabel.Text = "Select a person first, then click the ground to walk there.";
+            return;
+        }
+
+        _world.Execute(new MoveCommand(personId, new Position(position.X, position.Z)));
+        RefreshInfoLabel();
+    }
+
     private void RefreshInfoLabel()
     {
         if (_selectedGraveId is { } graveId)
@@ -532,11 +560,18 @@ public partial class Main : Node3D
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
             $"Age: {AgeText(person)}\n" +
+            $"Task: {TaskText(person)}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
             $"Inventory: {inventory}";
     }
+
+    private static string TaskText(Person person) => person.Tasks.Current switch
+    {
+        MoveTask move => $"Walking to {move.Destination}",
+        _ => "Idle",
+    };
 
     private static string GraveText(Grave grave)
     {
