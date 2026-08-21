@@ -10,9 +10,12 @@ public partial class ResourceNodeView : Area3D
     private const float MaxScale = 1.15f;
     private const float ShadowDiameter = 0.7f;
 
+    private static readonly Color HoverOutlineColor = new(0.95f, 0.95f, 0.92f, 0.85f);
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly Action<ResourceNodeId> _onSelected;
+    private Sprite3D _hoverOutline = null!;
 
     public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, Action<ResourceNodeId> onSelected)
     {
@@ -32,6 +35,10 @@ public partial class ResourceNodeView : Area3D
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
+        _hoverOutline = SpriteOutline.Create(TexturePathFor(_kind), Size, HoverOutlineColor);
+        _hoverOutline.Visible = false;
+        AddChild(_hoverOutline);
+
         AddChild(BillboardSprite.Create(TexturePathFor(_kind), Size, fallbackColor));
 
         AddChild(new CollisionShape3D
@@ -40,7 +47,13 @@ public partial class ResourceNodeView : Area3D
         });
 
         InputEvent += OnInputEvent;
+        MouseEntered += OnMouseEntered;
+        MouseExited += OnMouseExited;
     }
+
+    private void OnMouseEntered() => _hoverOutline.Visible = true;
+
+    private void OnMouseExited() => _hoverOutline.Visible = false;
 
     private static string TexturePathFor(ResourceKindId kind)
         => $"res://Content/resources/{kind.Value}/{kind.Value}.png";

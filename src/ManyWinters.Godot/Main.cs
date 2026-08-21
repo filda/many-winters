@@ -15,6 +15,10 @@ public partial class Main : Node3D
 {
     private const double TickIntervalSeconds = 1.0;
 
+    // Comfortably inside WorldState.MaxInteractionDistance (2f), but far enough out that a
+    // person's own sprite doesn't overlap the resource node's.
+    private const float ApproachDistance = 1.2f;
+
     private const string HeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
     private const string WaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
     private const string GroundTexturePath = "res://Content/terrain/ground.png";
@@ -48,6 +52,12 @@ public partial class Main : Node3D
     private PersonId? _selectedPersonId;
     private GraveId? _selectedGraveId;
     private double _tickAccumulator;
+
+    // A person walking to a resource node they were told to gather from, rather than one
+    // already in range when the order was given. Resolved once they arrive (see
+    // ResolvePendingGathers), so clicking a distant node reads as "go gather that" instead
+    // of silently doing nothing the way a bare out-of-range GatherCommand would.
+    private readonly Dictionary<PersonId, ResourceNodeId> _pendingGathers = new();
 
     public override void _Ready()
     {
@@ -87,6 +97,7 @@ public partial class Main : Node3D
 
         _tickAccumulator -= TickIntervalSeconds;
         _world.Advance(1);
+        ResolvePendingGathers();
         _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}  Season: {_world.CurrentSeason}";
         RefreshInfoLabel();
         RefreshBuildingsLabel();
@@ -597,15 +608,80 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new GatherCommand(personId, id));
-
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
         var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == id);
-        if (node is { RemainingAmount: <= 0 })
+        if (person is null || node is null)
         {
-            _presenter.RemoveResourceNodeView(id);
+            return;
         }
 
+        if (WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+        {
+            _pendingGathers[personId] = id;
+            _world.Execute(new MoveCommand(personId, ApproachPosition(person.Position, node.Position, ApproachDistance)));
+            RefreshInfoLabel();
+            return;
+        }
+
+        _pendingGathers.Remove(personId);
+        GatherFrom(personId, node);
         RefreshInfoLabel();
+    }
+
+    // Runs once a person who was walking to a resource node (see OnResourceNodeSelected)
+    // arrives, so clicking a distant node reads as "go gather that" rather than the person
+    // just standing there once they arrive.
+    private void ResolvePendingGathers()
+    {
+        if (_pendingGathers.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (personId, nodeId) in _pendingGathers.ToList())
+        {
+            var person = _world.People.FirstOrDefault(p => p.Id == personId && p.IsAlive);
+            var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == nodeId);
+            if (person is null || node is null)
+            {
+                _pendingGathers.Remove(personId);
+                continue;
+            }
+
+            if (WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+            {
+                continue;
+            }
+
+            _pendingGathers.Remove(personId);
+            GatherFrom(personId, node);
+        }
+    }
+
+    private void GatherFrom(PersonId personId, ResourceNode node)
+    {
+        _world.Execute(new GatherCommand(personId, node.Id));
+        if (node.RemainingAmount <= 0)
+        {
+            _presenter.RemoveResourceNodeView(node.Id);
+        }
+    }
+
+    // A destination short of the node's own position, approaching from wherever the
+    // person currently is - so they end up standing next to the resource rather than
+    // walking on top of and visually covering it.
+    private static Position ApproachPosition(Position from, Position to, float standoffDistance)
+    {
+        var dx = from.X - to.X;
+        var dy = from.Y - to.Y;
+        var distance = Math.Sqrt((dx * dx) + (dy * dy));
+        if (distance <= standoffDistance)
+        {
+            return from;
+        }
+
+        var ratio = standoffDistance / distance;
+        return new Position(to.X + (dx * ratio), to.Y + (dy * ratio));
     }
 
     private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
