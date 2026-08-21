@@ -11,6 +11,15 @@ public partial class PersonView : Area3D
     private const float MaxScale = 1.08f;
     private const float ShadowDiameter = 0.9f;
 
+    // A cardboard-cutout-on-a-stick wobble while actually walking, rather than gliding
+    // like a ghost: a vertical bob plus a side-to-side rock, both driven by the same phase
+    // accumulator (rock at half the bob's frequency - one full lean cycle per two bounces,
+    // roughly matching a two-footed gait) so they read as one coherent waddle, not two
+    // independent wiggles.
+    private const float WalkCyclesPerSecond = 10f;
+    private const float BobAmplitude = 0.08f;
+    private const float RockAmplitude = 0.12f;
+
     private const string AliveTexturePath = "res://Content/people/person.png";
     private const string DeadTexturePath = "res://Content/people/person_dead.png";
     private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
@@ -27,6 +36,7 @@ public partial class PersonView : Area3D
     private Sprite3D _selectionMarker = null!;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
+    private float _walkPhase;
 
     public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked)
     {
@@ -45,6 +55,11 @@ public partial class PersonView : Area3D
         groundShadow.Position += new Vector3(0, (-Height / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
+        // Keep the default full billboard (not FixedY): the camera sits at a fixed 45deg
+        // elevation, and only full billboard keeps the sprite's own face-normal genuinely
+        // aligned with the actual (elevated) camera direction. FixedY holds the sprite
+        // perfectly upright instead, so a local Z "roll" ends up misaligned with that
+        // oblique view and reads as a forward/backward tilt rather than side-to-side.
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
         AddChild(_sprite);
 
@@ -67,6 +82,20 @@ public partial class PersonView : Area3D
     public override void _Process(double delta)
     {
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
+
+        var isWalking = Position.DistanceTo(_targetPosition) > 0.001f;
+        if (isWalking)
+        {
+            _walkPhase += (float)delta * WalkCyclesPerSecond;
+            _sprite.Position = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
+            _sprite.Rotation = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * RockAmplitude);
+        }
+        else
+        {
+            _walkPhase = 0f;
+            _sprite.Position = Vector3.Zero;
+            _sprite.Rotation = Vector3.Zero;
+        }
     }
 
     public void SetTargetPosition(Vector3 target, float overSeconds)
