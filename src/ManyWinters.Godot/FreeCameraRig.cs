@@ -9,7 +9,14 @@ namespace ManyWinters.Godot;
 // for future comparison.
 public sealed class FreeCameraRig
 {
-    private const float PanSpeed = 150f;
+    // Pan speed scales with the current zoom distance rather than being a fixed
+    // units/second value - the zoom range here spans 3 to 2000 (a ~700x range), so a fixed
+    // speed feels glacial zoomed out and wildly oversized zoomed in, the same reason zoom
+    // itself is multiplicative rather than additive.
+    private const float PanSpeedPerZoomUnit = 1f;
+    // How fast velocity eases toward its target - higher = snappier, lower = floatier.
+    // 1/PanEaseRate is roughly the time constant (seconds) to close ~63% of the gap.
+    private const float PanEaseRate = 10f;
     private const float RotateSpeed = 1.5f;
     private const float ZoomRatePerSecond = 2.5f;
 
@@ -22,6 +29,7 @@ public sealed class FreeCameraRig
     private float _zoomDistance;
     private float _orthographicSize;
     private bool _isOrthographic;
+    private Vector3 _panVelocity = Vector3.Zero;
 
     public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom)
     {
@@ -68,13 +76,22 @@ public sealed class FreeCameraRig
             panDirection.X += 1;
         }
 
+        var targetPanVelocity = Vector3.Zero;
         if (panDirection != Vector2.Zero)
         {
             var basis = _rig.Basis;
             var forward = new Vector3(basis.Z.X, 0, basis.Z.Z).Normalized();
             var right = new Vector3(basis.X.X, 0, basis.X.Z).Normalized();
-            _rig.Position += ((right * panDirection.X) + (forward * panDirection.Y)) * PanSpeed * delta;
+            var panSpeed = (_isOrthographic ? _orthographicSize : _zoomDistance) * PanSpeedPerZoomUnit;
+            targetPanVelocity = ((right * panDirection.X) + (forward * panDirection.Y)).Normalized() * panSpeed;
         }
+
+        // Exponential ease toward the target velocity (zero when no key is held) instead of
+        // snapping straight to it, so starting and stopping both feel smooth rather than
+        // instant.
+        var panEase = 1f - MathF.Exp(-PanEaseRate * delta);
+        _panVelocity = _panVelocity.Lerp(targetPanVelocity, panEase);
+        _rig.Position += _panVelocity * delta;
 
         var rotateDirection = 0f;
         if (Input.IsKeyPressed(Key.Q))
