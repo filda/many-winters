@@ -6,6 +6,7 @@ namespace ManyWinters.Godot;
 public partial class GraveView : Area3D
 {
     public const float Size = 0.8f;
+    private const float ShadowDiameter = 0.9f;
 
     private const string MarkedTexturePath = "res://Content/graves/grave_marked.png";
     private const string UnmarkedTexturePath = "res://Content/graves/grave_unmarked.png";
@@ -30,6 +31,10 @@ public partial class GraveView : Area3D
 
         var texturePath = _isMarked ? MarkedTexturePath : UnmarkedTexturePath;
         var fallbackColor = _isMarked ? MarkedColor : UnmarkedColor;
+
+        var groundShadow = GroundShadow.Create(ShadowDiameter);
+        groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
+        AddChild(groundShadow);
 
         AddChild(BillboardSprite.Create(texturePath, Size, fallbackColor));
 

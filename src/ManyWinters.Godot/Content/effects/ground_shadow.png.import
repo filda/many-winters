@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://di2al1xvq2rue"
-path="res://.godot/imported/apple.png-75713a47be7511923632d7f819062284.ctex"
+uid="uid://bgjx8kubkje6l"
+path="res://.godot/imported/ground_shadow.png-fe7d349e6b657e27512514206fa00c8e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Content/resources/apple/apple.png"
-dest_files=["res://.godot/imported/apple.png-75713a47be7511923632d7f819062284.ctex"]
+source_file="res://Content/effects/ground_shadow.png"
+dest_files=["res://.godot/imported/ground_shadow.png-fe7d349e6b657e27512514206fa00c8e.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

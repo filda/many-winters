@@ -277,6 +277,10 @@ public sealed class TerrainRenderer
             var scale = minScale + ((float)rng.NextDouble() * (maxScale - minScale));
             var worldHeight = baseHeight * scale;
 
+            var groundShadow = GroundShadow.Create(worldHeight * 0.5f);
+            groundShadow.Position += new Vector3(x, SampleHeight(x, z) + GroundShadow.GroundOffset, z);
+            parent.AddChild(groundShadow);
+
             var sprite = BillboardSprite.Create(texturePath, worldHeight, fallbackColor);
             sprite.Position = new Vector3(x, SampleHeight(x, z) + (worldHeight / 2f), z);
             parent.AddChild(sprite);

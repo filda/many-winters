@@ -9,6 +9,7 @@ public partial class PersonView : Area3D
     public const float Height = 1.8f;
     private const float MinScale = 0.92f;
     private const float MaxScale = 1.08f;
+    private const float ShadowDiameter = 0.9f;
 
     private const string AliveTexturePath = "res://Content/people/person.png";
     private const string DeadTexturePath = "res://Content/people/person_dead.png";
@@ -39,6 +40,10 @@ public partial class PersonView : Area3D
 
         Scale = Vector3.One * EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
         _targetPosition = Position;
+
+        var groundShadow = GroundShadow.Create(ShadowDiameter);
+        groundShadow.Position += new Vector3(0, (-Height / 2f) + GroundShadow.GroundOffset, 0);
+        AddChild(groundShadow);
 
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
         AddChild(_sprite);

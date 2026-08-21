@@ -8,6 +8,7 @@ public partial class BuildingView : Node3D
     public const float Size = 1.2f;
     private const float MinScale = 0.9f;
     private const float MaxScale = 1.1f;
+    private const float ShadowDiameter = 1.5f;
 
     private readonly BuildingId _buildingId;
     private readonly BuildingKindId _kind;
@@ -22,6 +23,10 @@ public partial class BuildingView : Node3D
     {
         var fallbackColor = EntityVisualVariation.Tint(ColorFor(_kind), _buildingId.Value);
         Scale = Vector3.One * EntityVisualVariation.Scale(_buildingId.Value, MinScale, MaxScale);
+
+        var groundShadow = GroundShadow.Create(ShadowDiameter);
+        groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
+        AddChild(groundShadow);
 
         AddChild(BillboardSprite.Create(TexturePathFor(_kind), Size, fallbackColor));
     }

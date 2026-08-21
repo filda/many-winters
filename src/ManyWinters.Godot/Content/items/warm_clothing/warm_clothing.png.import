@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://di2al1xvq2rue"
-path="res://.godot/imported/apple.png-75713a47be7511923632d7f819062284.ctex"
+uid="uid://cd3hb30hb7fuh"
+path="res://.godot/imported/warm_clothing.png-f253adce5332f4661325abe273fe3943.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Content/resources/apple/apple.png"
-dest_files=["res://.godot/imported/apple.png-75713a47be7511923632d7f819062284.ctex"]
+source_file="res://Content/items/warm_clothing/warm_clothing.png"
+dest_files=["res://.godot/imported/warm_clothing.png-f253adce5332f4661325abe273fe3943.ctex"]
 
 [params]
 

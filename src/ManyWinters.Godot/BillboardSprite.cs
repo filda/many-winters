@@ -18,8 +18,18 @@ public static class BillboardSprite
         var sprite = new Sprite3D
         {
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            TextureFilter = BaseMaterial3D.TextureFilterEnum.Nearest,
-            AlphaCut = SpriteBase3D.AlphaCutMode.Discard,
+            // LinearMipmap, not Nearest: the art is now illustrated engraving detail (fine
+            // crosshatching), not deliberate hard-edged pixel art. Without a mip chain, that
+            // fine detail aliases into shimmering noise once a sprite is small on screen -
+            // mipmaps let minified sprites sample a properly pre-blurred, smaller version
+            // instead of resampling the full-detail texture at a handful of screen pixels.
+            TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
+            // OpaquePrepass, not Discard: Discard is a hard alpha-test cutoff with no
+            // blending at all, which throws away every soft anti-aliased/shadow edge pixel
+            // the new art actually has (each edge pixel snaps to either fully opaque or
+            // fully invisible). OpaquePrepass keeps Discard's correct depth-sorting behavior
+            // for overlapping billboards while still alpha-blending the soft edge on top.
+            AlphaCut = SpriteBase3D.AlphaCutMode.OpaquePrepass,
             Shaded = false,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
