@@ -32,7 +32,10 @@ public partial class Main : Node3D
     private const float DecorationMaxScale = 1.3f;
     private const int DecorationScatterSeed = 1;
 
-    private const float InitialZoomDistance = 60f;
+    // The starting band spans roughly 8x4 units and is centered exactly on campPosition
+    // (see MapLoader.LoadDefault), so a close default zoom lets it fill most of the frame
+    // right away rather than reading as a handful of specks in a huge empty field.
+    private const float InitialZoomDistance = 10f;
     private const float MinZoom = 3f;
     private const float MaxZoom = 2000f;
 
