@@ -6,18 +6,16 @@ namespace ManyWinters.Godot;
 public partial class ResourceNodeView : Area3D
 {
     // Ordinary resources (berries, mushrooms, tubers...) read fine as a small icon sitting on
-    // the ground. A fellable one is meant to be an actual tree standing in the world - kept
-    // shorter than the purely decorative background conifers (TerrainRenderer.ScatterDecoration,
-    // ~8m) so it doesn't read as generic forest, but tall enough to be visibly a tree rather
-    // than a ground-level pickup, and findable without confusing it for the (non-interactive)
-    // decoration.
+    // the ground. A fellable one is meant to be an actual tree standing in the world - a
+    // touch shorter than the purely decorative background conifers/deciduous trees
+    // (TerrainRenderer.ScatterDecoration, ~7-8m; cultivated fruit trees being a bit smaller
+    // than wild forest ones is plausible) but nowhere near as small as the original 2.4m,
+    // which read as a bush/sapling next to a scattered forest at that scale.
     public const float DefaultSize = 0.6f;
-    public const float TreeSize = 2.4f;
+    public const float TreeSize = 6f;
     private const float MinScale = 0.85f;
     private const float MaxScale = 1.15f;
     private const float ShadowDiameterRatio = 0.7f / DefaultSize;
-
-    private static readonly Color HoverOutlineColor = new(0.95f, 0.95f, 0.92f, 0.85f);
 
     // Layered a fraction in front of the base tree (see BillboardSprite.Create's
     // renderPriority) so it composites cleanly on top instead of z-fighting with the
@@ -54,7 +52,7 @@ public partial class ResourceNodeView : Area3D
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        _hoverOutline = SpriteOutline.Create(TexturePathFor(), Size, HoverOutlineColor);
+        _hoverOutline = SpriteOutline.Create(TexturePathFor(), Size, SpriteOutline.HoverColor);
         _hoverOutline.Visible = false;
         AddChild(_hoverOutline);
 

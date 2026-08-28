@@ -177,6 +177,20 @@ public partial class Main : Node3D
         {
             _cameraRig.ToggleProjection();
         }
+    }
+
+    // _UnhandledInput, not _Input: _Input fires for every node before Godot's own UI system
+    // gets a look at the event, so wheel/drag over a Control (e.g. scrolling the Inspector)
+    // would zoom/rotate the camera underneath it too. That alone wasn't reliable (a
+    // ScrollContainer with nothing left to scroll doesn't consume the wheel event, letting it
+    // fall through), so this also explicitly bails out whenever the mouse is over any Control
+    // at all - the camera should never react while the cursor is over UI, full stop.
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (GetViewport().GuiGetHoveredControl() is not null)
+        {
+            return;
+        }
 
         _cameraRig.HandleMouseInput(@event);
     }

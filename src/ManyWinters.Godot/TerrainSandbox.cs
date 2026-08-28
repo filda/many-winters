@@ -88,6 +88,17 @@ public partial class TerrainSandbox : Node3D
         {
             _cameraRig.ToggleProjection();
         }
+    }
+
+    // See Main.cs's _UnhandledInput for why this isn't in _Input, and why it also checks
+    // GuiGetHoveredControl (this scene has no UI today, but keeps the same guard for when
+    // it does rather than silently losing it if one gets added here later).
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (GetViewport().GuiGetHoveredControl() is not null)
+        {
+            return;
+        }
 
         _cameraRig.HandleMouseInput(@event);
     }
