@@ -3,5 +3,8 @@
   "displayName": "Apple",
   "skill": "foraging",
   "climateYields": [{ "climate": "Cold", "multiplier": 0.4 }],
-  "regenPerTick": 1
+  "regenPerTick": 1,
+  "canFell": true,
+  "fellLeavesKind": "wood",
+  "fellLeavesAmount": 30
 }

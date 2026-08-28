@@ -23,14 +23,51 @@ public partial class Main : Node3D
     private const string WaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
     private const string GroundTexturePath = "res://Content/terrain/ground.png";
     private const string ConiferTreePath = "res://Content/terrain/conifer_tree.png";
+    private const string DeciduousTreePath = "res://Content/terrain/deciduous_tree.png";
+    private const string BushPath = "res://Content/terrain/bush.png";
+    private const string GrassPath = "res://Content/terrain/grass.png";
+    private const string FlowerPath = "res://Content/terrain/flower.png";
     private const string RockPilePath = "res://Content/terrain/rock_pile.png";
-    private const int TreeCount = 90;
-    private const int RockCount = 35;
+    private const int TreeCount = 140;
+    private const int DeciduousTreeCount = 100;
+    private const int BushCount = 90;
+    private const int GrassCount = 400;
+    private const int FlowerCount = 70;
+    private const int RockCount = 60;
+    // A second, sparser pass across the whole real terrain patch (radius = _terrain.Half)
+    // on top of the camp-centered one above - without it, everywhere outside
+    // DecorationRadius of camp is bare, since the dense pass never reaches that far.
+    private const int WideTreeCount = 70;
+    private const int WideDeciduousTreeCount = 50;
+    private const int WideBushCount = 40;
+    private const int WideGrassCount = 120;
+    private const int WideFlowerCount = 30;
+    private const int WideRockCount = 30;
+    // A handful of standalone groves scattered elsewhere on the map, on top of the wide
+    // background pass and the camp's own dense zone - a single "dense disk around camp,
+    // sparse everywhere else" gradient reads as one unnaturally uniform blob rather than the
+    // patchy, clumped-together way real forest cover actually sits on a landscape.
+    private const int GroveCount = 4;
+    private const float GroveRadius = 55f;
+    private const int GroveTreeCount = 60;
+    private const int GroveDeciduousTreeCount = 40;
+    private const int GroveBushCount = 35;
+    private const int GroveGrassCount = 160;
+    private const int GroveFlowerCount = 25;
+    private const int GroveRockCount = 22;
     private const float TreeHeightMeters = 8f;
+    private const float DeciduousTreeHeightMeters = 7f;
+    private const float BushHeightMeters = 1.2f;
+    private const float GrassHeightMeters = 0.4f;
+    private const float FlowerHeightMeters = 0.35f;
     private const float RockHeightMeters = 1.5f;
     private const float DecorationMinScale = 0.8f;
     private const float DecorationMaxScale = 1.3f;
     private const int DecorationScatterSeed = 1;
+    // Centered on the camp, not spread across the whole real terrain patch (Half=500) - see
+    // ScatterDecoration's doc comment. Comfortably covers the starting band and the area a
+    // player will actually walk around in without needing anywhere near the full 500m extent.
+    private const float DecorationRadius = 70f;
 
     // The starting band spans roughly 8x4 units and is centered exactly on campPosition
     // (see MapLoader.LoadDefault), so a close default zoom lets it fill most of the frame
@@ -40,6 +77,10 @@ public partial class Main : Node3D
     private const float MaxZoom = 2000f;
 
     private static readonly Color TreeFallbackColor = new(0.20f, 0.32f, 0.18f);
+    private static readonly Color DeciduousTreeFallbackColor = new(0.30f, 0.38f, 0.22f);
+    private static readonly Color BushFallbackColor = new(0.26f, 0.36f, 0.18f);
+    private static readonly Color GrassFallbackColor = new(0.32f, 0.42f, 0.18f);
+    private static readonly Color FlowerFallbackColor = new(0.82f, 0.52f, 0.62f);
     private static readonly Color RockFallbackColor = new(0.5f, 0.5f, 0.52f);
 
     private WorldState _world = null!;
@@ -156,8 +197,33 @@ public partial class Main : Node3D
         _terrain.BuildWaterways(this);
 
         var rng = new Random(DecorationScatterSeed);
-        _terrain.ScatterDecoration(this, rng, TreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale);
-        _terrain.ScatterDecoration(this, rng, RockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale);
+        var campX = (float)_campCenter.X;
+        var campZ = (float)_campCenter.Y;
+        _terrain.ScatterDecoration(this, rng, TreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+        _terrain.ScatterDecoration(this, rng, DeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+        _terrain.ScatterDecoration(this, rng, BushCount, BushPath, BushHeightMeters, BushFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+        _terrain.ScatterDecoration(this, rng, GrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+        _terrain.ScatterDecoration(this, rng, FlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+        _terrain.ScatterDecoration(this, rng, RockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+
+        for (var i = 0; i < GroveCount; i++)
+        {
+            var groveX = ((float)rng.NextDouble() - 0.5f) * 2f * _terrain.Half;
+            var groveZ = ((float)rng.NextDouble() - 0.5f) * 2f * _terrain.Half;
+            _terrain.ScatterDecoration(this, rng, GroveTreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+            _terrain.ScatterDecoration(this, rng, GroveDeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+            _terrain.ScatterDecoration(this, rng, GroveBushCount, BushPath, BushHeightMeters, BushFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+            _terrain.ScatterDecoration(this, rng, GroveGrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+            _terrain.ScatterDecoration(this, rng, GroveFlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+            _terrain.ScatterDecoration(this, rng, GroveRockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+        }
+
+        _terrain.ScatterDecoration(this, rng, WideTreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, WideDeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, WideBushCount, BushPath, BushHeightMeters, BushFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, WideGrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, WideFlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, WideRockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
     }
 
     private void SetUpCamera()

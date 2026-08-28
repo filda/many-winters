@@ -263,6 +263,11 @@ public sealed class TerrainRenderer
 
     // Cutout/billboard scatter (visual plan Phase B/C) - purely decorative, unrelated to
     // gameplay resource nodes. Reuses the same BillboardSprite every other entity uses.
+    //
+    // Scattered within radius of (centerX, centerZ), not across the whole terrain patch -
+    // a count that reads as a reasonably dense forest over a real ~1 km terrain (Half=500)
+    // is instead spread so thin that the tiny playable area around it looks bare, since
+    // that area is a negligible fraction of the total scatter footprint.
     public void ScatterDecoration(
         Node3D parent,
         Random rng,
@@ -271,12 +276,20 @@ public sealed class TerrainRenderer
         float baseHeight,
         Color fallbackColor,
         float minScale,
-        float maxScale)
+        float maxScale,
+        float centerX,
+        float centerZ,
+        float radius)
     {
         for (var i = 0; i < count; i++)
         {
-            var x = ((float)rng.NextDouble() - 0.5f) * 2f * Half;
-            var z = ((float)rng.NextDouble() - 0.5f) * 2f * Half;
+            // Uniform over the *disk* of radius, not independent x/z within [-radius, radius]
+            // (a square) - sqrt(u) compensates for the outer rings of a circle covering more
+            // area than the inner ones, so points don't bunch up toward the center.
+            var angle = (float)rng.NextDouble() * Mathf.Tau;
+            var distance = radius * MathF.Sqrt((float)rng.NextDouble());
+            var x = centerX + (MathF.Cos(angle) * distance);
+            var z = centerZ + (MathF.Sin(angle) * distance);
             var scale = minScale + ((float)rng.NextDouble() * (maxScale - minScale));
             var worldHeight = baseHeight * scale;
 
