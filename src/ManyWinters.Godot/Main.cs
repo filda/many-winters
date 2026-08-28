@@ -122,6 +122,8 @@ public partial class Main : Node3D
         {
             _cameraRig.ToggleProjection();
         }
+
+        _cameraRig.HandleMouseInput(@event);
     }
 
     private void SetUpLighting()

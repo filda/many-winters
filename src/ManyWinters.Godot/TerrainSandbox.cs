@@ -65,6 +65,8 @@ public partial class TerrainSandbox : Node3D
         {
             _cameraRig.ToggleProjection();
         }
+
+        _cameraRig.HandleMouseInput(@event);
     }
 
     private void SetUpLighting()

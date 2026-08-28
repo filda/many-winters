@@ -19,8 +19,20 @@ public sealed class FreeCameraRig
     private const float PanEaseRate = 10f;
     private const float RotateSpeed = 1.5f;
     private const float ZoomRatePerSecond = 2.5f;
+    // A wheel notch has no delta of its own, so it's treated as this many seconds' worth of
+    // R/F's held-key rate - keeps a single zoom feel instead of a separately tuned step.
+    private const float ScrollZoomNotchSeconds = 0.05f;
+    // Right-drag rotate/tilt, alongside Q/E and Page Up/Down for mouse-less control.
+    private const float MouseRotateRadiansPerPixel = 0.005f;
+    private const float MouseTiltDegreesPerPixel = 0.15f;
 
-    private static readonly Vector3 CameraDirection = new Vector3(0, 1, 1).Normalized();
+    // Degrees of elevation above the rig's horizontal plane. 45 matches the original fixed
+    // Vector3(0, 1, 1) direction; the clamp keeps the view from ever going fully overhead or
+    // fully edge-on, both of which break the billboard/cutout illusion.
+    private const float DefaultTiltDegrees = 45f;
+    private const float MinTiltDegrees = 20f;
+    private const float MaxTiltDegrees = 80f;
+    private const float TiltSpeedDegreesPerSecond = 45f;
 
     private readonly Node3D _rig;
     private readonly Camera3D _camera;
@@ -28,7 +40,9 @@ public sealed class FreeCameraRig
     private readonly float _maxZoom;
     private float _zoomDistance;
     private float _orthographicSize;
+    private float _tiltDegrees = DefaultTiltDegrees;
     private bool _isOrthographic;
+    private bool _mouseRotating;
     private Vector3 _panVelocity = Vector3.Zero;
 
     public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom)
@@ -134,11 +148,78 @@ public sealed class FreeCameraRig
 
             UpdateCamera();
         }
+
+        var tiltDirection = 0f;
+        if (Input.IsKeyPressed(Key.Pageup))
+        {
+            tiltDirection += 1;
+        }
+
+        if (Input.IsKeyPressed(Key.Pagedown))
+        {
+            tiltDirection -= 1;
+        }
+
+        if (tiltDirection != 0f)
+        {
+            _tiltDegrees = Mathf.Clamp(_tiltDegrees + (tiltDirection * TiltSpeedDegreesPerSecond * delta), MinTiltDegrees, MaxTiltDegrees);
+            UpdateCamera();
+        }
+    }
+
+    // Mouse-driven camera control: right-drag rotates/tilts, wheel zooms. Callers forward
+    // their raw _Input/_UnhandledInput events here so both Main.cs and TerrainSandbox.cs get
+    // identical mouse behavior alongside HandleInput's keyboard handling.
+    public void HandleMouseInput(InputEvent @event)
+    {
+        switch (@event)
+        {
+            case InputEventMouseButton { ButtonIndex: MouseButton.Right } mouseButton:
+                _mouseRotating = mouseButton.Pressed;
+                break;
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp }:
+                HandleScrollZoom(-1f);
+                break;
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelDown }:
+                HandleScrollZoom(1f);
+                break;
+            case InputEventMouseMotion mouseMotion when _mouseRotating:
+                _rig.RotateY(-mouseMotion.Relative.X * MouseRotateRadiansPerPixel);
+                _tiltDegrees = Mathf.Clamp(
+                    _tiltDegrees - (mouseMotion.Relative.Y * MouseTiltDegreesPerPixel),
+                    MinTiltDegrees,
+                    MaxTiltDegrees);
+                UpdateCamera();
+                break;
+        }
+    }
+
+    // A wheel notch (direction < 0 zooms in, > 0 zooms out) applied as one immediate step,
+    // as opposed to HandleInput's held-key rate.
+    private void HandleScrollZoom(float direction)
+    {
+        var factor = MathF.Pow(ZoomRatePerSecond, direction * ScrollZoomNotchSeconds);
+        if (_isOrthographic)
+        {
+            _orthographicSize = Mathf.Clamp(_orthographicSize * factor, _minZoom, _maxZoom);
+        }
+        else
+        {
+            _zoomDistance = Mathf.Clamp(_zoomDistance * factor, _minZoom, _maxZoom);
+        }
+
+        UpdateCamera();
+    }
+
+    private Vector3 CameraDirection()
+    {
+        var tiltRadians = Mathf.DegToRad(_tiltDegrees);
+        return new Vector3(0, MathF.Sin(tiltRadians), MathF.Cos(tiltRadians));
     }
 
     private void UpdateCamera()
     {
-        _camera.Position = CameraDirection * _zoomDistance;
+        _camera.Position = CameraDirection() * _zoomDistance;
         _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
         _camera.Size = _orthographicSize;
     }

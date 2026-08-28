@@ -15,7 +15,8 @@ public partial class StatusBar : PanelContainer
     private const float NotificationSeconds = 4f;
 
     private const string HelpText =
-        "WASD/arrows: pan camera. Q/E: rotate. R/F: zoom. T: toggle ortho/perspective.\n\n" +
+        "WASD/arrows: pan camera. Q/E or right-drag: rotate. R/F or mouse wheel: zoom. " +
+        "Page Up/Page Down or right-drag: tilt. T: toggle ortho/perspective.\n\n" +
         "Left-click: select person. Right-click another person: teach them what the " +
         "selected person knows. Click a resource node: gather (needs a selected person). " +
         "Click a grave: view its record. Click empty ground: walk there (needs a selected " +
