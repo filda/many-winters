@@ -6,7 +6,29 @@ on:
   workflow_dispatch:
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Scheduled runs skip the (slow) mutation run entirely if src/ hasn't changed in
+      # the last day; workflow_dispatch always runs regardless, for a manual check.
+      - name: Check for changes in the last day
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || git log --since="24 hours ago" --oneline -- src | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   stryker:
+    needs: check-changes
+    if: needs.check-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
