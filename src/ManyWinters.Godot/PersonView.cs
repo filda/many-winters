@@ -33,7 +33,7 @@ public partial class PersonView : Area3D
     private readonly PersonId _personId;
     private readonly Action<PersonId, MouseButton> _onClicked;
     private Sprite3D _sprite = null!;
-    private Sprite3D _hoverOutline = null!;
+    private Color _normalModulate;
     private Sprite3D _selectionMarker = null!;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
@@ -61,11 +61,8 @@ public partial class PersonView : Area3D
         // aligned with the actual (elevated) camera direction. FixedY holds the sprite
         // perfectly upright instead, so a local Z "roll" ends up misaligned with that
         // oblique view and reads as a forward/backward tilt rather than side-to-side.
-        _hoverOutline = SpriteOutline.Create(AliveTexturePath, Height, SpriteOutline.HoverColor);
-        _hoverOutline.Visible = false;
-        AddChild(_hoverOutline);
-
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
+        _normalModulate = _sprite.Modulate;
         AddChild(_sprite);
 
         _selectionMarker = BillboardSprite.Create(SelectionMarkerTexturePath, SelectionMarkerHeight, SelectionMarkerFallbackColor);
@@ -83,9 +80,17 @@ public partial class PersonView : Area3D
         MouseExited += OnMouseExited;
     }
 
-    private void OnMouseEntered() => _hoverOutline.Visible = true;
+    private void OnMouseEntered()
+    {
+        _sprite.Modulate = HoverHighlight.TintFor(_normalModulate);
+        _sprite.Scale = Vector3.One * HoverHighlight.ScaleFactor;
+    }
 
-    private void OnMouseExited() => _hoverOutline.Visible = false;
+    private void OnMouseExited()
+    {
+        _sprite.Modulate = _normalModulate;
+        _sprite.Scale = Vector3.One;
+    }
 
     // Only the simulation tick moves a person; this just plays that motion back smoothly
     // between ticks instead of snapping once per tick, so speed always matches how far the
@@ -98,22 +103,14 @@ public partial class PersonView : Area3D
         if (isWalking)
         {
             _walkPhase += (float)delta * WalkCyclesPerSecond;
-            var bob = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
-            var rock = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * RockAmplitude);
-            _sprite.Position = bob;
-            _sprite.Rotation = rock;
-            // Kept in lockstep with _sprite - a separate sibling sprite (see SpriteOutline)
-            // otherwise just sits still while the real sprite bobs and rocks away from it.
-            _hoverOutline.Position = bob;
-            _hoverOutline.Rotation = rock;
+            _sprite.Position = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
+            _sprite.Rotation = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * RockAmplitude);
         }
         else
         {
             _walkPhase = 0f;
             _sprite.Position = Vector3.Zero;
             _sprite.Rotation = Vector3.Zero;
-            _hoverOutline.Position = Vector3.Zero;
-            _hoverOutline.Rotation = Vector3.Zero;
         }
     }
 
@@ -128,9 +125,7 @@ public partial class PersonView : Area3D
     {
         var texturePath = isAlive ? AliveTexturePath : DeadTexturePath;
         BillboardSprite.Apply(_sprite, texturePath, Height, isAlive ? AliveColor : DeadColor);
-        // Dead uses a different (sideways) silhouette - re-point the outline at it too,
-        // otherwise it keeps tracing the old standing shape.
-        SpriteOutline.Apply(_hoverOutline, texturePath, Height);
+        _normalModulate = _sprite.Modulate;
     }
 
     public void SetSelected(bool selected)

@@ -18,8 +18,7 @@ public static class BillboardSprite
     // like any other 3D object). A layer meant to composite on top of another sprite at the
     // same position - e.g. ResourceNodeView's fruit overlay - has no defined draw order
     // against it under OpaquePrepass (both are at the same depth), so it needs standard alpha
-    // blending (Disabled) plus a higher renderPriority to reliably draw second/on top, the
-    // same technique SpriteOutline already uses to draw behind instead.
+    // blending (Disabled) plus a higher renderPriority to reliably draw second/on top.
     public static Sprite3D Create(
         string texturePath,
         float worldHeight,

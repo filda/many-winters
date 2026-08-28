@@ -27,7 +27,8 @@ public partial class ResourceNodeView : Area3D
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
     private readonly Action<ResourceNodeId> _onSelected;
-    private Sprite3D _hoverOutline = null!;
+    private Sprite3D _sprite = null!;
+    private Color _normalModulate;
     private Sprite3D? _fruitOverlay;
 
     public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected)
@@ -52,11 +53,9 @@ public partial class ResourceNodeView : Area3D
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        _hoverOutline = SpriteOutline.Create(TexturePathFor(), Size, SpriteOutline.HoverColor);
-        _hoverOutline.Visible = false;
-        AddChild(_hoverOutline);
-
-        AddChild(BillboardSprite.Create(TexturePathFor(), Size, fallbackColor));
+        _sprite = BillboardSprite.Create(TexturePathFor(), Size, fallbackColor);
+        _normalModulate = _sprite.Modulate;
+        AddChild(_sprite);
 
         // Composite sprite: the tree itself never changes, but whether it's currently
         // bearing fruit does (see GatherCommand/WorldState.Advance) - a separate overlay
@@ -82,9 +81,17 @@ public partial class ResourceNodeView : Area3D
         MouseExited += OnMouseExited;
     }
 
-    private void OnMouseEntered() => _hoverOutline.Visible = true;
+    private void OnMouseEntered()
+    {
+        _sprite.Modulate = HoverHighlight.TintFor(_normalModulate);
+        _sprite.Scale = Vector3.One * HoverHighlight.ScaleFactor;
+    }
 
-    private void OnMouseExited() => _hoverOutline.Visible = false;
+    private void OnMouseExited()
+    {
+        _sprite.Modulate = _normalModulate;
+        _sprite.Scale = Vector3.One;
+    }
 
     // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
     // fruit layer to show or hide.
