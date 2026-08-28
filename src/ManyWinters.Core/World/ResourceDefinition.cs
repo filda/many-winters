@@ -9,7 +9,19 @@ public sealed record ResourceDefinition(
     SkillTypeId Skill,
     ItemKindId? YieldsItem = null,
     IReadOnlyList<ClimateYield>? ClimateYields = null,
-    float RegenPerTick = 0f)
+    float RegenPerTick = 0f,
+    bool CanFell = false,
+    // Felling doesn't hand the yield straight to the person's inventory - it leaves behind an
+    // ordinary resource node of this kind and amount (typically "wood") that still has to be
+    // gathered like anything else, and stands in for the felled tree so the spot doesn't just
+    // go empty.
+    ResourceKindId? FellLeavesKind = null,
+    float FellLeavesAmount = 0f,
+    // How many ticks a node can sit in an IsInhospitable climate before it withers (see
+    // WorldState.Advance). float.MaxValue - effectively never - unless a definition opts in
+    // with a finite value; a stray 0-multiplier ClimateYield shouldn't kill something by
+    // accident just because nobody set this.
+    float TicksToWither = float.MaxValue)
 {
     public float YieldMultiplierFor(Climate climate)
     {
@@ -28,4 +40,8 @@ public sealed record ResourceDefinition(
 
         return 1f;
     }
+
+    // Conditions the plant doesn't thrive in at all, as opposed to just yielding less - the
+    // set a definition describes positively via ClimateYields, read negatively.
+    public bool IsInhospitable(Climate climate) => YieldMultiplierFor(climate) <= 0f;
 }

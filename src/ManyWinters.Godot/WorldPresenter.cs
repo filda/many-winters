@@ -13,6 +13,7 @@ public sealed class WorldPresenter
     private readonly Action<ResourceNodeId> _onResourceNodeSelected;
     private readonly Action<GraveId> _onGraveSelected;
     private readonly Func<float, float, float> _sampleHeight;
+    private readonly ResourceCatalog _resourceCatalog;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
@@ -32,6 +33,7 @@ public sealed class WorldPresenter
         _onResourceNodeSelected = onResourceNodeSelected;
         _onGraveSelected = onGraveSelected;
         _sampleHeight = sampleHeight ?? ((x, z) => 0f);
+        _resourceCatalog = world.ResourceCatalog;
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
@@ -126,10 +128,9 @@ public sealed class WorldPresenter
 
     private void CreateResourceNodeView(ResourceNode node)
     {
-        var view = new ResourceNodeView(node.Id, node.Kind, _onResourceNodeSelected)
-        {
-            Position = ToVector3(node.Position, ResourceNodeView.Size / 2f),
-        };
+        var canFell = _resourceCatalog.Get(node.Kind).CanFell;
+        var view = new ResourceNodeView(node.Id, node.Kind, canFell, _onResourceNodeSelected);
+        view.Position = ToVector3(node.Position, view.Size / 2f);
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
     }

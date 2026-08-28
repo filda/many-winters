@@ -1,6 +1,7 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
@@ -685,6 +686,98 @@ public class WorldStateTests
         world.Advance(10);
 
         Assert.Equal(Season.Winter, world.CurrentSeason);
+        Assert.Equal(50f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AdvanceAccumulatesColdStressForANodeWithNoYieldInTheCurrentClimateButKeepsItAliveUnderTheThreshold()
+    {
+        var kind = new ResourceKindId("frost_intolerant");
+        var definition = new ResourceDefinition(
+            kind,
+            "Frost-Intolerant Plant",
+            new SkillTypeId("test"),
+            ClimateYields: [new ClimateYield(Climate.Cold, 0f)],
+            TicksToWither: 3f);
+        var world = new WorldState(WorldConfiguration.Empty with { ResourceCatalog = new ResourceCatalog([definition]) });
+        world.Advance(225);
+        var node = world.AddResourceNode(kind, new Position(0, 0), 100);
+
+        world.Advance(2);
+
+        Assert.True(node.IsAlive);
+        Assert.Equal(2f, node.ColdStress);
+    }
+
+    [Fact]
+    public void AdvanceKillsANodeOnceColdStressReachesTicksToWither()
+    {
+        var kind = new ResourceKindId("frost_intolerant");
+        var definition = new ResourceDefinition(
+            kind,
+            "Frost-Intolerant Plant",
+            new SkillTypeId("test"),
+            ClimateYields: [new ClimateYield(Climate.Cold, 0f)],
+            TicksToWither: 3f);
+        var world = new WorldState(WorldConfiguration.Empty with { ResourceCatalog = new ResourceCatalog([definition]) });
+        world.Advance(225);
+        var node = world.AddResourceNode(kind, new Position(0, 0), 100);
+
+        world.Advance(3);
+
+        Assert.False(node.IsAlive);
+        Assert.Equal(ResourceDeathCause.Climate, node.CauseOfDeath);
+        Assert.Equal(228, node.DeathTick);
+    }
+
+    [Fact]
+    public void AdvanceResetsColdStressOnceTheClimateBecomesHospitableAgain()
+    {
+        var kind = new ResourceKindId("frost_intolerant");
+        var definition = new ResourceDefinition(
+            kind,
+            "Frost-Intolerant Plant",
+            new SkillTypeId("test"),
+            ClimateYields: [new ClimateYield(Climate.Cold, 0f)],
+            // Well above the ~75 Cold ticks this test advances through, so the node survives
+            // to see the climate turn hospitable rather than withering first.
+            TicksToWither: 1000f);
+        var world = new WorldState(WorldConfiguration.Empty with { ResourceCatalog = new ResourceCatalog([definition]) });
+        world.Advance(225);
+        var node = world.AddResourceNode(kind, new Position(0, 0), 100);
+        world.Advance(2);
+        Assert.Equal(2f, node.ColdStress);
+
+        // Each Advance-loop iteration uses the season at its *start* tick, so seeing a
+        // hospitable climate requires processing tick 300 itself (Spring), one past the
+        // 227-299 range that's still Winter/Cold.
+        world.Advance(74);
+
+        Assert.Equal(Season.Spring, world.CurrentSeason);
+        Assert.True(node.IsAlive);
+        Assert.Equal(0f, node.ColdStress);
+    }
+
+    [Fact]
+    public void AdvanceNeverRegrowsANodeWhileItsColdStressIsAccumulating()
+    {
+        var kind = new ResourceKindId("frost_intolerant");
+        var definition = new ResourceDefinition(
+            kind,
+            "Frost-Intolerant Plant",
+            new SkillTypeId("test"),
+            ClimateYields: [new ClimateYield(Climate.Mild, 0f)],
+            RegenPerTick: 5f,
+            TicksToWither: 100f);
+        var world = new WorldState(WorldConfiguration.Empty with { ResourceCatalog = new ResourceCatalog([definition]) });
+        var node = world.AddResourceNode(kind, new Position(0, 0), 200);
+        node.RemainingAmount = 50;
+
+        // World starts in Spring (Mild) - inhospitable for this definition despite the
+        // otherwise-nonzero global regen multiplier for that climate.
+        world.Advance(10);
+
+        Assert.Equal(Season.Spring, world.CurrentSeason);
         Assert.Equal(50f, node.RemainingAmount);
     }
 

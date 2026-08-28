@@ -113,6 +113,17 @@ public partial class Main : Node3D
             _presenter.SetPersonPosition(person.Id, person.Position, (float)TickIntervalSeconds);
         }
 
+        // Catches nodes that withered from climate stress (see WorldState.Advance) - felling
+        // and depletion already remove their own view immediately, this is just the passive
+        // per-tick case.
+        foreach (var node in _world.ResourceNodes)
+        {
+            if (!node.IsAlive)
+            {
+                _presenter.RemoveResourceNodeView(node.Id);
+            }
+        }
+
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
     }
 
@@ -229,6 +240,10 @@ public partial class Main : Node3D
         var withdrawButton = new Button { Text = "Withdraw Wood <- Nearest Building" };
         withdrawButton.Pressed += OnWithdrawButtonPressed;
         _contextualActions.AddChild(withdrawButton);
+
+        var fellButton = new Button { Text = "Fell Nearest Tree" };
+        fellButton.Pressed += OnFellButtonPressed;
+        _contextualActions.AddChild(fellButton);
 
         var buryButton = new Button { Text = "Bury Nearest Dead Person" };
         buryButton.Pressed += OnBuryButtonPressed;
@@ -416,6 +431,38 @@ public partial class Main : Node3D
         RefreshBuildingsLabel();
     }
 
+    private void OnFellButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _statusBar.Notify("Select a person first, then fell.");
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var node = FindNearestFellableResourceNode(person.Position);
+        if (node is null)
+        {
+            _statusBar.Notify("No trees nearby to fell.");
+            return;
+        }
+
+        if (WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+        {
+            _statusBar.Notify("The nearest tree is too far away.");
+            return;
+        }
+
+        _world.Execute(new FellCommand(personId, node.Id));
+        _presenter.RemoveResourceNodeView(node.Id);
+        RefreshInfoLabel();
+    }
+
     private void OnBuryButtonPressed()
     {
         if (_selectedPersonId is not { } personId)
@@ -482,6 +529,12 @@ public partial class Main : Node3D
 
     private Building? FindNearestBuilding(Position position) =>
         _world.Buildings.OrderBy(b => WorldState.Distance(b.Position, position)).FirstOrDefault();
+
+    private ResourceNode? FindNearestFellableResourceNode(Position position) =>
+        _world.ResourceNodes
+            .Where(n => n.IsAlive && _world.ResourceCatalog.Get(n.Kind).CanFell)
+            .OrderBy(n => WorldState.Distance(n.Position, position))
+            .FirstOrDefault();
 
     private Person? FindNearestUnburiedDeceased(Position position) =>
         _world.People
@@ -646,14 +699,10 @@ public partial class Main : Node3D
         }
     }
 
-    private void GatherFrom(PersonId personId, ResourceNode node)
-    {
-        _world.Execute(new GatherCommand(personId, node.Id));
-        if (node.RemainingAmount <= 0)
-        {
-            _presenter.RemoveResourceNodeView(node.Id);
-        }
-    }
+    // Depleting a node down to zero doesn't remove its view - the plant/tree is still there,
+    // just fruitless until RegenPerTick brings it back. Only IsAlive turning false (felled or
+    // withered - see FellCommand, WorldState.Advance) means the thing itself is actually gone.
+    private void GatherFrom(PersonId personId, ResourceNode node) => _world.Execute(new GatherCommand(personId, node.Id));
 
     // A destination short of the node's own position, approaching from wherever the
     // person currently is - so they end up standing next to the resource rather than

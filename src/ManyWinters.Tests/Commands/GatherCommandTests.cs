@@ -64,6 +64,21 @@ public class GatherCommandTests
     }
 
     [Fact]
+    public void GatheringFromAFelledNodeDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        world.Execute(new FellCommand(person.Id, node.Id));
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
     public void GatheringByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();

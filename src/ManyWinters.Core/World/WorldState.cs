@@ -215,7 +215,28 @@ public sealed class WorldState
 
             foreach (var node in _resourceNodes)
             {
-                var regenPerTick = ResourceCatalog.Get(node.Kind).RegenPerTick * regenMultiplier;
+                if (!node.IsAlive)
+                {
+                    continue;
+                }
+
+                var definition = ResourceCatalog.Get(node.Kind);
+                if (definition.IsInhospitable(climate))
+                {
+                    node.ColdStress += 1f;
+                    if (node.ColdStress >= definition.TicksToWither)
+                    {
+                        node.IsAlive = false;
+                        node.DeathTick = currentTick;
+                        node.CauseOfDeath = ResourceDeathCause.Climate;
+                    }
+
+                    continue;
+                }
+
+                node.ColdStress = 0f;
+
+                var regenPerTick = definition.RegenPerTick * regenMultiplier;
                 node.RemainingAmount = Math.Min(node.MaxAmount, node.RemainingAmount + regenPerTick);
             }
         }

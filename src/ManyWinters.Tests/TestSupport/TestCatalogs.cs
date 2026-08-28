@@ -41,13 +41,14 @@ public static class TestCatalogs
     public const float ColdFoodYieldMultiplier = 0.4f;
     public const float FoodRegenPerTick = 1f;
     public const float WoodRegenPerTick = 0.5f;
+    public const float FellWoodYield = 30f;
 
     private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
 
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
-        new ResourceDefinition(Pear, "Pear", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Apple, "Apple", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
+        new ResourceDefinition(Pear, "Pear", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
         new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
         new ResourceDefinition(Potato, "Potato", RootDigging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
