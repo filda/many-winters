@@ -693,35 +693,117 @@ def rock_pile():
     return c
 
 
-def _fruit_tree(name, fruit_color, fruit_spots):
+def _fruit_tree_canopy():
+    return (ellipse(32, 26, 22, 17) | ellipse(18, 30, 13, 12)
+            | ellipse(46, 30, 13, 12) | ellipse(32, 12, 15, 12))
+
+
+def _fruit_tree_bare(name):
     """Shared deciduous canopy for the fruit-tree sprites - only the fruit color/
-    placement differs, so the two trees stay readable as "the same kind of tree" at a
-    glance. The canopy is a union of ellipses, not jagged (see the note above
-    jagged_poly) - rough_outline alone carries the hand-inked edge."""
+    placement differs between kinds, so the two trees stay readable as "the same kind
+    of tree" at a glance. The canopy is a union of ellipses, not jagged (see the note
+    above jagged_poly) - rough_outline alone carries the hand-inked edge.
+
+    This is the WHOLE tree - a picked-clean node renders exactly this, with no fruit.
+    _fruit_overlay is a second, separately composited layer (see ResourceNodeView) so a
+    node with no stock left doesn't need its own distinct "bare" texture asset."""
     seed = seed_for(name)
     c = Canvas(seed)
     trunk = rgb(0.34, 0.24, 0.15)
     foliage = rgb(0.30, 0.38, 0.22)
     c.fill(rect(29, 44, 35, 58), trunk)
-    canopy = (ellipse(32, 26, 22, 17) | ellipse(18, 30, 13, 12)
-              | ellipse(46, 30, 13, 12) | ellipse(32, 12, 15, 12))
-    c.fill(canopy, foliage)
-    for px, py, r in fruit_spots:
-        c.flat(ellipse(px, py, r, r) & canopy, fruit_color)
+    c.fill(_fruit_tree_canopy(), foliage)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
 
+def _fruit_overlay(name, fruit_color, fruit_spots):
+    """Just the fruit dots, on an otherwise-transparent canvas, masked to the same
+    canopy footprint _fruit_tree_bare fills - no outline of its own, since it's always
+    composited on top of the bare tree's already-outlined canopy, never shown alone."""
+    seed = seed_for(name)
+    c = Canvas(seed)
+    canopy = _fruit_tree_canopy()
+    for px, py, r in fruit_spots:
+        c.flat(ellipse(px, py, r, r) & canopy, fruit_color)
+    return c
+
+
 def apple_tree():
-    return _fruit_tree(
+    return _fruit_tree_bare("apple_tree")
+
+
+def apple_tree_fruit():
+    return _fruit_overlay(
         "apple_tree", rgb(0.70, 0.18, 0.16),
         ((22, 24, 3), (40, 20, 3), (30, 34, 3), (46, 32, 2), (18, 38, 2)))
 
 
 def pear_tree():
-    return _fruit_tree(
+    return _fruit_tree_bare("pear_tree")
+
+
+def pear_tree_fruit():
+    return _fruit_overlay(
         "pear_tree", rgb(0.62, 0.68, 0.20),
         ((24, 22, 3), (42, 22, 3), (32, 36, 3), (44, 34, 2), (20, 36, 2)))
+
+
+def deciduous_tree():
+    """Same bare-canopy shape and construction as the fruit trees (see _fruit_tree_bare) -
+    purely decorative background filler (TerrainRenderer.ScatterDecoration), not a gameplay
+    resource, so it never needs a fruit overlay."""
+    return _fruit_tree_bare("deciduous_tree")
+
+
+def bush():
+    """A low, trunkless clump - the same union-of-ellipses construction as the tree
+    canopies, just wider and closer to the ground."""
+    seed = seed_for("bush")
+    c = Canvas(seed)
+    foliage = rgb(0.26, 0.36, 0.18)
+    mask = (ellipse(32, 42, 20, 14) | ellipse(15, 46, 12, 10)
+            | ellipse(49, 46, 12, 10) | ellipse(32, 33, 15, 12))
+    c.fill(mask, foliage)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def grass():
+    """A handful of jagged blades of varying height and lean - thin enough that
+    rough_outline's ring, not crosshatch density, carries most of the shape's read."""
+    seed = seed_for("grass")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    green = rgb(0.32, 0.42, 0.18)
+    for i in range(6):
+        bx = 10 + i * 8 + rng.uniform(-2.0, 2.0)
+        height = rng.uniform(16, 30)
+        lean = rng.uniform(-5.0, 5.0)
+        blade = jagged_poly(
+            [(bx - 2.2, 58), (bx + lean, 58 - height), (bx + 2.2, 58)],
+            rng, amp=0.5, segments_per_edge=2, smooth_passes=1)
+        c.fill(poly(blade), green)
+    c.rough_outline(width=1)
+    return c
+
+
+def flower():
+    """A short stem topped with a ring of petals around a bright center - the one spot of
+    saturated color the muted palette (docs/Many Winters visual plan, "art constraints")
+    allows, since it's a tiny accent rather than a large area."""
+    seed = seed_for("flower")
+    c = Canvas(seed)
+    stem = rgb(0.30, 0.40, 0.20)
+    petal = rgb(0.82, 0.52, 0.62)
+    center = rgb(0.90, 0.75, 0.25)
+    c.fill(rect(31, 38, 33, 58), stem)
+    petals = (ellipse(32, 28, 6, 9) | ellipse(23, 33, 8, 6) | ellipse(41, 33, 8, 6)
+              | ellipse(27, 24, 7, 7) | ellipse(37, 24, 7, 7))
+    c.fill(petals, petal)
+    c.flat(ellipse(32, 31, 4, 4), center)
+    c.rough_outline(width=1)
+    return c
 
 
 def selection_marker():
@@ -750,8 +832,14 @@ SPRITES = {
     "grave_unmarked": grave_unmarked,
     "grave_marked": grave_marked,
     "conifer_tree": conifer_tree,
+    "deciduous_tree": deciduous_tree,
     "apple_tree": apple_tree,
+    "apple_tree_fruit": apple_tree_fruit,
     "pear_tree": pear_tree,
+    "pear_tree_fruit": pear_tree_fruit,
+    "bush": bush,
+    "grass": grass,
+    "flower": flower,
     "rock_pile": rock_pile,
     "selection_marker": selection_marker,
 }
