@@ -49,9 +49,10 @@ public partial class Main : Node3D
     private Position _campCenter;
 
     private Label _infoLabel = null!;
-    private Label _tickLabel = null!;
     private Label _buildingsLabel = null!;
     private Label _gravesLabel = null!;
+    private VBoxContainer _contextualActions = null!;
+    private StatusBar _statusBar = null!;
     private PersonId? _selectedPersonId;
     private GraveId? _selectedGraveId;
     private double _tickAccumulator;
@@ -101,7 +102,7 @@ public partial class Main : Node3D
         _tickAccumulator -= TickIntervalSeconds;
         _world.Advance(1);
         ResolvePendingGathers();
-        _tickLabel.Text = $"Tick: {_world.Clock.CurrentTick}  Season: {_world.CurrentSeason}";
+        _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
         RefreshInfoLabel();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
@@ -156,8 +157,8 @@ public partial class Main : Node3D
         var canvas = new CanvasLayer();
         AddChild(canvas);
 
-        SetUpControlsPanel(canvas);
-        SetUpInspectorPanel(canvas);
+        SetUpInspectorWindow(canvas);
+        SetUpStatusBar(canvas);
     }
 
     private static StyleBoxFlat PanelBackground() => new()
@@ -173,93 +174,20 @@ public partial class Main : Node3D
         CornerRadiusBottomRight = 6,
     };
 
-    private void SetUpControlsPanel(CanvasLayer canvas)
-    {
-        var panel = new PanelContainer
-        {
-            Position = new Vector2(16, 16),
-        };
-        panel.AddThemeStyleboxOverride("panel", PanelBackground());
-        canvas.AddChild(panel);
-
-        var box = new VBoxContainer();
-        panel.AddChild(box);
-
-        box.AddChild(new Label
-        {
-            Text = "WASD/arrows: pan camera. Q/E: rotate. R/F: zoom. T: toggle ortho/perspective. Left-click: select person. Right-click another person: teach them what the selected person knows. Click a resource node: gather (needs a selected person). Click a grave: view its record. Click empty ground: walk there (needs a selected person).",
-            CustomMinimumSize = new Vector2(360, 0),
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-        });
-
-        _tickLabel = new Label { Text = $"Tick: 0  Season: {_world.CurrentSeason}" };
-        box.AddChild(_tickLabel);
-
-        var spawnButton = new Button { Text = "Spawn Person" };
-        spawnButton.Pressed += OnSpawnButtonPressed;
-        box.AddChild(spawnButton);
-
-        var craftButton = new Button { Text = "Craft Axe (selected person, 5 Wood)" };
-        craftButton.Pressed += OnCraftButtonPressed;
-        box.AddChild(craftButton);
-
-        var craftClothingButton = new Button { Text = "Craft Warm Clothing (selected person, 10 Wood)" };
-        craftClothingButton.Pressed += OnCraftClothingButtonPressed;
-        box.AddChild(craftClothingButton);
-
-        var buildButton = new Button { Text = "Build Storage Hut (selected person, 20 Wood)" };
-        buildButton.Pressed += OnBuildButtonPressed;
-        box.AddChild(buildButton);
-
-        var repairButton = new Button { Text = "Repair Nearest Building (selected person, 5 Wood)" };
-        repairButton.Pressed += OnRepairButtonPressed;
-        box.AddChild(repairButton);
-
-        var depositButton = new Button { Text = "Deposit Wood (selected person -> nearest building)" };
-        depositButton.Pressed += OnDepositButtonPressed;
-        box.AddChild(depositButton);
-
-        var withdrawButton = new Button { Text = "Withdraw Wood (nearest building -> selected person)" };
-        withdrawButton.Pressed += OnWithdrawButtonPressed;
-        box.AddChild(withdrawButton);
-
-        var buryButton = new Button { Text = "Bury Nearest Dead Person (selected person)" };
-        buryButton.Pressed += OnBuryButtonPressed;
-        box.AddChild(buryButton);
-
-        var lootButton = new Button { Text = "Loot Nearest Dead Person (selected person)" };
-        lootButton.Pressed += OnLootButtonPressed;
-        box.AddChild(lootButton);
-
-        _buildingsLabel = new Label { Text = "Buildings: none" };
-        box.AddChild(_buildingsLabel);
-
-        _gravesLabel = new Label { Text = "Graves: none" };
-        box.AddChild(_gravesLabel);
-    }
-
-    private void SetUpInspectorPanel(CanvasLayer canvas)
+    // One floating, collapsible window for both the inspector and the action buttons -
+    // the buttons are contextual to whichever person is selected, so they belong together
+    // rather than in a separate always-open panel.
+    private void SetUpInspectorWindow(CanvasLayer canvas)
     {
         const float width = 340f;
-        const float margin = 16f;
-        var viewportWidth = GetViewport().GetVisibleRect().Size.X;
 
-        var panel = new PanelContainer
+        var panel = new FloatingPanel("Inspector")
         {
-            Position = new Vector2(viewportWidth - width - margin, margin),
+            Position = new Vector2(16, 16),
             CustomMinimumSize = new Vector2(width, 0),
         };
         panel.AddThemeStyleboxOverride("panel", PanelBackground());
         canvas.AddChild(panel);
-
-        var box = new VBoxContainer();
-        panel.AddChild(box);
-
-        box.AddChild(new Label
-        {
-            Text = "Inspector",
-            LabelSettings = new LabelSettings { FontSize = 18 },
-        });
 
         _infoLabel = new Label
         {
@@ -267,7 +195,60 @@ public partial class Main : Node3D
             CustomMinimumSize = new Vector2(width, 0),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        box.AddChild(_infoLabel);
+        panel.Body.AddChild(_infoLabel);
+
+        var spawnButton = new Button { Text = "Spawn Person" };
+        spawnButton.Pressed += OnSpawnButtonPressed;
+        panel.Body.AddChild(spawnButton);
+
+        _contextualActions = new VBoxContainer { Visible = false };
+        panel.Body.AddChild(_contextualActions);
+
+        var craftButton = new Button { Text = "Craft Axe (5 Wood)" };
+        craftButton.Pressed += OnCraftButtonPressed;
+        _contextualActions.AddChild(craftButton);
+
+        var craftClothingButton = new Button { Text = "Craft Warm Clothing (10 Wood)" };
+        craftClothingButton.Pressed += OnCraftClothingButtonPressed;
+        _contextualActions.AddChild(craftClothingButton);
+
+        var buildButton = new Button { Text = "Build Storage Hut (20 Wood)" };
+        buildButton.Pressed += OnBuildButtonPressed;
+        _contextualActions.AddChild(buildButton);
+
+        var repairButton = new Button { Text = "Repair Nearest Building (5 Wood)" };
+        repairButton.Pressed += OnRepairButtonPressed;
+        _contextualActions.AddChild(repairButton);
+
+        var depositButton = new Button { Text = "Deposit Wood -> Nearest Building" };
+        depositButton.Pressed += OnDepositButtonPressed;
+        _contextualActions.AddChild(depositButton);
+
+        var withdrawButton = new Button { Text = "Withdraw Wood <- Nearest Building" };
+        withdrawButton.Pressed += OnWithdrawButtonPressed;
+        _contextualActions.AddChild(withdrawButton);
+
+        var buryButton = new Button { Text = "Bury Nearest Dead Person" };
+        buryButton.Pressed += OnBuryButtonPressed;
+        _contextualActions.AddChild(buryButton);
+
+        var lootButton = new Button { Text = "Loot Nearest Dead Person" };
+        lootButton.Pressed += OnLootButtonPressed;
+        _contextualActions.AddChild(lootButton);
+
+        _buildingsLabel = new Label { Text = "Buildings: none" };
+        panel.Body.AddChild(_buildingsLabel);
+
+        _gravesLabel = new Label { Text = "Graves: none" };
+        panel.Body.AddChild(_gravesLabel);
+    }
+
+    private void SetUpStatusBar(CanvasLayer canvas)
+    {
+        _statusBar = new StatusBar();
+        _statusBar.AddThemeStyleboxOverride("panel", PanelBackground());
+        canvas.AddChild(_statusBar);
+        _statusBar.SetTick(0, _world.CurrentSeason);
     }
 
     private void OnSpawnButtonPressed()
@@ -279,7 +260,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then craft.";
+            _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
@@ -291,7 +272,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then craft.";
+            _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
@@ -303,7 +284,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then build.";
+            _statusBar.Notify("Select a person first, then build.");
             return;
         }
 
@@ -323,7 +304,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then repair.";
+            _statusBar.Notify("Select a person first, then repair.");
             return;
         }
 
@@ -336,13 +317,13 @@ public partial class Main : Node3D
         var nearestBuilding = FindNearestBuilding(person.Position);
         if (nearestBuilding is null)
         {
-            _infoLabel.Text = "No buildings to repair yet.";
+            _statusBar.Notify("No buildings to repair yet.");
             return;
         }
 
         if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
         {
-            _infoLabel.Text = "The nearest building is too far away.";
+            _statusBar.Notify("The nearest building is too far away.");
             return;
         }
 
@@ -355,7 +336,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then deposit.";
+            _statusBar.Notify("Select a person first, then deposit.");
             return;
         }
 
@@ -368,13 +349,13 @@ public partial class Main : Node3D
         var nearestBuilding = FindNearestBuilding(person.Position);
         if (nearestBuilding is null)
         {
-            _infoLabel.Text = "No buildings to deposit into yet.";
+            _statusBar.Notify("No buildings to deposit into yet.");
             return;
         }
 
         if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
         {
-            _infoLabel.Text = "The nearest building is too far away.";
+            _statusBar.Notify("The nearest building is too far away.");
             return;
         }
 
@@ -382,7 +363,7 @@ public partial class Main : Node3D
         var amount = person.Inventory.Get(woodItem);
         if (amount <= 0)
         {
-            _infoLabel.Text = "No wood to deposit.";
+            _statusBar.Notify("No wood to deposit.");
             return;
         }
 
@@ -397,7 +378,7 @@ public partial class Main : Node3D
 
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then withdraw.";
+            _statusBar.Notify("Select a person first, then withdraw.");
             return;
         }
 
@@ -410,13 +391,13 @@ public partial class Main : Node3D
         var nearestBuilding = FindNearestBuilding(person.Position);
         if (nearestBuilding is null)
         {
-            _infoLabel.Text = "No buildings to withdraw from yet.";
+            _statusBar.Notify("No buildings to withdraw from yet.");
             return;
         }
 
         if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
         {
-            _infoLabel.Text = "The nearest building is too far away.";
+            _statusBar.Notify("The nearest building is too far away.");
             return;
         }
 
@@ -424,7 +405,7 @@ public partial class Main : Node3D
         var amount = Math.Min(withdrawAmount, nearestBuilding.Inventory.Get(woodItem));
         if (amount <= 0)
         {
-            _infoLabel.Text = "No wood to withdraw.";
+            _statusBar.Notify("No wood to withdraw.");
             return;
         }
 
@@ -437,7 +418,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then bury.";
+            _statusBar.Notify("Select a person first, then bury.");
             return;
         }
 
@@ -450,13 +431,13 @@ public partial class Main : Node3D
         var deceased = FindNearestUnburiedDeceased(person.Position);
         if (deceased is null)
         {
-            _infoLabel.Text = "No one left to bury.";
+            _statusBar.Notify("No one left to bury.");
             return;
         }
 
         if (WorldState.Distance(person.Position, deceased.Position) > WorldState.MaxInteractionDistance)
         {
-            _infoLabel.Text = "The nearest deceased person is too far away.";
+            _statusBar.Notify("The nearest deceased person is too far away.");
             return;
         }
 
@@ -470,7 +451,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then loot.";
+            _statusBar.Notify("Select a person first, then loot.");
             return;
         }
 
@@ -483,13 +464,13 @@ public partial class Main : Node3D
         var deceased = FindNearestLootableDeceased(person.Position);
         if (deceased is null)
         {
-            _infoLabel.Text = "Nothing left to loot.";
+            _statusBar.Notify("Nothing left to loot.");
             return;
         }
 
         if (WorldState.Distance(person.Position, deceased.Position) > WorldState.MaxInteractionDistance)
         {
-            _infoLabel.Text = "The nearest belongings are too far away.";
+            _statusBar.Notify("The nearest belongings are too far away.");
             return;
         }
 
@@ -571,6 +552,7 @@ public partial class Main : Node3D
         _selectedPersonId = id;
         _selectedGraveId = null;
         _presenter.SetSelectedPerson(id);
+        _contextualActions.Visible = true;
         RefreshInfoLabel();
     }
 
@@ -579,6 +561,7 @@ public partial class Main : Node3D
         _selectedGraveId = id;
         _selectedPersonId = null;
         _presenter.SetSelectedPerson(null);
+        _contextualActions.Visible = false;
         RefreshInfoLabel();
     }
 
@@ -607,7 +590,7 @@ public partial class Main : Node3D
     {
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then click a resource node to gather.";
+            _statusBar.Notify("Select a person first, then click a resource node to gather.");
             return;
         }
 
@@ -696,7 +679,7 @@ public partial class Main : Node3D
 
         if (_selectedPersonId is not { } personId)
         {
-            _infoLabel.Text = "Select a person first, then click the ground to walk there.";
+            _statusBar.Notify("Select a person first, then click the ground to walk there.");
             return;
         }
 
