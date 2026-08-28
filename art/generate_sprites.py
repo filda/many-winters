@@ -16,6 +16,7 @@ Run:  python3 generate_sprites.py <output_dir>
 
 import sys
 import os
+import math
 import random
 import zlib
 import numpy as np
@@ -272,26 +273,38 @@ class Canvas:
 # actual cowl point; a boot with a heel and a toe - built as multi-point silhouettes
 # instead of a trapezoid/quad/ellipse-ring/rectangle before any jagging is applied.
 
+# Three hand-authored robe silhouettes, all 13 points walked in the same order
+# (shoulder_L, shoulder_R, arm_notch_R, waist_R, hip_R, hem_R1, hem_R2, hem_center,
+# hem_L2, hem_L1, hip_L, waist_L, arm_notch_L). Each is a deliberately different,
+# asymmetric drape - not mirror-symmetric, not a formula - the way cloth actually
+# falls unevenly, rather than noise jittered onto a symmetric trapezoid (which read as
+# "primitive with texture" no matter how smooth/jagged its edge was - see
+# project_sprite_woodcut_texture_library memory for the wireframe test that ruled out
+# edge smoothness as the cause). Blending between these per instance keeps the
+# per-seed variety while keeping each result built from a genuinely asymmetric shape.
+_ROBE_VARIANT_A = [
+    (25, 19), (39, 21), (43, 26), (41, 36), (46, 45),
+    (45, 53), (38, 50), (31, 55), (24, 49), (19, 52),
+    (19, 44), (23, 33), (21, 24),
+]
+_ROBE_VARIANT_B = [
+    (24, 21), (38, 19), (42, 25), (39, 34), (42, 43),
+    (40, 49), (34, 52), (29, 48), (22, 53), (17, 50),
+    (18, 46), (25, 37), (20, 26),
+]
+_ROBE_VARIANT_C = [
+    (26, 20), (40, 20), (44, 27), (42, 35), (45, 47),
+    (44, 54), (36, 49), (30, 53), (23, 47), (18, 51),
+    (17, 43), (22, 35), (19, 25),
+]
+ROBE_VARIANTS = [np.array(v, dtype=float) for v in (_ROBE_VARIANT_A, _ROBE_VARIANT_B, _ROBE_VARIANT_C)]
+
+
 def robe_silhouette(rng, sx, sy):
-    waist_pull = rng.uniform(1.5, 3.0)
-    hem_y = sy(52)
-    fold_count = rng.randint(3, 4)
-    hem_xs = np.linspace(sx(44), sx(20), fold_count * 2 + 1)
-    pts = [
-        (sx(26), sy(20)), (sx(38), sy(20)),
-        (sx(42), sy(25)),
-        (sx(40) - waist_pull, sy(35)),
-        (sx(44), sy(46)),
-    ]
-    for i, x in enumerate(hem_xs):
-        y = hem_y if i % 2 == 0 else hem_y - rng.uniform(3.0, 5.0)
-        pts.append((x, y))
-    pts += [
-        (sx(20), sy(46)),
-        (sx(24) + waist_pull, sy(35)),
-        (sx(22), sy(25)),
-    ]
-    return pts
+    weights = np.array([rng.random() for _ in ROBE_VARIANTS])
+    weights /= weights.sum()
+    blended = sum(w * v for w, v in zip(weights, ROBE_VARIANTS))
+    return [(sx(x), sy(y)) for x, y in blended]
 
 
 def arm_points(side, elbow_bulge):
@@ -367,9 +380,11 @@ def person(seed=None):
     boot_r = poly(jagged_poly(RIGHT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
     c.fill(boot_l | boot_r, darken(BOOT, 0.25))
 
-    # cloak: nipped waist + scalloped hem, jagged on top for hand-cut texture
+    # cloak: an authored asymmetric drape (see ROBE_VARIANTS), lightly jagged on top
+    # for hand-cut texture - less noise needed now that the base shape itself is
+    # genuinely asymmetric, not a symmetric formula
     body_pts = robe_silhouette(rng, sx, sy)
-    body = poly(jagged_poly(body_pts, rng, amp=1.6, segments_per_edge=3, smooth_passes=2))
+    body = poly(jagged_poly(body_pts, rng, amp=1.0, segments_per_edge=3, smooth_passes=2))
     c.fill(body, cloak)
     c.flat(rect(24, 38, 40, 39) & body, lighten(cloak, 0.25))
 
@@ -423,20 +438,113 @@ def person_dead():
     return c
 
 
+def _wood_log(canvas, cx, cy, rx, ry, bark_color, core_color, seed):
+    """A log end: crosshatch shading (kept, not replaced) plus concentric growth rings,
+    a couple of radiating checking-cracks, and short bark dashes around the rim - the
+    literal thing a cut log shows, layered on top of the shading rather than replacing
+    it (a flat-colour version of this read as "MS Paint flat" in review)."""
+    rng = random.Random(seed)
+    bark_mask = ellipse(cx, cy, rx, ry) & ~ellipse(cx, cy, rx * 0.86, ry * 0.86)
+    core_mask = ellipse(cx, cy, rx * 0.86, ry * 0.86)
+    canvas.fill(bark_mask, bark_color)
+    canvas.fill(core_mask, core_color)
+
+    ring_img = Image.new("L", (S, S), 0)
+    draw = ImageDraw.Draw(ring_img)
+    n_rings = rng.randint(7, 10)  # fine/numerous - a handful of bold bands read as a
+    # target, not an engraved cross-section
+    for i in range(1, n_rings + 1):
+        frac = (i / (n_rings + 1)) * rng.uniform(0.92, 1.0)
+        wob = rng.uniform(-0.3, 0.3)
+        bbox = [(cx - rx * 0.86 * frac + wob) * SCALE, (cy - ry * 0.86 * frac + wob) * SCALE,
+                (cx + rx * 0.86 * frac + wob) * SCALE, (cy + ry * 0.86 * frac + wob) * SCALE]
+        draw.ellipse(bbox, outline=255, width=1)
+    for _ in range(rng.randint(3, 5)):
+        angle = rng.uniform(0, 2 * math.pi)
+        t = rng.uniform(0.6, 0.95)
+        x2, y2 = cx + math.cos(angle) * rx * 0.86 * t, cy + math.sin(angle) * ry * 0.86 * t
+        draw.line([(cx * SCALE, cy * SCALE), (x2 * SCALE, y2 * SCALE)], fill=255, width=max(1, SCALE // 4))
+    ring_mask = (np.array(ring_img) > 127) & core_mask
+    canvas.flat(ring_mask, darken(core_color, 0.35))
+
+    dash_img = Image.new("L", (S, S), 0)
+    dd = ImageDraw.Draw(dash_img)
+    n_dash = max(10, int(2 * math.pi * max(rx, ry) / 1.6))
+    for i in range(n_dash):
+        a = (i / n_dash) * 2 * math.pi + rng.uniform(-0.05, 0.05)
+        r0 = rng.uniform(0.88, 0.94)
+        dd.line([((cx + math.cos(a) * rx * r0) * SCALE, (cy + math.sin(a) * ry * r0) * SCALE),
+                 ((cx + math.cos(a) * rx) * SCALE, (cy + math.sin(a) * ry) * SCALE)],
+                fill=255, width=max(1, SCALE // 3))
+    dash_mask = (np.array(dash_img) > 127) & bark_mask
+    canvas.flat(dash_mask, darken(bark_color, 0.4))
+
+
+def _rope_tie(canvas, p0, p1, rope_color, seed, width=2.6):
+    """A wrapped-cord band across the stack, drawn on top - called for in the original
+    brief ("tied with a rope") but never actually implemented."""
+    rng = random.Random(seed)
+    x0, y0 = p0
+    x1, y1 = p1
+    length = math.hypot(x1 - x0, y1 - y0)
+    nx, ny = -(y1 - y0) / length, (x1 - x0) / length
+
+    band_img = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(band_img).line([(x0 * SCALE, y0 * SCALE), (x1 * SCALE, y1 * SCALE)],
+                                   fill=255, width=int(width * SCALE))
+    band_mask = np.array(band_img) > 127
+    canvas.flat(band_mask, rope_color)
+
+    tick_img = Image.new("L", (S, S), 0)
+    td = ImageDraw.Draw(tick_img)
+    n_ticks = max(6, int(length / 1.6))
+    for i in range(n_ticks):
+        t = i / n_ticks
+        cxm, cym = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        w = width * 0.5
+        td.line([((cxm - nx * w) * SCALE, (cym - ny * w) * SCALE),
+                 ((cxm + nx * w) * SCALE, (cym + ny * w) * SCALE)],
+                fill=255, width=max(1, SCALE // 4))
+    tick_mask = (np.array(tick_img) > 127) & band_mask
+    canvas.flat(tick_mask, darken(rope_color, 0.35))
+
+    edge_img = Image.new("L", (S, S), 0)
+    ed = ImageDraw.Draw(edge_img)
+    for side in (-1, 1):
+        ex0, ey0 = x0 + nx * width * 0.5 * side, y0 + ny * width * 0.5 * side
+        ex1, ey1 = x1 + nx * width * 0.5 * side, y1 + ny * width * 0.5 * side
+        ed.line([(ex0 * SCALE, ey0 * SCALE), (ex1 * SCALE, ey1 * SCALE)], fill=255, width=max(1, SCALE // 3))
+    edge_mask = (np.array(edge_img) > 127) & band_mask
+    canvas.flat(edge_mask, darken(rope_color, 0.45))
+
+
+def _ground_shadow_dashes(canvas, cx, cy, half_w, seed, n=14):
+    """Sparse hatch dashes grounding the object, instead of it floating with no contact
+    shadow at all - a small thing the reference sprites never skip."""
+    rng = random.Random(seed)
+    img = Image.new("L", (S, S), 0)
+    draw = ImageDraw.Draw(img)
+    for _ in range(n):
+        x = cx + rng.uniform(-half_w, half_w)
+        y = cy + rng.uniform(-0.6, 0.6)
+        w = rng.uniform(1.5, 3.5)
+        draw.line([((x - w / 2) * SCALE, y * SCALE), ((x + w / 2) * SCALE, y * SCALE)],
+                  fill=255, width=1)
+    mask = np.array(img) > 127
+    canvas.rgb[mask & ~canvas.alpha] = darken(rgb(0.5, 0.45, 0.35), 0.3)
+    canvas.alpha |= mask
+
+
 def wood():
     seed = seed_for("wood")
     c = Canvas(seed)
     bark = rgb(0.40, 0.25, 0.10)
     core = rgb(0.72, 0.55, 0.34)
-    ring = darken(core, 0.28)
-    for cx, cy, r1, r2, r3, r4 in (
-        (32, 22, (14, 12), (9, 8), (5, 4), (3, 2)),
-        (20, 42, (15, 13), (10, 9), (6, 5), (3, 3)),
-        (45, 44, (14, 12), (9, 8), (5, 4), (3, 2)),
-    ):
-        c.fill(ellipse(cx, cy, *r1), bark)
-        c.fill(ellipse(cx, cy, *r2), core)
-        c.flat(ellipse(cx, cy, *r3) & ~ellipse(cx, cy, *r4), ring)
+    logs = ((32, 22, 14, 12), (20, 42, 15, 13), (45, 44, 14, 12))
+    for i, (cx, cy, rx, ry) in enumerate(logs):
+        _wood_log(c, cx, cy, rx, ry, bark, core, seed + i * 7)
+    _ground_shadow_dashes(c, 32, 57, 20, seed + 99)
+    _rope_tie(c, (44, 30), (18, 50), rgb(0.62, 0.52, 0.30), seed + 5)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -680,13 +788,95 @@ def conifer_tree():
     return c
 
 
+# Three hand-authored angular boulder outlines (8 points each, same walk order: top-
+# left facet, top, top-right facet, right, bottom-right facet, bottom, bottom-left
+# facet, left), unit-scaled around the origin. Real stones read as a handful of flat
+# facets meeting at sharp-ish corners, not a smooth round blob - three overlapping
+# ellipses was the single most "still just a circle" shape in the whole roster.
+_ROCK_VARIANT_A = [
+    (-0.55, -0.85), (0.05, -1.0), (0.75, -0.6), (1.0, 0.05),
+    (0.6, 0.75), (-0.1, 0.95), (-0.85, 0.55), (-0.95, -0.25),
+]
+_ROCK_VARIANT_B = [
+    (-0.3, -1.0), (0.45, -0.8), (0.95, -0.15), (0.8, 0.55),
+    (0.2, 1.0), (-0.5, 0.85), (-1.0, 0.2), (-0.7, -0.6),
+]
+_ROCK_VARIANT_C = [
+    (-0.7, -0.7), (0.15, -0.95), (0.85, -0.35), (0.95, 0.35),
+    (0.35, 0.9), (-0.4, 0.7), (-0.9, 0.3), (-0.95, -0.35),
+]
+ROCK_VARIANTS = [np.array(v, dtype=float) for v in (_ROCK_VARIANT_A, _ROCK_VARIANT_B, _ROCK_VARIANT_C)]
+
+
+def _blended_rock_points(rng, cx, cy, rx, ry):
+    weights = np.array([rng.random() for _ in ROCK_VARIANTS])
+    weights /= weights.sum()
+    unit = sum(w * v for w, v in zip(weights, ROCK_VARIANTS))
+    return [(cx + p[0] * rx, cy + p[1] * ry) for p in unit]
+
+
+def _stone_facets(mask, seed, n=3):
+    """A couple of irregular crack lines per stone - real rock surfaces show a handful
+    of distinct fracture lines, not a repeated micro-pattern (see
+    project_sprite_woodcut_texture_library memory: few large marks, not many small
+    identical ones, is what kept this from reading as a stamped pattern)."""
+    rng = random.Random(seed)
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        return np.zeros((S, S), dtype=bool)
+    x0, x1, y0, y1 = xs.min() / SCALE, xs.max() / SCALE, ys.min() / SCALE, ys.max() / SCALE
+    img = Image.new("L", (S, S), 0)
+    draw = ImageDraw.Draw(img)
+    for _ in range(n):
+        x, y = rng.uniform(x0 + 1, x1 - 1), rng.uniform(y0 + 1, y1 - 1)
+        angle = rng.uniform(0, 2 * math.pi)
+        length = rng.uniform((x1 - x0) * 0.3, (x1 - x0) * 0.55)
+        pts = [(x, y)]
+        for _ in range(rng.randint(2, 3)):
+            angle += rng.uniform(-0.6, 0.6)
+            step = length / 3
+            x, y = x + math.cos(angle) * step, y + math.sin(angle) * step
+            pts.append((x, y))
+        draw.line([(px * SCALE, py * SCALE) for px, py in pts], fill=255, width=max(1, SCALE // 3))
+    return (np.array(img) > 127) & mask
+
+
+def _weather_pits(mask, seed, n=4):
+    """A handful of small pockmarks - again few and distinct, not a stippled field."""
+    rng = random.Random(seed)
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        return np.zeros((S, S), dtype=bool)
+    x0, x1, y0, y1 = xs.min() / SCALE, xs.max() / SCALE, ys.min() / SCALE, ys.max() / SCALE
+    img = Image.new("L", (S, S), 0)
+    draw = ImageDraw.Draw(img)
+    for _ in range(n):
+        x, y = rng.uniform(x0 + 1, x1 - 1), rng.uniform(y0 + 1, y1 - 1)
+        r = rng.uniform(0.5, 1.3)
+        draw.ellipse([(x - r) * SCALE, (y - r) * SCALE, (x + r) * SCALE, (y + r) * SCALE], fill=255)
+    return (np.array(img) > 127) & mask
+
+
 def rock_pile():
     seed = seed_for("rock_pile")
+    rng = random.Random(seed)
     c = Canvas(seed)
     stone = rgb(0.5, 0.5, 0.52)
-    c.fill(ellipse(22, 44, 14, 11), stone)
-    c.fill(ellipse(40, 46, 13, 10), darken(stone, 0.08))
-    c.fill(ellipse(32, 36, 11, 10), lighten(stone, 0.1))
+    stones = [
+        (22, 44, 14, 11, stone, 0),
+        (40, 46, 13, 10, darken(stone, 0.08), 1),
+        (32, 36, 11, 10, lighten(stone, 0.1), 2),
+    ]
+    for cx, cy, rx, ry, color, i in stones:
+        pts = _blended_rock_points(rng, cx, cy, rx, ry)
+        mask = poly(jagged_poly(pts, rng, amp=0.7, segments_per_edge=3, smooth_passes=1))
+        out_rgb = hatch_fill(mask, color, seed + i * 9)
+        c.rgb[mask] = out_rgb[mask]
+        c.alpha |= mask
+        facets = _stone_facets(mask, seed + i * 9 + 3, n=rng.randint(2, 3))
+        c.flat(facets, darken(color, 0.45))
+        pits = _weather_pits(mask, seed + i * 9 + 5, n=rng.randint(2, 4))
+        c.flat(pits, darken(color, 0.35))
     c.flat(rect(19, 42, 25, 43), darken(stone, 0.35))
     c.flat(rect(36, 44, 42, 45), darken(stone, 0.35))
     c.rough_outline(width=max(1, SCALE // 2))
