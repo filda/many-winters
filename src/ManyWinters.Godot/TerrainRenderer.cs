@@ -155,7 +155,10 @@ public sealed class TerrainRenderer
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoTexture = groundTexture,
-                TextureFilter = BaseMaterial3D.TextureFilterEnum.Nearest,
+                // LinearWithMipmaps, not Nearest: BillboardSprite's engraving-detail sprites
+                // moved to this filter in 058cf05, but the ground kept the old hard-pixel
+                // filter, so its tiling read as blocky next to everything sitting on it.
+                TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
                 VertexColorUseAsAlbedo = true,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             },
