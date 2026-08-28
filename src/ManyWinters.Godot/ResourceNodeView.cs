@@ -19,11 +19,18 @@ public partial class ResourceNodeView : Area3D
 
     private static readonly Color HoverOutlineColor = new(0.95f, 0.95f, 0.92f, 0.85f);
 
+    // Layered a fraction in front of the base tree (see BillboardSprite.Create's
+    // renderPriority) so it composites cleanly on top instead of z-fighting with the
+    // canopy pixels directly underneath it - two billboards at the same position and
+    // depth otherwise have no defined draw order.
+    private const int FruitOverlayRenderPriority = 1;
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
     private readonly Action<ResourceNodeId> _onSelected;
     private Sprite3D _hoverOutline = null!;
+    private Sprite3D? _fruitOverlay;
 
     public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected)
     {
@@ -53,6 +60,20 @@ public partial class ResourceNodeView : Area3D
 
         AddChild(BillboardSprite.Create(TexturePathFor(), Size, fallbackColor));
 
+        // Composite sprite: the tree itself never changes, but whether it's currently
+        // bearing fruit does (see GatherCommand/WorldState.Advance) - a separate overlay
+        // layer means that doesn't need its own whole "bare tree" texture per kind.
+        if (_canFell)
+        {
+            _fruitOverlay = BillboardSprite.Create(
+                FruitOverlayTexturePath(),
+                Size,
+                fallbackColor,
+                SpriteBase3D.AlphaCutMode.Disabled,
+                FruitOverlayRenderPriority);
+            AddChild(_fruitOverlay);
+        }
+
         AddChild(new CollisionShape3D
         {
             Shape = new BoxShape3D { Size = new Vector3(Size, Size, Size) },
@@ -67,11 +88,23 @@ public partial class ResourceNodeView : Area3D
 
     private void OnMouseExited() => _hoverOutline.Visible = false;
 
+    // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
+    // fruit layer to show or hide.
+    public void SetHasFruit(bool hasFruit)
+    {
+        if (_fruitOverlay is not null)
+        {
+            _fruitOverlay.Visible = hasFruit;
+        }
+    }
+
     // A fellable node draws as a standing tree, not the fruit/veg icon used for the rest of
     // Content/resources/{kind} - {kind}_tree.png sits alongside {kind}.png for those kinds.
     private string TexturePathFor() => _canFell
         ? $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree.png"
         : $"res://Content/resources/{_kind.Value}/{_kind.Value}.png";
+
+    private string FruitOverlayTexturePath() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png";
 
     private static Color ColorFor(ResourceKindId kind)
     {

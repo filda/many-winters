@@ -13,7 +13,19 @@ public static class BillboardSprite
     // Creates a billboarded sprite whose on-screen height matches worldHeight. When the
     // texture is missing the sprite falls back to a flat quad tinted with fallbackColor, so
     // a kind without art is still visible and clickable.
-    public static Sprite3D Create(string texturePath, float worldHeight, Color fallbackColor)
+    //
+    // alphaCut/renderPriority default to the normal single-sprite case (opaque, depth-sorted
+    // like any other 3D object). A layer meant to composite on top of another sprite at the
+    // same position - e.g. ResourceNodeView's fruit overlay - has no defined draw order
+    // against it under OpaquePrepass (both are at the same depth), so it needs standard alpha
+    // blending (Disabled) plus a higher renderPriority to reliably draw second/on top, the
+    // same technique SpriteOutline already uses to draw behind instead.
+    public static Sprite3D Create(
+        string texturePath,
+        float worldHeight,
+        Color fallbackColor,
+        SpriteBase3D.AlphaCutMode alphaCut = SpriteBase3D.AlphaCutMode.OpaquePrepass,
+        int renderPriority = 0)
     {
         var sprite = new Sprite3D
         {
@@ -29,7 +41,8 @@ public static class BillboardSprite
             // the new art actually has (each edge pixel snaps to either fully opaque or
             // fully invisible). OpaquePrepass keeps Discard's correct depth-sorting behavior
             // for overlapping billboards while still alpha-blending the soft edge on top.
-            AlphaCut = SpriteBase3D.AlphaCutMode.OpaquePrepass,
+            AlphaCut = alphaCut,
+            RenderPriority = renderPriority,
             Shaded = false,
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };

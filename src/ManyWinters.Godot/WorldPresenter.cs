@@ -106,6 +106,14 @@ public sealed class WorldPresenter
         }
     }
 
+    public void SetResourceNodeHasFruit(ResourceNodeId id, bool hasFruit)
+    {
+        if (_resourceNodeViews.TryGetValue(id, out var view))
+        {
+            view.SetHasFruit(hasFruit);
+        }
+    }
+
     public void RemoveResourceNodeView(ResourceNodeId id)
     {
         if (_resourceNodeViews.TryGetValue(id, out var view))

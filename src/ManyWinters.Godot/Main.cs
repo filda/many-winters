@@ -113,15 +113,18 @@ public partial class Main : Node3D
             _presenter.SetPersonPosition(person.Id, person.Position, (float)TickIntervalSeconds);
         }
 
-        // Catches nodes that withered from climate stress (see WorldState.Advance) - felling
-        // and depletion already remove their own view immediately, this is just the passive
-        // per-tick case.
         foreach (var node in _world.ResourceNodes)
         {
             if (!node.IsAlive)
             {
+                // Catches nodes that withered from climate stress (see WorldState.Advance) -
+                // felling already removes its own view immediately, this is just the passive
+                // per-tick case.
                 _presenter.RemoveResourceNodeView(node.Id);
+                continue;
             }
+
+            _presenter.SetResourceNodeHasFruit(node.Id, node.RemainingAmount > 0);
         }
 
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
