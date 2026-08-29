@@ -5,7 +5,6 @@ namespace ManyWinters.Godot;
 
 public partial class PersonView : Area3D
 {
-    public const float Radius = 0.3f;
     public const float Height = 1.8f;
     private const float MinScale = 0.92f;
     private const float MaxScale = 1.08f;
@@ -35,9 +34,13 @@ public partial class PersonView : Area3D
     private Sprite3D _sprite = null!;
     private Color _normalModulate;
     private Sprite3D _selectionMarker = null!;
+    private Vector3 _selectionMarkerBaseOffset;
+    private CollisionShape3D _collisionShape = null!;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
     private float _walkPhase;
+    private bool _isHovered;
+    private string _currentTexturePath = AliveTexturePath;
 
     public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked)
     {
@@ -66,31 +69,34 @@ public partial class PersonView : Area3D
         AddChild(_sprite);
 
         _selectionMarker = BillboardSprite.Create(SelectionMarkerTexturePath, SelectionMarkerHeight, SelectionMarkerFallbackColor);
-        _selectionMarker.Position = new Vector3(0, (Height / 2f) + SelectionMarkerGap + (SelectionMarkerHeight / 2f), 0);
         _selectionMarker.Visible = false;
         AddChild(_selectionMarker);
 
-        AddChild(new CollisionShape3D
-        {
-            Shape = new CapsuleShape3D { Radius = Radius, Height = Height },
-        });
+        _collisionShape = new CollisionShape3D();
+        AddChild(_collisionShape);
+        ApplyExtent(AliveTexturePath);
 
         InputEvent += OnInputEvent;
-        MouseEntered += OnMouseEntered;
+        // The broad-phase collision shape can only ever be a bounding box around the actual
+        // silhouette (see SpriteVisibleExtent) - MouseExited still means "no longer even
+        // close", but entering hover for real is decided pixel-by-pixel in OnInputEvent, not
+        // here.
         MouseExited += OnMouseExited;
     }
 
-    private void OnMouseEntered()
+    private void SetHovered(bool hovered)
     {
-        _sprite.Modulate = HoverHighlight.TintFor(_normalModulate);
-        _sprite.Scale = Vector3.One * HoverHighlight.ScaleFactor;
+        if (hovered == _isHovered)
+        {
+            return;
+        }
+
+        _isHovered = hovered;
+        _sprite.Modulate = hovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
+        _sprite.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
     }
 
-    private void OnMouseExited()
-    {
-        _sprite.Modulate = _normalModulate;
-        _sprite.Scale = Vector3.One;
-    }
+    private void OnMouseExited() => SetHovered(false);
 
     // Only the simulation tick moves a person; this just plays that motion back smoothly
     // between ticks instead of snapping once per tick, so speed always matches how far the
@@ -103,14 +109,22 @@ public partial class PersonView : Area3D
         if (isWalking)
         {
             _walkPhase += (float)delta * WalkCyclesPerSecond;
-            _sprite.Position = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
-            _sprite.Rotation = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * RockAmplitude);
+            var bob = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
+            var rock = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * RockAmplitude);
+            _sprite.Position = bob;
+            _sprite.Rotation = rock;
+            // Kept in lockstep with _sprite - the marker otherwise just sits at its resting
+            // offset while the real sprite bobs and rocks away underneath it.
+            _selectionMarker.Position = _selectionMarkerBaseOffset + bob;
+            _selectionMarker.Rotation = rock;
         }
         else
         {
             _walkPhase = 0f;
             _sprite.Position = Vector3.Zero;
             _sprite.Rotation = Vector3.Zero;
+            _selectionMarker.Position = _selectionMarkerBaseOffset;
+            _selectionMarker.Rotation = Vector3.Zero;
         }
     }
 
@@ -126,6 +140,11 @@ public partial class PersonView : Area3D
         var texturePath = isAlive ? AliveTexturePath : DeadTexturePath;
         BillboardSprite.Apply(_sprite, texturePath, Height, isAlive ? AliveColor : DeadColor);
         _normalModulate = _sprite.Modulate;
+        _currentTexturePath = texturePath;
+        // Dead uses a different (sideways, wider/shorter) silhouette - the collision shape
+        // and the marker's resting height both need to follow it, not stay sized/positioned
+        // for a standing figure.
+        ApplyExtent(texturePath);
     }
 
     public void SetSelected(bool selected)
@@ -133,11 +152,36 @@ public partial class PersonView : Area3D
         _selectionMarker.Visible = selected;
     }
 
+    // Sized/positioned to the sprite's actual drawn silhouette, not its full square canvas -
+    // a standing figure doesn't fill its canvas edge to edge, so a collision shape or a
+    // selection-marker anchor based on the nominal Height would be oversized/misaligned
+    // relative to what's actually drawn (hovering near-but-not-on the figure would still
+    // trigger it; the marker would float above the real head by however big that margin is).
+    private void ApplyExtent(string texturePath)
+    {
+        var extent = SpriteVisibleExtent.Compute(texturePath, Height);
+        _collisionShape.Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) };
+        _collisionShape.Position = new Vector3(0, extent.CenterYOffset, 0);
+        _selectionMarkerBaseOffset = new Vector3(0, extent.CenterYOffset + (extent.Height / 2f) + SelectionMarkerGap + (SelectionMarkerHeight / 2f), 0);
+        _selectionMarker.Position = _selectionMarkerBaseOffset;
+    }
+
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is InputEventMouseButton { Pressed: true } mouseEvent)
+        if (camera is not Camera3D camera3D)
         {
-            _onClicked(_personId, mouseEvent.ButtonIndex);
+            return;
+        }
+
+        switch (@event)
+        {
+            case InputEventMouseMotion:
+                SetHovered(SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _currentTexturePath));
+                break;
+            case InputEventMouseButton { Pressed: true } mouseEvent
+                when SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _currentTexturePath):
+                _onClicked(_personId, mouseEvent.ButtonIndex);
+                break;
         }
     }
 }

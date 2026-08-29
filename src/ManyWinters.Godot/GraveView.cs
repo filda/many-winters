@@ -17,6 +17,8 @@ public partial class GraveView : Area3D
     private readonly GraveId _graveId;
     private readonly bool _isMarked;
     private readonly Action<GraveId> _onSelected;
+    private Sprite3D _sprite = null!;
+    private string _texturePath = null!;
 
     public GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected)
     {
@@ -29,18 +31,22 @@ public partial class GraveView : Area3D
     {
         InputRayPickable = true;
 
-        var texturePath = _isMarked ? MarkedTexturePath : UnmarkedTexturePath;
+        _texturePath = _isMarked ? MarkedTexturePath : UnmarkedTexturePath;
         var fallbackColor = _isMarked ? MarkedColor : UnmarkedColor;
 
         var groundShadow = GroundShadow.Create(ShadowDiameter);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        AddChild(BillboardSprite.Create(texturePath, Size, fallbackColor));
+        _sprite = BillboardSprite.Create(_texturePath, Size, fallbackColor);
+        AddChild(_sprite);
 
+        // Sized (and centered) to the actual drawn mound/stone, not the full square canvas.
+        var extent = SpriteVisibleExtent.Compute(_texturePath, Size);
         AddChild(new CollisionShape3D
         {
-            Shape = new BoxShape3D { Size = new Vector3(Size, Size, Size) },
+            Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) },
+            Position = new Vector3(0, extent.CenterYOffset, 0),
         });
 
         InputEvent += OnInputEvent;
@@ -48,7 +54,9 @@ public partial class GraveView : Area3D
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        if (camera is Camera3D camera3D
+            && @event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
+            && SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _texturePath))
         {
             _onSelected(_graveId);
         }

@@ -30,6 +30,7 @@ public partial class ResourceNodeView : Area3D
     private Sprite3D _sprite = null!;
     private Color _normalModulate;
     private Sprite3D? _fruitOverlay;
+    private bool _isHovered;
 
     public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected)
     {
@@ -71,27 +72,37 @@ public partial class ResourceNodeView : Area3D
             AddChild(_fruitOverlay);
         }
 
+        // Sized (and centered) to the sprite's actual drawn silhouette, not its full square
+        // canvas - a canopy or a small icon doesn't fill the whole nominal Size, so a
+        // collision box that size would hover/click-trigger well outside the visible shape.
+        var extent = SpriteVisibleExtent.Compute(TexturePathFor(), Size);
         AddChild(new CollisionShape3D
         {
-            Shape = new BoxShape3D { Size = new Vector3(Size, Size, Size) },
+            Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) },
+            Position = new Vector3(0, extent.CenterYOffset, 0),
         });
 
         InputEvent += OnInputEvent;
-        MouseEntered += OnMouseEntered;
+        // The broad-phase collision shape can only ever be a bounding box around the actual
+        // silhouette (see SpriteVisibleExtent) - MouseExited still means "no longer even
+        // close", but entering hover for real is decided pixel-by-pixel in OnInputEvent, not
+        // here.
         MouseExited += OnMouseExited;
     }
 
-    private void OnMouseEntered()
+    private void SetHovered(bool hovered)
     {
-        _sprite.Modulate = HoverHighlight.TintFor(_normalModulate);
-        _sprite.Scale = Vector3.One * HoverHighlight.ScaleFactor;
+        if (hovered == _isHovered)
+        {
+            return;
+        }
+
+        _isHovered = hovered;
+        _sprite.Modulate = hovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
+        _sprite.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
     }
 
-    private void OnMouseExited()
-    {
-        _sprite.Modulate = _normalModulate;
-        _sprite.Scale = Vector3.One;
-    }
+    private void OnMouseExited() => SetHovered(false);
 
     // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
     // fruit layer to show or hide.
@@ -120,9 +131,20 @@ public partial class ResourceNodeView : Area3D
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        if (camera is not Camera3D camera3D)
         {
-            _onSelected(_nodeId);
+            return;
+        }
+
+        switch (@event)
+        {
+            case InputEventMouseMotion:
+                SetHovered(SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()));
+                break;
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
+                when SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()):
+                _onSelected(_nodeId);
+                break;
         }
     }
 }
