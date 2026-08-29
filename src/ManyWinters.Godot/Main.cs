@@ -76,6 +76,18 @@ public partial class Main : Node3D
     private const float OcclusionMargin = 0.3f;
     private const float OcclusionFadedAlpha = 0.25f;
 
+    // A fixed screen-space size/gap, not a 3D world one: the marker used to be a billboarded
+    // Sprite3D offset in local space, but a billboard's own on-screen "left/right" is
+    // redefined every frame to match whatever the camera's current right vector is (that's
+    // what "always face the camera" means) - so a fixed local offset drifted sideways by a
+    // different amount depending on which way the camera was currently facing. Projecting a
+    // single stable world point (the head) with Camera3D.UnprojectPosition and drawing the
+    // marker as a plain 2D UI overlay above it sidesteps that entirely - Godot's own
+    // projection handles the camera math, nothing here has to reconstruct it by hand.
+    private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
+    private const float SelectionMarkerScreenSize = 28f;
+    private const float SelectionMarkerScreenGap = 6f;
+
     // The starting band spans roughly 8x4 units and is centered exactly on campPosition
     // (see MapLoader.LoadDefault), so a close default zoom lets it fill most of the frame
     // right away rather than reading as a handful of specks in a huge empty field.
@@ -101,6 +113,7 @@ public partial class Main : Node3D
     private Label _gravesLabel = null!;
     private VBoxContainer _contextualActions = null!;
     private StatusBar _statusBar = null!;
+    private TextureRect _selectionMarkerOverlay = null!;
     private PersonId? _selectedPersonId;
     private GraveId? _selectedGraveId;
     private double _tickAccumulator;
@@ -148,6 +161,7 @@ public partial class Main : Node3D
         // camera and the selected person's interpolated position move continuously between
         // ticks, so what's currently standing in the way of the view changes continuously too.
         UpdateOcclusionFade();
+        UpdateSelectionMarkerOverlay();
 
         _tickAccumulator += delta;
         if (_tickAccumulator < TickIntervalSeconds)
@@ -307,6 +321,36 @@ public partial class Main : Node3D
         sprite.Modulate = color;
     }
 
+    // A 2D screen-space overlay, not a 3D billboard - see SelectionMarkerScreenSize's doc
+    // comment for why. Camera3D.UnprojectPosition/IsPositionBehind do the actual perspective
+    // math; this just anchors a plain Control on top of that one projected point.
+    private void UpdateSelectionMarkerOverlay()
+    {
+        if (_selectedPersonId is not { } personId
+            || _presenter.GetPersonGlobalPosition(personId) is not { } personPosition
+            || _presenter.GetPersonHeadHeightOffset(personId) is not { } headHeightOffset)
+        {
+            _selectionMarkerOverlay.Visible = false;
+            return;
+        }
+
+        var camera = _cameraRig.Camera;
+        var headPosition = personPosition + new Vector3(0, headHeightOffset, 0);
+        if (camera.IsPositionBehind(headPosition))
+        {
+            _selectionMarkerOverlay.Visible = false;
+            return;
+        }
+
+        // SelectionMarkerScreenGap is screen pixels, not world meters - it belongs here,
+        // applied to the projected point, not added to headPosition before projecting.
+        var screenPosition = camera.UnprojectPosition(headPosition);
+        _selectionMarkerOverlay.Position = new Vector2(
+            screenPosition.X - (_selectionMarkerOverlay.Size.X / 2f),
+            screenPosition.Y - SelectionMarkerScreenGap - _selectionMarkerOverlay.Size.Y);
+        _selectionMarkerOverlay.Visible = true;
+    }
+
     private void SetUpLighting()
     {
         AddChild(new DirectionalLight3D
@@ -371,6 +415,21 @@ public partial class Main : Node3D
 
         SetUpInspectorWindow(canvas);
         SetUpStatusBar(canvas);
+        SetUpSelectionMarker(canvas);
+    }
+
+    private void SetUpSelectionMarker(CanvasLayer canvas)
+    {
+        _selectionMarkerOverlay = new TextureRect
+        {
+            Texture = ResourceLoader.Load<Texture2D>(SelectionMarkerTexturePath),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspect,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Size = new Vector2(SelectionMarkerScreenSize, SelectionMarkerScreenSize),
+            Visible = false,
+        };
+        canvas.AddChild(_selectionMarkerOverlay);
     }
 
     private static StyleBoxFlat PanelBackground() => new()
@@ -805,7 +864,6 @@ public partial class Main : Node3D
 
         _selectedPersonId = id;
         _selectedGraveId = null;
-        _presenter.SetSelectedPerson(id);
         _contextualActions.Visible = true;
         RefreshInfoLabel();
     }
@@ -814,7 +872,6 @@ public partial class Main : Node3D
     {
         _selectedGraveId = id;
         _selectedPersonId = null;
-        _presenter.SetSelectedPerson(null);
         _contextualActions.Visible = false;
         RefreshInfoLabel();
     }

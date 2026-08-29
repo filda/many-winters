@@ -46,7 +46,7 @@ public partial class GraveView : Area3D
         AddChild(new CollisionShape3D
         {
             Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) },
-            Position = new Vector3(0, extent.CenterYOffset, 0),
+            Position = new Vector3(extent.CenterXOffset, extent.CenterYOffset, 0),
         });
 
         InputEvent += OnInputEvent;

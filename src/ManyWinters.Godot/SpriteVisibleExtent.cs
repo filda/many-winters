@@ -15,12 +15,14 @@ public static class SpriteVisibleExtent
     // that shares it (e.g. every conifer tree on the map) regardless of its own worldHeight.
     private static readonly Dictionary<string, (Vector2 Position, Vector2 Size, Vector2 CanvasSize)> _cache = new();
 
-    public readonly record struct Extent(float Width, float Height, float CenterYOffset);
+    public readonly record struct Extent(float Width, float Height, float CenterXOffset, float CenterYOffset);
 
-    // CenterYOffset is how far the visible content's own vertical center sits above (+) or
-    // below (-) the sprite node's origin - content isn't always centered in its canvas (a
-    // tree's canopy sits higher than its trunk's midpoint), so callers positioning a
-    // collision shape or an anchor off of "the sprite's center" need this, not just size.
+    // CenterXOffset/CenterYOffset are how far the visible content's own center sits to the
+    // side of (+X = right) and above (+Y = up) the sprite node's origin - content isn't
+    // always centered in its canvas (a tree's canopy sits higher than its trunk's midpoint;
+    // a figure's silhouette isn't necessarily centered left-right either), so callers
+    // positioning a collision shape or an anchor off of "the sprite's center" need this, not
+    // just size.
     public static Extent Compute(string texturePath, float worldHeight)
     {
         if (!_cache.TryGetValue(texturePath, out var normalized))
@@ -35,12 +37,17 @@ public static class SpriteVisibleExtent
 
         var (position, size, canvasSize) = normalized;
         var pixelSize = worldHeight / canvasSize.Y;
+        var usedCenterX = position.X + (size.X / 2f);
         var usedCenterY = position.Y + (size.Y / 2f);
+        var canvasCenterX = canvasSize.X / 2f;
         var canvasCenterY = canvasSize.Y / 2f;
+        // Image columns count rightward, same direction as the sprite's own local right, so
+        // this needs no sign flip - unlike rows (see below), which do.
+        var centerXOffset = (usedCenterX - canvasCenterX) * pixelSize;
         // Image rows count downward; the sprite's own local up is the opposite direction,
         // so a used-rect center below the canvas center (usedCenterY > canvasCenterY) means
         // the visible content actually sits below the node's origin.
         var centerYOffset = (canvasCenterY - usedCenterY) * pixelSize;
-        return new Extent(size.X * pixelSize, size.Y * pixelSize, centerYOffset);
+        return new Extent(size.X * pixelSize, size.Y * pixelSize, centerXOffset, centerYOffset);
     }
 }

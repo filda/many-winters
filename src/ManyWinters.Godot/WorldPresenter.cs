@@ -18,7 +18,6 @@ public sealed class WorldPresenter
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
-    private PersonId? _selectedPersonId;
 
     public WorldPresenter(
         Node3D container,
@@ -80,6 +79,11 @@ public sealed class WorldPresenter
     public Vector3? GetPersonGlobalPosition(PersonId id) =>
         _personViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
 
+    // For Main.cs's screen-space selection marker overlay - the real head height above that
+    // position (see PersonView.HeadHeightOffset's own doc comment).
+    public float? GetPersonHeadHeightOffset(PersonId id) =>
+        _personViews.TryGetValue(id, out var view) ? view.HeadHeightOffset : null;
+
     // For Main.cs's occlusion fade, to exclude the selection's own sprites from being
     // treated as blocking the view of themselves.
     public Node3D? GetPersonNode(PersonId id) => _personViews.GetValueOrDefault(id);
@@ -90,26 +94,6 @@ public sealed class WorldPresenter
         {
             view.QueueFree();
             _personViews.Remove(id);
-        }
-
-        if (_selectedPersonId == id)
-        {
-            _selectedPersonId = null;
-        }
-    }
-
-    public void SetSelectedPerson(PersonId? id)
-    {
-        if (_selectedPersonId is { } previousId && _personViews.TryGetValue(previousId, out var previousView))
-        {
-            previousView.SetSelected(false);
-        }
-
-        _selectedPersonId = id;
-
-        if (id is { } newId && _personViews.TryGetValue(newId, out var newView))
-        {
-            newView.SetSelected(true);
         }
     }
 

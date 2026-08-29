@@ -21,20 +21,14 @@ public partial class PersonView : Area3D
 
     private const string AliveTexturePath = "res://Content/people/person.png";
     private const string DeadTexturePath = "res://Content/people/person_dead.png";
-    private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
-    private const float SelectionMarkerHeight = 0.5f;
-    private const float SelectionMarkerGap = 0.2f;
 
     private static readonly Color AliveColor = new(0.9f, 0.7f, 0.5f);
     private static readonly Color DeadColor = new(0.3f, 0.3f, 0.3f);
-    private static readonly Color SelectionMarkerFallbackColor = new(0.95f, 0.78f, 0.20f);
 
     private readonly PersonId _personId;
     private readonly Action<PersonId, MouseButton> _onClicked;
     private Sprite3D _sprite = null!;
     private Color _normalModulate;
-    private Sprite3D _selectionMarker = null!;
-    private Vector3 _selectionMarkerBaseOffset;
     private CollisionShape3D _collisionShape = null!;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
@@ -67,10 +61,6 @@ public partial class PersonView : Area3D
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
         _normalModulate = _sprite.Modulate;
         AddChild(_sprite);
-
-        _selectionMarker = BillboardSprite.Create(SelectionMarkerTexturePath, SelectionMarkerHeight, SelectionMarkerFallbackColor);
-        _selectionMarker.Visible = false;
-        AddChild(_selectionMarker);
 
         _collisionShape = new CollisionShape3D();
         AddChild(_collisionShape);
@@ -110,21 +100,15 @@ public partial class PersonView : Area3D
         {
             _walkPhase += (float)delta * WalkCyclesPerSecond;
             var bob = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
-            var rock = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * RockAmplitude);
+            var rockAngle = MathF.Sin(_walkPhase * 0.5f) * RockAmplitude;
             _sprite.Position = bob;
-            _sprite.Rotation = rock;
-            // Kept in lockstep with _sprite - the marker otherwise just sits at its resting
-            // offset while the real sprite bobs and rocks away underneath it.
-            _selectionMarker.Position = _selectionMarkerBaseOffset + bob;
-            _selectionMarker.Rotation = rock;
+            _sprite.Rotation = new Vector3(0, 0, rockAngle);
         }
         else
         {
             _walkPhase = 0f;
             _sprite.Position = Vector3.Zero;
             _sprite.Rotation = Vector3.Zero;
-            _selectionMarker.Position = _selectionMarkerBaseOffset;
-            _selectionMarker.Rotation = Vector3.Zero;
         }
     }
 
@@ -147,23 +131,28 @@ public partial class PersonView : Area3D
         ApplyExtent(texturePath);
     }
 
-    public void SetSelected(bool selected)
+    // How high above this person's own origin their actual head sits - for Main's
+    // screen-space selection marker overlay (see SpriteVisibleExtent's doc comment: content
+    // isn't necessarily centered in its canvas, so the nominal Height/2 alone would float
+    // above or sink below a real head depending on the texture's own margins).
+    public float HeadHeightOffset
     {
-        _selectionMarker.Visible = selected;
+        get
+        {
+            var extent = SpriteVisibleExtent.Compute(_currentTexturePath, Height);
+            return extent.CenterYOffset + (extent.Height / 2f);
+        }
     }
 
     // Sized/positioned to the sprite's actual drawn silhouette, not its full square canvas -
-    // a standing figure doesn't fill its canvas edge to edge, so a collision shape or a
-    // selection-marker anchor based on the nominal Height would be oversized/misaligned
-    // relative to what's actually drawn (hovering near-but-not-on the figure would still
-    // trigger it; the marker would float above the real head by however big that margin is).
+    // a standing figure doesn't fill its canvas edge to edge, so a collision shape based on
+    // the nominal Height would be oversized (hovering near-but-not-on the figure would still
+    // trigger it).
     private void ApplyExtent(string texturePath)
     {
         var extent = SpriteVisibleExtent.Compute(texturePath, Height);
         _collisionShape.Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) };
-        _collisionShape.Position = new Vector3(0, extent.CenterYOffset, 0);
-        _selectionMarkerBaseOffset = new Vector3(0, extent.CenterYOffset + (extent.Height / 2f) + SelectionMarkerGap + (SelectionMarkerHeight / 2f), 0);
-        _selectionMarker.Position = _selectionMarkerBaseOffset;
+        _collisionShape.Position = new Vector3(extent.CenterXOffset, extent.CenterYOffset, 0);
     }
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)

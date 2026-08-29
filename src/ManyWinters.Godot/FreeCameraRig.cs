@@ -47,6 +47,10 @@ public sealed class FreeCameraRig
 
     public Vector3 CameraGlobalPosition => _camera.GlobalPosition;
 
+    // For screen-space projection (Main's selection marker overlay) - UnprojectPosition/
+    // IsPositionBehind aren't exposed any other way.
+    public Camera3D Camera => _camera;
+
     public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom)
     {
         _minZoom = minZoom;
