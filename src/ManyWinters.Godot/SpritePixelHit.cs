@@ -17,9 +17,14 @@ public static class SpritePixelHit
 {
     private static readonly Dictionary<string, Image> _imageCache = new();
 
-    public static bool IsOpaqueAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, string texturePath)
+    // spriteCenterOverride lets a caller pin the test plane to a stable anchor instead of the
+    // sprite's own GlobalPosition - PersonView's walk animation nudges the sprite's local
+    // Position by a few centimeters every frame (the bob), which otherwise sweeps the sampled
+    // pixel back and forth across silhouette edges under an unmoving cursor and reads as
+    // hover flickering on and off. No other view animates its sprite's position like this.
+    public static bool IsOpaqueAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null)
     {
-        if (!TryGetUv(camera, rayHitPosition, sprite, out var uv))
+        if (!TryGetUv(camera, rayHitPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition, out var uv))
         {
             return false;
         }
@@ -36,7 +41,7 @@ public static class SpritePixelHit
         return image.GetPixel(pixelX, pixelY).A > 0.1f;
     }
 
-    private static bool TryGetUv(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, out Vector2 uv)
+    private static bool TryGetUv(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, Vector3 spriteCenter, out Vector2 uv)
     {
         uv = default;
 
@@ -60,7 +65,6 @@ public static class SpritePixelHit
             return false;
         }
 
-        var spriteCenter = sprite.GlobalPosition;
         var t = (spriteCenter - rayOrigin).Dot(forward) / denominator;
         var pointOnBillboardPlane = rayOrigin + (rayDirection * t);
         var offset = pointOnBillboardPlane - spriteCenter;

@@ -121,7 +121,17 @@ public partial class PersonView : Area3D
 
     public void SetAlive(bool isAlive)
     {
+        // Main calls this every tick for every person regardless of whether IsAlive actually
+        // changed. BillboardSprite.Apply unconditionally resets Modulate to white - without
+        // this guard, that silently overwrote the hover tint once a second on every living
+        // person, independent of _isHovered (which never got a chance to notice, since the
+        // very next real hover re-check finds the same, still-true bool and no-ops).
         var texturePath = isAlive ? AliveTexturePath : DeadTexturePath;
+        if (texturePath == _currentTexturePath)
+        {
+            return;
+        }
+
         BillboardSprite.Apply(_sprite, texturePath, Height, isAlive ? AliveColor : DeadColor);
         _normalModulate = _sprite.Modulate;
         _currentTexturePath = texturePath;
@@ -162,13 +172,16 @@ public partial class PersonView : Area3D
             return;
         }
 
+        // GlobalPosition (this node's own, not _sprite's) - see SpritePixelHit.IsOpaqueAt's
+        // spriteCenterOverride doc comment: the walk bob moves _sprite's local Position every
+        // frame, which must not feed into where the hit-test plane is anchored.
         switch (@event)
         {
             case InputEventMouseMotion:
-                SetHovered(SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _currentTexturePath));
+                SetHovered(SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _currentTexturePath, GlobalPosition));
                 break;
             case InputEventMouseButton { Pressed: true } mouseEvent
-                when SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _currentTexturePath):
+                when SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _currentTexturePath, GlobalPosition):
                 _onClicked(_personId, mouseEvent.ButtonIndex);
                 break;
         }
