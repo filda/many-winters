@@ -735,6 +735,16 @@ public partial class Main : Node3D
             return;
         }
 
+        // Without this, a selected person who is themselves dead-and-unburied reads as their
+        // own nearest deceased (distance 0) - BuryCommand silently no-ops (it requires the
+        // burying person to be alive), but the corpse's view still got removed below as if it
+        // had actually been buried, vanishing with no grave ever created.
+        if (!person.IsAlive)
+        {
+            _statusBar.Notify("A dead person can't bury anyone.");
+            return;
+        }
+
         var deceased = FindNearestUnburiedDeceased(person.Position);
         if (deceased is null)
         {
@@ -765,6 +775,14 @@ public partial class Main : Node3D
         var person = _world.People.FirstOrDefault(p => p.Id == personId);
         if (person is null)
         {
+            return;
+        }
+
+        // Same reasoning as OnBuryButtonPressed: a dead selected person could otherwise loot
+        // their own corpse.
+        if (!person.IsAlive)
+        {
+            _statusBar.Notify("A dead person can't loot anyone.");
             return;
         }
 
