@@ -69,6 +69,13 @@ public partial class Main : Node3D
     // player will actually walk around in without needing anywhere near the full 500m extent.
     private const float DecorationRadius = 70f;
 
+    // Extra margin (in meters) added on top of each candidate's own on-screen half-width -
+    // roughly the selected person's own half-width, so something has to clear the target's
+    // own silhouette, not just its exact center point, to not count as blocking it - and how
+    // transparent something fades to once it does.
+    private const float OcclusionMargin = 0.3f;
+    private const float OcclusionFadedAlpha = 0.25f;
+
     // The starting band spans roughly 8x4 units and is centered exactly on campPosition
     // (see MapLoader.LoadDefault), so a close default zoom lets it fill most of the frame
     // right away rather than reading as a handful of specks in a huge empty field.
@@ -97,6 +104,10 @@ public partial class Main : Node3D
     private PersonId? _selectedPersonId;
     private GraveId? _selectedGraveId;
     private double _tickAccumulator;
+
+    // Faded in/out every frame in UpdateOcclusionFade depending on whether each one
+    // currently sits between the camera and the selection.
+    private readonly HashSet<Sprite3D> _fadedSprites = new();
 
     // A person walking to a resource node they were told to gather from, rather than one
     // already in range when the order was given. Resolved once they arrive (see
@@ -133,6 +144,10 @@ public partial class Main : Node3D
     public override void _Process(double delta)
     {
         _cameraRig.HandleInput((float)delta);
+        // Every rendered frame, not gated behind the tick accumulator below - both the
+        // camera and the selected person's interpolated position move continuously between
+        // ticks, so what's currently standing in the way of the view changes continuously too.
+        UpdateOcclusionFade();
 
         _tickAccumulator += delta;
         if (_tickAccumulator < TickIntervalSeconds)
@@ -195,6 +210,103 @@ public partial class Main : Node3D
         _cameraRig.HandleMouseInput(@event);
     }
 
+    // A decoration sprite (tree, rock, ...) between the camera and the selected person
+    // otherwise just silently blocks the view of them with no way to tell where they went.
+    private void UpdateOcclusionFade()
+    {
+        var occluding = ComputeOccludingSprites();
+
+        foreach (var sprite in occluding)
+        {
+            if (_fadedSprites.Add(sprite))
+            {
+                SetSpriteAlpha(sprite, OcclusionFadedAlpha);
+            }
+        }
+
+        _fadedSprites.RemoveWhere(sprite =>
+        {
+            if (occluding.Contains(sprite))
+            {
+                return false;
+            }
+
+            SetSpriteAlpha(sprite, 1f);
+            return true;
+        });
+    }
+
+    // Deliberately a blacklist, not a whitelist: earlier this only checked a hand-picked set
+    // of sprite sources (decoration, then +resource nodes, then +buildings/graves/people...),
+    // and every version was "missing" whatever wasn't added yet. Scanning every Sprite3D in
+    // the scene instead means a new kind of entity is covered automatically, with no list to
+    // remember to update - excluding only the two things that categorically don't belong:
+    // ground shadow decals (not billboarded - see GroundShadow) and the selection's own
+    // sprites (which sit at the target position itself, not in front of it).
+    private HashSet<Sprite3D> ComputeOccludingSprites()
+    {
+        var result = new HashSet<Sprite3D>();
+        if (_selectedPersonId is not { } personId || _presenter.GetPersonGlobalPosition(personId) is not { } targetPosition)
+        {
+            return result;
+        }
+
+        var cameraPosition = _cameraRig.CameraGlobalPosition;
+        var toTarget = targetPosition - cameraPosition;
+        var toTargetLength = toTarget.Length();
+        if (toTargetLength <= 0.001f)
+        {
+            return result;
+        }
+
+        var direction = toTarget / toTargetLength;
+        var selectedPersonNode = _presenter.GetPersonNode(personId);
+
+        foreach (var child in FindChildren("*", nameof(Sprite3D), recursive: true, owned: false))
+        {
+            if (child is not Sprite3D sprite || sprite.Billboard != BaseMaterial3D.BillboardModeEnum.Enabled)
+            {
+                continue;
+            }
+
+            if (selectedPersonNode is not null && selectedPersonNode.IsAncestorOf(sprite))
+            {
+                continue;
+            }
+
+            var toSprite = sprite.GlobalPosition - cameraPosition;
+            var along = toSprite.Dot(direction);
+            // Beyond the target (along >= toTargetLength) or behind the camera (along <= 0)
+            // isn't "in the way" of this particular line of sight - only strictly between
+            // the two counts.
+            if (along <= 0f || along >= toTargetLength)
+            {
+                continue;
+            }
+
+            var closestPointOnLine = cameraPosition + (direction * along);
+            var perpendicularDistance = (sprite.GlobalPosition - closestPointOnLine).Length();
+            // Every billboard here is square (all art is authored on a square canvas), so its
+            // rendered world-space width equals PixelSize * pixel width - a wide tree needs a
+            // much bigger "in the way" radius than a thin grass blade, not the same flat
+            // distance regardless of how big it actually draws.
+            var spriteRadius = (sprite.PixelSize * sprite.Texture.GetWidth()) / 2f;
+            if (perpendicularDistance < spriteRadius + OcclusionMargin)
+            {
+                result.Add(sprite);
+            }
+        }
+
+        return result;
+    }
+
+    private static void SetSpriteAlpha(Sprite3D sprite, float alpha)
+    {
+        var color = sprite.Modulate;
+        color.A = alpha;
+        sprite.Modulate = color;
+    }
+
     private void SetUpLighting()
     {
         AddChild(new DirectionalLight3D
@@ -213,31 +325,35 @@ public partial class Main : Node3D
         var rng = new Random(DecorationScatterSeed);
         var campX = (float)_campCenter.X;
         var campZ = (float)_campCenter.Y;
-        _terrain.ScatterDecoration(this, rng, TreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
-        _terrain.ScatterDecoration(this, rng, DeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
-        _terrain.ScatterDecoration(this, rng, BushCount, BushPath, BushHeightMeters, BushFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
-        _terrain.ScatterDecoration(this, rng, GrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
-        _terrain.ScatterDecoration(this, rng, FlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
-        _terrain.ScatterDecoration(this, rng, RockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale, campX, campZ, DecorationRadius);
+
+        void Scatter(int count, string texturePath, float height, Color fallbackColor, float centerX, float centerZ, float radius)
+            => _terrain.ScatterDecoration(this, rng, count, texturePath, height, fallbackColor, DecorationMinScale, DecorationMaxScale, centerX, centerZ, radius);
+
+        Scatter(TreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, campX, campZ, DecorationRadius);
+        Scatter(DeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, campX, campZ, DecorationRadius);
+        Scatter(BushCount, BushPath, BushHeightMeters, BushFallbackColor, campX, campZ, DecorationRadius);
+        Scatter(GrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, campX, campZ, DecorationRadius);
+        Scatter(FlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, campX, campZ, DecorationRadius);
+        Scatter(RockCount, RockPilePath, RockHeightMeters, RockFallbackColor, campX, campZ, DecorationRadius);
 
         for (var i = 0; i < GroveCount; i++)
         {
             var groveX = ((float)rng.NextDouble() - 0.5f) * 2f * _terrain.Half;
             var groveZ = ((float)rng.NextDouble() - 0.5f) * 2f * _terrain.Half;
-            _terrain.ScatterDecoration(this, rng, GroveTreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
-            _terrain.ScatterDecoration(this, rng, GroveDeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
-            _terrain.ScatterDecoration(this, rng, GroveBushCount, BushPath, BushHeightMeters, BushFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
-            _terrain.ScatterDecoration(this, rng, GroveGrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
-            _terrain.ScatterDecoration(this, rng, GroveFlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
-            _terrain.ScatterDecoration(this, rng, GroveRockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale, groveX, groveZ, GroveRadius);
+            Scatter(GroveTreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, groveX, groveZ, GroveRadius);
+            Scatter(GroveDeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, groveX, groveZ, GroveRadius);
+            Scatter(GroveBushCount, BushPath, BushHeightMeters, BushFallbackColor, groveX, groveZ, GroveRadius);
+            Scatter(GroveGrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, groveX, groveZ, GroveRadius);
+            Scatter(GroveFlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, groveX, groveZ, GroveRadius);
+            Scatter(GroveRockCount, RockPilePath, RockHeightMeters, RockFallbackColor, groveX, groveZ, GroveRadius);
         }
 
-        _terrain.ScatterDecoration(this, rng, WideTreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, WideDeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, WideBushCount, BushPath, BushHeightMeters, BushFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, WideGrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, WideFlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, WideRockCount, RockPilePath, RockHeightMeters, RockFallbackColor, DecorationMinScale, DecorationMaxScale, 0f, 0f, _terrain.Half);
+        Scatter(WideTreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, 0f, 0f, _terrain.Half);
+        Scatter(WideDeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, 0f, 0f, _terrain.Half);
+        Scatter(WideBushCount, BushPath, BushHeightMeters, BushFallbackColor, 0f, 0f, _terrain.Half);
+        Scatter(WideGrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, 0f, 0f, _terrain.Half);
+        Scatter(WideFlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, 0f, 0f, _terrain.Half);
+        Scatter(WideRockCount, RockPilePath, RockHeightMeters, RockFallbackColor, 0f, 0f, _terrain.Half);
     }
 
     private void SetUpCamera()

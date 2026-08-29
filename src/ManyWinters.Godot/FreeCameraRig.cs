@@ -45,6 +45,8 @@ public sealed class FreeCameraRig
     private bool _mouseRotating;
     private Vector3 _panVelocity = Vector3.Zero;
 
+    public Vector3 CameraGlobalPosition => _camera.GlobalPosition;
+
     public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom)
     {
         _minZoom = minZoom;

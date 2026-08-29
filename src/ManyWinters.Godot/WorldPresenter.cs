@@ -77,6 +77,13 @@ public sealed class WorldPresenter
         }
     }
 
+    public Vector3? GetPersonGlobalPosition(PersonId id) =>
+        _personViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
+
+    // For Main.cs's occlusion fade, to exclude the selection's own sprites from being
+    // treated as blocking the view of themselves.
+    public Node3D? GetPersonNode(PersonId id) => _personViews.GetValueOrDefault(id);
+
     public void RemovePersonView(PersonId id)
     {
         if (_personViews.TryGetValue(id, out var view))
