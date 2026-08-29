@@ -32,7 +32,7 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultPopulatesTheWorldWithFifteenPeopleArrangedInAFiveColumnGrid()
+    public void LoadDefaultPopulatesTheWorldWithFifteenPeopleAsANamedList()
     {
         var map = LoadDefault();
 
@@ -41,16 +41,42 @@ public class MapLoaderTests
             "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
             "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
         };
-        var expectedPositions = new[]
-        {
-            new Position(1f, 248f), new Position(3f, 248f), new Position(5f, 248f), new Position(7f, 248f), new Position(9f, 248f),
-            new Position(1f, 250f), new Position(3f, 250f), new Position(5f, 250f), new Position(7f, 250f), new Position(9f, 250f),
-            new Position(1f, 252f), new Position(3f, 252f), new Position(5f, 252f), new Position(7f, 252f), new Position(9f, 252f),
-        };
 
         Assert.Equal(15, map.World.People.Count);
         Assert.Equal(expectedNames, map.World.People.Select(p => p.Name));
-        Assert.Equal(expectedPositions, map.World.People.Select(p => p.Position));
+    }
+
+    [Fact]
+    public void LoadDefaultScattersStartingPeopleOrganicallyAroundTheCampCenterInsteadOfAGrid()
+    {
+        var map = LoadDefault();
+
+        const float crowdRadius = 4f;
+        const float minSpacing = 1f;
+        var positions = map.World.People.Select(p => p.Position).ToList();
+
+        Assert.All(positions, p => Assert.True(WorldState.Distance(p, map.CampCenter) <= crowdRadius));
+        for (var i = 0; i < positions.Count; i++)
+        {
+            for (var j = i + 1; j < positions.Count; j++)
+            {
+                Assert.True(WorldState.Distance(positions[i], positions[j]) >= minSpacing);
+            }
+        }
+
+        // Not a grid: no two starting people share an X or a Z (a 5-column grid stacked
+        // several people on each of five X values and each of three Z values).
+        Assert.Equal(positions.Count, positions.Select(p => p.X).Distinct().Count());
+        Assert.Equal(positions.Count, positions.Select(p => p.Y).Distinct().Count());
+    }
+
+    [Fact]
+    public void LoadDefaultPlacesStartingPeopleDeterministically()
+    {
+        var firstRun = LoadDefault().World.People.Select(p => p.Position).ToList();
+        var secondRun = LoadDefault().World.People.Select(p => p.Position).ToList();
+
+        Assert.Equal(firstRun, secondRun);
     }
 
     [Fact]

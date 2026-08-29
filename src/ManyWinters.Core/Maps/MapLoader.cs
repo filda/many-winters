@@ -31,19 +31,29 @@ public static class MapLoader
     private static readonly int?[] StartingFatherIndex =
         [1, null, null, null, 6, 11, null, 1, null, null, null, null, null, 11, 6];
 
+    // A grid reads as soldiers on parade, not a family standing around camp - disk-uniform
+    // scatter (same technique as TerrainRenderer.ScatterDecoration) with a minimum-spacing
+    // rejection reads as a loosely gathered crowd instead. Seeded, not time-based, for the
+    // same reproducibility reason the ages/family ties above are a fixed array rather than
+    // randomized.
+    private const int CrowdPlacementSeed = 1;
+    private const float CrowdRadius = 4f;
+    private const float CrowdMinSpacing = 1f;
+
     public static LoadedMap LoadDefault(WorldConfiguration configuration)
     {
         var world = new WorldState(configuration);
 
-        const int columns = 5;
+        var rng = new Random(CrowdPlacementSeed);
+        var placedPositions = new List<Position>();
         for (var i = 0; i < 15; i++)
         {
-            var x = (((i % columns) - (columns / 2f) + 0.5f) * 2f) + CampCenter.X;
-            var z = (((i / columns) - 1) * 2f) + CampCenter.Y;
+            var position = NextCrowdPosition(rng, placedPositions);
+            placedPositions.Add(position);
             var initialAgeTicks = StartingAgesInWinters[i] * WorldState.TicksPerYear;
             var motherId = StartingMotherIndex[i] is { } motherIndex ? new PersonId(motherIndex + 1) : (PersonId?)null;
             var fatherId = StartingFatherIndex[i] is { } fatherIndex ? new PersonId(fatherIndex + 1) : (PersonId?)null;
-            world.Execute(new SpawnPersonCommand(StartingNames[i], new Position(x, z), initialAgeTicks, motherId, fatherId));
+            world.Execute(new SpawnPersonCommand(StartingNames[i], position, initialAgeTicks, motherId, fatherId));
         }
 
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(-6f, 5f), 200f));
@@ -57,4 +67,33 @@ public static class MapLoader
     }
 
     private static Position Offset(double x, double y) => new(CampCenter.X + x, CampCenter.Y + y);
+
+    // Rejects a candidate too close to an already-placed person, so the crowd doesn't stack
+    // two people exactly on top of each other - falls back to the last candidate tried if
+    // CrowdRadius genuinely can't fit this many people with CrowdMinSpacing between them,
+    // rather than looping forever.
+    private static Position NextCrowdPosition(Random rng, List<Position> placed)
+    {
+        const int maxAttempts = 30;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var candidate = RandomDiskPosition(rng);
+            if (placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing))
+            {
+                return candidate;
+            }
+        }
+
+        return RandomDiskPosition(rng);
+    }
+
+    // Uniform over the disk's area, not its bounding square (see TerrainRenderer's own
+    // ScatterDecoration for the same math) - sampling angle and radius independently and
+    // uniformly would bunch samples near the center instead.
+    private static Position RandomDiskPosition(Random rng)
+    {
+        var angle = rng.NextDouble() * Math.Tau;
+        var distance = CrowdRadius * Math.Sqrt(rng.NextDouble());
+        return new Position(CampCenter.X + (distance * Math.Cos(angle)), CampCenter.Y + (distance * Math.Sin(angle)));
+    }
 }
