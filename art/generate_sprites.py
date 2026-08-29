@@ -25,6 +25,15 @@ from PIL import Image, ImageDraw
 SCALE = 4
 S = 64 * SCALE  # canvas size; shape coordinates below are still authored on the old 64-unit grid
 
+# Where every ground-standing shape's lowest point (trunk, stem, base ellipse...) should sit -
+# close to the canvas's own bottom edge (64), not comfortably above it. The engine positions
+# each sprite's shadow at the sprite's nominal canvas-bottom = true ground level (see
+# TerrainRenderer.ScatterDecoration's own comment on why it doesn't try to compensate for a
+# margin here instead - that needs the sprite's own *billboard-local* Y, which doesn't equal a
+# real world-space Y from an oblique camera). A base authored well above the canvas edge (the
+# original 58 many of these used) reads as the object floating above its own shadow instead.
+GROUND_CONTACT_Y = 63
+
 
 # ---------------------------------------------------------------- colour utils
 
@@ -670,14 +679,14 @@ def storage_hut():
     wall_h_jitter = rng.uniform(-1.0, 1.0)
     wall_pts = [
         (12, 30), (52, 30),
-        (52 + rng.uniform(-1, 1), 58 + wall_h_jitter),
-        (12 + rng.uniform(-1, 1), 58 - wall_h_jitter),
+        (52 + rng.uniform(-1, 1), GROUND_CONTACT_Y + wall_h_jitter),
+        (12 + rng.uniform(-1, 1), GROUND_CONTACT_Y - wall_h_jitter),
     ]
     walls = poly(jagged_poly(wall_pts, rng, amp=0.9, segments_per_edge=4, smooth_passes=1))
     c.fill(walls, wall)
     for x in (20, 28, 36, 44):
         seam_x = x + rng.uniform(-0.6, 0.6)
-        c.flat(rect(seam_x, 31, seam_x + 0.6, 57) & walls, darken(wall, 0.28))
+        c.flat(rect(seam_x, 31, seam_x + 0.6, GROUND_CONTACT_Y - 1) & walls, darken(wall, 0.28))
 
     roof_apex = (32 + rng.uniform(-1.5, 1.5), 6 + rng.uniform(-1, 1))
     roof_pts = [roof_apex, (58, 32), (6, 32)]
@@ -689,7 +698,7 @@ def storage_hut():
     roof_mask = erode(dilate(roof_body | fringe, close_r), close_r)
     c.fill(roof_mask, roof)
 
-    door = poly(jagged_poly([(26, 40), (38, 40), (37, 58), (27, 58)], rng, amp=0.5, segments_per_edge=3))
+    door = poly(jagged_poly([(26, 40), (38, 40), (37, GROUND_CONTACT_Y), (27, GROUND_CONTACT_Y)], rng, amp=0.5, segments_per_edge=3))
     c.fill(door, DOOR)
     c.flat(ellipse(35, 49, 0.6, 0.6), rgb(0.85, 0.78, 0.5))
 
@@ -775,8 +784,8 @@ def conifer_tree():
     trunk = jagged_poly([
         (trunk_top - trunk_w, trunk_top_y),
         (trunk_top + trunk_w, trunk_top_y),
-        (trunk_top + trunk_w + trunk_lean, 58),
-        (trunk_top - trunk_w + trunk_lean, 58),
+        (trunk_top + trunk_w + trunk_lean, GROUND_CONTACT_Y),
+        (trunk_top - trunk_w + trunk_lean, GROUND_CONTACT_Y),
     ], rng, amp=0.8, segments_per_edge=3, smooth_passes=1)
     c.fill(poly(trunk), trunk_base)
 
@@ -882,14 +891,14 @@ def rock_pile():
     c = Canvas(seed)
     stone = rgb(0.5, 0.5, 0.52)
     stones = [
-        (22, 44, 14, 11, stone, 0),
-        (40, 46, 13, 10, darken(stone, 0.08), 1),
-        (32, 36, 11, 10, lighten(stone, 0.1), 2),
+        (22, 51, 14, 11, stone, 0),
+        (40, 53, 13, 10, darken(stone, 0.08), 1),
+        (32, 43, 11, 10, lighten(stone, 0.1), 2),
     ]
     for cx, cy, rx, ry, color, i in stones:
         _stone(c, cx, cy, rx, ry, color, seed + i * 9, rng)
-    c.flat(rect(19, 42, 25, 43), darken(stone, 0.35))
-    c.flat(rect(36, 44, 42, 45), darken(stone, 0.35))
+    c.flat(rect(19, 49, 25, 50), darken(stone, 0.35))
+    c.flat(rect(36, 51, 42, 52), darken(stone, 0.35))
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -900,8 +909,8 @@ def rock_boulder():
     rng = random.Random(seed)
     c = Canvas(seed)
     stone = rgb(0.48, 0.48, 0.51)
-    _stone(c, 32, 42, 21, 17, stone, seed, rng)
-    c.flat(rect(13, 51, 51, 53), darken(stone, 0.35))
+    _stone(c, 32, 46, 21, 17, stone, seed, rng)
+    c.flat(rect(13, 55, 51, 57), darken(stone, 0.35))
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -914,15 +923,15 @@ def rock_cluster():
     c = Canvas(seed)
     stone = rgb(0.52, 0.52, 0.55)
     stones = [
-        (15, 46, 7, 6, stone, 0),
-        (27, 50, 6, 5, darken(stone, 0.06), 1),
-        (40, 47, 8, 6, lighten(stone, 0.08), 2),
-        (50, 43, 6, 5, darken(stone, 0.1), 3),
-        (34, 39, 6, 5, stone, 4),
+        (15, 54, 7, 6, stone, 0),
+        (27, 58, 6, 5, darken(stone, 0.06), 1),
+        (40, 55, 8, 6, lighten(stone, 0.08), 2),
+        (50, 51, 6, 5, darken(stone, 0.1), 3),
+        (34, 47, 6, 5, stone, 4),
     ]
     for cx, cy, rx, ry, color, i in stones:
         _stone(c, cx, cy, rx, ry, color, seed + i * 9, rng)
-    c.flat(rect(11, 50, 55, 51), darken(stone, 0.3))
+    c.flat(rect(11, 58, 55, 59), darken(stone, 0.3))
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -945,7 +954,7 @@ def _fruit_tree_bare(name):
     c = Canvas(seed)
     trunk = rgb(0.34, 0.24, 0.15)
     foliage = rgb(0.30, 0.38, 0.22)
-    c.fill(rect(29, 44, 35, 58), trunk)
+    c.fill(rect(29, 44, 35, GROUND_CONTACT_Y), trunk)
     c.fill(_fruit_tree_canopy(), foliage)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
@@ -996,8 +1005,8 @@ def bush():
     seed = seed_for("bush")
     c = Canvas(seed)
     foliage = rgb(0.26, 0.36, 0.18)
-    mask = (ellipse(32, 42, 20, 14) | ellipse(15, 46, 12, 10)
-            | ellipse(49, 46, 12, 10) | ellipse(32, 33, 15, 12))
+    mask = (ellipse(32, 49, 20, 14) | ellipse(15, 53, 12, 10)
+            | ellipse(49, 53, 12, 10) | ellipse(32, 40, 15, 12))
     c.fill(mask, foliage)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
@@ -1015,7 +1024,7 @@ def grass():
         height = rng.uniform(16, 30)
         lean = rng.uniform(-5.0, 5.0)
         blade = jagged_poly(
-            [(bx - 2.2, 58), (bx + lean, 58 - height), (bx + 2.2, 58)],
+            [(bx - 2.2, GROUND_CONTACT_Y), (bx + lean, GROUND_CONTACT_Y - height), (bx + 2.2, GROUND_CONTACT_Y)],
             rng, amp=0.5, segments_per_edge=2, smooth_passes=1)
         c.fill(poly(blade), green)
     c.rough_outline(width=1)
@@ -1030,11 +1039,11 @@ def tree_stump():
     c = Canvas(seed)
     bark = rgb(0.36, 0.24, 0.14)
     core = rgb(0.68, 0.52, 0.32)
-    root_l = jagged_poly([(14, 58), (24, 46), (28, 58)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
-    root_r = jagged_poly([(50, 58), (40, 46), (36, 58)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
+    root_l = jagged_poly([(14, GROUND_CONTACT_Y), (24, 51), (28, GROUND_CONTACT_Y)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
+    root_r = jagged_poly([(50, GROUND_CONTACT_Y), (40, 51), (36, GROUND_CONTACT_Y)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
     c.fill(poly(root_l) | poly(root_r), darken(bark, 0.1))
-    _wood_log(c, 32, 42, 17, 15, bark, core, seed)
-    _ground_shadow_dashes(c, 32, 57, 16, seed + 99)
+    _wood_log(c, 32, 47, 17, 15, bark, core, seed)
+    _ground_shadow_dashes(c, 32, GROUND_CONTACT_Y, 16, seed + 99)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -1048,13 +1057,13 @@ def fallen_log():
     bark = rgb(0.38, 0.26, 0.15)
     core = rgb(0.70, 0.53, 0.33)
     body = poly(jagged_poly(
-        [(14, 44), (50, 38), (52, 50), (16, 56)], rng, amp=0.8, segments_per_edge=4, smooth_passes=1))
+        [(14, 51), (50, 45), (52, 57), (16, GROUND_CONTACT_Y)], rng, amp=0.8, segments_per_edge=4, smooth_passes=1))
     c.fill(body, bark)
     for x in (22, 30, 38):
         seam_x = x + rng.uniform(-1, 1)
-        c.flat(rect(seam_x, 40, seam_x + 0.8, 54) & body, darken(bark, 0.22))
-    _wood_log(c, 14, 45, 9, 11, bark, core, seed + 1)
-    _ground_shadow_dashes(c, 34, 57, 20, seed + 99)
+        c.flat(rect(seam_x, 47, seam_x + 0.8, 61) & body, darken(bark, 0.22))
+    _wood_log(c, 14, 52, 9, 11, bark, core, seed + 1)
+    _ground_shadow_dashes(c, 34, GROUND_CONTACT_Y, 20, seed + 99)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -1066,7 +1075,7 @@ def fern():
     rng = random.Random(seed)
     c = Canvas(seed)
     green = rgb(0.28, 0.40, 0.20)
-    base_x, base_y = 32, 56
+    base_x, base_y = 32, GROUND_CONTACT_Y
     n_fronds = 7
     for i in range(n_fronds):
         t = i / (n_fronds - 1)
@@ -1093,7 +1102,7 @@ def flower():
     stem = rgb(0.30, 0.40, 0.20)
     petal = rgb(0.82, 0.52, 0.62)
     center = rgb(0.90, 0.75, 0.25)
-    c.fill(rect(31, 38, 33, 58), stem)
+    c.fill(rect(31, 38, 33, GROUND_CONTACT_Y), stem)
     petals = (ellipse(32, 28, 6, 9) | ellipse(23, 33, 8, 6) | ellipse(41, 33, 8, 6)
               | ellipse(27, 24, 7, 7) | ellipse(37, 24, 7, 7))
     c.fill(petals, petal)

@@ -28,10 +28,14 @@ public sealed class FreeCameraRig
 
     // Degrees of elevation above the rig's horizontal plane. 45 matches the original fixed
     // Vector3(0, 1, 1) direction; the clamp keeps the view from ever going fully overhead or
-    // fully edge-on, both of which break the billboard/cutout illusion.
+    // fully edge-on, both of which break the billboard/cutout illusion. The upper bound
+    // matters more now that every sprite uses FixedY billboarding (see BillboardSprite.cs):
+    // that mode only ever yaws to face the camera's *horizontal* direction, so looking
+    // straight down (90 deg) leaves nothing to yaw toward - every sprite would render edge-on
+    // and vanish. 70 keeps a comfortable margin below that degenerate case.
     private const float DefaultTiltDegrees = 45f;
     private const float MinTiltDegrees = 20f;
-    private const float MaxTiltDegrees = 80f;
+    private const float MaxTiltDegrees = 70f;
     private const float TiltSpeedDegreesPerSecond = 45f;
 
     private readonly Node3D _rig;

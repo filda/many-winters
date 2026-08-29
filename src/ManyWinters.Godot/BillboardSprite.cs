@@ -19,6 +19,15 @@ public static class BillboardSprite
     // same position - e.g. ResourceNodeView's fruit overlay - has no defined draw order
     // against it under OpaquePrepass (both are at the same depth), so it needs standard alpha
     // blending (Disabled) plus a higher renderPriority to reliably draw second/on top.
+    //
+    // FixedY, not Enabled (full/spherical): Enabled reorients local up to the *camera's* own
+    // up vector, not world up, so at this game's oblique camera tilt a sprite's own vertical
+    // extent renders shorter in true world-space than its nominal height (short by a factor of
+    // 1-cos(tilt) of its own half-height) - a trunk/base authored to reach the very bottom of
+    // its canvas still visibly floats above the ground. FixedY keeps local up pinned to world
+    // up regardless of camera pitch, so a sprite's own bottom edge always lands at its real
+    // world-space height. Used uniformly (not just for decoration) so ground contact holds the
+    // same way everywhere - see SpritePixelHit's own plane-basis math, which assumes this mode.
     public static Sprite3D Create(
         string texturePath,
         float worldHeight,
@@ -28,7 +37,7 @@ public static class BillboardSprite
     {
         var sprite = new Sprite3D
         {
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            Billboard = BaseMaterial3D.BillboardModeEnum.FixedY,
             // LinearMipmap, not Nearest: the art is now illustrated engraving detail (fine
             // crosshatching), not deliberate hard-edged pixel art. Without a mip chain, that
             // fine detail aliases into shimmering noise once a sprite is small on screen -

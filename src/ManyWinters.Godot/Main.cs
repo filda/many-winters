@@ -317,7 +317,7 @@ public partial class Main : Node3D
 
         foreach (var child in FindChildren("*", nameof(Sprite3D), recursive: true, owned: false))
         {
-            if (child is not Sprite3D sprite || sprite.Billboard != BaseMaterial3D.BillboardModeEnum.Enabled)
+            if (child is not Sprite3D sprite || sprite.Billboard == BaseMaterial3D.BillboardModeEnum.Disabled)
             {
                 continue;
             }

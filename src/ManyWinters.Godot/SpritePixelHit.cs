@@ -10,9 +10,16 @@ namespace ManyWinters.Godot;
 // Sprite3D's Billboard rendering is a shader-only trick - it never rotates the node's own
 // Transform, so the invisible CollisionShape3D used for the initial broad-phase hit doesn't
 // itself turn to face the camera the way the visible sprite does. This instead reconstructs
-// where the pick ray crosses the sprite's actual (camera-facing) plane, using the camera's
-// own basis vectors as that plane's real screen-facing right/up - which is what "Enabled"
-// (full/spherical) billboard mode means by definition, not an approximation of it.
+// where the pick ray crosses the sprite's actual rendered plane.
+//
+// Every sprite uses FixedY billboarding (see BillboardSprite.cs), not full/spherical - it
+// only ever yaws to face the camera's *horizontal* direction, keeping local up pinned to
+// world up regardless of camera pitch (that's what keeps a sprite's own base sitting at its
+// real world-space height instead of floating - see BillboardSprite's own doc comment). The
+// rendered plane's basis has to match that: up is always world up, and right/forward are
+// derived from the horizontal component of the direction to the camera, not the camera's own
+// (pitched) basis vectors - those would describe a full/spherical billboard's plane instead,
+// which tilts to match camera elevation and this game's sprites never do.
 public static class SpritePixelHit
 {
     private static readonly Dictionary<string, Image> _imageCache = new();
@@ -45,10 +52,25 @@ public static class SpritePixelHit
     {
         uv = default;
 
-        var basis = camera.GlobalTransform.Basis;
-        var right = basis.X;
-        var up = basis.Y;
-        var forward = -basis.Z;
+        var up = Vector3.Up;
+        var toCameraHorizontal = new Vector3(
+            camera.GlobalPosition.X - spriteCenter.X,
+            0f,
+            camera.GlobalPosition.Z - spriteCenter.Z);
+        var horizontalDistance = toCameraHorizontal.Length();
+        if (horizontalDistance < 0.0001f)
+        {
+            // Camera directly overhead (or underneath) the sprite - a FixedY billboard has
+            // nothing left to yaw toward and renders edge-on/degenerate here. FreeCameraRig's
+            // own tilt clamp keeps normal play well clear of this.
+            return false;
+        }
+
+        // The direction the billboard's plane faces (from the sprite toward the camera,
+        // horizontally) - matches camera.GlobalTransform.Basis.X exactly whenever the camera
+        // has zero pitch, and stays correct at any pitch since only yaw affects it.
+        var look = toCameraHorizontal / horizontalDistance;
+        var right = up.Cross(look);
 
         var rayOrigin = camera.GlobalPosition;
         var toHit = rayHitPosition - rayOrigin;
@@ -59,13 +81,13 @@ public static class SpritePixelHit
         }
 
         var rayDirection = toHit / rayLength;
-        var denominator = rayDirection.Dot(forward);
+        var denominator = rayDirection.Dot(look);
         if (Mathf.Abs(denominator) < 0.0001f)
         {
             return false;
         }
 
-        var t = (spriteCenter - rayOrigin).Dot(forward) / denominator;
+        var t = (spriteCenter - rayOrigin).Dot(look) / denominator;
         var pointOnBillboardPlane = rayOrigin + (rayDirection * t);
         var offset = pointOnBillboardPlane - spriteCenter;
         var localRight = offset.Dot(right);

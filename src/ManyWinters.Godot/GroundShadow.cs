@@ -13,13 +13,17 @@ public static class GroundShadow
     // with the ground mesh.
     public const float GroundOffset = 0.02f;
 
-    // A shadow centered directly under its caster reads as floating, not grounded - there's
-    // no visual separation between "the object's own base" and "its shadow." Offsetting it
-    // to one side (as if from a consistent, fixed light direction) fixes that. Callers add
-    // their own ground-height (and, for world-space callers, XZ) position on top of this via
-    // Position +=, so this offset survives rather than being overwritten.
-    private const float SideOffsetFraction = 0.35f;
-
+    // No side offset - a shadow centered directly under its caster was tried with one (as if
+    // from a consistent, fixed light direction) to avoid reading as floating, but that offset
+    // is fixed in *world* space while the caster itself is a billboard that only ever rotates
+    // to face the camera (its actual Transform never turns - see SpritePixelHit's own doc
+    // comment on that). Orbiting the camera around a fixed-world-space-offset shadow next to
+    // an always-camera-facing sprite made the shadow appear to swing around the object as the
+    // view angle changed - worse than the plain-floating look it was meant to fix. A per-frame
+    // camera-relative offset (recomputed like the selection marker overlay was) would fix that
+    // properly, but doing it for potentially tens of thousands of decoration shadows every
+    // frame is exactly the per-frame-cost mistake the density/performance pass just walked
+    // back - not worth it for a purely cosmetic offset.
     public static Sprite3D Create(float diameter)
     {
         var sprite = new Sprite3D
@@ -32,8 +36,6 @@ public static class GroundShadow
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         sprite.PixelSize = diameter / sprite.Texture.GetWidth();
-        var sideOffset = diameter * SideOffsetFraction;
-        sprite.Position = new Vector3(sideOffset, 0f, sideOffset);
         return sprite;
     }
 }

@@ -53,11 +53,13 @@ public partial class PersonView : Area3D
         groundShadow.Position += new Vector3(0, (-Height / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        // Keep the default full billboard (not FixedY): the camera sits at a fixed 45deg
-        // elevation, and only full billboard keeps the sprite's own face-normal genuinely
-        // aligned with the actual (elevated) camera direction. FixedY holds the sprite
-        // perfectly upright instead, so a local Z "roll" ends up misaligned with that
-        // oblique view and reads as a forward/backward tilt rather than side-to-side.
+        // BillboardSprite.Create always uses FixedY now (switched from full/spherical so a
+        // standing figure's own feet actually land at ground level at this camera's oblique
+        // tilt - see its own doc comment). That trade-off cuts both ways here specifically:
+        // the walk-cycle's local Z "roll" below (_walkPhase) was tuned assuming full billboard,
+        // where a Z roll reads as a proper side-to-side lean; under FixedY it may instead read
+        // as a forward/backward tilt. Needs a live look once the ground-contact fix is
+        // confirmed - if the walk rock looks wrong now, that's the reason.
         _sprite = BillboardSprite.Create(AliveTexturePath, Height, AliveColor);
         _normalModulate = _sprite.Modulate;
         AddChild(_sprite);
