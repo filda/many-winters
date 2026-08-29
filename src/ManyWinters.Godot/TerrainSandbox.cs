@@ -66,13 +66,13 @@ public partial class TerrainSandbox : Node3D
         // camp-centered radius - this scene is specifically for eyeballing decoration over
         // real terrain at full scale, not a small playable area around a camp.
         var rng = new Random(PropScatterSeed);
-        _terrain.ScatterDecoration(this, rng, TreeCount, ConiferTreePath, TreeHeightMeters, TreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, DeciduousTreeCount, DeciduousTreePath, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, BushCount, BushPath, BushHeightMeters, BushFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, GrassCount, GrassPath, GrassHeightMeters, GrassFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, FlowerCount, FlowerPath, FlowerHeightMeters, FlowerFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, RockCount, RockPilePath, RockHeightMeters, RockFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, PersonCount, PersonTexturePath, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, TreeCount, new[] { ConiferTreePath }, TreeHeightMeters, TreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, DeciduousTreeCount, new[] { DeciduousTreePath }, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, BushCount, new[] { BushPath }, BushHeightMeters, BushFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, GrassCount, new[] { GrassPath }, GrassHeightMeters, GrassFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, FlowerCount, new[] { FlowerPath }, FlowerHeightMeters, FlowerFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, RockCount, new[] { RockPilePath }, RockHeightMeters, RockFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(this, rng, PersonCount, new[] { PersonTexturePath }, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
 
         _cameraRig = new FreeCameraRig(this, Vector3.Zero, InitialZoomDistance, MinZoom, MaxZoom);
     }

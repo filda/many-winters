@@ -857,7 +857,26 @@ def _weather_pits(mask, seed, n=4):
     return (np.array(img) > 127) & mask
 
 
+def _stone(canvas, cx, cy, rx, ry, color, seed, rng):
+    """One faceted stone: blended boulder silhouette, crosshatch shading, a couple of
+    crack facets and weather pits. Factored out of rock_pile so rock_boulder/rock_cluster
+    can reuse the exact same per-stone construction at different counts/sizes instead of
+    duplicating it."""
+    pts = _blended_rock_points(rng, cx, cy, rx, ry)
+    mask = poly(jagged_poly(pts, rng, amp=0.7, segments_per_edge=3, smooth_passes=1))
+    out_rgb = hatch_fill(mask, color, seed)
+    canvas.rgb[mask] = out_rgb[mask]
+    canvas.alpha |= mask
+    facets = _stone_facets(mask, seed + 3, n=rng.randint(2, 3))
+    canvas.flat(facets, darken(color, 0.45))
+    pits = _weather_pits(mask, seed + 5, n=rng.randint(2, 4))
+    canvas.flat(pits, darken(color, 0.35))
+
+
 def rock_pile():
+    """Three medium stones leant together - the original rock shape, kept as the
+    "medium" member of the family now that rock_boulder/rock_cluster exist alongside it
+    (todo #4: rocks need more than one shape/size, not just a random scale on one)."""
     seed = seed_for("rock_pile")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -868,17 +887,42 @@ def rock_pile():
         (32, 36, 11, 10, lighten(stone, 0.1), 2),
     ]
     for cx, cy, rx, ry, color, i in stones:
-        pts = _blended_rock_points(rng, cx, cy, rx, ry)
-        mask = poly(jagged_poly(pts, rng, amp=0.7, segments_per_edge=3, smooth_passes=1))
-        out_rgb = hatch_fill(mask, color, seed + i * 9)
-        c.rgb[mask] = out_rgb[mask]
-        c.alpha |= mask
-        facets = _stone_facets(mask, seed + i * 9 + 3, n=rng.randint(2, 3))
-        c.flat(facets, darken(color, 0.45))
-        pits = _weather_pits(mask, seed + i * 9 + 5, n=rng.randint(2, 4))
-        c.flat(pits, darken(color, 0.35))
+        _stone(c, cx, cy, rx, ry, color, seed + i * 9, rng)
     c.flat(rect(19, 42, 25, 43), darken(stone, 0.35))
     c.flat(rect(36, 44, 42, 45), darken(stone, 0.35))
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def rock_boulder():
+    """A single large boulder - the biggest, simplest member of the rock family."""
+    seed = seed_for("rock_boulder")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    stone = rgb(0.48, 0.48, 0.51)
+    _stone(c, 32, 42, 21, 17, stone, seed, rng)
+    c.flat(rect(13, 51, 51, 53), darken(stone, 0.35))
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def rock_cluster():
+    """A scatter of several small stones - loose scree rather than a deliberate pile,
+    the smallest and most numerous member of the rock family."""
+    seed = seed_for("rock_cluster")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    stone = rgb(0.52, 0.52, 0.55)
+    stones = [
+        (15, 46, 7, 6, stone, 0),
+        (27, 50, 6, 5, darken(stone, 0.06), 1),
+        (40, 47, 8, 6, lighten(stone, 0.08), 2),
+        (50, 43, 6, 5, darken(stone, 0.1), 3),
+        (34, 39, 6, 5, stone, 4),
+    ]
+    for cx, cy, rx, ry, color, i in stones:
+        _stone(c, cx, cy, rx, ry, color, seed + i * 9, rng)
+    c.flat(rect(11, 50, 55, 51), darken(stone, 0.3))
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -978,6 +1022,68 @@ def grass():
     return c
 
 
+def tree_stump():
+    """A cut stump: bark rind, a ring-marked top, a couple of surface roots - still
+    rooted in the ground, unlike fallen_log lying on its side."""
+    seed = seed_for("tree_stump")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    bark = rgb(0.36, 0.24, 0.14)
+    core = rgb(0.68, 0.52, 0.32)
+    root_l = jagged_poly([(14, 58), (24, 46), (28, 58)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
+    root_r = jagged_poly([(50, 58), (40, 46), (36, 58)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
+    c.fill(poly(root_l) | poly(root_r), darken(bark, 0.1))
+    _wood_log(c, 32, 42, 17, 15, bark, core, seed)
+    _ground_shadow_dashes(c, 32, 57, 16, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def fallen_log():
+    """A log lying on its side - one cut end shows growth rings, the long body is just
+    crosshatched bark with a few seam lines (rings only read at an actual cut face)."""
+    seed = seed_for("fallen_log")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    bark = rgb(0.38, 0.26, 0.15)
+    core = rgb(0.70, 0.53, 0.33)
+    body = poly(jagged_poly(
+        [(14, 44), (50, 38), (52, 50), (16, 56)], rng, amp=0.8, segments_per_edge=4, smooth_passes=1))
+    c.fill(body, bark)
+    for x in (22, 30, 38):
+        seam_x = x + rng.uniform(-1, 1)
+        c.flat(rect(seam_x, 40, seam_x + 0.8, 54) & body, darken(bark, 0.22))
+    _wood_log(c, 14, 45, 9, 11, bark, core, seed + 1)
+    _ground_shadow_dashes(c, 34, 57, 20, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def fern():
+    """A low fan of arched fronds radiating from one base point - a fuller forest-floor
+    spray than grass's simple upright tuft."""
+    seed = seed_for("fern")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    green = rgb(0.28, 0.40, 0.20)
+    base_x, base_y = 32, 56
+    n_fronds = 7
+    for i in range(n_fronds):
+        t = i / (n_fronds - 1)
+        angle = math.radians(-155 + t * 130)
+        length = rng.uniform(16, 25)
+        dx, dy = math.cos(angle) * length, math.sin(angle) * length
+        tip = (base_x + dx, base_y + dy)
+        perp_len = math.hypot(dy, dx) or 1.0
+        perp = (-dy / perp_len * 1.6, dx / perp_len * 1.6)
+        blade = jagged_poly(
+            [(base_x - perp[0], base_y - perp[1]), tip, (base_x + perp[0], base_y + perp[1])],
+            rng, amp=0.4, segments_per_edge=2, smooth_passes=1)
+        c.fill(poly(blade), green)
+    c.rough_outline(width=1)
+    return c
+
+
 def flower():
     """A short stem topped with a ring of petals around a bright center - the one spot of
     saturated color the muted palette (docs/Many Winters visual plan, "art constraints")
@@ -1030,7 +1136,12 @@ SPRITES = {
     "bush": bush,
     "grass": grass,
     "flower": flower,
+    "fern": fern,
     "rock_pile": rock_pile,
+    "rock_boulder": rock_boulder,
+    "rock_cluster": rock_cluster,
+    "tree_stump": tree_stump,
+    "fallen_log": fallen_log,
     "selection_marker": selection_marker,
 }
 

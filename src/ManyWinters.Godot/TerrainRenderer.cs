@@ -268,11 +268,14 @@ public sealed class TerrainRenderer
     // a count that reads as a reasonably dense forest over a real ~1 km terrain (Half=500)
     // is instead spread so thin that the tiny playable area around it looks bare, since
     // that area is a negligible fraction of the total scatter footprint.
+    // texturePaths: one or more textures for this decoration kind - each instance picks one
+    // independently at random, so a single call can scatter (say) a mix of three differently
+    // shaped/sized rocks instead of the same one just rescaled.
     public void ScatterDecoration(
         Node3D parent,
         Random rng,
         int count,
-        string texturePath,
+        IReadOnlyList<string> texturePaths,
         float baseHeight,
         Color fallbackColor,
         float minScale,
@@ -292,6 +295,7 @@ public sealed class TerrainRenderer
             var z = centerZ + (MathF.Sin(angle) * distance);
             var scale = minScale + ((float)rng.NextDouble() * (maxScale - minScale));
             var worldHeight = baseHeight * scale;
+            var texturePath = texturePaths[rng.Next(texturePaths.Count)];
 
             var groundShadow = GroundShadow.Create(worldHeight * 0.5f);
             groundShadow.Position += new Vector3(x, SampleHeight(x, z) + GroundShadow.GroundOffset, z);
