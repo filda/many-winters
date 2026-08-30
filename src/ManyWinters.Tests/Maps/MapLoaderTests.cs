@@ -137,9 +137,10 @@ public class MapLoaderTests
             (TestCatalogs.Potato, new Position(-1f, 245f), 200f),
             (TestCatalogs.Apple, new Position(11f, 245f), 200f),
             (TestCatalogs.Wood, new Position(5f, 255f), 300f),
+            (TestCatalogs.Grass, new Position(15f, 250f), 200f),
         };
 
-        Assert.Equal(6, map.World.ResourceNodes.Count);
+        Assert.Equal(7, map.World.ResourceNodes.Count);
         Assert.Equal(expected, map.World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)));
     }
 

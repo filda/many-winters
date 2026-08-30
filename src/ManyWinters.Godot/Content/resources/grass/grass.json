@@ -1,0 +1,7 @@
+{
+  "id": "grass",
+  "displayName": "Wild Grass",
+  "skill": "foraging",
+  "yieldsItem": "grass",
+  "regenPerTick": 1
+}

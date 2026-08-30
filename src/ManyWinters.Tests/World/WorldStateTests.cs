@@ -1,6 +1,7 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -197,6 +198,43 @@ public class WorldStateTests
         world.Advance(WorldState.TicksPerYear);
 
         Assert.Equal(1, world.AgeInYears(person));
+    }
+
+    [Fact]
+    public void MaxCarryWeightForAnAdultWithNoGearIsTheAdultBaseline()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+        Assert.Equal(CarryCapacity.AdultBaseWeight, world.MaxCarryWeightFor(person));
+    }
+
+    [Fact]
+    public void MaxCarryWeightForAddsTheBonusOfGearCurrentlyHeld()
+    {
+        var bag = new ItemKindId("bag");
+        var world = new WorldState(WorldConfiguration.Empty with
+        {
+            ItemCatalog = new ItemCatalog(new[] { new ItemDefinition(bag, "Bag", CarryCapacityBonus: 20f) }),
+        });
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.Inventory.Add(bag, 1);
+
+        Assert.Equal(CarryCapacity.AdultBaseWeight + 20f, world.MaxCarryWeightFor(person));
+    }
+
+    [Fact]
+    public void MaxCarryWeightForGearBonusDoesNotStackWithMoreCopiesOfTheSameItem()
+    {
+        var bag = new ItemKindId("bag");
+        var world = new WorldState(WorldConfiguration.Empty with
+        {
+            ItemCatalog = new ItemCatalog(new[] { new ItemDefinition(bag, "Bag", CarryCapacityBonus: 20f) }),
+        });
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.Inventory.Add(bag, 3);
+
+        Assert.Equal(CarryCapacity.AdultBaseWeight + 20f, world.MaxCarryWeightFor(person));
     }
 
     [Fact]

@@ -29,7 +29,7 @@ public class FellCommandTests
     public void TheWoodLeftBehindByFellingCanBeGatheredLikeAnyOtherNode()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         world.Execute(new FellCommand(person.Id, node.Id));
         var leftover = Assert.Single(world.ResourceNodes, n => n.Id != node.Id);

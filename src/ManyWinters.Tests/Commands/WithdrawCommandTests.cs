@@ -1,6 +1,5 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
-using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -12,7 +11,7 @@ public class WithdrawCommandTests
     public void WithdrawingMovesItemsFromBuildingToPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
@@ -26,7 +25,7 @@ public class WithdrawCommandTests
     public void WithdrawingWithoutEnoughItemsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 5);
 
@@ -40,7 +39,7 @@ public class WithdrawCommandTests
     public void WithdrawingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.IsAlive = false;
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
@@ -55,7 +54,7 @@ public class WithdrawCommandTests
     public void WithdrawingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
@@ -68,7 +67,7 @@ public class WithdrawCommandTests
     public void WithdrawingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance + 1, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
@@ -82,7 +81,7 @@ public class WithdrawCommandTests
     public void WithdrawingFromAnUnknownBuildingDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 
         world.Execute(new WithdrawCommand(person.Id, new BuildingId(999), TestCatalogs.WoodItem, 15));
 
@@ -105,14 +104,14 @@ public class WithdrawCommandTests
     public void WithdrawingOnlyTakesWhatStillFitsInThePersonsInventoryAndLeavesTheRestInTheBuilding()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        person.Inventory.Add(TestCatalogs.WoodItem, (int)Person.MaxCarryWeight - 5);
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person) - 5);
         var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
-        Assert.Equal(Person.MaxCarryWeight, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
     }
 }

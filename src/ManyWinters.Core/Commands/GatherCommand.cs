@@ -1,4 +1,3 @@
-using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -40,7 +39,7 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         {
             // Only what actually fits in the inventory comes off the node - a full backpack
             // leaves the rest standing to gather later, rather than the excess vanishing.
-            var added = person.Inventory.AddUpToCapacity(item, (int)potentialConsumed, world.ItemCatalog, Person.MaxCarryWeight);
+            var added = person.Inventory.AddUpToCapacity(item, (int)potentialConsumed, world.ItemCatalog, world.MaxCarryWeightFor(person));
             node.RemainingAmount -= added;
         }
         else

@@ -1,5 +1,4 @@
 using ManyWinters.Core.Commands;
-using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -130,12 +129,12 @@ public class LootCommandTests
         var deceased = world.AddPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var looter = world.AddPerson("Bran", new Position(0, 0));
-        looter.Inventory.Add(TestCatalogs.WoodItem, (int)Person.MaxCarryWeight - 5);
+        var looter = world.AddPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        looter.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(looter) - 5);
 
         world.Execute(new LootCommand(looter.Id, deceased.Id));
 
-        Assert.Equal(Person.MaxCarryWeight, looter.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(world.MaxCarryWeightFor(looter), looter.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, deceased.Inventory.Get(TestCatalogs.WoodItem));
     }
 }

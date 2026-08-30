@@ -62,6 +62,7 @@ public static class MapLoader
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("potato"), Offset(-6f, -5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(6f, -5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("wood"), Offset(0f, 5f), 300f));
+        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("grass"), Offset(10f, 0f), 200f));
 
         return new LoadedMap(world, CampCenter);
     }

@@ -1031,6 +1031,25 @@ def grass():
     return c
 
 
+def wild_grass():
+    """A denser, wider clump than the terrain-decoration `grass` tuft - reads as a patch
+    worth gathering rather than a stray blade underfoot."""
+    seed = seed_for("wild_grass")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    greens = [rgb(0.34, 0.46, 0.20), rgb(0.30, 0.42, 0.18), rgb(0.38, 0.48, 0.22)]
+    for i in range(11):
+        bx = 8 + i * 4.7 + rng.uniform(-1.6, 1.6)
+        height = rng.uniform(20, 34)
+        lean = rng.uniform(-6.0, 6.0)
+        blade = jagged_poly(
+            [(bx - 2.0, GROUND_CONTACT_Y), (bx + lean, GROUND_CONTACT_Y - height), (bx + 2.0, GROUND_CONTACT_Y)],
+            rng, amp=0.5, segments_per_edge=2, smooth_passes=1)
+        c.fill(poly(blade), rng.choice(greens))
+    c.rough_outline(width=1)
+    return c
+
+
 def tree_stump():
     """A cut stump: bark rind, a ring-marked top, a couple of surface roots - still
     rooted in the ground, unlike fallen_log lying on its side."""
@@ -1144,6 +1163,7 @@ SPRITES = {
     "pear_tree_fruit": pear_tree_fruit,
     "bush": bush,
     "grass": grass,
+    "wild_grass": wild_grass,
     "flower": flower,
     "fern": fern,
     "rock_pile": rock_pile,

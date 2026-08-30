@@ -1,4 +1,3 @@
-using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -18,9 +17,11 @@ public sealed record LootCommand(PersonId LootingPersonId, PersonId DeceasedPers
 
         // Only what fits comes off the corpse - a looter who's already full leaves the rest
         // behind (still lootable later, e.g. by someone else) rather than it vanishing.
+        // Recomputed every iteration, not hoisted: looting a capacity-boosting item (a
+        // basket) partway through should raise the room left for whatever's looted next.
         foreach (var (item, count) in deceased.Inventory.Counts.ToList())
         {
-            var taken = lootingPerson.Inventory.AddUpToCapacity(item, count, world.ItemCatalog, Person.MaxCarryWeight);
+            var taken = lootingPerson.Inventory.AddUpToCapacity(item, count, world.ItemCatalog, world.MaxCarryWeightFor(lootingPerson));
             if (taken > 0)
             {
                 deceased.Inventory.Remove(item, taken);

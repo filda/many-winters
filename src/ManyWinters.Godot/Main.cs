@@ -565,6 +565,14 @@ public partial class Main : Node3D
         craftClothingButton.Pressed += OnCraftClothingButtonPressed;
         _contextualActions.AddChild(craftClothingButton);
 
+        var craftBasketButton = new Button { Text = "Craft Basket (8 Wood)" };
+        craftBasketButton.Pressed += OnCraftBasketButtonPressed;
+        _contextualActions.AddChild(craftBasketButton);
+
+        var craftBagButton = new Button { Text = "Craft Bag (10 Grass)" };
+        craftBagButton.Pressed += OnCraftBagButtonPressed;
+        _contextualActions.AddChild(craftBagButton);
+
         var buildButton = new Button { Text = "Build Storage Hut (20 Wood)" };
         buildButton.Pressed += OnBuildButtonPressed;
         _contextualActions.AddChild(buildButton);
@@ -638,6 +646,30 @@ public partial class Main : Node3D
         }
 
         _world.Execute(new CraftCommand(personId, new ItemKindId("warm_clothing")));
+        RefreshInfoLabel();
+    }
+
+    private void OnCraftBasketButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _statusBar.Notify("Select a person first, then craft.");
+            return;
+        }
+
+        _world.Execute(new CraftCommand(personId, new ItemKindId("basket")));
+        RefreshInfoLabel();
+    }
+
+    private void OnCraftBagButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _statusBar.Notify("Select a person first, then craft.");
+            return;
+        }
+
+        _world.Execute(new CraftCommand(personId, new ItemKindId("bag")));
         RefreshInfoLabel();
     }
 
@@ -1156,6 +1188,7 @@ public partial class Main : Node3D
             ? string.Join(", ", person.Inventory.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
             : "empty";
         var carriedWeight = person.Inventory.TotalWeight(_world.ItemCatalog);
+        var maxCarryWeight = _world.MaxCarryWeightFor(person);
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
@@ -1164,7 +1197,7 @@ public partial class Main : Node3D
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
-            $"Carrying: {carriedWeight}/{Person.MaxCarryWeight}\n" +
+            $"Carrying: {carriedWeight}/{maxCarryWeight}\n" +
             $"Inventory: {inventory}";
     }
 

@@ -178,6 +178,17 @@ public sealed class WorldState
 
     public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerSeason;
 
+    // How much this specific person can carry right now - varies by age (see CarryCapacity)
+    // plus whatever gear (a basket, a bag, ...) they currently have on them (same "presence,
+    // not count" convention as InsulationFor - carrying five baskets isn't five times the
+    // bonus of carrying one).
+    public float MaxCarryWeightFor(Person person)
+    {
+        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), MaxLifespanYears);
+        var gearBonus = person.Inventory.Counts.Keys.Sum(ItemCatalog.CarryCapacityBonusFor);
+        return baseWeight + gearBonus;
+    }
+
     public void Advance(long ticks)
     {
         var startTick = Clock.CurrentTick;

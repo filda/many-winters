@@ -24,6 +24,8 @@ public sealed class ItemCatalog
 
     public float HungerRestoredPerUnitFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.HungerRestoredPerUnit : 0f;
 
+    public float CarryCapacityBonusFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.CarryCapacityBonus : 0f;
+
     public static ItemCatalog LoadFromDirectory(string rootPath)
     {
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
