@@ -23,6 +23,10 @@ public partial class Main : Node3D
     // person's own sprite doesn't overlap the resource node's.
     private const float ApproachDistance = 1.2f;
 
+    // Godot's UI default (16) reads oversized for a dense debug/dev panel crammed with
+    // labels and a growing list of contextual buttons.
+    private const int InspectorFontSize = 13;
+
     // Extra margin (in meters) added on top of each candidate's own on-screen half-width -
     // roughly the selected person's own half-width, so something has to clear the target's
     // own silhouette, not just its exact center point, to not count as blocking it - and how
@@ -377,6 +381,11 @@ public partial class Main : Node3D
         {
             Position = new Vector2(16, 16),
             CustomMinimumSize = new Vector2(width, 0),
+            // A Theme resource cascades its DefaultFontSize down to every descendant Control
+            // that doesn't set its own override - unlike AddThemeFontSizeOverride, which only
+            // affects the single Control it's called on - so this alone shrinks the title,
+            // every label, and every contextual button inside.
+            Theme = new Theme { DefaultFontSize = InspectorFontSize },
         };
         panel.AddThemeStyleboxOverride("panel", PanelBackground());
         canvas.AddChild(panel);
