@@ -12,6 +12,7 @@ public sealed class WorldPresenter
     private readonly Action<PersonId, MouseButton> _onPersonClicked;
     private readonly Action<ResourceNodeId> _onResourceNodeSelected;
     private readonly Action<GraveId> _onGraveSelected;
+    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
@@ -25,12 +26,14 @@ public sealed class WorldPresenter
         Action<PersonId, MouseButton> onPersonClicked,
         Action<ResourceNodeId> onResourceNodeSelected,
         Action<GraveId> onGraveSelected,
+        CollisionObject3D.InputEventEventHandler onMissedClick,
         Func<float, float, float>? sampleHeight = null)
     {
         _container = container;
         _onPersonClicked = onPersonClicked;
         _onResourceNodeSelected = onResourceNodeSelected;
         _onGraveSelected = onGraveSelected;
+        _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight ?? ((x, z) => 0f);
         _resourceCatalog = world.ResourceCatalog;
 
@@ -116,7 +119,7 @@ public sealed class WorldPresenter
 
     private void CreatePersonView(Person person)
     {
-        var view = new PersonView(person.Id, _onPersonClicked)
+        var view = new PersonView(person.Id, _onPersonClicked, _onMissedClick)
         {
             Name = person.Name,
             Position = ToVector3(person.Position, PersonView.Height / 2f),
@@ -128,7 +131,7 @@ public sealed class WorldPresenter
     private void CreateResourceNodeView(ResourceNode node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
-        var view = new ResourceNodeView(node.Id, node.Kind, canFell, _onResourceNodeSelected);
+        var view = new ResourceNodeView(node.Id, node.Kind, canFell, _onResourceNodeSelected, _onMissedClick);
         view.Position = ToVector3(node.Position, view.Size / 2f);
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
@@ -146,7 +149,7 @@ public sealed class WorldPresenter
 
     private void CreateGraveView(Grave grave)
     {
-        var view = new GraveView(grave.Id, grave.IsMarked, _onGraveSelected)
+        var view = new GraveView(grave.Id, grave.IsMarked, _onGraveSelected, _onMissedClick)
         {
             Position = ToVector3(grave.Position, GraveView.Size / 2f),
         };

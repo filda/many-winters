@@ -96,7 +96,7 @@ public partial class Main : Node3D
         SetUpCamera();
         SetUpUi();
 
-        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnGroundInputEvent, _terrain.SampleHeight);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }

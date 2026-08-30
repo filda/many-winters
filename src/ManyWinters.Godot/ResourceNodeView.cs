@@ -27,17 +27,19 @@ public partial class ResourceNodeView : Area3D
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
     private readonly Action<ResourceNodeId> _onSelected;
+    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private Sprite3D _sprite = null!;
     private Color _normalModulate;
     private Sprite3D? _fruitOverlay;
     private bool _isHovered;
 
-    public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected)
+    public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick)
     {
         _nodeId = nodeId;
         _kind = kind;
         _canFell = canFell;
         _onSelected = onSelected;
+        _onMissedClick = onMissedClick;
         Size = canFell ? TreeSize : DefaultSize;
     }
 
@@ -141,9 +143,22 @@ public partial class ResourceNodeView : Area3D
             case InputEventMouseMotion:
                 SetHovered(SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()));
                 break;
-            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
-                when SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()):
-                _onSelected(_nodeId);
+            // The broad-phase collision box (see the constructor's Size / SpriteVisibleExtent)
+            // is bigger than the actual silhouette - Godot only delivers a click to the
+            // nearest pickable collider along the ray, so a click landing inside the box but
+            // off the opaque pixels (e.g. on this node's own ground shadow) would otherwise be
+            // silently swallowed here instead of reaching the ground underneath. Forward it to
+            // whatever a plain ground click at this same spot would have done.
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }:
+                if (SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()))
+                {
+                    _onSelected(_nodeId);
+                }
+                else
+                {
+                    _onMissedClick(camera, @event, position, normal, shapeIdx);
+                }
+
                 break;
         }
     }

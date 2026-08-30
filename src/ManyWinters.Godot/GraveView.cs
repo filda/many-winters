@@ -17,14 +17,16 @@ public partial class GraveView : Area3D
     private readonly GraveId _graveId;
     private readonly bool _isMarked;
     private readonly Action<GraveId> _onSelected;
+    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private Sprite3D _sprite = null!;
     private string _texturePath = null!;
 
-    public GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected)
+    public GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick)
     {
         _graveId = graveId;
         _isMarked = isMarked;
         _onSelected = onSelected;
+        _onMissedClick = onMissedClick;
     }
 
     public override void _Ready()
@@ -54,11 +56,24 @@ public partial class GraveView : Area3D
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (camera is Camera3D camera3D
-            && @event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
-            && SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _texturePath))
+        if (camera is not Camera3D camera3D || @event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        {
+            return;
+        }
+
+        // The broad-phase collision box (see SpriteVisibleExtent) is bigger than the actual
+        // silhouette - Godot only delivers a click to the nearest pickable collider along the
+        // ray, so a click landing inside the box but off the opaque pixels (e.g. on this
+        // grave's own ground shadow) would otherwise be silently swallowed here instead of
+        // reaching the ground underneath. Forward it to whatever a plain ground click at this
+        // same spot would have done.
+        if (SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _texturePath))
         {
             _onSelected(_graveId);
+        }
+        else
+        {
+            _onMissedClick(camera, @event, position, normal, shapeIdx);
         }
     }
 }
