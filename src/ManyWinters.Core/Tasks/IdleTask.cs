@@ -9,9 +9,9 @@ namespace ManyWinters.Core.Tasks;
 // comes in, same as it would replace any other task.
 public sealed class IdleTask : PersonTask
 {
-    private const float MinWanderRadius = 1.5f;
-    private const float MaxWanderRadius = 4f;
-    private const float SpeedPerTick = 0.3f;
+    private const float MinWanderRadius = 3f;
+    private const float MaxWanderRadius = 8f;
+    private const float SpeedPerTick = 0.15f;
 
     // Seeded from the person, not shared/time-based, so a given person's wander path is
     // reproducible from a given start tick rather than depending on simulation order.

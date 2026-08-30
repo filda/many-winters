@@ -42,7 +42,7 @@ public class IdleTaskTests
             // Mirrors IdleTask's own private MaxWanderRadius - a generous epsilon covers
             // floating-point drift, not a looser radius. Each person draws their own radius
             // somewhere at or under this ceiling (see the "individual radius" test below).
-            Assert.True(WorldState.Distance(start, person.Position) <= 4f + 0.01f);
+            Assert.True(WorldState.Distance(start, person.Position) <= 8f + 0.01f);
         }
     }
 
