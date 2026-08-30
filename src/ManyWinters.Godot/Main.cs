@@ -219,7 +219,12 @@ public partial class Main : Node3D
         foreach (var person in _world.People)
         {
             _presenter.SetPersonAlive(person.Id, person.IsAlive);
-            _presenter.SetPersonPosition(person.Id, person.Position, (float)TickIntervalSeconds);
+            // A person who dies mid-stride still has their view smoothly tween toward that
+            // tick's (final) position over the next second, same as any other movement - one
+            // last visible step before they stop forever, reading as the corpse still
+            // "sliding" a little. Snapping instead (overSeconds: 0) once dead pins the view
+            // to its exact final position immediately, with nothing left to glide.
+            _presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)TickIntervalSeconds : 0f);
         }
 
         foreach (var node in _world.ResourceNodes)
