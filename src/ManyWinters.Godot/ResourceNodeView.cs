@@ -66,8 +66,10 @@ public partial class ResourceNodeView : Area3D
 
         // Composite sprite: the tree itself never changes, but whether it's currently
         // bearing fruit does (see GatherCommand/WorldState.Advance) - a separate overlay
-        // layer means that doesn't need its own whole "bare tree" texture per kind.
-        if (_canFell)
+        // layer means that doesn't need its own whole "bare tree" texture per kind. Driven by
+        // which art files actually exist, not by CanFell - a fellable former-decoration tree
+        // (conifer/deciduous/bush) has just the one plain sprite, no separate fruiting state.
+        if (HasFruitOverlay(_kind))
         {
             _fruitOverlay = BillboardSprite.Create(
                 FruitOverlayTexturePath(),
@@ -120,13 +122,45 @@ public partial class ResourceNodeView : Area3D
         }
     }
 
-    // A fellable node draws as a standing tree, not the fruit/veg icon used for the rest of
-    // Content/resources/{kind} - {kind}_tree.png sits alongside {kind}.png for those kinds.
-    private string TexturePathFor() => _canFell
+    // A kind with a dedicated standing-tree sprite draws that instead of the fruit/veg icon
+    // used for the rest of Content/resources/{kind} - {kind}_tree.png sits alongside
+    // {kind}.png for those kinds (apple, pear...). Driven by which file actually exists, not
+    // by CanFell - a fellable former-decoration tree (conifer/deciduous/bush) only ever had
+    // the one plain {kind}.png to begin with.
+    private string TexturePathFor() => HasTreeSprite(_kind)
         ? $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree.png"
         : $"res://Content/resources/{_kind.Value}/{_kind.Value}.png";
 
     private string FruitOverlayTexturePath() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png";
+
+    // Cached per kind (see VisualDefinitionCache above for why per-node ResourceLoader.Exists
+    // calls at decoration scale are worth avoiding).
+    private static readonly Dictionary<ResourceKindId, bool> HasTreeSpriteCache = new();
+    private static readonly Dictionary<ResourceKindId, bool> HasFruitOverlayCache = new();
+
+    private static bool HasTreeSprite(ResourceKindId kind)
+    {
+        if (HasTreeSpriteCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
+        var exists = ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree.png");
+        HasTreeSpriteCache[kind] = exists;
+        return exists;
+    }
+
+    private static bool HasFruitOverlay(ResourceKindId kind)
+    {
+        if (HasFruitOverlayCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
+        var exists = ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree_fruit.png");
+        HasFruitOverlayCache[kind] = exists;
+        return exists;
+    }
 
     // Cached per kind, not reloaded per node - with decorations now spawning thousands of
     // ResourceNodes of a small handful of kinds (MapLoader.ScatterDecorations), calling

@@ -1,1 +1,1 @@
-{ "id": "conifer_tree", "displayName": "Conifer Tree", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5 }
+{ "id": "conifer_tree", "displayName": "Conifer Tree", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5, "canFell": true, "fellLeavesKind": "tree_stump", "fellLeavesAmount": 60 }

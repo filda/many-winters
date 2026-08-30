@@ -86,6 +86,12 @@ public static class TestCatalogs
     public const float DecorationWoodRegenPerTick = 0.5f;
     public const float DecorationGroundCoverRegenPerTick = 1f;
 
+    // Felling a standing forest tree leaves a stump (still has some wood left to gather, but
+    // never regrows - a stump doesn't put out new branches); felling a bush just leaves an
+    // ordinary small wood pile, the same kind a cleared fruit tree leaves.
+    public const float FellTreeStumpYield = 60f;
+    public const float FellBushWoodYield = 30f;
+
     // Carry capacity (see CarryCapacity.BaseWeightFor) ramps up with age - most command tests
     // don't care about age at all, so they add people old enough to already be at the full
     // adult baseline rather than a newborn's reduced one.
@@ -101,9 +107,9 @@ public static class TestCatalogs
         new ResourceDefinition(Potato, "Potato", RootDigging, PotatoItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
         new ResourceDefinition(Grass, "Wild Grass", Foraging, GrassItem, RegenPerTick: GrassRegenPerTick),
-        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick),
-        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick),
-        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick),
+        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield),
+        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield),
+        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellBushWoodYield),
         new ResourceDefinition(Flower, "Flower", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
         new ResourceDefinition(Fern, "Fern", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
         new ResourceDefinition(RockPile, "Rock Pile", Mining, StoneItem),
