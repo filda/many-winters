@@ -215,7 +215,18 @@ public partial class Main : Node3D
                 return false;
             }
 
-            SetSpriteAlpha(sprite, 1f);
+            // A faded sprite's owning view can be freed out from under this tracking set
+            // between frames (e.g. a corpse mid-fade gets buried and its PersonView -
+            // including every layer, not just the one that happened to be occluding -
+            // is queued free) - nothing left to reset the alpha on, and touching it at all
+            // throws (ObjectDisposedException), which previously broke out of _Process
+            // every frame afterward and silently stalled ticks (input events fire through a
+            // separate path, so clicking still worked while nothing else did).
+            if (IsInstanceValid(sprite))
+            {
+                SetSpriteAlpha(sprite, 1f);
+            }
+
             return true;
         });
     }

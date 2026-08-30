@@ -447,6 +447,201 @@ def person_dead():
     return c
 
 
+# ---------------------------------------------------------------- layered person parts
+# (different-looking party members) - person()/person_dead() above stay exactly as they
+# were (person_dead() still renders off of person()'s single flat image, unchanged) and
+# keep shipping person.png/person_dead.png; these are new, separate layers PersonView
+# composites at runtime instead - a bare body plus a swappable hair layer and a
+# swappable clothing layer, each drawn in a light neutral tone so Modulate can recolour
+# it at runtime (multiplying a light grey by a colour approximates that colour while the
+# dark ink hatching stays dark regardless - the same principle BillboardSprite's own
+# fallback-colour tinting already relies on, just applied to real baked art instead of a
+# flat quad).
+
+BODY_UNDERCLOTHES = rgb(0.55, 0.50, 0.45)
+NEUTRAL_RECOLOURABLE = rgb(0.82, 0.80, 0.78)
+
+
+def _body_layer(gender):
+    """Boots, hands, head and a plain covered torso/legs - meant to sit almost entirely
+    hidden under a clothing layer, so kept simple rather than elaborately detailed.
+    Only the hip width actually differs by gender; everything else about this figure
+    already ends up covered by clothing/hair on top of it."""
+    seed = seed_for(f"body_{gender}")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+
+    hip_scale = 1.12 if gender == "female" else 1.0
+    hip_l, hip_r = 32 - (10 * hip_scale), 32 + (10 * hip_scale)
+
+    c.fill(rect(26, 46, 30, 56) | rect(34, 46, 38, 56), BOOT)
+    boot_l = poly(jagged_poly(LEFT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
+    boot_r = poly(jagged_poly(RIGHT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
+    c.fill(boot_l | boot_r, darken(BOOT, 0.25))
+
+    torso_pts = [
+        (27, 22), (37, 22), (39, 34), (hip_r, 44),
+        (hip_r - 2, 55), (hip_l + 2, 55), (hip_l, 44), (25, 34),
+    ]
+    torso = poly(jagged_poly(torso_pts, rng, amp=0.8, segments_per_edge=3, smooth_passes=1))
+    c.fill(torso, BODY_UNDERCLOTHES)
+
+    elbow_bulge = rng.uniform(0.5, 2.5)
+    arm_l = poly(jagged_poly(arm_points("l", elbow_bulge), rng, amp=0.8, segments_per_edge=3))
+    arm_r = poly(jagged_poly(arm_points("r", elbow_bulge), rng, amp=0.8, segments_per_edge=3))
+    c.fill(arm_l, SKIN)
+    c.fill(arm_r, SKIN)
+    c.fill(ellipse(21, 45, 3, 3), SKIN)
+    c.fill(ellipse(43, 45, 3, 3), SKIN)
+
+    c.fill(ellipse(32, 15, 8, 9), SKIN)
+    c.flat(rect(28, 15, 29, 16), rgb(0.10, 0.09, 0.10))
+    c.flat(rect(35, 15, 36, 16), rgb(0.10, 0.09, 0.10))
+
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def person_body_male():
+    return _body_layer("male")
+
+
+def person_body_female():
+    return _body_layer("female")
+
+
+def hair_short():
+    """A simple close-cropped cap - the same top-of-head patch person() used when its
+    hood was down, just on its own transparent layer."""
+    seed = seed_for("hair_short")
+    c = Canvas(seed)
+    mask = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
+    c.flat(mask, NEUTRAL_RECOLOURABLE)
+    c.rough_outline(width=1)
+    return c
+
+
+def hair_long():
+    seed = seed_for("hair_long")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    top = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
+    left = poly(jagged_poly(
+        [(24, 10), (28, 9), (26, 26), (22, 30), (20, 24)],
+        rng, amp=0.6, segments_per_edge=2, smooth_passes=1,
+    ))
+    right = poly(jagged_poly(
+        [(40, 10), (36, 9), (38, 26), (42, 30), (44, 24)],
+        rng, amp=0.6, segments_per_edge=2, smooth_passes=1,
+    ))
+    c.fill(top | left | right, NEUTRAL_RECOLOURABLE)
+    c.rough_outline(width=1)
+    return c
+
+
+def hair_tied():
+    seed = seed_for("hair_tied")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    top = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
+    tail = poly(jagged_poly(
+        [(30, 10), (34, 10), (35, 22), (32, 26), (29, 22)],
+        rng, amp=0.5, segments_per_edge=2, smooth_passes=1,
+    ))
+    c.fill(top | tail, NEUTRAL_RECOLOURABLE)
+    c.rough_outline(width=1)
+    return c
+
+
+def _clothing_layer(variant_index):
+    """One of the three hand-authored robe drapes (see ROBE_VARIANTS) used directly, not
+    blended - a discrete "type" of clothing to pick between at runtime rather than
+    person()'s continuous per-instance blend."""
+    seed = seed_for(f"clothing_{variant_index}")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    pts = [(x, y) for x, y in ROBE_VARIANTS[variant_index]]
+    body = poly(jagged_poly(pts, rng, amp=1.0, segments_per_edge=3, smooth_passes=2))
+    c.fill(body, NEUTRAL_RECOLOURABLE)
+    c.flat(rect(24, 38, 40, 39) & body, lighten(NEUTRAL_RECOLOURABLE, 0.25))
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def clothing_robe():
+    return _clothing_layer(0)
+
+
+def clothing_tunic():
+    return _clothing_layer(1)
+
+
+def clothing_cloak():
+    return _clothing_layer(2)
+
+
+def _dead_layer_drop():
+    """Ground-contact reference shared by every "_dead" layer variant below - computed
+    from the body (whose boots define where "ground" is), not recomputed separately per
+    layer, so hair/clothing end up shifted by the exact same amount as whichever body
+    they're paired with at runtime. Each layer's own lowest opaque pixel differs (boots
+    reach lower than a hairline) - using that per layer would misalign them once
+    composited on their side."""
+    alpha = np.array(person_body_male().image())[..., 3] > 127
+    rows = np.flatnonzero(np.rot90(alpha, k=1).any(axis=1))
+    return (S - 6 * SCALE) - rows.max() if len(rows) else 0
+
+
+def _lay_down(image, seed):
+    """Rotates a standing cutout 90 degrees onto its side and re-seats it at the shared
+    ground line (see _dead_layer_drop) - the same "collapsed sideways" transform
+    person_dead() already used for the old single-sprite figure, generalised so every
+    composited layer (body, hair, clothing) gets its own matching variant instead of
+    everyone falling back to one shared corpse once they're down."""
+    arr = np.array(image).astype(np.uint8)
+    rot = np.rot90(arr, k=1)
+    c = Canvas(seed)
+    mask = rot[..., 3] > 127
+    c.rgb[mask] = rot[..., :3][mask]
+    c.alpha |= mask
+    drop = _dead_layer_drop()
+    c.rgb = np.roll(c.rgb, drop, axis=0)
+    c.alpha = np.roll(c.alpha, drop, axis=0)
+    return c
+
+
+def person_body_male_dead():
+    return _lay_down(person_body_male().image(), seed_for("person_body_male_dead"))
+
+
+def person_body_female_dead():
+    return _lay_down(person_body_female().image(), seed_for("person_body_female_dead"))
+
+
+def hair_short_dead():
+    return _lay_down(hair_short().image(), seed_for("hair_short_dead"))
+
+
+def hair_long_dead():
+    return _lay_down(hair_long().image(), seed_for("hair_long_dead"))
+
+
+def hair_tied_dead():
+    return _lay_down(hair_tied().image(), seed_for("hair_tied_dead"))
+
+
+def clothing_robe_dead():
+    return _lay_down(clothing_robe().image(), seed_for("clothing_robe_dead"))
+
+
+def clothing_tunic_dead():
+    return _lay_down(clothing_tunic().image(), seed_for("clothing_tunic_dead"))
+
+
+def clothing_cloak_dead():
+    return _lay_down(clothing_cloak().image(), seed_for("clothing_cloak_dead"))
+
+
 def _wood_log(canvas, cx, cy, rx, ry, bark_color, core_color, seed):
     """A log end: crosshatch shading (kept, not replaced) plus concentric growth rings,
     a couple of radiating checking-cracks, and short bark dashes around the rim - the
@@ -1147,6 +1342,22 @@ def selection_marker():
 SPRITES = {
     "person": person,
     "person_dead": person_dead,
+    "person_body_male": person_body_male,
+    "person_body_female": person_body_female,
+    "person_body_male_dead": person_body_male_dead,
+    "person_body_female_dead": person_body_female_dead,
+    "hair_short": hair_short,
+    "hair_long": hair_long,
+    "hair_tied": hair_tied,
+    "hair_short_dead": hair_short_dead,
+    "hair_long_dead": hair_long_dead,
+    "hair_tied_dead": hair_tied_dead,
+    "clothing_robe": clothing_robe,
+    "clothing_tunic": clothing_tunic,
+    "clothing_cloak": clothing_cloak,
+    "clothing_robe_dead": clothing_robe_dead,
+    "clothing_tunic_dead": clothing_tunic_dead,
+    "clothing_cloak_dead": clothing_cloak_dead,
     "wood": wood,
     "apple": apple,
     "pear": pear,

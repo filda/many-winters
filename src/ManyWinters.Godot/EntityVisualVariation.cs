@@ -36,6 +36,14 @@ public static class EntityVisualVariation
         return min + ((float)random.NextDouble() * (max - min));
     }
 
+    // Same seed+salt avalanche as RangeFor, but for picking one of several discrete
+    // options (a hairstyle, a clothing style, ...) rather than a continuous value.
+    public static int IndexFor(int seed, int salt, int count)
+    {
+        var random = new Random(Avalanche(seed, salt));
+        return random.Next(count);
+    }
+
     private static int Avalanche(int seed, int salt)
     {
         var x = unchecked(((uint)seed * 0x9E3779B1u) + (uint)salt);
