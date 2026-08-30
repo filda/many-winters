@@ -32,10 +32,27 @@ public sealed class TerrainRenderer
 
     private sealed record WaterwayPolyline(string Name, string Waterway, float WidthMeters, float[][] Points);
 
+    // Even a sprite has "mass" as far as placement goes - a minimum gap so two decorations
+    // never land exactly (or near-exactly) on top of each other, which reads as a rendering
+    // glitch (flickering z-fighting) rather than the deliberately overlapping clumped-forest
+    // look ScatterClump's own sub-disks already lean into (see its doc comment). This only
+    // rejects near-exact coincidence, not ordinary crowding - at the scatter counts/areas
+    // involved, exact coincidences are common enough by chance alone to matter (~1500 points
+    // over a ~38000 sq m disk already gives close to even odds of at least one 10cm-range
+    // collision), not just a hypothetical edge case.
+    private const float MinDecorationSpacing = 0.1f;
+    private const int MaxPlacementAttempts = 10;
+
     private readonly string _groundTexturePath;
     private readonly string _waterwaysPath;
     private HeightmapData _heightmap = null!;
     private float _minHeight;
+
+    // Spatial hash (cell size = MinDecorationSpacing) of every decoration position placed so
+    // far, across every ScatterDecoration call on this instance - an O(1)-ish neighbor lookup
+    // instead of checking a candidate against every decoration placed before it, which would
+    // get slow once the running total climbs into the thousands.
+    private readonly Dictionary<(int, int), List<Vector2>> _occupiedPositions = new();
 
     public float Half { get; private set; }
 
@@ -288,11 +305,26 @@ public sealed class TerrainRenderer
         {
             // Uniform over the *disk* of radius, not independent x/z within [-radius, radius]
             // (a square) - sqrt(u) compensates for the outer rings of a circle covering more
-            // area than the inner ones, so points don't bunch up toward the center.
-            var angle = (float)rng.NextDouble() * Mathf.Tau;
-            var distance = radius * MathF.Sqrt((float)rng.NextDouble());
-            var x = centerX + (MathF.Cos(angle) * distance);
-            var z = centerZ + (MathF.Sin(angle) * distance);
+            // area than the inner ones, so points don't bunch up toward the center. Retried
+            // (up to MaxPlacementAttempts) if the candidate lands within MinDecorationSpacing
+            // of an already-placed decoration - falls back to the last attempt tried rather
+            // than skipping the decoration entirely if every retry still collides (same
+            // "don't loop forever" tradeoff as MapLoader's own crowd placement).
+            var position = new Vector2(centerX, centerZ);
+            for (var attempt = 0; attempt < MaxPlacementAttempts; attempt++)
+            {
+                var angle = (float)rng.NextDouble() * Mathf.Tau;
+                var distance = radius * MathF.Sqrt((float)rng.NextDouble());
+                position = new Vector2(centerX + (MathF.Cos(angle) * distance), centerZ + (MathF.Sin(angle) * distance));
+                if (!IsTooCloseToAnExistingDecoration(position))
+                {
+                    break;
+                }
+            }
+
+            MarkOccupied(position);
+            var x = position.X;
+            var z = position.Y;
             var scale = minScale + ((float)rng.NextDouble() * (maxScale - minScale));
             var worldHeight = baseHeight * scale;
             var texturePath = texturePaths[rng.Next(texturePaths.Count)];
@@ -305,5 +337,48 @@ public sealed class TerrainRenderer
             sprite.Position = new Vector3(x, SampleHeight(x, z) + (worldHeight / 2f), z);
             parent.AddChild(sprite);
         }
+    }
+
+    private static (int, int) CellFor(Vector2 position) =>
+        ((int)MathF.Floor(position.X / MinDecorationSpacing), (int)MathF.Floor(position.Y / MinDecorationSpacing));
+
+    // Checks the candidate's own cell plus its 8 neighbors, not just the one it falls in -
+    // two points can be within MinDecorationSpacing of each other while sitting in different
+    // (adjacent) cells near a shared cell boundary.
+    private bool IsTooCloseToAnExistingDecoration(Vector2 candidate)
+    {
+        var (cellX, cellY) = CellFor(candidate);
+        for (var dx = -1; dx <= 1; dx++)
+        {
+            for (var dz = -1; dz <= 1; dz++)
+            {
+                if (!_occupiedPositions.TryGetValue((cellX + dx, cellY + dz), out var positions))
+                {
+                    continue;
+                }
+
+                foreach (var existing in positions)
+                {
+                    if (existing.DistanceTo(candidate) < MinDecorationSpacing)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void MarkOccupied(Vector2 position)
+    {
+        var cell = CellFor(position);
+        if (!_occupiedPositions.TryGetValue(cell, out var positions))
+        {
+            positions = new List<Vector2>();
+            _occupiedPositions[cell] = positions;
+        }
+
+        positions.Add(position);
     }
 }
