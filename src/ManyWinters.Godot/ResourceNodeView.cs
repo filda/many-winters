@@ -28,6 +28,7 @@ public partial class ResourceNodeView : Area3D
     private readonly bool _canFell;
     private readonly Action<ResourceNodeId> _onSelected;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
+    private readonly Color _baseColor;
     private Sprite3D _sprite = null!;
     private Color _normalModulate;
     private Sprite3D? _fruitOverlay;
@@ -40,7 +41,10 @@ public partial class ResourceNodeView : Area3D
         _canFell = canFell;
         _onSelected = onSelected;
         _onMissedClick = onMissedClick;
-        Size = canFell ? TreeSize : DefaultSize;
+
+        var visual = LoadVisualDefinition(kind);
+        _baseColor = visual?.Color ?? new Color(0.2f, 0.8f, 0.2f);
+        Size = visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
     }
 
     public float Size { get; }
@@ -49,7 +53,7 @@ public partial class ResourceNodeView : Area3D
     {
         InputRayPickable = true;
 
-        var fallbackColor = EntityVisualVariation.Tint(ColorFor(_kind), _nodeId.Value);
+        var fallbackColor = EntityVisualVariation.Tint(_baseColor, _nodeId.Value);
         Scale = Vector3.One * EntityVisualVariation.Scale(_nodeId.Value, MinScale, MaxScale);
 
         var groundShadow = GroundShadow.Create(Size * ShadowDiameterRatio);
@@ -124,11 +128,25 @@ public partial class ResourceNodeView : Area3D
 
     private string FruitOverlayTexturePath() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png";
 
-    private static Color ColorFor(ResourceKindId kind)
+    // Cached per kind, not reloaded per node - with decorations now spawning thousands of
+    // ResourceNodes of a small handful of kinds (MapLoader.ScatterDecorations), calling
+    // ResourceLoader.Load<T> once per node hammered the same handful of .tres paths thousands
+    // of times in a single frame, which reliably crashed Godot's C# bridge (a GCHandle race
+    // in ScriptManagerBridge.SwapGCHandleForType - "Handle is not initialized" - observed
+    // consistently on startup once decoration counts got into the thousands).
+    private static readonly Dictionary<ResourceKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
+
+    private static ResourceVisualDefinition? LoadVisualDefinition(ResourceKindId kind)
     {
+        if (VisualDefinitionCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
         var path = $"res://Content/resources/{kind.Value}/{kind.Value}.tres";
-        var visual = ResourceLoader.Exists(path) ? ResourceLoader.Load<ResourceVisualDefinition>(path) : null;
-        return visual?.Color ?? new Color(0.2f, 0.8f, 0.2f);
+        var definition = ResourceLoader.Exists(path) ? ResourceLoader.Load<ResourceVisualDefinition>(path) : null;
+        VisualDefinitionCache[kind] = definition;
+        return definition;
     }
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)

@@ -15,16 +15,30 @@ public static class TestCatalogs
     public static readonly ResourceKindId Wood = new("wood");
     public static readonly ResourceKindId Grass = new("grass");
 
+    // Former terrain decoration, now real ResourceNodes (MapLoader.ScatterDecorations).
+    public static readonly ResourceKindId ConiferTree = new("conifer_tree");
+    public static readonly ResourceKindId DeciduousTree = new("deciduous_tree");
+    public static readonly ResourceKindId Bush = new("bush");
+    public static readonly ResourceKindId Flower = new("flower");
+    public static readonly ResourceKindId Fern = new("fern");
+    public static readonly ResourceKindId RockPile = new("rock_pile");
+    public static readonly ResourceKindId RockBoulder = new("rock_boulder");
+    public static readonly ResourceKindId RockCluster = new("rock_cluster");
+    public static readonly ResourceKindId TreeStump = new("tree_stump");
+    public static readonly ResourceKindId FallenLog = new("fallen_log");
+
     public static readonly SkillTypeId Foraging = new("foraging");
     public static readonly SkillTypeId MushroomForaging = new("mushroom_foraging");
     public static readonly SkillTypeId RootDigging = new("root_digging");
     public static readonly SkillTypeId Woodcutting = new("woodcutting");
+    public static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
     public static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     public static readonly TechniqueId EfficientMushroomForaging = new("efficient_mushroom_foraging");
     public static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
+    public static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
 
     public static readonly ItemKindId WoodItem = new("wood");
@@ -35,6 +49,7 @@ public static class TestCatalogs
     public static readonly ItemKindId MushroomItem = new("mushroom");
     public static readonly ItemKindId PotatoItem = new("potato");
     public static readonly ItemKindId GrassItem = new("grass");
+    public static readonly ItemKindId StoneItem = new("stone");
     public static readonly ItemKindId Basket = new("basket");
     public static readonly ItemKindId Bag = new("bag");
 
@@ -44,6 +59,7 @@ public static class TestCatalogs
     public const int WarmClothingInputAmount = 10;
     public const float FoodHungerRestoredPerUnit = 1f;
     public const float ItemWeight = 1f;
+    public const float StoneWeight = 2f;
     public const float AxeWeight = 5f;
     public const float WarmClothingWeight = 3f;
 
@@ -65,6 +81,11 @@ public static class TestCatalogs
     public const float WoodRegenPerTick = 0.5f;
     public const float FellWoodYield = 30f;
 
+    // Former terrain decoration (see ConiferTree etc. above) - regenPerTick 0 for rocks/dead
+    // wood (finite, never regrow) mirrors Content/resources/{kind}/{kind}.json exactly.
+    public const float DecorationWoodRegenPerTick = 0.5f;
+    public const float DecorationGroundCoverRegenPerTick = 1f;
+
     // Carry capacity (see CarryCapacity.BaseWeightFor) ramps up with age - most command tests
     // don't care about age at all, so they add people old enough to already be at the full
     // adult baseline rather than a newborn's reduced one.
@@ -80,6 +101,16 @@ public static class TestCatalogs
         new ResourceDefinition(Potato, "Potato", RootDigging, PotatoItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
         new ResourceDefinition(Grass, "Wild Grass", Foraging, GrassItem, RegenPerTick: GrassRegenPerTick),
+        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick),
+        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick),
+        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick),
+        new ResourceDefinition(Flower, "Flower", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
+        new ResourceDefinition(Fern, "Fern", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
+        new ResourceDefinition(RockPile, "Rock Pile", Mining, StoneItem),
+        new ResourceDefinition(RockBoulder, "Rock Boulder", Mining, StoneItem),
+        new ResourceDefinition(RockCluster, "Rock Cluster", Mining, StoneItem),
+        new ResourceDefinition(TreeStump, "Tree Stump", Woodcutting, WoodItem),
+        new ResourceDefinition(FallenLog, "Fallen Log", Woodcutting, WoodItem),
     });
 
     public static SkillCatalog CreateSkillCatalog() => new(new[]
@@ -88,6 +119,7 @@ public static class TestCatalogs
         new SkillDefinition(MushroomForaging, "Mushroom Foraging", EfficientMushroomForaging),
         new SkillDefinition(RootDigging, "Root Digging", EfficientRootDigging),
         new SkillDefinition(Woodcutting, "Woodcutting", EfficientWoodcutting, Axe, AxeHarvestBonus),
+        new SkillDefinition(Mining, "Mining", EfficientMining),
         new SkillDefinition(Burial, "Burial", EfficientBurial),
     });
 
@@ -114,6 +146,7 @@ public static class TestCatalogs
         new ItemDefinition(MushroomItem, "Mushroom", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
         new ItemDefinition(PotatoItem, "Potato", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
         new ItemDefinition(GrassItem, "Grass", Weight: ItemWeight),
+        new ItemDefinition(StoneItem, "Stone", Weight: StoneWeight),
         new ItemDefinition(Basket, "Basket", Weight: BasketWeight, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", Weight: BagWeight, CarryCapacityBonus: BagCarryCapacityBonus),
     });

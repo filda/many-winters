@@ -125,11 +125,14 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultPopulatesTheWorldWithTheExpectedResourceNodes()
+    public void LoadDefaultPopulatesTheWorldWithTheHandPlacedFoodAndWoodNodesFirst()
     {
         var map = LoadDefault();
 
-        var expected = new[]
+        // The hand-placed starting supply (fruit/wood/grass near camp) is spawned before
+        // ScatterDecorations runs, so these are always the first 7 nodes regardless of how
+        // many procedural decoration nodes follow them.
+        var expectedFirstSeven = new[]
         {
             (TestCatalogs.Apple, new Position(-1f, 255f), 200f),
             (TestCatalogs.Pear, new Position(5f, 245f), 200f),
@@ -140,8 +143,59 @@ public class MapLoaderTests
             (TestCatalogs.Grass, new Position(15f, 250f), 200f),
         };
 
-        Assert.Equal(7, map.World.ResourceNodes.Count);
-        Assert.Equal(expected, map.World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)));
+        Assert.Equal(expectedFirstSeven, map.World.ResourceNodes.Take(7).Select(n => (n.Kind, n.Position, n.RemainingAmount)));
+    }
+
+    [Fact]
+    public void LoadDefaultScattersEveryDecorationKindAsRealResourceNodes()
+    {
+        var map = LoadDefault();
+
+        // Former terrain decoration (todo #7) - every kind that used to be a purely-visual
+        // sprite must now be a real, individually-gatherable ResourceNode, in the thousands
+        // (dense zone + wide pass + several groves), not just a handful.
+        var decorationKinds = new[]
+        {
+            TestCatalogs.ConiferTree, TestCatalogs.DeciduousTree, TestCatalogs.Bush,
+            TestCatalogs.Grass, TestCatalogs.Flower, TestCatalogs.Fern,
+            TestCatalogs.RockPile, TestCatalogs.RockBoulder, TestCatalogs.RockCluster,
+            TestCatalogs.TreeStump, TestCatalogs.FallenLog,
+        };
+
+        var countsByKind = map.World.ResourceNodes
+            .Skip(7)
+            .GroupBy(n => n.Kind)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        Assert.All(decorationKinds, kind => Assert.True(countsByKind.GetValueOrDefault(kind) > 0, $"Expected at least one '{kind}' decoration node."));
+        Assert.True(map.World.ResourceNodes.Count > 5000, "Expected thousands of scattered decoration nodes.");
+    }
+
+    [Fact]
+    public void LoadDefaultScattersDecorationsDeterministically()
+    {
+        var firstRun = LoadDefault().World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)).ToList();
+        var secondRun = LoadDefault().World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)).ToList();
+
+        Assert.Equal(firstRun, secondRun);
+    }
+
+    [Fact]
+    public void LoadDefaultNeverScattersTwoDecorationsWithinMinimumSpacing()
+    {
+        var map = LoadDefault();
+
+        // Sampled rather than an exhaustive O(n^2) check (thousands of nodes) - a spot check
+        // against MapLoader's own spatial-hash rejection sampling (MinDecorationSpacing) is
+        // enough to catch a regression in that mechanism without a slow all-pairs test.
+        var positions = map.World.ResourceNodes.Skip(7).Select(n => n.Position).Take(500).ToList();
+        for (var i = 0; i < positions.Count; i++)
+        {
+            for (var j = i + 1; j < positions.Count; j++)
+            {
+                Assert.True(WorldState.Distance(positions[i], positions[j]) >= 0.1f);
+            }
+        }
     }
 
     [Fact]

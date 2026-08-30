@@ -28,7 +28,7 @@ public static class GroundShadow
     {
         var sprite = new Sprite3D
         {
-            Texture = ResourceLoader.Load<Texture2D>(TexturePath),
+            Texture = TextureCache.Get(TexturePath),
             TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
             Billboard = BaseMaterial3D.BillboardModeEnum.Disabled,
             RotationDegrees = new Vector3(-90f, 0f, 0f),

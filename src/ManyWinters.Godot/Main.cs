@@ -352,7 +352,7 @@ public partial class Main : Node3D
 
     private void SetUpTerrain()
     {
-        _terrain = TerrainSetup.Create(this, _campCenter, OnGroundInputEvent);
+        _terrain = TerrainSetup.Create(this, OnGroundInputEvent);
     }
 
     private void SetUpCamera()

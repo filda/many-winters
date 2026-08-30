@@ -38,7 +38,7 @@ public static class SpritePixelHit
 
         if (!_imageCache.TryGetValue(texturePath, out var image))
         {
-            var texture = ResourceLoader.Load<Texture2D>(texturePath);
+            var texture = TextureCache.Get(texturePath);
             image = texture.GetImage();
             _imageCache[texturePath] = image;
         }

@@ -1,0 +1,1 @@
+{ "id": "rock_cluster", "displayName": "Rock Cluster", "skill": "mining", "yieldsItem": "stone", "regenPerTick": 0 }

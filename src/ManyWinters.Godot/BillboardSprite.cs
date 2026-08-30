@@ -62,9 +62,7 @@ public static class BillboardSprite
     // Points an existing sprite at a different texture, keeping its world height stable.
     public static void Apply(Sprite3D sprite, string texturePath, float worldHeight, Color fallbackColor)
     {
-        var texture = ResourceLoader.Exists(texturePath)
-            ? ResourceLoader.Load<Texture2D>(texturePath)
-            : null;
+        var texture = TextureCache.TryGet(texturePath);
 
         if (texture is null)
         {

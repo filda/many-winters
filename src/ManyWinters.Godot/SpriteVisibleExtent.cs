@@ -27,7 +27,7 @@ public static class SpriteVisibleExtent
     {
         if (!_cache.TryGetValue(texturePath, out var normalized))
         {
-            var texture = ResourceLoader.Load<Texture2D>(texturePath);
+            var texture = TextureCache.Get(texturePath);
             using var image = texture.GetImage();
             var loadedCanvasSize = new Vector2(image.GetWidth(), image.GetHeight());
             var usedRect = image.GetUsedRect();

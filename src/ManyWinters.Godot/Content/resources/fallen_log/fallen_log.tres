@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ResourceVisualDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ResourceVisualDefinition.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+color = Color(0.38, 0.26, 0.15, 1)
+WorldHeight = 1.3

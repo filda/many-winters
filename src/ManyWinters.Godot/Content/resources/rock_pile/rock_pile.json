@@ -1,0 +1,1 @@
+{ "id": "rock_pile", "displayName": "Rock Pile", "skill": "mining", "yieldsItem": "stone", "regenPerTick": 0 }

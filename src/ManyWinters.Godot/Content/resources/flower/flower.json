@@ -1,0 +1,1 @@
+{ "id": "flower", "displayName": "Flower", "skill": "foraging", "yieldsItem": "grass", "regenPerTick": 1 }

@@ -1,0 +1,1 @@
+{ "id": "rock_boulder", "displayName": "Rock Boulder", "skill": "mining", "yieldsItem": "stone", "regenPerTick": 0 }
