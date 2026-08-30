@@ -4,6 +4,7 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -238,6 +239,57 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceGivesAPersonWithNoOrdersAnIdleTaskInsteadOfLeavingThemFrozen()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        var start = person.Position;
+
+        world.Advance(20);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+        Assert.NotEqual(start, person.Position);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotReplaceAnAlreadyInProgressTaskWithIdle()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new MoveCommand(person.Id, new Position(100, 0)));
+
+        world.Advance(1);
+
+        Assert.IsType<MoveTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotStartIdleWanderingWhileAGracePeriodIsStillRunning()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+        var start = person.Position;
+
+        world.Advance(4);
+
+        Assert.Null(person.Tasks.Current);
+        Assert.Equal(start, person.Position);
+    }
+
+    [Fact]
+    public void AdvanceStartsIdleWanderingAsSoonAsTheGracePeriodRunsOut()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+
+        world.Advance(5);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
     public void AdvanceAssignsTheExactCurrentTickWhenDeathOccursMidwayThroughAMultiTickAdvance()
     {
         var world = new WorldState();
@@ -450,9 +502,22 @@ public class WorldStateTests
         var person = world.AddPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
 
-        world.Advance(10);
+        world.Advance(2);
 
         Assert.Equal(new Position(2, 0), person.Position);
+    }
+
+    [Fact]
+    public void AdvanceLetsAPersonIdleWanderOnceTheyReachTheirDestinationInsteadOfFreezingThere()
+    {
+        var world = new WorldState();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
+
+        world.Advance(20);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+        Assert.NotEqual(new Position(2, 0), person.Position);
     }
 
     [Fact]

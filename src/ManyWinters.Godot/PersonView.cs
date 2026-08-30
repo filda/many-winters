@@ -14,10 +14,15 @@ public partial class PersonView : Area3D
     // like a ghost: a vertical bob plus a side-to-side rock, both driven by the same phase
     // accumulator (rock at half the bob's frequency - one full lean cycle per two bounces,
     // roughly matching a two-footed gait) so they read as one coherent waddle, not two
-    // independent wiggles.
-    private const float WalkCyclesPerSecond = 10f;
-    private const float BobAmplitude = 0.08f;
-    private const float RockAmplitude = 0.12f;
+    // independent wiggles. Each person draws their own rate/amplitudes once (see _Ready) from
+    // within these ranges - a shared exact rate is what made everyone's gait read as
+    // synchronized even after IdleTask's paths stopped lining up.
+    private const float MinWalkCyclesPerSecond = 8f;
+    private const float MaxWalkCyclesPerSecond = 12f;
+    private const float MinBobAmplitude = 0.06f;
+    private const float MaxBobAmplitude = 0.10f;
+    private const float MinRockAmplitude = 0.08f;
+    private const float MaxRockAmplitude = 0.16f;
 
     private const string AliveTexturePath = "res://Content/people/person.png";
     private const string DeadTexturePath = "res://Content/people/person_dead.png";
@@ -33,6 +38,9 @@ public partial class PersonView : Area3D
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
     private float _walkPhase;
+    private float _walkCyclesPerSecond;
+    private float _bobAmplitude;
+    private float _rockAmplitude;
     private bool _isHovered;
     private string _currentTexturePath = AliveTexturePath;
 
@@ -47,6 +55,9 @@ public partial class PersonView : Area3D
         InputRayPickable = true;
 
         Scale = Vector3.One * EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
+        _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_personId.Value, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
+        _bobAmplitude = EntityVisualVariation.RangeFor(_personId.Value, salt: 2, MinBobAmplitude, MaxBobAmplitude);
+        _rockAmplitude = EntityVisualVariation.RangeFor(_personId.Value, salt: 3, MinRockAmplitude, MaxRockAmplitude);
         _targetPosition = Position;
 
         var groundShadow = GroundShadow.Create(ShadowDiameter);
@@ -100,18 +111,20 @@ public partial class PersonView : Area3D
         var isWalking = Position.DistanceTo(_targetPosition) > 0.001f;
         if (isWalking)
         {
-            _walkPhase += (float)delta * WalkCyclesPerSecond;
-            var bob = new Vector3(0, MathF.Sin(_walkPhase) * BobAmplitude, 0);
-            var rockAngle = MathF.Sin(_walkPhase * 0.5f) * RockAmplitude;
+            _walkPhase += (float)delta * _walkCyclesPerSecond;
+            var bob = new Vector3(0, MathF.Sin(_walkPhase) * _bobAmplitude, 0);
+            var rockAngle = MathF.Sin(_walkPhase * 0.5f) * _rockAmplitude;
             _sprite.Position = bob;
             _sprite.Rotation = new Vector3(0, 0, rockAngle);
         }
-        else
-        {
-            _walkPhase = 0f;
-            _sprite.Position = Vector3.Zero;
-            _sprite.Rotation = Vector3.Zero;
-        }
+
+        // Deliberately no "not walking" branch that snaps _walkPhase/_sprite back to
+        // neutral: everyone shares the same tick cadence (Main's single _tickAccumulator),
+        // so the interpolation from the previous target finishing a frame or two early -
+        // right at that shared tick boundary - hit every walking person at once. Snapping to
+        // a neutral pose and rewinding the phase to 0 there read as a synchronized hiccup
+        // across the whole crowd. Holding the last pose instead means those stray frames are
+        // invisible, and phases drift apart naturally instead of all rewinding together.
     }
 
     public void SetTargetPosition(Vector3 target, float overSeconds)

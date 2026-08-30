@@ -26,6 +26,12 @@ public class WinterSurvivalMilestoneTests
             world.Advance(1);
             if (tick % 10 == 0)
             {
+                // IdleTask can wander a person away from the node between manual actions (see
+                // WorldState.Advance) - this test is about the gather/eat/hunger loop, not
+                // about walking back, so it puts them right back at the node rather than
+                // simulating that walk.
+                person.Position = node.Position;
+
                 // Gathering only fills the inventory now (see GatherCommand) - eating it back
                 // down is a separate, explicit step, same as a real player would do.
                 world.Execute(new GatherCommand(person.Id, node.Id));

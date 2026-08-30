@@ -15,6 +15,10 @@ public partial class Main : Node3D
 {
     private const double TickIntervalSeconds = 1.0;
 
+    // Renewed every tick the person stays selected (see _Process), so they never wander off
+    // mid-attention - only once selection moves on does this window actually run out.
+    private const long SelectedPersonIdleGraceTicks = 5;
+
     // Comfortably inside WorldState.MaxInteractionDistance (2f), but far enough out that a
     // person's own sprite doesn't overlap the resource node's.
     private const float ApproachDistance = 1.2f;
@@ -209,6 +213,11 @@ public partial class Main : Node3D
         }
 
         _tickAccumulator -= TickIntervalSeconds;
+        if (_selectedPersonId is { } selectedPersonId)
+        {
+            _world.Execute(new GrantIdleGraceCommand(selectedPersonId, SelectedPersonIdleGraceTicks));
+        }
+
         _world.Advance(1);
         ResolvePendingGathers();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);

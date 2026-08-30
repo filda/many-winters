@@ -193,8 +193,10 @@ public class SimulationScriptTests
 
         var output = script.Run(["print population"]);
 
-        Assert.Contains("  1 Person 1 at Position { X = 0, Y = 0 } [dead]", output);
-        Assert.Contains("  2 Person 2 at Position { X = 0, Y = 0 }", output);
+        Assert.Contains(output, line => line.Contains("Person 1") && line.Contains("[dead]"));
+        // Not "at Position { X = 0, Y = 0 }" too, unlike before IdleTask made an ordersless
+        // person wander (see WorldState.Advance) instead of staying frozen where they spawned.
+        Assert.Contains(output, line => line.Contains("Person 2") && !line.Contains("[dead]"));
     }
 
     [Fact]

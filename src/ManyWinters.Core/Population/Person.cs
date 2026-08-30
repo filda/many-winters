@@ -36,4 +36,10 @@ public sealed class Person
     public Inventory Inventory { get; init; } = new();
 
     public PersonTaskQueue Tasks { get; init; } = new();
+
+    // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't drop this
+    // person into an IdleTask even with an empty queue - lets the presentation layer (the
+    // currently-selected person, say) buy someone a few ticks of standing still rather than
+    // wandering off between manual actions. 0 by default: nobody's exempt unless granted.
+    public long IdleGraceUntilTick { get; set; }
 }

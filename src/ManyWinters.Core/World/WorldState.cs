@@ -4,6 +4,7 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.Time;
 
 namespace ManyWinters.Core.World;
@@ -209,6 +210,15 @@ public sealed class WorldState
                 }
 
                 person.Tasks.Advance(person);
+                // Nobody just stands frozen once they run out of orders - an empty queue
+                // means "wander" (see IdleTask), not "do nothing forever". A real order
+                // (MoveCommand etc.) replaces this the moment one comes in, same as it would
+                // replace any other task. IdleGraceUntilTick (see GrantIdleGraceCommand) can
+                // buy a few extra ticks of standing still first.
+                if (person.Tasks.Current is null && currentTick >= person.IdleGraceUntilTick)
+                {
+                    person.Tasks.Interrupt(new IdleTask());
+                }
 
                 var insulation = person.Inventory.Counts.Keys.Sum(kind => ItemCatalog.InsulationFor(kind));
                 var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
