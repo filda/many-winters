@@ -34,6 +34,15 @@ public partial class Main : Node3D
     private const float OcclusionMargin = 0.3f;
     private const float OcclusionFadedAlpha = 0.25f;
 
+    // Slack (in meters) added past the target's own distance before something stops counting
+    // as "in the way" - without it, a tree that was fading to reveal a whole crowd (the
+    // no-selection fallback target sits farther out) can snap solid the instant you select
+    // one specific person who happens to stand just this side of it, since the strict
+    // distance check alone then says the tree is beyond, not blocking, that exact point. That
+    // reads as broken right at the start of a session, when a first-time player is still
+    // clicking around to get their bearings.
+    private const float OcclusionDistanceTolerance = 2f;
+
     // A fixed screen-space size/gap, not a 3D world one: the marker used to be a billboarded
     // Sprite3D offset in local space, but a billboard's own on-screen "left/right" is
     // redefined every frame to match whatever the camera's current right vector is (that's
@@ -221,9 +230,20 @@ public partial class Main : Node3D
     private HashSet<Sprite3D> ComputeOccludingSprites()
     {
         var result = new HashSet<Sprite3D>();
-        if (_selectedPersonId is not { } personId || _presenter.GetPersonGlobalPosition(personId) is not { } targetPosition)
+
+        Vector3 targetPosition;
+        Node? selectedPersonNode = null;
+        if (_selectedPersonId is { } personId && _presenter.GetPersonGlobalPosition(personId) is { } personPosition)
         {
-            return result;
+            targetPosition = personPosition;
+            selectedPersonNode = _presenter.GetPersonNode(personId);
+        }
+        else
+        {
+            // Nobody selected - fall back to wherever the camera is actually looking (its
+            // orbit/pan target), so something standing in front of the view doesn't get to
+            // block it indefinitely just because no one happens to be selected right now.
+            targetPosition = _cameraRig.RigGlobalPosition;
         }
 
         var cameraPosition = _cameraRig.CameraGlobalPosition;
@@ -235,7 +255,6 @@ public partial class Main : Node3D
         }
 
         var direction = toTarget / toTargetLength;
-        var selectedPersonNode = _presenter.GetPersonNode(personId);
 
         foreach (var child in FindChildren("*", nameof(Sprite3D), recursive: true, owned: false))
         {
@@ -251,10 +270,10 @@ public partial class Main : Node3D
 
             var toSprite = sprite.GlobalPosition - cameraPosition;
             var along = toSprite.Dot(direction);
-            // Beyond the target (along >= toTargetLength) or behind the camera (along <= 0)
-            // isn't "in the way" of this particular line of sight - only strictly between
-            // the two counts.
-            if (along <= 0f || along >= toTargetLength)
+            // Beyond the target (along >= toTargetLength, plus a little slack - see
+            // OcclusionDistanceTolerance) or behind the camera (along <= 0) isn't "in the
+            // way" of this particular line of sight - only strictly between the two counts.
+            if (along <= 0f || along >= toTargetLength + OcclusionDistanceTolerance)
             {
                 continue;
             }
