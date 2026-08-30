@@ -19,14 +19,13 @@ public partial class FloatingPanel : PanelContainer
     private bool _collapsed;
     private bool _dragging;
     private Vector2 _dragOffset;
-
-    public string Title { get; }
+    private readonly string _title;
 
     public VBoxContainer Body { get; private set; } = null!;
 
     public FloatingPanel(string title)
     {
-        Title = title;
+        _title = title;
     }
 
     public override void _Ready()
@@ -46,7 +45,7 @@ public partial class FloatingPanel : PanelContainer
 
         var titleLabel = new Label
         {
-            Text = Title,
+            Text = _title,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         titleBar.AddChild(titleLabel);

@@ -16,7 +16,7 @@ public static class SaveGameService
         WriteIndented = true,
     };
 
-    public static SaveData ToSaveData(WorldState world)
+    private static SaveData ToSaveData(WorldState world)
     {
         var people = world.People
             .Select(person => new PersonSaveData(
@@ -85,7 +85,7 @@ public static class SaveGameService
             graves);
     }
 
-    public static WorldState FromSaveData(SaveData data, WorldConfiguration? configuration = null)
+    private static WorldState FromSaveData(SaveData data, WorldConfiguration? configuration = null)
     {
         var world = new WorldState(configuration ?? WorldConfiguration.Empty);
         world.Clock.Advance(data.Tick);

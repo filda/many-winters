@@ -11,8 +11,8 @@ public partial class ResourceNodeView : Area3D
     // (TerrainRenderer.ScatterDecoration, ~7-8m; cultivated fruit trees being a bit smaller
     // than wild forest ones is plausible) but nowhere near as small as the original 2.4m,
     // which read as a bush/sapling next to a scattered forest at that scale.
-    public const float DefaultSize = 0.6f;
-    public const float TreeSize = 6f;
+    private const float DefaultSize = 0.6f;
+    private const float TreeSize = 6f;
     private const float MinScale = 0.85f;
     private const float MaxScale = 1.15f;
     private const float ShadowDiameterRatio = 0.7f / DefaultSize;
