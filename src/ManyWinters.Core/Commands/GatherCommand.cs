@@ -1,3 +1,4 @@
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -33,16 +34,19 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         var climate = world.SeasonParameters.ClimateFor(world.CurrentSeason);
         harvestAmount *= resource.YieldMultiplierFor(climate);
 
-        var consumed = Math.Min(node.RemainingAmount, harvestAmount);
-        node.RemainingAmount -= consumed;
+        var potentialConsumed = Math.Min(node.RemainingAmount, harvestAmount);
 
         if (resource.YieldsItem is { } item)
         {
-            person.Inventory.Add(item, (int)consumed);
+            // Only what actually fits in the inventory comes off the node - a full backpack
+            // leaves the rest standing to gather later, rather than the excess vanishing.
+            var added = person.Inventory.AddUpToCapacity(item, (int)potentialConsumed, world.ItemCatalog, Person.MaxCarryWeight);
+            node.RemainingAmount -= added;
         }
         else
         {
-            person.Needs.Hunger = Math.Max(0f, person.Needs.Hunger - consumed);
+            node.RemainingAmount -= potentialConsumed;
+            person.Needs.Hunger = Math.Max(0f, person.Needs.Hunger - potentialConsumed);
         }
 
         person.Skills.Increase(skill, SkillGainPerGather);

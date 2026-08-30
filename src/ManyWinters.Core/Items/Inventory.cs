@@ -30,4 +30,29 @@ public sealed class Inventory
 
         return true;
     }
+
+    public float TotalWeight(ItemCatalog catalog) => _counts.Sum(kv => catalog.WeightFor(kv.Key) * kv.Value);
+
+    // Adds as much of `amount` as still fits under maxWeight (a zero-weight item is never
+    // capacity-limited) and returns how many units actually got added, so a caller pulling
+    // from a limited source (a resource node, a corpse, a building) only removes that many -
+    // "take only what fits" rather than all-or-nothing.
+    public int AddUpToCapacity(ItemKindId kind, int amount, ItemCatalog catalog, float maxWeight)
+    {
+        var unitWeight = catalog.WeightFor(kind);
+        var toAdd = amount;
+        if (unitWeight > 0f)
+        {
+            var remainingCapacity = maxWeight - TotalWeight(catalog);
+            var fits = Math.Max(0, (int)(remainingCapacity / unitWeight));
+            toAdd = Math.Min(amount, fits);
+        }
+
+        if (toAdd > 0)
+        {
+            Add(kind, toAdd);
+        }
+
+        return toAdd;
+    }
 }

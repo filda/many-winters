@@ -588,6 +588,10 @@ public partial class Main : Node3D
         lootButton.Pressed += OnLootButtonPressed;
         _contextualActions.AddChild(lootButton);
 
+        var eatButton = new Button { Text = "Eat" };
+        eatButton.Pressed += OnEatButtonPressed;
+        _contextualActions.AddChild(eatButton);
+
         _buildingsLabel = new Label { Text = "Buildings: none" };
         panel.Body.AddChild(_buildingsLabel);
 
@@ -880,6 +884,37 @@ public partial class Main : Node3D
         RefreshInfoLabel();
     }
 
+    // Eats from whatever food kinds are on hand - gathering food only fills the inventory now
+    // (see GatherCommand), so a person never gets fed without this. Tries every kind currently
+    // carried rather than requiring the player to pick one; EatCommand itself no-ops for any
+    // kind that isn't food, so this is safe to call across the whole inventory.
+    private void OnEatButtonPressed()
+    {
+        if (_selectedPersonId is not { } personId)
+        {
+            _statusBar.Notify("Select a person first, then eat.");
+            return;
+        }
+
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        foreach (var item in person.Inventory.Counts.Keys.ToList())
+        {
+            if (person.Needs.Hunger <= 0f)
+            {
+                break;
+            }
+
+            _world.Execute(new EatCommand(personId, item));
+        }
+
+        RefreshInfoLabel();
+    }
+
     private Building? FindNearestBuilding(Position position) =>
         _world.Buildings.OrderBy(b => WorldState.Distance(b.Position, position)).FirstOrDefault();
 
@@ -1115,6 +1150,7 @@ public partial class Main : Node3D
         var inventory = person.Inventory.Counts.Count > 0
             ? string.Join(", ", person.Inventory.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
             : "empty";
+        var carriedWeight = person.Inventory.TotalWeight(_world.ItemCatalog);
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
@@ -1123,6 +1159,7 @@ public partial class Main : Node3D
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
+            $"Carrying: {carriedWeight}/{Person.MaxCarryWeight}\n" +
             $"Inventory: {inventory}";
     }
 

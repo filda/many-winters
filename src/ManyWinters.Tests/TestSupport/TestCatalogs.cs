@@ -29,11 +29,19 @@ public static class TestCatalogs
     public static readonly ItemKindId WoodItem = new("wood");
     public static readonly ItemKindId Axe = new("axe");
     public static readonly ItemKindId WarmClothing = new("warm_clothing");
+    public static readonly ItemKindId AppleItem = new("apple");
+    public static readonly ItemKindId PearItem = new("pear");
+    public static readonly ItemKindId MushroomItem = new("mushroom");
+    public static readonly ItemKindId PotatoItem = new("potato");
 
     public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
     public const float WarmClothingInsulation = 1f;
     public const int WarmClothingInputAmount = 10;
+    public const float FoodHungerRestoredPerUnit = 1f;
+    public const float ItemWeight = 1f;
+    public const float AxeWeight = 5f;
+    public const float WarmClothingWeight = 3f;
 
     public static readonly BuildingKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
@@ -47,10 +55,10 @@ public static class TestCatalogs
 
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
-        new ResourceDefinition(Pear, "Pear", Foraging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
-        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
-        new ResourceDefinition(Potato, "Potato", RootDigging, ClimateYields: ColdFoodYield, RegenPerTick: FoodRegenPerTick),
+        new ResourceDefinition(Apple, "Apple", Foraging, AppleItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
+        new ResourceDefinition(Pear, "Pear", Foraging, PearItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
+        new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, MushroomItem, ColdFoodYield, FoodRegenPerTick),
+        new ResourceDefinition(Potato, "Potato", RootDigging, PotatoItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
     });
 
@@ -76,7 +84,13 @@ public static class TestCatalogs
 
     public static ItemCatalog CreateItemCatalog() => new(new[]
     {
-        new ItemDefinition(WarmClothing, "Warm Clothing", WarmClothingInsulation),
+        new ItemDefinition(WarmClothing, "Warm Clothing", WarmClothingInsulation, WarmClothingWeight),
+        new ItemDefinition(WoodItem, "Wood", Weight: ItemWeight),
+        new ItemDefinition(Axe, "Axe", Weight: AxeWeight),
+        new ItemDefinition(AppleItem, "Apple", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
+        new ItemDefinition(PearItem, "Pear", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
+        new ItemDefinition(MushroomItem, "Mushroom", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
+        new ItemDefinition(PotatoItem, "Potato", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
     });
 
     public static WorldConfiguration CreateConfiguration() => new(

@@ -1,5 +1,6 @@
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -20,6 +21,13 @@ public sealed record WithdrawCommand(PersonId PersonId, BuildingId BuildingId, I
             return;
         }
 
-        person.Inventory.Add(Item, Amount);
+        // Unlike Deposit (a building's own storage stays uncapped - see Person.MaxCarryWeight's
+        // own doc comment), withdrawing goes into the person's limited inventory - whatever
+        // doesn't fit goes right back into the building rather than being destroyed.
+        var added = person.Inventory.AddUpToCapacity(Item, Amount, world.ItemCatalog, Person.MaxCarryWeight);
+        if (added < Amount)
+        {
+            building.Inventory.Add(Item, Amount - added);
+        }
     }
 }

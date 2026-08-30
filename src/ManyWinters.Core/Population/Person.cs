@@ -7,6 +7,11 @@ namespace ManyWinters.Core.Population;
 
 public sealed class Person
 {
+    // How much total item weight (see ItemDefinition.Weight) this person can carry at once -
+    // gathering/looting/withdrawing all take only as much as still fits (see Inventory's own
+    // AddUpToCapacity) rather than overfilling silently or failing outright.
+    public const float MaxCarryWeight = 50f;
+
     public required PersonId Id { get; init; }
 
     public required string Name { get; init; }

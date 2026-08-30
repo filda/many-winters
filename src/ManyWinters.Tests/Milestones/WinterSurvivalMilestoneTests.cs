@@ -26,7 +26,10 @@ public class WinterSurvivalMilestoneTests
             world.Advance(1);
             if (tick % 10 == 0)
             {
+                // Gathering only fills the inventory now (see GatherCommand) - eating it back
+                // down is a separate, explicit step, same as a real player would do.
                 world.Execute(new GatherCommand(person.Id, node.Id));
+                world.Execute(new EatCommand(person.Id, TestCatalogs.AppleItem));
             }
         }
 

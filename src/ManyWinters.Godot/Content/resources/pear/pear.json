@@ -2,6 +2,7 @@
   "id": "pear",
   "displayName": "Pear",
   "skill": "foraging",
+  "yieldsItem": "pear",
   "climateYields": [{ "climate": "Cold", "multiplier": 0.4 }],
   "regenPerTick": 1,
   "canFell": true,

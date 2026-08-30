@@ -2,6 +2,7 @@
   "id": "mushroom",
   "displayName": "Mushroom",
   "skill": "mushroom_foraging",
+  "yieldsItem": "mushroom",
   "climateYields": [{ "climate": "Cold", "multiplier": 0.4 }],
   "regenPerTick": 1
 }

@@ -44,6 +44,42 @@ public class ItemCatalogTests
     }
 
     [Fact]
+    public void WeightForReturnsTheDefinitionsWeight()
+    {
+        var catalog = new ItemCatalog([
+            new ItemDefinition(new ItemKindId("wood"), "Wood", Weight: 1f),
+        ]);
+
+        Assert.Equal(1f, catalog.WeightFor(new ItemKindId("wood")));
+    }
+
+    [Fact]
+    public void WeightForReturnsZeroForAnItemWithNoDefinition()
+    {
+        var catalog = new ItemCatalog([]);
+
+        Assert.Equal(0f, catalog.WeightFor(new ItemKindId("wood")));
+    }
+
+    [Fact]
+    public void HungerRestoredPerUnitForReturnsTheDefinitionsValue()
+    {
+        var catalog = new ItemCatalog([
+            new ItemDefinition(new ItemKindId("apple"), "Apple", HungerRestoredPerUnit: 1f),
+        ]);
+
+        Assert.Equal(1f, catalog.HungerRestoredPerUnitFor(new ItemKindId("apple")));
+    }
+
+    [Fact]
+    public void HungerRestoredPerUnitForReturnsZeroForAnItemWithNoDefinition()
+    {
+        var catalog = new ItemCatalog([]);
+
+        Assert.Equal(0f, catalog.HungerRestoredPerUnitFor(new ItemKindId("apple")));
+    }
+
+    [Fact]
     public void LoadFromDirectoryReadsOneDefinitionPerSubdirectory()
     {
         var root = Path.Combine(Path.GetTempPath(), $"manywinters-itemcatalog-{Guid.NewGuid():N}");

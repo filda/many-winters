@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -98,5 +99,20 @@ public class WithdrawCommandTests
         world.Execute(new WithdrawCommand(new PersonId(999), building.Id, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void WithdrawingOnlyTakesWhatStillFitsInThePersonsInventoryAndLeavesTheRestInTheBuilding()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)Person.MaxCarryWeight - 5);
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+
+        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+
+        Assert.Equal(Person.MaxCarryWeight, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
     }
 }
