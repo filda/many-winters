@@ -137,6 +137,15 @@ jobs:
           New-Item -ItemType Directory -Force $dest | Out-Null
           Move-Item templates/templates/* $dest
 
+          # The archive carries every platform in both debug and release; we only ever export
+          # Windows release. Dropping the rest keeps the cache near 100 MB instead of a gigabyte,
+          # which is the difference between restoring in seconds and in minutes. The glob also
+          # covers the console wrapper template, whose exact name we'd rather not hardcode.
+          Get-ChildItem $dest -File |
+            Where-Object { $_.Name -notlike "windows_release_x86_64*" -and $_.Name -ne "version.txt" } |
+            Remove-Item -Force
+          Get-ChildItem $dest -File | ForEach-Object { "kept: {0} ({1:N0} MB)" -f $_.Name, ($_.Length / 1MB) }
+
       - name: Configure rcedit
         run: |
           $ErrorActionPreference = "Stop"
