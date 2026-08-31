@@ -118,7 +118,10 @@ jobs:
           path: |
             tools/godot
             ~/AppData/Roaming/Godot/export_templates
-          key: godot-${{ env.GODOT_RELEASE }}-mono-win64
+          # Bump the trailing suffix whenever the trim rules in the next step change: the key does
+          # not otherwise depend on them, so a cache saved under the old rules would be reused
+          # silently and show up as a mysterious export failure.
+          key: godot-${{ env.GODOT_RELEASE }}-mono-win64-v1
 
       - name: Download Godot editor and export templates
         if: steps.godot-cache.outputs.cache-hit != 'true'
@@ -207,9 +210,13 @@ jobs:
 
           # Start-Process rather than the call operator, so stdout and stderr stay separate and
           # unmangled. Godot reports export failures on stderr and still exits 0, so both matter.
+          # It joins ArgumentList with spaces and quotes nothing itself, so every argument has to
+          # arrive pre-quoted - otherwise the preset name alone lands as five separate arguments.
+          $godotArgs = @("--headless", "--path", "$root\src\ManyWinters.Godot",
+                         "--export-release", $env:EXPORT_PRESET, $out) |
+            ForEach-Object { '"' + $_ + '"' }
           $p = Start-Process -FilePath $env:GODOT -NoNewWindow -Wait -PassThru -WorkingDirectory $root `
-            -ArgumentList @("--headless", "--path", "$root\src\ManyWinters.Godot",
-                            "--export-release", $env:EXPORT_PRESET, $out) `
+            -ArgumentList $godotArgs `
             -RedirectStandardOutput "$root\export.out.log" -RedirectStandardError "$root\export.err.log"
           "godot exit code: $($p.ExitCode)"
           Get-Content "$root\export.out.log" -Tail 20
@@ -241,8 +248,9 @@ jobs:
           # C# perfectly and still be dead on arrival, because content that resolves under the
           # editor's loose files does not resolve inside a .pck. Running _Ready is the only check
           # that proves the zip is worth handing to anyone.
+          $smokeArgs = @("--headless", "--quit-after", "120") | ForEach-Object { '"' + $_ + '"' }
           $p = Start-Process -FilePath "$game\ManyWinters.console.exe" -NoNewWindow -Wait -PassThru `
-            -WorkingDirectory $game -ArgumentList @("--headless", "--quit-after", "120") `
+            -WorkingDirectory $game -ArgumentList $smokeArgs `
             -RedirectStandardOutput "$root\smoke.out.log" -RedirectStandardError "$root\smoke.err.log"
           "smoke exit code: $($p.ExitCode)"
           Get-Content "$root\smoke.out.log" -Tail 20
