@@ -13,6 +13,16 @@ public sealed class SkillCatalog
 
     public SkillDefinition Get(SkillTypeId id) => _definitions[id];
 
+    // Unlike Get, doesn't assume the id is registered - WorldState's idle-AI checks for the
+    // "eating"/"teaching" pseudo-skills unconditionally on every Advance, including for a
+    // deliberately minimal or unrelated catalog (most unit tests) that never defined them.
+    public SkillDefinition? Find(SkillTypeId id) => _definitions.GetValueOrDefault(id);
+
+    // WorldState's own casual/ambient teaching (AutoTeachNearbyPeople) needs to tell every
+    // registered skill's EfficientTechnique apart from its BaseTechnique - only the latter
+    // ever spreads just from standing near someone.
+    public IEnumerable<SkillDefinition> Definitions => _definitions.Values;
+
     public static SkillCatalog LoadFromDirectory(string rootPath)
     {
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };

@@ -34,12 +34,30 @@ public static class TestCatalogs
     public static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
+    // Nobody is born knowing how to eat or teach either - see SkillDefinition.BaseTechnique.
+    public static readonly SkillTypeId Eating = new("eating");
+    public static readonly SkillTypeId Teaching = new("teaching");
+
+    // Never self-taught (see SkillDefinition.BaseTechnique's own doc comment) - the only way
+    // any of these ever end up in a person's KnownTechniques is GrantTechniqueCommand (the
+    // player) or TeachCommand (another person who already knows it).
+    public static readonly TechniqueId BasicForaging = new("basic_foraging");
+    public static readonly TechniqueId BasicMushroomForaging = new("basic_mushroom_foraging");
+    public static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
+    public static readonly TechniqueId BasicWoodcutting = new("basic_woodcutting");
+    public static readonly TechniqueId BasicMining = new("basic_mining");
+    public static readonly TechniqueId BasicBurial = new("basic_burial");
+    public static readonly TechniqueId BasicEating = new("basic_eating");
+    public static readonly TechniqueId BasicTeaching = new("basic_teaching");
+
     public static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     public static readonly TechniqueId EfficientMushroomForaging = new("efficient_mushroom_foraging");
     public static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
     public static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
+    public static readonly TechniqueId EfficientEating = new("efficient_eating");
+    public static readonly TechniqueId EfficientTeaching = new("efficient_teaching");
 
     public static readonly ItemKindId WoodItem = new("wood");
     public static readonly ItemKindId Axe = new("axe");
@@ -121,12 +139,14 @@ public static class TestCatalogs
 
     public static SkillCatalog CreateSkillCatalog() => new(new[]
     {
-        new SkillDefinition(Foraging, "Foraging", EfficientForaging),
-        new SkillDefinition(MushroomForaging, "Mushroom Foraging", EfficientMushroomForaging),
-        new SkillDefinition(RootDigging, "Root Digging", EfficientRootDigging),
-        new SkillDefinition(Woodcutting, "Woodcutting", EfficientWoodcutting, Axe, AxeHarvestBonus),
-        new SkillDefinition(Mining, "Mining", EfficientMining),
-        new SkillDefinition(Burial, "Burial", EfficientBurial),
+        new SkillDefinition(Foraging, "Foraging", BasicForaging, EfficientForaging),
+        new SkillDefinition(MushroomForaging, "Mushroom Foraging", BasicMushroomForaging, EfficientMushroomForaging),
+        new SkillDefinition(RootDigging, "Root Digging", BasicRootDigging, EfficientRootDigging),
+        new SkillDefinition(Woodcutting, "Woodcutting", BasicWoodcutting, EfficientWoodcutting, Axe, AxeHarvestBonus),
+        new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
+        new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
+        new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),
+        new SkillDefinition(Teaching, "Teaching", BasicTeaching, EfficientTeaching),
     });
 
     public static RecipeCatalog CreateRecipeCatalog() => new(new[]

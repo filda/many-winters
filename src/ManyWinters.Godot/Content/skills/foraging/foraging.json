@@ -1,5 +1,6 @@
 {
   "id": "foraging",
   "displayName": "Foraging",
+  "baseTechnique": "basic_foraging",
   "efficientTechnique": "efficient_foraging"
 }

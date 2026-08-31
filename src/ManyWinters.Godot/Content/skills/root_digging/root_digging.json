@@ -1,5 +1,6 @@
 {
   "id": "root_digging",
   "displayName": "Root Digging",
+  "baseTechnique": "basic_root_digging",
   "efficientTechnique": "efficient_root_digging"
 }

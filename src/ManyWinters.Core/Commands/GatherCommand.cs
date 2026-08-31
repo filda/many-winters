@@ -22,6 +22,13 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         var resource = world.ResourceCatalog.Get(node.Kind);
         var skill = resource.Skill;
         var skillDefinition = world.SkillCatalog.Get(skill);
+        // Never self-taught, unlike the efficient technique below - has to come from the
+        // player or another person first (see SkillDefinition.BaseTechnique's own doc comment).
+        if (!person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
+        {
+            return;
+        }
+
         var technique = skillDefinition.EfficientTechnique;
 
         var harvestAmount = person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;

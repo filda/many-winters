@@ -210,19 +210,33 @@ public sealed class WorldState
                 }
 
                 person.Tasks.Advance(person);
-                // Nobody just stands frozen once they run out of orders - an empty queue
-                // means "wander" (see IdleTask), not "do nothing forever". A real order
-                // (MoveCommand etc.) replaces this the moment one comes in, same as it would
-                // replace any other task. IdleGraceUntilTick (see GrantIdleGraceCommand) can
-                // buy a few extra ticks of standing still first.
-                if (person.Tasks.Current is null && currentTick >= person.IdleGraceUntilTick)
+                // Nobody just stands frozen once they run out of orders. An empty queue used
+                // to always mean plain wandering (IdleTask); it now means "go use whatever
+                // skill this person already has, or seek out food if hungry and empty-handed"
+                // (see DecideIdleTask) - falling back to wandering only if neither applies. A
+                // real order (MoveCommand etc.) replaces this the moment one comes in, same as
+                // it would replace any other task - this only ever revisits its own two
+                // autonomous choices (idle/gather), never a player-issued one.
+                // IdleGraceUntilTick (see GrantIdleGraceCommand) can buy a few extra ticks of
+                // standing still first.
+                if (currentTick >= person.IdleGraceUntilTick && ShouldReconsiderIdleTask(person))
                 {
-                    person.Tasks.Interrupt(new IdleTask());
+                    person.Tasks.Interrupt(DecideIdleTask(person));
+                }
+
+                // Attempted every tick a gather order is active, not just once on arrival -
+                // GatherTask only knows how to walk (see its own doc comment), so the actual
+                // harvest happens here; GatherCommand's own distance check silently no-ops
+                // this while still en route.
+                if (person.Tasks.Current is GatherTask activeGather)
+                {
+                    new GatherCommand(person.Id, activeGather.TargetNodeId).Execute(this);
                 }
 
                 var insulation = person.Inventory.Counts.Keys.Sum(kind => ItemCatalog.InsulationFor(kind));
                 var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
                 person.Needs.Hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);
+                TryAutoEat(person);
 
                 var age = (currentTick - person.BirthTick) / TicksPerYear;
                 var diedOfOldAge = age >= MaxLifespanYears;
@@ -233,6 +247,8 @@ public sealed class WorldState
                     person.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
                 }
             }
+
+            AutoTeachNearbyPeople(currentTick);
 
             foreach (var node in _resourceNodes)
             {
@@ -265,6 +281,231 @@ public sealed class WorldState
         foreach (var building in _buildings)
         {
             building.Condition = Math.Max(MinCondition, building.Condition - (ConditionDecayPerTick * ticks));
+        }
+    }
+
+    // Only ever revisits the two autonomous choices (idle/gather) - a player-issued task
+    // (MoveTask from a direct MoveCommand, say) is left alone; IdleTask always gets a second
+    // look (something better might now apply) and GatherTask only when its own target has
+    // stopped being worth working (dead, or drained until it regenerates), rather than every
+    // tick - that would otherwise re-plan (and so re-approach) the same resource continuously.
+    private bool ShouldReconsiderIdleTask(Person person) => person.Tasks.Current switch
+    {
+        null => true,
+        IdleTask => true,
+        GatherTask gather => !IsWorthGathering(gather.TargetNodeId),
+        _ => false,
+    };
+
+    private bool IsWorthGathering(ResourceNodeId nodeId)
+    {
+        var node = _resourceNodes.FirstOrDefault(n => n.Id == nodeId);
+        return node is { IsAlive: true, RemainingAmount: > 0f };
+    }
+
+    // "Idle" now means "put whatever skill this person already has to use, or go find food if
+    // hungry and empty-handed" (todo: "Pokud už má osoba v idle nějaký skill, tak by ho měl
+    // použít") - plain wandering (IdleTask) is only the fallback once neither applies. Hunger
+    // takes priority over an already-known skill: a hungry woodcutter with no food on hand
+    // goes looking for something to eat before going back to chopping wood.
+    private const float HungerSeekFoodThreshold = 50f;
+
+    // Nobody autonomously treks halfway across a real ~1km terrain patch (see
+    // MapLoader.ScatterDecorations) for one distant resource - a search this wide only ever
+    // matters in a sparse/test world; the real game's decoration density means a genuinely
+    // reachable match is normally well within it anyway.
+    private const float IdleSearchRadius = 60f;
+
+    private PersonTask DecideIdleTask(Person person)
+    {
+        // Knowing how to eat is what makes seeking food worth prioritizing over whatever else
+        // this person knows - without it, gathering more food wouldn't help them anyway (see
+        // EatCommand's own gate), so this falls through to the general search below. Find, not
+        // Get - a catalog that never registered "eating" at all (most unit tests, a deliberately
+        // minimal world) just means this branch can't apply, not a crash.
+        var eatingDefinition = SkillCatalog.Find(EatCommand.Skill);
+        if (eatingDefinition is not null
+            && person.Needs.Hunger >= HungerSeekFoodThreshold
+            && person.KnownTechniques.Contains(eatingDefinition.BaseTechnique)
+            && !HasEdibleFood(person))
+        {
+            // Being edible alone isn't enough - a resource this person never learned to gather
+            // (foraging, say) is exactly as unreachable to them as one that doesn't exist.
+            var foodNode = FindNearestGatherableResourceNode(person.Position, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
+            if (foodNode is not null)
+            {
+                return new GatherTask(foodNode.Id, foodNode.Position);
+            }
+        }
+
+        // Nearest wins regardless of which known skill it needs - a closer resource this
+        // person already knows how to work beats a farther one just because it happens to be
+        // for a skill they've practiced more. IsKnownSkill checks against SkillDefinition's
+        // BaseTechnique (see its own doc comment) - not against KnownTechniques directly,
+        // since that set holds arbitrary techniques (eating/teaching included) rather than
+        // being keyed by skill.
+        var node = FindNearestGatherableResourceNode(person.Position, definition => IsKnownSkill(person, definition.Skill));
+        if (node is not null)
+        {
+            return new GatherTask(node.Id, node.Position);
+        }
+
+        return new IdleTask();
+    }
+
+    private bool IsKnownSkill(Person person, SkillTypeId skill)
+    {
+        var definition = SkillCatalog.Find(skill);
+        return definition is not null && person.KnownTechniques.Contains(definition.BaseTechnique);
+    }
+
+    private bool IsFoodResource(ResourceDefinition definition) =>
+        definition.YieldsItem is { } item && ItemCatalog.HungerRestoredPerUnitFor(item) > 0f;
+
+    private bool HasEdibleFood(Person person) =>
+        person.Inventory.Counts.Any(kv => kv.Value > 0 && ItemCatalog.HungerRestoredPerUnitFor(kv.Key) > 0f);
+
+    // Depleted-but-alive nodes (RemainingAmount 0, still regenerating) are skipped rather than
+    // sent to and stood next to - with thousands of decoration-turned-resource nodes usually
+    // nearby (see MapLoader.ScatterDecorations), a fuller one of the same kind is normally
+    // right there too.
+    private ResourceNode? FindNearestGatherableResourceNode(Position from, Func<ResourceDefinition, bool> matches)
+    {
+        ResourceNode? nearest = null;
+        var nearestDistance = double.MaxValue;
+        foreach (var node in _resourceNodes)
+        {
+            if (node is not { IsAlive: true, RemainingAmount: > 0f } || !matches(ResourceCatalog.Get(node.Kind)))
+            {
+                continue;
+            }
+
+            var distance = Distance(from, node.Position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = node;
+            }
+        }
+
+        return nearestDistance <= IdleSearchRadius ? nearest : null;
+    }
+
+    // A lesson someone actually sat down to give (TeachFromSelectedPersonTo's right-click, a
+    // deliberate full transfer) is a different thing from picking something up just from being
+    // around someone - "tichá pošta": only ever the base technique, never the harder-earned
+    // efficient one riding on top of it, and even that isn't guaranteed on any given tick
+    // (rolled fresh each tick, not a permanent per-pair verdict - once someone picks something
+    // up they can just as easily become a further relay for it, so a low per-tick chance,
+    // not a one-time coin flip, is what actually keeps the spread gradual and partial).
+    private const float CasualTeachingChancePerTick = 0.05f;
+
+    // "Later they teach each other" - once at least one person knows something (and knows how
+    // to teach - see TeachCommand), anyone else nearby who doesn't know it yet may pick some of
+    // it up automatically, no player action needed. Every alive pair is checked every tick -
+    // with the population sizes this game actually has (tens, not thousands, of people), an
+    // O(n^2) pass here is negligible next to the resource-node work Advance already does
+    // elsewhere.
+    private void AutoTeachNearbyPeople(long currentTick)
+    {
+        // Find, not Get - a catalog that never registered "teaching" (most unit tests, a
+        // deliberately minimal world) just means nobody could possibly teach anyone anything,
+        // not a crash.
+        if (SkillCatalog.Find(TeachCommand.TeachingSkill) is not { } teachingDefinition)
+        {
+            return;
+        }
+
+        var teachingBaseTechnique = teachingDefinition.BaseTechnique;
+        var efficientTechniques = SkillCatalog.Definitions.Select(d => d.EfficientTechnique).ToHashSet();
+
+        foreach (var teacher in _people)
+        {
+            if (!teacher.IsAlive || !teacher.KnownTechniques.Contains(teachingBaseTechnique))
+            {
+                continue;
+            }
+
+            foreach (var student in _people)
+            {
+                if (student == teacher || !student.IsAlive)
+                {
+                    continue;
+                }
+
+                TechniqueId? teachableTechnique = null;
+                foreach (var technique in teacher.KnownTechniques)
+                {
+                    if (student.KnownTechniques.Contains(technique)
+                        || efficientTechniques.Contains(technique)
+                        || !PassesCasualTeachingRoll(teacher.Id, student.Id, technique, currentTick))
+                    {
+                        continue;
+                    }
+
+                    teachableTechnique = technique;
+                    break;
+                }
+
+                if (teachableTechnique is { } techniqueToTeach)
+                {
+                    new TeachCommand(teacher.Id, student.Id, techniqueToTeach).Execute(this);
+                }
+            }
+        }
+    }
+
+    // Deterministic from the ids and the tick alone (same seeded-randomness style as
+    // IdleTask.SeedFor) rather than a shared mutable Random - reproducible from the same
+    // starting state without depending on call order between people.
+    private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick)
+    {
+        var seed = CasualTeachingSeed(teacherId.Value, studentId.Value, technique.Value, tick);
+        return new Random(seed).NextDouble() < CasualTeachingChancePerTick;
+    }
+
+    private static int CasualTeachingSeed(int teacherId, int studentId, string technique, long tick)
+    {
+        var x = unchecked((uint)(teacherId * 73856093) ^ (uint)(studentId * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
+        x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+        x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+        x = (x >> 16) ^ x;
+        return unchecked((int)x);
+    }
+
+    // Not string.GetHashCode() - .NET randomizes that per process, which would make this roll
+    // come out differently every run instead of being a stable property of this pair.
+    private static int StableStringHash(string value)
+    {
+        var hash = 5381;
+        foreach (var c in value)
+        {
+            hash = unchecked((hash * 33) ^ c);
+        }
+
+        return hash;
+    }
+
+    // Mirrors Main.cs's own manual "Eat" button (OnEatButtonPressed) - eats through whatever
+    // food is on hand until no longer hungry or nothing edible is left, rather than requiring
+    // a specific item to be named. Runs every tick regardless of what task is active (even a
+    // player-issued one) - a starving person shouldn't have to wait for a free moment to eat
+    // out of their own backpack.
+    private void TryAutoEat(Person person)
+    {
+        if (person.Needs.Hunger <= 0f)
+        {
+            return;
+        }
+
+        foreach (var kind in person.Inventory.Counts.Keys.ToList())
+        {
+            if (person.Needs.Hunger <= 0f)
+            {
+                break;
+            }
+
+            new EatCommand(person.Id, kind).Execute(this);
         }
     }
 

@@ -290,6 +290,185 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceHasAnIdlePersonWithAKnownSkillAutonomouslyGatherFromAMatchingResource()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(node.Id, task.TargetNodeId);
+        Assert.True(person.Inventory.Get(TestCatalogs.WoodItem) > 0);
+    }
+
+    [Fact]
+    public void AdvanceHasAnIdlePersonWalkTowardAKnownSkillsResourceBeforeGatheringOnceInRange()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        world.AddResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
+
+        // First tick only assigns the GatherTask (same one-tick lag as IdleTask itself - see
+        // AdvanceGivesAPersonWithNoOrdersAnIdleTaskInsteadOfLeavingThemFrozen); it needs a
+        // second tick to actually advance the walk.
+        world.Advance(2);
+
+        Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.True(person.Position.X > 0);
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void AdvanceHasAHungryPersonWithNoFoodAutonomouslySeekTheNearestFoodResourceWhenIdle()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 60f;
+        var foodNode = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(foodNode.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceHasSeekingFoodWhenHungryTakePriorityOverAnAlreadyKnownSkill()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 60f;
+        world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var foodNode = world.AddResourceNode(TestCatalogs.Apple, new Position(5, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(foodNode.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceEatsFromInventoryWhenHungryEvenWhileOnAPlayerIssuedTask()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 30f;
+        person.Inventory.Add(TestCatalogs.AppleItem, 50);
+        world.Execute(new MoveCommand(person.Id, new Position(100, 0)));
+
+        world.Advance(1);
+
+        Assert.IsType<MoveTask>(person.Tasks.Current);
+        Assert.Equal(0f, person.Needs.Hunger);
+        Assert.True(person.Inventory.Get(TestCatalogs.AppleItem) < 50);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotSendAnIdlePersonBeyondIdleSearchRadiusForAKnownSkillsResource()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        world.AddResourceNode(TestCatalogs.Wood, new Position(1000, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceReassignsAGatherTaskOnceItsTargetResourceStopsBeingWorthGathering()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var primary = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var backup = world.AddResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
+
+        world.Advance(1);
+        Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
+
+        primary.IsAlive = false;
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(backup.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AutoTeachNearbyPeopleSpreadsGraduallyNotInstantlyToEveryNearbyStudentAtOnce()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
+        teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
+
+        var students = new List<Person>();
+        for (var i = 0; i < 20; i++)
+        {
+            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+        }
+
+        world.Advance(1);
+
+        var learnedCount = students.Count(s => s.KnownTechniques.Contains(TestCatalogs.BasicForaging));
+        Assert.True(learnedCount < students.Count, "Expected casual teaching to spread gradually - not every nearby student should pick it up in a single tick.");
+    }
+
+    [Fact]
+    public void AutoTeachNearbyPeopleNeverSpreadsTheEfficientTechniqueOnlyTheBaseOne()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
+        teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
+
+        var students = new List<Person>();
+        for (var i = 0; i < 20; i++)
+        {
+            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+        }
+
+        world.Advance(20);
+
+        Assert.All(students, s => Assert.DoesNotContain(TestCatalogs.EfficientForaging, s.KnownTechniques));
+    }
+
+    [Fact]
+    public void AutoTeachNearbyPeopleSpreadsToMoreStudentsGivenMoreTime()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
+        teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
+
+        var students = new List<Person>();
+        for (var i = 0; i < 20; i++)
+        {
+            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+        }
+
+        world.Advance(1);
+        var learnedSoon = students.Count(s => s.KnownTechniques.Contains(TestCatalogs.BasicForaging));
+
+        world.Advance(4);
+        var learnedLater = students.Count(s => s.KnownTechniques.Contains(TestCatalogs.BasicForaging));
+
+        Assert.True(learnedLater > learnedSoon, "Expected more students to have picked up the technique after more time near the teacher.");
+    }
+
+    [Fact]
     public void AdvanceAssignsTheExactCurrentTickWhenDeathOccursMidwayThroughAMultiTickAdvance()
     {
         var world = new WorldState();

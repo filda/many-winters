@@ -1,1 +1,1 @@
-{ "id": "burial", "displayName": "Burial", "efficientTechnique": "efficient_burial" }
+{ "id": "burial", "displayName": "Burial", "baseTechnique": "basic_burial", "efficientTechnique": "efficient_burial" }

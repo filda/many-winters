@@ -1,1 +1,1 @@
-{ "id": "mining", "displayName": "Mining", "efficientTechnique": "efficient_mining" }
+{ "id": "mining", "displayName": "Mining", "baseTechnique": "basic_mining", "efficientTechnique": "efficient_mining" }

@@ -24,7 +24,13 @@ public class SurvivalMilestoneTests
         var people = new List<Person>();
         for (var i = 0; i < populationSize; i++)
         {
-            people.Add(world.AddPerson($"Person {i + 1}", new Position(0, 0)));
+            var person = world.AddPerson($"Person {i + 1}", new Position(0, 0));
+            // Gathering and eating both have to be learned now (see SkillDefinition.
+            // BaseTechnique) - granted directly here since this test is about the
+            // gather/eat/hunger loop itself, not about how that knowledge would spread.
+            person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+            person.KnownTechniques.Add(TestCatalogs.BasicEating);
+            people.Add(person);
         }
 
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1_000_000f);

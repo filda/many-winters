@@ -11,6 +11,7 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 15;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
 
@@ -25,6 +26,7 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 5;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
 
@@ -39,6 +41,7 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.AppleItem, 10);
 
@@ -59,6 +62,38 @@ public class EatCommandTests
         world.Execute(new EatCommand(person.Id, TestCatalogs.AppleItem));
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
+    }
+
+    [Fact]
+    public void EatingWithoutHavingLearnedHowToEatDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50;
+        person.Inventory.Add(TestCatalogs.AppleItem, 20);
+
+        world.Execute(new EatCommand(person.Id, TestCatalogs.AppleItem));
+
+        Assert.Equal(50f, person.Needs.Hunger);
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
+    }
+
+    [Fact]
+    public void KnowingEfficientEatingRestoresMoreHungerPerUnitEaten()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.EfficientEating);
+        person.Needs.Hunger = 100;
+        person.Inventory.Add(TestCatalogs.AppleItem, 20);
+
+        world.Execute(new EatCommand(person.Id, TestCatalogs.AppleItem));
+
+        // All 20 units get eaten either way (not enough to fully satisfy 100 hunger even at
+        // the efficient rate) - the bonus shows up in how much hunger that same 20 relieves.
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(76f, person.Needs.Hunger);
     }
 
     [Fact]

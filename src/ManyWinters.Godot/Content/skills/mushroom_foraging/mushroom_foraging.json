@@ -1,5 +1,6 @@
 {
   "id": "mushroom_foraging",
   "displayName": "Mushroom Foraging",
+  "baseTechnique": "basic_mushroom_foraging",
   "efficientTechnique": "efficient_mushroom_foraging"
 }

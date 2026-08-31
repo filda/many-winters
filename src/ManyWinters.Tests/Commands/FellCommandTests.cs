@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -11,6 +12,7 @@ public class FellCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(3, 4));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
@@ -30,6 +32,8 @@ public class FellCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         world.Execute(new FellCommand(person.Id, node.Id));
         var leftover = Assert.Single(world.ResourceNodes, n => n.Id != node.Id);
@@ -45,6 +49,7 @@ public class FellCommandTests
         var world = TestCatalogs.CreateWorld();
         world.Advance(5);
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
@@ -57,6 +62,7 @@ public class FellCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
 
         world.Execute(new FellCommand(person.Id, node.Id));
@@ -91,6 +97,19 @@ public class FellCommandTests
     }
 
     [Fact]
+    public void FellingWithoutHavingLearnedTheSkillDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new FellCommand(person.Id, node.Id));
+
+        Assert.True(node.IsAlive);
+        Assert.Single(world.ResourceNodes);
+    }
+
+    [Fact]
     public void FellingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
@@ -109,6 +128,7 @@ public class FellCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
@@ -152,8 +172,13 @@ public class FellCommandTests
             {
                 new ResourceDefinition(TestCatalogs.Apple, "Apple", TestCatalogs.Foraging, CanFell: true),
             }),
+            SkillCatalog = new SkillCatalog(new[]
+            {
+                new SkillDefinition(TestCatalogs.Foraging, "Foraging", TestCatalogs.BasicForaging, TestCatalogs.EfficientForaging),
+            }),
         });
         var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));

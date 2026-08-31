@@ -9,7 +9,7 @@ public class SkillCatalogTests
     public void GetReturnsTheDefinitionForAKnownId()
     {
         var catalog = new SkillCatalog([
-            new SkillDefinition(TestCatalogs.Foraging, "Foraging", TestCatalogs.EfficientForaging),
+            new SkillDefinition(TestCatalogs.Foraging, "Foraging", TestCatalogs.BasicForaging, TestCatalogs.EfficientForaging),
         ]);
 
         var definition = catalog.Get(TestCatalogs.Foraging);
@@ -34,7 +34,7 @@ public class SkillCatalogTests
         Directory.CreateDirectory(foragingDir);
         File.WriteAllText(
             Path.Combine(foragingDir, "foraging.json"),
-            """{ "id": "foraging", "displayName": "Foraging", "efficientTechnique": "efficient_foraging" }""");
+            """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""");
 
         try
         {
@@ -58,7 +58,7 @@ public class SkillCatalogTests
         Directory.CreateDirectory(foragingDir);
         File.WriteAllText(
             Path.Combine(foragingDir, "foraging.json"),
-            """{ "id": "foraging", "displayName": "Foraging", "efficientTechnique": "efficient_foraging" }""");
+            """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""");
         File.WriteAllText(Path.Combine(foragingDir, "notes.txt"), "this is not json and would blow up if read as such");
 
         try

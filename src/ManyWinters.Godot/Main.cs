@@ -712,6 +712,7 @@ public partial class Main : Node3D
             return;
         }
 
+        TeachBaseTechniqueIfNeeded(personId, _world.ResourceCatalog.Get(node.Kind).Skill);
         _world.Execute(new FellCommand(personId, node.Id));
         _presenter.RemoveResourceNodeView(node.Id);
         RefreshInfoLabel();
@@ -817,6 +818,7 @@ public partial class Main : Node3D
             return;
         }
 
+        TeachBaseTechniqueIfNeeded(personId, EatCommand.Skill);
         foreach (var item in person.Inventory.Counts.Keys.ToList())
         {
             if (person.Needs.Hunger <= 0f)
@@ -934,6 +936,10 @@ public partial class Main : Node3D
             return;
         }
 
+        // Directing a person to teach at all is the player showing them how to teach in the
+        // first place - same as TeachBaseTechniqueIfNeeded for gather/fell/eat.
+        TeachBaseTechniqueIfNeeded(teacherId, TeachCommand.TeachingSkill);
+
         foreach (var technique in teacher.KnownTechniques)
         {
             _world.Execute(new TeachCommand(teacherId, studentId, technique));
@@ -1003,7 +1009,30 @@ public partial class Main : Node3D
     // Depleting a node down to zero doesn't remove its view - the plant/tree is still there,
     // just fruitless until RegenPerTick brings it back. Only IsAlive turning false (felled or
     // withered - see FellCommand, WorldState.Advance) means the thing itself is actually gone.
-    private void GatherFrom(PersonId personId, ResourceNode node) => _world.Execute(new GatherCommand(personId, node.Id));
+    private void GatherFrom(PersonId personId, ResourceNode node)
+    {
+        TeachBaseTechniqueIfNeeded(personId, _world.ResourceCatalog.Get(node.Kind).Skill);
+        _world.Execute(new GatherCommand(personId, node.Id));
+    }
+
+    // Nobody starts knowing anything (see SkillDefinition.BaseTechnique) - the player directing
+    // an action at all is how "God" shows a person the way, so every player-driven action that
+    // needs a skill grants its base technique first if the selected person doesn't have it yet,
+    // rather than silently no-oping or requiring a separate "teach" step beforehand.
+    private void TeachBaseTechniqueIfNeeded(PersonId personId, SkillTypeId skill)
+    {
+        var person = _world.People.FirstOrDefault(p => p.Id == personId);
+        if (person is null)
+        {
+            return;
+        }
+
+        var baseTechnique = _world.SkillCatalog.Get(skill).BaseTechnique;
+        if (!person.KnownTechniques.Contains(baseTechnique))
+        {
+            _world.Execute(new GrantTechniqueCommand(personId, baseTechnique));
+        }
+    }
 
     // A destination short of the node's own position, approaching from wherever the
     // person currently is - so they end up standing next to the resource rather than
@@ -1082,6 +1111,7 @@ public partial class Main : Node3D
     private static string TaskText(Person person) => person.Tasks.Current switch
     {
         MoveTask move => $"Walking to {move.Destination}",
+        GatherTask gather => $"Gathering ({gather.TargetNodeId})",
         _ => "Idle",
     };
 

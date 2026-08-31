@@ -17,7 +17,8 @@ public sealed record FellCommand(PersonId PersonId, ResourceNodeId ResourceNodeI
         }
 
         var resource = world.ResourceCatalog.Get(node.Kind);
-        if (!resource.CanFell)
+        var skillDefinition = world.SkillCatalog.Get(resource.Skill);
+        if (!resource.CanFell || !person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
         {
             return;
         }

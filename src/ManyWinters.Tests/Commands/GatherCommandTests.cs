@@ -11,6 +11,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new GatherCommand(person.Id, node.Id));
@@ -25,6 +26,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 5);
 
         world.Execute(new GatherCommand(person.Id, node.Id));
@@ -38,6 +40,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.Inventory.Add(TestCatalogs.AppleItem, (int)world.MaxCarryWeightFor(person) - 5);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
@@ -76,6 +79,19 @@ public class GatherCommandTests
     }
 
     [Fact]
+    public void GatheringWithoutHavingLearnedTheSkillDoesNothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
     public void GatheringByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
@@ -94,6 +110,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance, 0), 100);
 
         world.Execute(new GatherCommand(person.Id, node.Id));
@@ -133,6 +150,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
 
         for (var i = 0; i < 4; i++)
@@ -153,6 +171,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
 
@@ -167,6 +186,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var appleNode = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         var pearNode = world.AddResourceNode(TestCatalogs.Pear, new Position(0, 0), 100);
 
@@ -181,6 +201,8 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicMushroomForaging);
         var appleNode = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         var mushroomNode = world.AddResourceNode(TestCatalogs.Mushroom, new Position(0, 0), 100);
 
@@ -196,6 +218,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
 
         for (var i = 0; i < 5; i++)
@@ -212,6 +235,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Needs.Hunger = 50;
         var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100);
 
@@ -227,6 +251,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Inventory.Add(TestCatalogs.Axe, 1);
         var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 1000);
 
@@ -241,6 +266,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.Inventory.Add(TestCatalogs.Axe, 1);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
 
@@ -255,6 +281,7 @@ public class GatherCommandTests
         var world = TestCatalogs.CreateWorld();
         world.Advance(225);
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new GatherCommand(person.Id, node.Id));
@@ -271,6 +298,7 @@ public class GatherCommandTests
         var world = TestCatalogs.CreateWorld();
         world.Advance(225);
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100);
 
         world.Execute(new GatherCommand(person.Id, node.Id));

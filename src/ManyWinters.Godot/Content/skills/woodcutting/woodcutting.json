@@ -1,1 +1,1 @@
-{ "id": "woodcutting", "displayName": "Woodcutting", "efficientTechnique": "efficient_woodcutting", "tool": "axe", "toolHarvestBonus": 15 }
+{ "id": "woodcutting", "displayName": "Woodcutting", "baseTechnique": "basic_woodcutting", "efficientTechnique": "efficient_woodcutting", "tool": "axe", "toolHarvestBonus": 15 }
