@@ -406,6 +406,52 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceRedirectsAGatherTaskToSeekFoodOnceHungerBecomesUrgentPartwayThroughAFarErrand()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        // Far enough that Ava is still walking there, not yet gathering, when hunger hits.
+        var farWood = world.AddResourceNode(TestCatalogs.Wood, new Position(50, 0), 100f);
+
+        world.Advance(1);
+        Assert.Equal(farWood.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
+
+        // A closer food source only becomes relevant once hunger turns urgent - otherwise
+        // she'd have gone for it from the very start instead of the (nearer, at the time) wood.
+        var nearbyFood = world.AddResourceNode(TestCatalogs.Apple, new Position(1, 0), 100f);
+        person.Needs.Hunger = 90f;
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(nearbyFood.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AutoTeachNearbyPeopleSpreadsEatingFasterThanASpecialisedSkill()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
+        teacher.KnownTechniques.Add(TestCatalogs.BasicEating);
+        teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
+
+        var students = new List<Person>();
+        for (var i = 0; i < 30; i++)
+        {
+            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+        }
+
+        world.Advance(1);
+
+        var learnedEating = students.Count(s => s.KnownTechniques.Contains(TestCatalogs.BasicEating));
+        var learnedForaging = students.Count(s => s.KnownTechniques.Contains(TestCatalogs.BasicForaging));
+        Assert.True(learnedEating > learnedForaging, $"Expected eating ({learnedEating}) to spread faster than foraging ({learnedForaging}) in the same tick.");
+    }
+
+    [Fact]
     public void AutoTeachNearbyPeopleSpreadsGraduallyNotInstantlyToEveryNearbyStudentAtOnce()
     {
         var world = TestCatalogs.CreateWorld();

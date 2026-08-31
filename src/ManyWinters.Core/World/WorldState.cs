@@ -286,16 +286,26 @@ public sealed class WorldState
 
     // Only ever revisits the two autonomous choices (idle/gather) - a player-issued task
     // (MoveTask from a direct MoveCommand, say) is left alone; IdleTask always gets a second
-    // look (something better might now apply) and GatherTask only when its own target has
-    // stopped being worth working (dead, or drained until it regenerates), rather than every
-    // tick - that would otherwise re-plan (and so re-approach) the same resource continuously.
+    // look (something better might now apply); GatherTask normally only when its own target
+    // has stopped being worth working (dead, or drained until it regenerates), rather than
+    // every tick - that would otherwise re-plan (and so re-approach) the same resource
+    // continuously - *except* when hunger has become an emergency (see NeedsToSeekFoodUrgently):
+    // a person who set off gathering wood far from camp, then ran out of food along the way,
+    // has to be allowed to change their mind and go find something to eat instead of walking
+    // the rest of that original errand while starving to death.
     private bool ShouldReconsiderIdleTask(Person person) => person.Tasks.Current switch
     {
         null => true,
         IdleTask => true,
-        GatherTask gather => !IsWorthGathering(gather.TargetNodeId),
+        GatherTask gather => !IsWorthGathering(gather.TargetNodeId) || NeedsToSeekFoodUrgently(person),
         _ => false,
     };
+
+    private bool NeedsToSeekFoodUrgently(Person person) =>
+        SkillCatalog.Find(EatCommand.Skill) is { } eating
+        && person.Needs.Hunger >= HungerSeekFoodThreshold
+        && person.KnownTechniques.Contains(eating.BaseTechnique)
+        && !HasEdibleFood(person);
 
     private bool IsWorthGathering(ResourceNodeId nodeId)
     {
@@ -320,14 +330,8 @@ public sealed class WorldState
     {
         // Knowing how to eat is what makes seeking food worth prioritizing over whatever else
         // this person knows - without it, gathering more food wouldn't help them anyway (see
-        // EatCommand's own gate), so this falls through to the general search below. Find, not
-        // Get - a catalog that never registered "eating" at all (most unit tests, a deliberately
-        // minimal world) just means this branch can't apply, not a crash.
-        var eatingDefinition = SkillCatalog.Find(EatCommand.Skill);
-        if (eatingDefinition is not null
-            && person.Needs.Hunger >= HungerSeekFoodThreshold
-            && person.KnownTechniques.Contains(eatingDefinition.BaseTechnique)
-            && !HasEdibleFood(person))
+        // EatCommand's own gate), so this falls through to the general search below.
+        if (NeedsToSeekFoodUrgently(person))
         {
             // Being edible alone isn't enough - a resource this person never learned to gather
             // (foraging, say) is exactly as unreachable to them as one that doesn't exist.
@@ -400,6 +404,14 @@ public sealed class WorldState
     // not a one-time coin flip, is what actually keeps the spread gradual and partial).
     private const float CasualTeachingChancePerTick = 0.05f;
 
+    // Eating (and teaching itself, the one thing every other casual lesson depends on - see
+    // AutoTeachNearbyPeople) are different from a specialised craft skill: everyone's watched
+    // someone else eat and copy it comes far more naturally than picking up woodcutting from
+    // proximity alone, and the whole casual-teaching chain can't even start in a population
+    // until at least one person knows how to teach at all. A much higher chance for these two
+    // specifically keeps that bootstrap from being the bottleneck it would otherwise be.
+    private const float CasualTeachingChancePerTickForCriticalSkills = 0.3f;
+
     // "Later they teach each other" - once at least one person knows something (and knows how
     // to teach - see TeachCommand), anyone else nearby who doesn't know it yet may pick some of
     // it up automatically, no player action needed. Every alive pair is checked every tick -
@@ -418,6 +430,11 @@ public sealed class WorldState
 
         var teachingBaseTechnique = teachingDefinition.BaseTechnique;
         var efficientTechniques = SkillCatalog.Definitions.Select(d => d.EfficientTechnique).ToHashSet();
+        var criticalTechniques = new HashSet<TechniqueId> { teachingBaseTechnique };
+        if (SkillCatalog.Find(EatCommand.Skill) is { } eatingDefinition)
+        {
+            criticalTechniques.Add(eatingDefinition.BaseTechnique);
+        }
 
         foreach (var teacher in _people)
         {
@@ -436,9 +453,10 @@ public sealed class WorldState
                 TechniqueId? teachableTechnique = null;
                 foreach (var technique in teacher.KnownTechniques)
                 {
+                    var chance = criticalTechniques.Contains(technique) ? CasualTeachingChancePerTickForCriticalSkills : CasualTeachingChancePerTick;
                     if (student.KnownTechniques.Contains(technique)
                         || efficientTechniques.Contains(technique)
-                        || !PassesCasualTeachingRoll(teacher.Id, student.Id, technique, currentTick))
+                        || !PassesCasualTeachingRoll(teacher.Id, student.Id, technique, currentTick, chance))
                     {
                         continue;
                     }
@@ -458,10 +476,10 @@ public sealed class WorldState
     // Deterministic from the ids and the tick alone (same seeded-randomness style as
     // IdleTask.SeedFor) rather than a shared mutable Random - reproducible from the same
     // starting state without depending on call order between people.
-    private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick)
+    private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick, float chance)
     {
         var seed = CasualTeachingSeed(teacherId.Value, studentId.Value, technique.Value, tick);
-        return new Random(seed).NextDouble() < CasualTeachingChancePerTick;
+        return new Random(seed).NextDouble() < chance;
     }
 
     private static int CasualTeachingSeed(int teacherId, int studentId, string technique, long tick)
