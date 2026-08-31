@@ -141,9 +141,10 @@ jobs:
           # Windows release. Dropping the rest keeps the cache near 100 MB instead of a gigabyte,
           # which is the difference between restoring in seconds and in minutes. The glob also
           # covers the console wrapper template, whose exact name we'd rather not hardcode.
-          Get-ChildItem $dest -File |
-            Where-Object { $_.Name -notlike "windows_release_x86_64*" -and $_.Name -ne "version.txt" } |
-            Remove-Item -Force
+          # icudt_godot.dat is shared ICU data rather than a platform binary, so it stays.
+          Get-ChildItem $dest -File | Where-Object {
+            $_.Name -notlike "windows_release_x86_64*" -and $_.Name -notin @("version.txt", "icudt_godot.dat")
+          } | Remove-Item -Force
           Get-ChildItem $dest -File | ForEach-Object { "kept: {0} ({1:N0} MB)" -f $_.Name, ($_.Length / 1MB) }
 
       - name: Configure rcedit
@@ -186,26 +187,73 @@ jobs:
 
       - name: Import assets
         run: |
-          $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64.exe" |
-            Where-Object { $_.Name -notlike "*console*" } |
+          # The console wrapper, not the plain .exe: the latter is a GUI-subsystem binary whose
+          # stderr is swallowed on Windows, which turns any export failure into a silent one.
+          $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64_console.exe" |
             Select-Object -First 1).FullName
-          if (-not $godot) { throw "Godot editor binary not found under tools/godot" }
+          if (-not $godot) { throw "Godot console binary not found under tools/godot" }
           "GODOT=$godot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           # First headless run builds the .godot/ import cache; a non-zero exit here is normal.
           & $godot --headless --path src/ManyWinters.Godot --import
+          "import exit code: $LASTEXITCODE"
           exit 0
 
       - name: Export Windows build
         run: |
           $ErrorActionPreference = "Stop"
+          $root = (Get-Location).Path
           New-Item -ItemType Directory -Force build/ManyWinters | Out-Null
           $out = Join-Path (Resolve-Path build/ManyWinters).Path "ManyWinters.exe"
-          & $env:GODOT --headless --path src/ManyWinters.Godot --export-release "$env:EXPORT_PRESET" "$out"
-          # Godot is not reliable about its exit code here, so check the artefact itself.
+
+          # Start-Process rather than the call operator, so stdout and stderr stay separate and
+          # unmangled. Godot reports export failures on stderr and still exits 0, so both matter.
+          $p = Start-Process -FilePath $env:GODOT -NoNewWindow -Wait -PassThru -WorkingDirectory $root `
+            -ArgumentList @("--headless", "--path", "$root\src\ManyWinters.Godot",
+                            "--export-release", $env:EXPORT_PRESET, $out) `
+            -RedirectStandardOutput "$root\export.out.log" -RedirectStandardError "$root\export.err.log"
+          "godot exit code: $($p.ExitCode)"
+          Get-Content "$root\export.out.log" -Tail 20
+          Get-Content "$root\export.err.log"
+
+          # An exit code of 0 means nothing here: a run that fails to publish any C# at all still
+          # writes a launchable .exe and reports success. Check what actually landed on disk.
           if (-not (Test-Path $out)) { throw "Export produced no executable" }
+          $data = Get-ChildItem build/ManyWinters -Directory -Filter "data_*" | Select-Object -First 1
+          if (-not $data) { throw "No data_* folder: the .NET half of the export never ran" }
+          if (-not (Test-Path (Join-Path $data.FullName "ManyWinters.Godot.dll"))) {
+            throw "Export is missing ManyWinters.Godot.dll"
+          }
+          $errs = Select-String -Path "$root\export.out.log", "$root\export.err.log" -Pattern "^ERROR:"
+          if ($errs) {
+            $errs | ForEach-Object { $_.Line }
+            throw "Godot logged $($errs.Count) error(s) during export"
+          }
           "Of Folks and Many Winters ${{ steps.version.outputs.version }}",
           "build ${{ steps.version.outputs.tag }}",
           "commit ${{ github.sha }}" | Set-Content build/ManyWinters/version.txt
+
+      - name: Smoke-test the exported build
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = (Get-Location).Path
+          $game = "$root\build\ManyWinters"
+          # Boots the real exported game headless for a couple of seconds. An export can load its
+          # C# perfectly and still be dead on arrival, because content that resolves under the
+          # editor's loose files does not resolve inside a .pck. Running _Ready is the only check
+          # that proves the zip is worth handing to anyone.
+          $p = Start-Process -FilePath "$game\ManyWinters.console.exe" -NoNewWindow -Wait -PassThru `
+            -WorkingDirectory $game -ArgumentList @("--headless", "--quit-after", "120") `
+            -RedirectStandardOutput "$root\smoke.out.log" -RedirectStandardError "$root\smoke.err.log"
+          "smoke exit code: $($p.ExitCode)"
+          Get-Content "$root\smoke.out.log" -Tail 20
+          Get-Content "$root\smoke.err.log"
+          if ($p.ExitCode -ne 0) { throw "The exported build exited with $($p.ExitCode)" }
+          $errs = Select-String -Path "$root\smoke.out.log", "$root\smoke.err.log" `
+            -Pattern "^ERROR:|Unhandled exception"
+          if ($errs) {
+            $errs | ForEach-Object { $_.Line }
+            throw "The exported build logged $($errs.Count) error(s) on startup"
+          }
 
       - name: Package zip
         run: |
