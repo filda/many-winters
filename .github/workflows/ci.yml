@@ -53,3 +53,184 @@ jobs:
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
+
+  # Only pushes that touch the shipped game are worth a new build. Changes to tests,
+  # tools, art scripts or docs still run the full CI above, they just don't cut a release.
+  check-game-changes:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether shipped files changed
+        id: filter
+        run: |
+          before="${{ github.event.before }}"
+          # New branch, force-push or rewritten history: don't be clever, just build.
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$before" "${{ github.sha }}" \
+            | grep -qE '^(src/ManyWinters\.(Core|Godot)/|Directory\.Build\.props$|ManyWinters\.sln$|\.github/workflows/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: [build-and-test, check-game-changes]
+    if: needs.check-game-changes.outputs.changed == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    env:
+      GODOT_RELEASE: 4.7.1-stable
+      GODOT_TEMPLATE_DIR: 4.7.1.stable.mono
+      GODOT_EDITOR_SETTINGS: editor_settings-4.7.tres
+      EXPORT_PRESET: Of Folks and Many Winters
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Compute version
+        id: version
+        run: |
+          $v = "0.1.${{ github.run_number }}"
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=v$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Cache Godot editor and export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/godot
+            ~/AppData/Roaming/Godot/export_templates
+          key: godot-${{ env.GODOT_RELEASE }}-mono-win64
+
+      - name: Download Godot editor and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_RELEASE"
+          New-Item -ItemType Directory -Force tools/godot | Out-Null
+
+          Invoke-WebRequest "$base/Godot_v${env:GODOT_RELEASE}_mono_win64.zip" -OutFile godot.zip
+          Expand-Archive godot.zip -DestinationPath tools/godot
+
+          # The template archive is a plain zip with a .tpz extension; Expand-Archive insists on .zip.
+          Invoke-WebRequest "$base/Godot_v${env:GODOT_RELEASE}_mono_export_templates.tpz" -OutFile templates.zip
+          Expand-Archive templates.zip -DestinationPath templates
+          $dest = "$env:APPDATA\Godot\export_templates\$env:GODOT_TEMPLATE_DIR"
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          Move-Item templates/templates/* $dest
+
+      - name: Configure rcedit
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Godot shells out to rcedit to write the icon and version metadata into the .exe.
+          # Without it the export still succeeds, just with the stock Godot icon.
+          New-Item -ItemType Directory -Force tools | Out-Null
+          Invoke-WebRequest "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile tools/rcedit.exe
+          $rcedit = (Resolve-Path tools/rcedit.exe).Path -replace '\\', '/'
+          New-Item -ItemType Directory -Force "$env:APPDATA\Godot" | Out-Null
+          $settings = @"
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/windows/rcedit = "$rcedit"
+          "@
+          Set-Content "$env:APPDATA\Godot\$env:GODOT_EDITOR_SETTINGS" $settings -Encoding utf8
+
+      - name: Stamp version
+        run: |
+          $ErrorActionPreference = "Stop"
+          $v = "${{ steps.version.outputs.version }}"
+          $presets = "src/ManyWinters.Godot/export_presets.cfg"
+          $project = "src/ManyWinters.Godot/project.godot"
+          $name = "Of Folks and Many Winters"
+
+          # Windows file metadata wants four components; only the third one ever moves.
+          (Get-Content $presets -Raw) `
+            -replace 'application/file_version=""', "application/file_version=`"$v.0`"" `
+            -replace 'application/product_version=""', "application/product_version=`"$v.0`"" `
+            -replace 'application/product_name=""', "application/product_name=`"$name`"" `
+            -replace 'application/file_description=""', "application/file_description=`"$name`"" `
+            | Set-Content $presets -NoNewline
+
+          # Readable at runtime as ProjectSettings.GetSetting("application/config/version").
+          (Get-Content $project -Raw) `
+            -replace 'config/name="ManyWinters Godot"', "config/name=`"ManyWinters Godot`"`nconfig/version=`"$v`"" `
+            | Set-Content $project -NoNewline
+
+      - name: Import assets
+        run: |
+          $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64.exe" |
+            Where-Object { $_.Name -notlike "*console*" } |
+            Select-Object -First 1).FullName
+          if (-not $godot) { throw "Godot editor binary not found under tools/godot" }
+          "GODOT=$godot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          # First headless run builds the .godot/ import cache; a non-zero exit here is normal.
+          & $godot --headless --path src/ManyWinters.Godot --import
+          exit 0
+
+      - name: Export Windows build
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force build/ManyWinters | Out-Null
+          $out = Join-Path (Resolve-Path build/ManyWinters).Path "ManyWinters.exe"
+          & $env:GODOT --headless --path src/ManyWinters.Godot --export-release "$env:EXPORT_PRESET" "$out"
+          # Godot is not reliable about its exit code here, so check the artefact itself.
+          if (-not (Test-Path $out)) { throw "Export produced no executable" }
+          "Of Folks and Many Winters ${{ steps.version.outputs.version }}",
+          "build ${{ steps.version.outputs.tag }}",
+          "commit ${{ github.sha }}" | Set-Content build/ManyWinters/version.txt
+
+      - name: Package zip
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Zipping the folder, not its contents, so unpacking doesn't spray files into Downloads.
+          7z a -tzip -mx=7 ManyWinters-win64.zip .\build\ManyWinters
+          "zip size: {0:N0} MB" -f ((Get-Item ManyWinters-win64.zip).Length / 1MB)
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Of Folks and Many Winters ${{ steps.version.outputs.version }}
+          make_latest: "true"
+          files: ManyWinters-win64.zip
+          body: |
+            Automatic alpha build from `main`.
+
+            Download `ManyWinters-win64.zip`, unpack it and run `ManyWinters.exe`.
+            Nothing to install — the .NET runtime ships inside. Windows x86-64 only.
+
+            Windows SmartScreen will warn about an unknown publisher; the build is unsigned.
+            If the game misbehaves, run `ManyWinters.console.exe` instead and send the output.
+
+            Commit ${{ github.sha }}:
+
+            ```
+            ${{ github.event.head_commit.message }}
+            ```
+
+      - name: Prune old releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $stale = gh release list --limit 100 --json tagName,createdAt `
+            --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName'
+          foreach ($tag in $stale) { gh release delete $tag --yes --cleanup-tag }
