@@ -10,6 +10,19 @@ public static class BillboardSprite
 
     private static ImageTexture? _placeholder;
 
+    // Every billboard ever created, live right now - lets Main.cs's occlusion-fade check
+    // (ComputeOccludingSprites) iterate a plain flat list instead of a recursive
+    // FindChildren("*", ...) scan of the *entire* scene tree every single frame. With
+    // thousands of decoration-turned-ResourceNode entities now in the tree (see
+    // MapLoader.ScatterDecorations), that scan was easily the most expensive thing happening
+    // per frame - a self-maintaining registry here is O(live billboards) instead of O(every
+    // node of every kind in the whole scene). Self-cleaning via TreeExited, not a caller-side
+    // responsibility - a sprite is only ever removed from the scene by its owning view being
+    // freed, never by some other code reaching in and detaching just the sprite.
+    private static readonly HashSet<Sprite3D> _liveSprites = new();
+
+    public static IReadOnlyCollection<Sprite3D> LiveSprites => _liveSprites;
+
     // Creates a billboarded sprite whose on-screen height matches worldHeight. When the
     // texture is missing the sprite falls back to a flat quad tinted with fallbackColor, so
     // a kind without art is still visible and clickable.
@@ -56,6 +69,10 @@ public static class BillboardSprite
         };
 
         Apply(sprite, texturePath, worldHeight, fallbackColor);
+
+        _liveSprites.Add(sprite);
+        sprite.TreeExited += () => _liveSprites.Remove(sprite);
+
         return sprite;
     }
 

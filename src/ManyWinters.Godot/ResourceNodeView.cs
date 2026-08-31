@@ -112,6 +112,27 @@ public partial class ResourceNodeView : Area3D
 
     private void OnMouseExited() => SetHovered(false);
 
+    // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
+    // entity's broad-phase box won the pick instead - see its own doc comment for why that's
+    // not just a hypothetical.
+    public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
+    {
+        var opaque = SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, TexturePathFor());
+        SetHovered(opaque);
+        return opaque;
+    }
+
+    public bool TryClickAt(Camera3D camera, Vector3 worldPosition)
+    {
+        if (!SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, TexturePathFor()))
+        {
+            return false;
+        }
+
+        _onSelected(_nodeId);
+        return true;
+    }
+
     // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
     // fruit layer to show or hide.
     public void SetHasFruit(bool hasFruit)
@@ -193,20 +214,23 @@ public partial class ResourceNodeView : Area3D
         switch (@event)
         {
             case InputEventMouseMotion:
-                SetHovered(SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()));
+                if (!TryHoverAt(camera3D, position))
+                {
+                    HoverRescue.TryHoverElsewhere(this, camera3D, position);
+                }
+
                 break;
             // The broad-phase collision box (see the constructor's Size / SpriteVisibleExtent)
             // is bigger than the actual silhouette - Godot only delivers a click to the
             // nearest pickable collider along the ray, so a click landing inside the box but
             // off the opaque pixels (e.g. on this node's own ground shadow) would otherwise be
-            // silently swallowed here instead of reaching the ground underneath. Forward it to
-            // whatever a plain ground click at this same spot would have done.
+            // silently swallowed here instead of reaching the ground underneath. Try whatever
+            // else is actually at this point first (HoverRescue's click counterpart), only
+            // falling all the way back to a plain ground-click order if nothing there turns
+            // out to be real either.
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }:
-                if (SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, TexturePathFor()))
-                {
-                    _onSelected(_nodeId);
-                }
-                else
+                if (!TryClickAt(camera3D, position)
+                    && !HoverRescue.TryClickElsewhere(this, camera3D, position, MouseButton.Left))
                 {
                     _onMissedClick(camera, @event, position, normal, shapeIdx);
                 }

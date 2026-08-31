@@ -53,6 +53,14 @@ public partial class Main : Node3D
     // projection handles the camera math, nothing here has to reconstruct it by hand.
     private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
     private const float SelectionMarkerScreenSize = 28f;
+
+    // A person standing genuinely behind something opaque (a tree trunk, say - not just
+    // sharing an oversized collision box with it, see OnMissedClick) can never be reached by
+    // raycasting at all: the ray hits the opaque trunk pixel first and that *is* a real hit,
+    // not a miss to fall through from. Screen-space distance to a person's own projected
+    // position sidesteps 3D occlusion entirely - close enough on screen counts as "aiming at
+    // them" regardless of what's actually in front of them along the ray.
+    private const float PersonClickScreenRadius = 32f;
     private const float SelectionMarkerScreenGap = 6f;
 
     // The starting band spans roughly 8x4 units and is centered exactly on campPosition
@@ -109,7 +117,7 @@ public partial class Main : Node3D
         SetUpCamera();
         SetUpUi();
 
-        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnGroundInputEvent, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -176,6 +184,43 @@ public partial class Main : Node3D
         {
             _cameraRig.ToggleProjection();
         }
+
+        // Checked ahead of Godot's own physics-object-picking (which fires later in the same
+        // input dispatch, from unhandled input) precisely so it can win even when that pick
+        // would have legitimately landed on something opaque standing in front of a person -
+        // see PersonClickScreenRadius's own doc comment.
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
+            && GetViewport().GuiGetHoveredControl() is null
+            && FindNearestPersonOnScreen(mouseButton.Position) is { } personId)
+        {
+            OnPersonClicked(personId, MouseButton.Left);
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private PersonId? FindNearestPersonOnScreen(Vector2 screenPosition)
+    {
+        var camera = _cameraRig.Camera;
+        PersonId? nearest = null;
+        var nearestDistance = float.MaxValue;
+
+        foreach (var person in _world.People)
+        {
+            if (_presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
+                || camera.IsPositionBehind(personGlobalPosition))
+            {
+                continue;
+            }
+
+            var distance = camera.UnprojectPosition(personGlobalPosition).DistanceTo(screenPosition);
+            if (distance <= PersonClickScreenRadius && distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = person.Id;
+            }
+        }
+
+        return nearest;
     }
 
     // _UnhandledInput, not _Input: _Input fires for every node before Godot's own UI system
@@ -231,13 +276,18 @@ public partial class Main : Node3D
         });
     }
 
-    // Deliberately a blacklist, not a whitelist: earlier this only checked a hand-picked set
-    // of sprite sources (decoration, then +resource nodes, then +buildings/graves/people...),
-    // and every version was "missing" whatever wasn't added yet. Scanning every Sprite3D in
-    // the scene instead means a new kind of entity is covered automatically, with no list to
-    // remember to update - excluding only the two things that categorically don't belong:
-    // ground shadow decals (not billboarded - see GroundShadow) and the selection's own
-    // sprites (which sit at the target position itself, not in front of it).
+    // Iterates BillboardSprite.LiveSprites (every billboard that currently exists, self
+    // maintained - see its own doc comment) rather than scanning the scene tree - this used
+    // to be a FindChildren("*", nameof(Sprite3D), recursive: true) walk of the *entire* tree,
+    // called every single frame, which was fine back when decorations were a few thousand
+    // purely-visual sprites with no collision/logic attached but became a severe per-frame
+    // cost once they became real ResourceNode entities each with their own Area3D/collision
+    // subtree to also walk past (see MapLoader.ScatterDecorations) - reads to the player as
+    // the occlusion fade (and everything sharing the same _Process frame budget, camera
+    // included) stuttering/blinking rather than as a slow scan. Ground shadow decals need no
+    // exclusion here since they're never billboards to begin with (GroundShadow builds its
+    // own plain Sprite3D, never through BillboardSprite.Create) - only the selection's own
+    // sprites (which sit at the target position itself, not in front of it) still need one.
     private HashSet<Sprite3D> ComputeOccludingSprites()
     {
         var result = new HashSet<Sprite3D>();
@@ -267,13 +317,8 @@ public partial class Main : Node3D
 
         var direction = toTarget / toTargetLength;
 
-        foreach (var child in FindChildren("*", nameof(Sprite3D), recursive: true, owned: false))
+        foreach (var sprite in BillboardSprite.LiveSprites)
         {
-            if (child is not Sprite3D sprite || sprite.Billboard == BaseMaterial3D.BillboardModeEnum.Disabled)
-            {
-                continue;
-            }
-
             if (selectedPersonNode is not null && selectedPersonNode.IsAncestorOf(sprite))
             {
                 continue;
@@ -1050,6 +1095,15 @@ public partial class Main : Node3D
         var ratio = standoffDistance / distance;
         return new Position(to.X + (dx * ratio), to.Y + (dy * ratio));
     }
+
+    // By the time a view forwards here, it has already tried HoverRescue.TryClickElsewhere
+    // itself - a full re-cast of the same ray, excluding whatever's already been ruled out,
+    // checking every other real candidate actually along it (see that doc comment). Nothing
+    // along the ray panned out, so this genuinely is a ground click (or a click into empty
+    // space with nothing real anywhere near it) - a plain move order is the correct read, not
+    // a guess.
+    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
+        OnGroundInputEvent(camera, @event, position, normal, shapeIdx);
 
     private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {

@@ -67,13 +67,20 @@ public partial class GraveView : Area3D
         // grave's own ground shadow) would otherwise be silently swallowed here instead of
         // reaching the ground underneath. Forward it to whatever a plain ground click at this
         // same spot would have done.
-        if (SpritePixelHit.IsOpaqueAt(camera3D, position, _sprite, _texturePath))
-        {
-            _onSelected(_graveId);
-        }
-        else
+        if (!TryClickAt(camera3D, position) && !HoverRescue.TryClickElsewhere(this, camera3D, position, MouseButton.Left))
         {
             _onMissedClick(camera, @event, position, normal, shapeIdx);
         }
+    }
+
+    public bool TryClickAt(Camera3D camera, Vector3 worldPosition)
+    {
+        if (!SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _texturePath))
+        {
+            return false;
+        }
+
+        _onSelected(_graveId);
+        return true;
     }
 }
