@@ -23,6 +23,15 @@ public partial class ResourceNodeView : Area3D
     // depth otherwise have no defined draw order.
     private const int FruitOverlayRenderPriority = 1;
 
+    // Salts for EntityVisualVariation.RangeFor - distinct from each other so a tree's
+    // trunk and canopy brighten/dim independently instead of moving in lockstep as one
+    // uniform tint, which is what made every tree of a kind look like an identical
+    // clone before the trunk/canopy split existed to vary them separately.
+    private const int TrunkBrightnessSalt = 401;
+    private const int CanopyBrightnessSalt = 402;
+    private const float BrightnessJitterMin = 0.85f;
+    private const float BrightnessJitterMax = 1.1f;
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
@@ -31,6 +40,8 @@ public partial class ResourceNodeView : Area3D
     private readonly Color _baseColor;
     private Sprite3D _sprite = null!;
     private Color _normalModulate;
+    private Sprite3D? _trunk;
+    private Color _trunkNormalModulate;
     private Sprite3D? _fruitOverlay;
     private bool _isHovered;
 
@@ -60,7 +71,27 @@ public partial class ResourceNodeView : Area3D
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        _sprite = BillboardSprite.Create(TexturePathFor(), Size, fallbackColor);
+        // A tree with a trunk/canopy split (art/generate_sprites.py's split_trunk_canopy)
+        // renders as two separately-fadeable layers instead of one flattened sprite, so
+        // occlusion fade can ghost just the canopy while the trunk (Camera.png's "trunks
+        // stay solid" rule) never does - see Main.ComputeOccludingSprites. Falls back to
+        // a single combined sprite for any kind without split art (non-tree resources,
+        // or a future tree kind added before its split assets exist).
+        if (HasTrunkCanopySplit(_kind))
+        {
+            _trunk = BillboardSprite.Create(TrunkTexturePathFor(), Size, fallbackColor, excludeFromOcclusionFade: true);
+            _trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
+            _trunkNormalModulate = _trunk.Modulate;
+            AddChild(_trunk);
+
+            _sprite = BillboardSprite.Create(CanopyTexturePathFor(), Size, fallbackColor);
+            _sprite.Modulate *= LayerBrightnessVariation(CanopyBrightnessSalt);
+        }
+        else
+        {
+            _sprite = BillboardSprite.Create(TexturePathFor(), Size, fallbackColor);
+        }
+
         _normalModulate = _sprite.Modulate;
         AddChild(_sprite);
 
@@ -108,6 +139,21 @@ public partial class ResourceNodeView : Area3D
         _isHovered = hovered;
         _sprite.Modulate = hovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
         _sprite.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+
+        // The trunk highlights together with the canopy - hover is a single "this whole
+        // tree is what you're pointing at" signal, unlike occlusion fade where the two
+        // layers deliberately behave differently.
+        if (_trunk is not null)
+        {
+            _trunk.Modulate = hovered ? HoverHighlight.TintFor(_trunkNormalModulate) : _trunkNormalModulate;
+            _trunk.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+        }
+    }
+
+    private Color LayerBrightnessVariation(int salt)
+    {
+        var value = EntityVisualVariation.RangeFor(_nodeId.Value, salt, BrightnessJitterMin, BrightnessJitterMax);
+        return new Color(value, value, value);
     }
 
     private void OnMouseExited() => SetHovered(false);
@@ -154,10 +200,15 @@ public partial class ResourceNodeView : Area3D
 
     private string FruitOverlayTexturePath() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png";
 
+    private string TrunkTexturePathFor() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_trunk.png";
+
+    private string CanopyTexturePathFor() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_canopy.png";
+
     // Cached per kind (see VisualDefinitionCache above for why per-node ResourceLoader.Exists
     // calls at decoration scale are worth avoiding).
     private static readonly Dictionary<ResourceKindId, bool> HasTreeSpriteCache = new();
     private static readonly Dictionary<ResourceKindId, bool> HasFruitOverlayCache = new();
+    private static readonly Dictionary<ResourceKindId, bool> HasTrunkCanopySplitCache = new();
 
     private static bool HasTreeSprite(ResourceKindId kind)
     {
@@ -180,6 +231,19 @@ public partial class ResourceNodeView : Area3D
 
         var exists = ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree_fruit.png");
         HasFruitOverlayCache[kind] = exists;
+        return exists;
+    }
+
+    private static bool HasTrunkCanopySplit(ResourceKindId kind)
+    {
+        if (HasTrunkCanopySplitCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
+        var exists = ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree_trunk.png")
+            && ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree_canopy.png");
+        HasTrunkCanopySplitCache[kind] = exists;
         return exists;
     }
 

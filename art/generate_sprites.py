@@ -277,6 +277,61 @@ class Canvas:
         return Image.fromarray(out, "RGBA")
 
 
+# ---------------------------------------------------------------- trunk/canopy split
+# A tree's trunk needs to stay fully solid when the camera's occlusion fade ghosts
+# whatever's standing between the camera and the selected person, while its canopy is
+# exactly what should fade (see docs/Camera.png and Main.UpdateOcclusionFade). Building
+# one combined, hand-inked Canvas exactly as before and then partitioning its *final*
+# pixels between two layers - rather than inking each layer separately - keeps the
+# split a pure rendering-time concern: stacking both layers back together reproduces
+# today's single flattened tree image pixel-for-pixel.
+_tree_split_cache = {}
+
+
+def split_trunk_canopy(name, trunk_mask, canopy_masks, trunk_color, canopy_color):
+    """canopy_masks: one or more pieces filled in order (each its own Canvas.fill call),
+    not pre-unioned - a conifer's tiers each need their own hatch tone gradient computed
+    across their own footprint rather than one gradient across the whole canopy's
+    bounding box (see hatch_fill), exactly like the original single-Canvas conifer_tree
+    did. A tree with just one canopy piece (the fruit trees) passes a single-item list."""
+    if name in _tree_split_cache:
+        return _tree_split_cache[name]
+
+    seed = seed_for(name)
+    outline_width = max(1, SCALE // 2)
+    combined = Canvas(seed)
+    combined.fill(trunk_mask, trunk_color)
+    canopy_mask = np.zeros((S, S), dtype=bool)
+    for mask in canopy_masks:
+        combined.fill(mask, canopy_color)
+        canopy_mask |= mask
+    combined.rough_outline(width=outline_width)
+
+    # Canopy is filled second above, so it already wins any genuine geometric overlap
+    # (e.g. a low canopy lobe overhanging the trunk's top) - trunk keeps only what
+    # canopy never touches. rough_outline's added ink ring is split the same way: a
+    # ring pixel counts as trunk's own edge only if it's near the trunk silhouette and
+    # NOT also near canopy - an ambiguous seam pixel goes to canopy, since that's what
+    # visually sits on top there.
+    trunk_only = trunk_mask & ~canopy_mask
+    ring = combined.alpha & ~(trunk_mask | canopy_mask)
+    trunk_ring = ring & dilate(trunk_mask, outline_width) & ~dilate(canopy_mask, outline_width)
+    trunk_alpha = trunk_only | trunk_ring
+    canopy_alpha = combined.alpha & ~trunk_alpha
+
+    trunk_canvas = Canvas(seed)
+    trunk_canvas.rgb = combined.rgb
+    trunk_canvas.alpha = trunk_alpha
+
+    canopy_canvas = Canvas(seed)
+    canopy_canvas.rgb = combined.rgb
+    canopy_canvas.alpha = canopy_alpha
+
+    result = (combined, trunk_canvas, canopy_canvas)
+    _tree_split_cache[name] = result
+    return result
+
+
 # ---------------------------------------------------------------- richer base shapes
 # (person) - a nipped-waist, scalloped-hem robe; a tapered bent arm; a hood with an
 # actual cowl point; a boot with a heel and a toe - built as multi-point silhouettes
@@ -964,10 +1019,9 @@ def random_conifer_tiers(rng):
     return tiers, last_base_y
 
 
-def conifer_tree():
-    seed = seed_for("conifer_tree")
+def _conifer_split(name):
+    seed = seed_for(name)
     rng = random.Random(seed)
-    c = Canvas(seed)
     trunk_base = rgb(0.34, 0.24, 0.15)
     foliage = rgb(0.36, 0.42, 0.26)
 
@@ -976,20 +1030,28 @@ def conifer_tree():
     trunk_w = rng.uniform(2.5, 4.0)
     trunk_lean = rng.uniform(-1.5, 1.5)
     trunk_top = 32 + rng.uniform(-1, 1)
-    trunk = jagged_poly([
+    trunk_mask = poly(jagged_poly([
         (trunk_top - trunk_w, trunk_top_y),
         (trunk_top + trunk_w, trunk_top_y),
         (trunk_top + trunk_w + trunk_lean, GROUND_CONTACT_Y),
         (trunk_top - trunk_w + trunk_lean, GROUND_CONTACT_Y),
-    ], rng, amp=0.8, segments_per_edge=3, smooth_passes=1)
-    c.fill(poly(trunk), trunk_base)
+    ], rng, amp=0.8, segments_per_edge=3, smooth_passes=1))
 
-    for apex, right, left in tiers:
-        tier_mask = lobe_cluster_mask(apex, left, right, rng, rows=rng.choice([2, 3, 3]))
-        c.fill(tier_mask, foliage)
+    tier_masks = [lobe_cluster_mask(apex, left, right, rng, rows=rng.choice([2, 3, 3])) for apex, right, left in tiers]
 
-    c.rough_outline(width=max(1, SCALE // 2))
-    return c
+    return split_trunk_canopy(name, trunk_mask, tier_masks, trunk_base, foliage)
+
+
+def conifer_tree():
+    return _conifer_split("conifer_tree")[0]
+
+
+def conifer_tree_trunk():
+    return _conifer_split("conifer_tree")[1]
+
+
+def conifer_tree_canopy():
+    return _conifer_split("conifer_tree")[2]
 
 
 # Three hand-authored angular boulder outlines (8 points each, same walk order: top-
@@ -1136,6 +1198,13 @@ def _fruit_tree_canopy():
             | ellipse(46, 30, 13, 12) | ellipse(32, 12, 15, 12))
 
 
+def _fruit_tree_split(name):
+    trunk = rgb(0.34, 0.24, 0.15)
+    foliage = rgb(0.30, 0.38, 0.22)
+    trunk_mask = rect(29, 44, 35, GROUND_CONTACT_Y)
+    return split_trunk_canopy(name, trunk_mask, [_fruit_tree_canopy()], trunk, foliage)
+
+
 def _fruit_tree_bare(name):
     """Shared deciduous canopy for the fruit-tree sprites - only the fruit color/
     placement differs between kinds, so the two trees stay readable as "the same kind
@@ -1145,14 +1214,7 @@ def _fruit_tree_bare(name):
     This is the WHOLE tree - a picked-clean node renders exactly this, with no fruit.
     _fruit_overlay is a second, separately composited layer (see ResourceNodeView) so a
     node with no stock left doesn't need its own distinct "bare" texture asset."""
-    seed = seed_for(name)
-    c = Canvas(seed)
-    trunk = rgb(0.34, 0.24, 0.15)
-    foliage = rgb(0.30, 0.38, 0.22)
-    c.fill(rect(29, 44, 35, GROUND_CONTACT_Y), trunk)
-    c.fill(_fruit_tree_canopy(), foliage)
-    c.rough_outline(width=max(1, SCALE // 2))
-    return c
+    return _fruit_tree_split(name)[0]
 
 
 def _fruit_overlay(name, fruit_color, fruit_spots):
@@ -1171,6 +1233,14 @@ def apple_tree():
     return _fruit_tree_bare("apple_tree")
 
 
+def apple_tree_trunk():
+    return _fruit_tree_split("apple_tree")[1]
+
+
+def apple_tree_canopy():
+    return _fruit_tree_split("apple_tree")[2]
+
+
 def apple_tree_fruit():
     return _fruit_overlay(
         "apple_tree", rgb(0.70, 0.18, 0.16),
@@ -1179,6 +1249,14 @@ def apple_tree_fruit():
 
 def pear_tree():
     return _fruit_tree_bare("pear_tree")
+
+
+def pear_tree_trunk():
+    return _fruit_tree_split("pear_tree")[1]
+
+
+def pear_tree_canopy():
+    return _fruit_tree_split("pear_tree")[2]
 
 
 def pear_tree_fruit():
@@ -1192,6 +1270,14 @@ def deciduous_tree():
     purely decorative background filler (TerrainRenderer.ScatterDecoration), not a gameplay
     resource, so it never needs a fruit overlay."""
     return _fruit_tree_bare("deciduous_tree")
+
+
+def deciduous_tree_trunk():
+    return _fruit_tree_split("deciduous_tree")[1]
+
+
+def deciduous_tree_canopy():
+    return _fruit_tree_split("deciduous_tree")[2]
 
 
 def bush():
@@ -1367,10 +1453,18 @@ SPRITES = {
     "grave_unmarked": grave_unmarked,
     "grave_marked": grave_marked,
     "conifer_tree": conifer_tree,
+    "conifer_tree_trunk": conifer_tree_trunk,
+    "conifer_tree_canopy": conifer_tree_canopy,
     "deciduous_tree": deciduous_tree,
+    "deciduous_tree_trunk": deciduous_tree_trunk,
+    "deciduous_tree_canopy": deciduous_tree_canopy,
     "apple_tree": apple_tree,
+    "apple_tree_trunk": apple_tree_trunk,
+    "apple_tree_canopy": apple_tree_canopy,
     "apple_tree_fruit": apple_tree_fruit,
     "pear_tree": pear_tree,
+    "pear_tree_trunk": pear_tree_trunk,
+    "pear_tree_canopy": pear_tree_canopy,
     "pear_tree_fruit": pear_tree_fruit,
     "bush": bush,
     "grass": grass,

@@ -21,7 +21,16 @@ public static class BillboardSprite
     // freed, never by some other code reaching in and detaching just the sprite.
     private static readonly HashSet<Sprite3D> _liveSprites = new();
 
+    // A tree's trunk layer (see ResourceNodeView) must never fade under occlusion - see
+    // Camera.png's "trunks stay solid" rule - even though it's still a normal member of
+    // LiveSprites otherwise. Tracked separately rather than skipping registration
+    // entirely, since LiveSprites' contract is "every billboard that exists", not
+    // "every billboard eligible for occlusion fade".
+    private static readonly HashSet<Sprite3D> _excludedFromOcclusionFade = new();
+
     public static IReadOnlyCollection<Sprite3D> LiveSprites => _liveSprites;
+
+    public static bool IsExcludedFromOcclusionFade(Sprite3D sprite) => _excludedFromOcclusionFade.Contains(sprite);
 
     // Creates a billboarded sprite whose on-screen height matches worldHeight. When the
     // texture is missing the sprite falls back to a flat quad tinted with fallbackColor, so
@@ -46,7 +55,8 @@ public static class BillboardSprite
         float worldHeight,
         Color fallbackColor,
         SpriteBase3D.AlphaCutMode alphaCut = SpriteBase3D.AlphaCutMode.OpaquePrepass,
-        int renderPriority = 0)
+        int renderPriority = 0,
+        bool excludeFromOcclusionFade = false)
     {
         var sprite = new Sprite3D
         {
@@ -71,7 +81,16 @@ public static class BillboardSprite
         Apply(sprite, texturePath, worldHeight, fallbackColor);
 
         _liveSprites.Add(sprite);
-        sprite.TreeExited += () => _liveSprites.Remove(sprite);
+        if (excludeFromOcclusionFade)
+        {
+            _excludedFromOcclusionFade.Add(sprite);
+        }
+
+        sprite.TreeExited += () =>
+        {
+            _liveSprites.Remove(sprite);
+            _excludedFromOcclusionFade.Remove(sprite);
+        };
 
         return sprite;
     }
