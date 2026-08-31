@@ -1,4 +1,4 @@
-using System.Text.Json;
+using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.Construction;
 
@@ -14,21 +14,10 @@ public sealed class BuildingCatalog
     public BuildingDefinition Get(BuildingKindId id) => _definitions[id];
 
     public static BuildingCatalog LoadFromDirectory(string rootPath)
-    {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var definitions = new List<BuildingDefinition>();
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
-        foreach (var directory in Directory.GetDirectories(rootPath))
-        {
-            foreach (var file in Directory.GetFiles(directory, "*.json"))
-            {
-                var json = File.ReadAllText(file);
-                var definition = JsonSerializer.Deserialize<BuildingDefinition>(json, options)
-                    ?? throw new InvalidDataException($"Building definition '{file}' could not be parsed.");
-                definitions.Add(definition);
-            }
-        }
-
-        return new BuildingCatalog(definitions);
-    }
+    // Takes documents rather than a path so an exported Godot build, where these live
+    // inside the .pck and only Godot's file access can reach them, can load them too.
+    public static BuildingCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
+        => new(JsonDefinitions.Parse<BuildingDefinition>(documents, "Building"));
 }

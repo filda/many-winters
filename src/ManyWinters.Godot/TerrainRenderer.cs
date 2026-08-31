@@ -65,10 +65,9 @@ public sealed class TerrainRenderer
 
     private void LoadHeightmap(string heightmapPath)
     {
-        var path = ProjectSettings.GlobalizePath(heightmapPath);
-        var json = File.ReadAllText(path);
+        var json = ContentFiles.ReadText(heightmapPath);
         _heightmap = JsonSerializer.Deserialize<HeightmapData>(json, JsonOptions)
-            ?? throw new InvalidDataException($"Heightmap '{path}' could not be parsed.");
+            ?? throw new InvalidDataException($"Heightmap '{heightmapPath}' could not be parsed.");
 
         var minHeight = float.MaxValue;
         foreach (var row in _heightmap.Heights)
@@ -207,15 +206,14 @@ public sealed class TerrainRenderer
     // real river cut, so the ribbon should track the visible low ground without extra fudging.
     public void BuildWaterways(Node3D parent)
     {
-        var path = ProjectSettings.GlobalizePath(_waterwaysPath);
-        if (!File.Exists(path))
+        if (!ContentFiles.Exists(_waterwaysPath))
         {
             return;
         }
 
-        var json = File.ReadAllText(path);
+        var json = ContentFiles.ReadText(_waterwaysPath);
         var data = JsonSerializer.Deserialize<WaterwaysData>(json, JsonOptions)
-            ?? throw new InvalidDataException($"Waterways '{path}' could not be parsed.");
+            ?? throw new InvalidDataException($"Waterways '{_waterwaysPath}' could not be parsed.");
 
         var surfaceTool = new SurfaceTool();
         surfaceTool.Begin(Mesh.PrimitiveType.Triangles);

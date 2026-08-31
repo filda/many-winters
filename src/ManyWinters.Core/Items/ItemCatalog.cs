@@ -1,4 +1,4 @@
-using System.Text.Json;
+using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.Items;
 
@@ -27,21 +27,10 @@ public sealed class ItemCatalog
     public float CarryCapacityBonusFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.CarryCapacityBonus : 0f;
 
     public static ItemCatalog LoadFromDirectory(string rootPath)
-    {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var definitions = new List<ItemDefinition>();
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
-        foreach (var directory in Directory.GetDirectories(rootPath))
-        {
-            foreach (var file in Directory.GetFiles(directory, "*.json"))
-            {
-                var json = File.ReadAllText(file);
-                var definition = JsonSerializer.Deserialize<ItemDefinition>(json, options)
-                    ?? throw new InvalidDataException($"Item definition '{file}' could not be parsed.");
-                definitions.Add(definition);
-            }
-        }
-
-        return new ItemCatalog(definitions);
-    }
+    // Takes documents rather than a path so an exported Godot build, where these live
+    // inside the .pck and only Godot's file access can reach them, can load them too.
+    public static ItemCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
+        => new(JsonDefinitions.Parse<ItemDefinition>(documents, "Item"));
 }

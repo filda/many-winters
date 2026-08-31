@@ -98,13 +98,13 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
-        var contentRoot = ProjectSettings.GlobalizePath("res://Content");
+        const string contentRoot = "res://Content";
         var configuration = new WorldConfiguration(
-            ResourceCatalog.LoadFromDirectory(Path.Combine(contentRoot, "resources")),
-            SkillCatalog.LoadFromDirectory(Path.Combine(contentRoot, "skills")),
-            RecipeCatalog.LoadFromDirectory(Path.Combine(contentRoot, "recipes")),
-            BuildingCatalog.LoadFromDirectory(Path.Combine(contentRoot, "buildings")),
-            ItemCatalog.LoadFromDirectory(Path.Combine(contentRoot, "items")),
+            ResourceCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/resources")),
+            SkillCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/skills")),
+            RecipeCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/recipes")),
+            BuildingCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/buildings")),
+            ItemCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/items")),
             SeasonParameters.Default);
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
@@ -320,6 +320,14 @@ public partial class Main : Node3D
         foreach (var sprite in BillboardSprite.LiveSprites)
         {
             if (selectedPersonNode is not null && selectedPersonNode.IsAncestorOf(sprite))
+            {
+                continue;
+            }
+
+            // A tree's trunk layer (see ResourceNodeView) - Camera.png's "trunks stay
+            // solid" rule: it should never fade just because a canopy elsewhere is worth
+            // ghosting, even when it geometrically sits in the way itself.
+            if (BillboardSprite.IsExcludedFromOcclusionFade(sprite))
             {
                 continue;
             }

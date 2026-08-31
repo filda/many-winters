@@ -1,4 +1,4 @@
-using System.Text.Json;
+using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.World;
 
@@ -14,21 +14,10 @@ public sealed class ResourceCatalog
     public ResourceDefinition Get(ResourceKindId id) => _definitions[id];
 
     public static ResourceCatalog LoadFromDirectory(string rootPath)
-    {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var definitions = new List<ResourceDefinition>();
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
-        foreach (var directory in Directory.GetDirectories(rootPath))
-        {
-            foreach (var file in Directory.GetFiles(directory, "*.json"))
-            {
-                var json = File.ReadAllText(file);
-                var definition = JsonSerializer.Deserialize<ResourceDefinition>(json, options)
-                    ?? throw new InvalidDataException($"Resource definition '{file}' could not be parsed.");
-                definitions.Add(definition);
-            }
-        }
-
-        return new ResourceCatalog(definitions);
-    }
+    // Takes documents rather than a path so an exported Godot build, where these live
+    // inside the .pck and only Godot's file access can reach them, can load them too.
+    public static ResourceCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
+        => new(JsonDefinitions.Parse<ResourceDefinition>(documents, "Resource"));
 }

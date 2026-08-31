@@ -1,4 +1,4 @@
-using System.Text.Json;
+using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.Items;
 
@@ -14,21 +14,10 @@ public sealed class RecipeCatalog
     public RecipeDefinition Get(ItemKindId output) => _definitions[output];
 
     public static RecipeCatalog LoadFromDirectory(string rootPath)
-    {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var definitions = new List<RecipeDefinition>();
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
-        foreach (var directory in Directory.GetDirectories(rootPath))
-        {
-            foreach (var file in Directory.GetFiles(directory, "*.json"))
-            {
-                var json = File.ReadAllText(file);
-                var definition = JsonSerializer.Deserialize<RecipeDefinition>(json, options)
-                    ?? throw new InvalidDataException($"Recipe definition '{file}' could not be parsed.");
-                definitions.Add(definition);
-            }
-        }
-
-        return new RecipeCatalog(definitions);
-    }
+    // Takes documents rather than a path so an exported Godot build, where these live
+    // inside the .pck and only Godot's file access can reach them, can load them too.
+    public static RecipeCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
+        => new(JsonDefinitions.Parse<RecipeDefinition>(documents, "Recipe"));
 }

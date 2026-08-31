@@ -1,4 +1,4 @@
-using System.Text.Json;
+using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.Knowledge;
 
@@ -24,21 +24,10 @@ public sealed class SkillCatalog
     public IEnumerable<SkillDefinition> Definitions => _definitions.Values;
 
     public static SkillCatalog LoadFromDirectory(string rootPath)
-    {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var definitions = new List<SkillDefinition>();
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
-        foreach (var directory in Directory.GetDirectories(rootPath))
-        {
-            foreach (var file in Directory.GetFiles(directory, "*.json"))
-            {
-                var json = File.ReadAllText(file);
-                var definition = JsonSerializer.Deserialize<SkillDefinition>(json, options)
-                    ?? throw new InvalidDataException($"Skill definition '{file}' could not be parsed.");
-                definitions.Add(definition);
-            }
-        }
-
-        return new SkillCatalog(definitions);
-    }
+    // Takes documents rather than a path so an exported Godot build, where these live
+    // inside the .pck and only Godot's file access can reach them, can load them too.
+    public static SkillCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
+        => new(JsonDefinitions.Parse<SkillDefinition>(documents, "Skill"));
 }
