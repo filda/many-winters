@@ -245,12 +245,17 @@ public partial class Main : Node3D
     {
         var occluding = ComputeOccludingSprites();
 
+        // Re-applied every frame, not just on first entering the set - ResourceNodeView's
+        // hover highlight writes this exact same sprite's Modulate independently (on every
+        // mouse-move hover-state change, with no idea occlusion fade exists) and would
+        // otherwise silently undo the fade the moment the cursor happens to sit on top of
+        // whatever's currently occluding - easy to hit for a big nearby canopy that already
+        // fills much of the screen (docs/Screenshot 2026-09-01 223350.png). Cheap either
+        // way - the occluding set is a handful of sprites, never the whole scene.
         foreach (var sprite in occluding)
         {
-            if (_fadedSprites.Add(sprite))
-            {
-                SetSpriteAlpha(sprite, OcclusionFadedAlpha);
-            }
+            _fadedSprites.Add(sprite);
+            SetSpriteAlpha(sprite, OcclusionFadedAlpha);
         }
 
         _fadedSprites.RemoveWhere(sprite =>
@@ -348,7 +353,7 @@ public partial class Main : Node3D
             // rendered world-space width equals PixelSize * pixel width - a wide tree needs a
             // much bigger "in the way" radius than a thin grass blade, not the same flat
             // distance regardless of how big it actually draws.
-            var spriteRadius = (sprite.PixelSize * sprite.Texture.GetWidth()) / 2f;
+            var spriteRadius = (sprite.PixelSize * sprite.Texture!.GetWidth()) / 2f;
             if (perpendicularDistance < spriteRadius + OcclusionMargin)
             {
                 result.Add(sprite);

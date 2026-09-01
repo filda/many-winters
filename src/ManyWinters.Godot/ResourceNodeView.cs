@@ -194,15 +194,28 @@ public partial class ResourceNodeView : Area3D
     // {kind}.png for those kinds (apple, pear...). Driven by which file actually exists, not
     // by CanFell - a fellable former-decoration tree (conifer/deciduous/bush) only ever had
     // the one plain {kind}.png to begin with.
-    private string TexturePathFor() => HasTreeSprite(_kind)
-        ? $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree.png"
-        : $"res://Content/resources/{_kind.Value}/{_kind.Value}.png";
+    private string TexturePathFor() => BaseTexturePathFor(_kind);
+
+    private static string BaseTexturePathFor(ResourceKindId kind) => HasTreeSprite(kind)
+        ? $"res://Content/resources/{kind.Value}/{kind.Value}_tree.png"
+        : $"res://Content/resources/{kind.Value}/{kind.Value}.png";
 
     private string FruitOverlayTexturePath() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png";
 
-    private string TrunkTexturePathFor() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_trunk.png";
+    // Split filenames sit alongside whichever image BaseTexturePathFor already uses as the
+    // whole tree - {kind}_tree_trunk.png for a kind with its own dedicated standing-tree
+    // sprite (apple, pear...), or {kind}_trunk.png for one that doesn't, since its kind id
+    // already ends in "_tree" itself (conifer_tree, deciduous_tree) - {kind}_tree_trunk.png
+    // there would double up the "_tree" and never match the actual asset on disk.
+    private string TrunkTexturePathFor() => InsertBeforeExtension(TexturePathFor(), "_trunk");
 
-    private string CanopyTexturePathFor() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_canopy.png";
+    private string CanopyTexturePathFor() => InsertBeforeExtension(TexturePathFor(), "_canopy");
+
+    private static string InsertBeforeExtension(string path, string suffix)
+    {
+        var dot = path.LastIndexOf('.');
+        return path[..dot] + suffix + path[dot..];
+    }
 
     // Cached per kind (see VisualDefinitionCache above for why per-node ResourceLoader.Exists
     // calls at decoration scale are worth avoiding).
@@ -241,8 +254,9 @@ public partial class ResourceNodeView : Area3D
             return cached;
         }
 
-        var exists = ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree_trunk.png")
-            && ResourceLoader.Exists($"res://Content/resources/{kind.Value}/{kind.Value}_tree_canopy.png");
+        var basePath = BaseTexturePathFor(kind);
+        var exists = ResourceLoader.Exists(InsertBeforeExtension(basePath, "_trunk"))
+            && ResourceLoader.Exists(InsertBeforeExtension(basePath, "_canopy"));
         HasTrunkCanopySplitCache[kind] = exists;
         return exists;
     }
