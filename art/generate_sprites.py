@@ -1245,6 +1245,24 @@ _PEAR_FRUIT_SPOT_VARIANTS = [
     ((28, 30, 3), (17, 30, 3), (46, 34, 3), (35, 17, 2), (36, 36, 2)),
 ]
 
+# Branches radiate from the canopy's own centre (like every other lobe-ish shape here),
+# not from the trunk specifically - a real deciduous tree's bare branch tips poke out
+# anywhere around the crown, not only right above the trunk. The canopy union is close
+# to convex (four heavily-overlapping ellipses, no deep notches between lobes), so most
+# angles need almost the same ~20-32 unit reach to clear it (measured by hand by probing
+# every 10 degrees) - two twigs per branch-variant, angles chosen to land in different
+# *places* on the crown per variant (low near the trunk seam, or up near a "shoulder"
+# where the top lobe meets a side lobe) rather than all ending up in the same spot with
+# different noise. Screen-space angles (0 = right, 90 = down, 180 = left, 270 = up,
+# clockwise), from BRANCH_ORIGIN.
+BRANCH_ORIGIN = (32, 24)
+_BRANCH_ANGLE_VARIANTS = [
+    [70, 110],   # low, near the trunk seam
+    [210, 330],  # up near the shoulders, poking out of the crown itself
+    [110, 210],  # one of each, asymmetric - avoid 90/270 (dead centre, right behind the
+                 # trunk's own silhouette - technically drawn, but invisible against it)
+]
+
 
 def _variant_name(name, variant):
     return name if variant == 0 else f"{name}_v{variant}"
@@ -1261,8 +1279,89 @@ def _fruit_tree_canopy(variant=0):
 def _fruit_tree_split(name, variant=0):
     trunk = rgb(0.34, 0.24, 0.15)
     foliage = rgb(0.30, 0.38, 0.22)
+    split_name = _variant_name(name, variant)
     trunk_mask = poly(_FRUIT_TREE_TRUNK_VARIANTS[variant])
-    return split_trunk_canopy(_variant_name(name, variant), trunk_mask, [_fruit_tree_canopy(variant)], trunk, foliage)
+    return split_trunk_canopy(split_name, trunk_mask, [_fruit_tree_canopy(variant)], trunk, foliage)
+
+
+# ---------------------------------------------------------------- branches (own layer)
+# A branch drawn as a single stick mostly vanishes: the canopy lobes very nearly reach
+# the trunk top already (see _FRUIT_TREE_CANOPY_VARIANTS), so anything routed to stay
+# under them reads as a tiny stub, not a branch. Instead, branches live entirely outside
+# every canopy variant's footprint - like the bare twig tips a real deciduous tree shows
+# poking a little past its own leaf mass - composited on top, never carved against
+# canopy, so no combination of trunk/canopy/branch variant can ever draw one across the
+# leaves.
+
+def _canopy_variant_union():
+    mask = None
+    for i in range(len(_FRUIT_TREE_CANOPY_VARIANTS)):
+        piece = _fruit_tree_canopy(i)
+        mask = piece if mask is None else (mask | piece)
+    return mask
+
+
+def _twig_anchor(origin, angle_deg, union_mask, margin=2, max_radius=40):
+    """Walks outward from origin at angle_deg (in the 64-unit authored grid) and returns
+    a point margin units past the last radius still inside union_mask - clear of every
+    canopy variant's footprint no matter which one this branch layer ends up paired with
+    at runtime, even when origin itself already sits right at the edge of one of them
+    (the seam by the trunk top, where this is always called from, is exactly such a
+    place). union_mask itself is a full S-by-S array (see ellipse/rect/poly), so each
+    probed point needs scaling up before it can index into it."""
+    ox, oy = origin
+    rad = math.radians(angle_deg)
+    dx, dy = math.cos(rad), math.sin(rad)
+    exit_r = 0
+    for r in range(max_radius):
+        px = int(round((ox + (r * dx)) * SCALE))
+        py = int(round((oy + (r * dy)) * SCALE))
+        if 0 <= px < S and 0 <= py < S and union_mask[py, px]:
+            exit_r = r
+    return ox + ((exit_r + margin) * dx), oy + ((exit_r + margin) * dy)
+
+
+def _twig_tuft(anchor_x, anchor_y, angle_deg, spread_deg, length, width, rng):
+    """A small two-pronged twig - two thin diverging strokes from one anchor point,
+    reading more clearly as "a small branch" than a single stick would."""
+    mask = None
+    for sign in (-1, 1):
+        rad = math.radians(angle_deg + (sign * spread_deg / 2))
+        tip_x = anchor_x + (length * math.cos(rad))
+        tip_y = anchor_y + (length * math.sin(rad))
+        points = [
+            (anchor_x - (math.sin(rad) * width / 2), anchor_y + (math.cos(rad) * width / 2)),
+            (anchor_x + (math.sin(rad) * width / 2), anchor_y - (math.cos(rad) * width / 2)),
+            (tip_x + (math.sin(rad) * width * 0.1), tip_y - (math.cos(rad) * width * 0.1)),
+            (tip_x - (math.sin(rad) * width * 0.1), tip_y + (math.cos(rad) * width * 0.1)),
+        ]
+        prong = poly(jagged_poly(points, rng, amp=0.35, segments_per_edge=2, smooth_passes=1))
+        mask = prong if mask is None else (mask | prong)
+    return mask
+
+
+def _generic_tree_branch_layer(branch_variant):
+    """Generic, kind-independent: one branches.png (plus _v1/_v2) shared by every kind
+    that uses the fruit-tree canopy shape (apple, pear, deciduous_tree - see
+    ResourceNodeView.BranchesTexturePathFor), rather than a separate, near-duplicate copy
+    baked per kind. Seeded off a fixed name, not any particular kind's, since the whole
+    point is that it belongs to none of them in particular."""
+    split_name = _variant_name("tree_branches", branch_variant)
+    seed = seed_for(split_name)
+    rng = random.Random(seed)
+    trunk_color = rgb(0.34, 0.24, 0.15)
+    union_mask = _canopy_variant_union()
+
+    mask = None
+    for angle in _BRANCH_ANGLE_VARIANTS[branch_variant]:
+        anchor_x, anchor_y = _twig_anchor(BRANCH_ORIGIN, angle, union_mask)
+        tuft = _twig_tuft(anchor_x, anchor_y, angle, 30, 6, 2.0, rng)
+        mask = tuft if mask is None else (mask | tuft)
+
+    c = Canvas(seed)
+    c.fill(mask, trunk_color)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
 
 
 def _fruit_tree_bare(name, variant=0):
@@ -1398,6 +1497,18 @@ def deciduous_tree_trunk_v2():
 
 def deciduous_tree_canopy_v2():
     return _fruit_tree_split("deciduous_tree", 2)[2]
+
+
+def tree_branches():
+    return _generic_tree_branch_layer(0)
+
+
+def tree_branches_v1():
+    return _generic_tree_branch_layer(1)
+
+
+def tree_branches_v2():
+    return _generic_tree_branch_layer(2)
 
 
 def bush():
@@ -1606,6 +1717,9 @@ SPRITES = {
     "pear_tree_canopy_v2": pear_tree_canopy_v2,
     "pear_tree_fruit_v2": pear_tree_fruit_v2,
     "pear_tree_fruit": pear_tree_fruit,
+    "tree_branches": tree_branches,
+    "tree_branches_v1": tree_branches_v1,
+    "tree_branches_v2": tree_branches_v2,
     "bush": bush,
     "grass": grass,
     "wild_grass": wild_grass,

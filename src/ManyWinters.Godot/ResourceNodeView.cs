@@ -48,6 +48,12 @@ public partial class ResourceNodeView : Area3D
     private const int TreeVariantSalt = 406;
     private const int MaxTreeVariantProbe = 8;
 
+    // Branches are a separate shape-variant axis from the trunk/canopy pairing above (own
+    // salt, own probe) - independently chosen so a tree's branch layer multiplies into new
+    // combinations instead of always matching whichever trunk/canopy index was picked.
+    private const int BranchVariantSalt = 407;
+    private const int BranchBrightnessSalt = 408;
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
@@ -55,12 +61,16 @@ public partial class ResourceNodeView : Area3D
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Color _baseColor;
     private int _variantIndex;
+    private int _branchVariantIndex;
     private Sprite3D _sprite = null!;
     private string _spriteTexturePath = null!;
     private Color _normalModulate;
     private Sprite3D? _trunk;
     private string? _trunkTexturePath;
     private Color _trunkNormalModulate;
+    private Sprite3D? _branches;
+    private string? _branchesTexturePath;
+    private Color _branchesNormalModulate;
     private Sprite3D? _fruitOverlay;
     private bool _isHovered;
 
@@ -119,6 +129,23 @@ public partial class ResourceNodeView : Area3D
             _spriteTexturePath = CanopyTexturePathFor();
             _sprite = BillboardSprite.Create(_spriteTexturePath, Size, fallbackColor);
             _sprite.Modulate *= LayerBrightnessVariation(CanopyBrightnessSalt);
+
+            // Chosen independently of the trunk/canopy variant above (own salt) - see
+            // BranchVariantSalt's own comment for why. Bare twig tips poking past the
+            // canopy's edge near the trunk (see art/generate_sprites.py's
+            // _fruit_tree_branch_layer) - wood, so it never fades either.
+            if (HasBranchLayer(_kind))
+            {
+                var branchVariantCount = BranchVariantCount(_kind);
+                _branchVariantIndex = branchVariantCount > 1 ? EntityVisualVariation.IndexFor(_nodeId.Value, BranchVariantSalt, branchVariantCount) : 0;
+
+                _branchesTexturePath = BranchesTexturePathFor();
+                _branches = BillboardSprite.Create(_branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
+                _branches.Modulate *= LayerBrightnessVariation(BranchBrightnessSalt);
+                _branches.FlipH = mirrored;
+                _branchesNormalModulate = _branches.Modulate;
+                AddChild(_branches);
+            }
         }
         else
         {
@@ -154,9 +181,16 @@ public partial class ResourceNodeView : Area3D
         // only exists as separate trunk/canopy files) - the true silhouette is the union of
         // both layers' own extents, which is exactly what the old single combined image's
         // extent already amounted to.
-        var extent = _trunk is not null
-            ? CombineExtents(SpriteVisibleExtent.Compute(_trunkTexturePath!, Size), SpriteVisibleExtent.Compute(_spriteTexturePath, Size))
-            : SpriteVisibleExtent.Compute(_spriteTexturePath, Size);
+        var extent = SpriteVisibleExtent.Compute(_spriteTexturePath, Size);
+        if (_trunk is not null)
+        {
+            extent = CombineExtents(extent, SpriteVisibleExtent.Compute(_trunkTexturePath!, Size));
+        }
+
+        if (_branches is not null)
+        {
+            extent = CombineExtents(extent, SpriteVisibleExtent.Compute(_branchesTexturePath!, Size));
+        }
         // The extent is computed from the unflipped texture - a mirrored sprite's visible
         // content sits the same distance from center but on the opposite side.
         var centerXOffset = mirrored ? -extent.CenterXOffset : extent.CenterXOffset;
@@ -185,13 +219,19 @@ public partial class ResourceNodeView : Area3D
         _sprite.Modulate = hovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
         _sprite.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
 
-        // The trunk highlights together with the canopy - hover is a single "this whole
-        // tree is what you're pointing at" signal, unlike occlusion fade where the two
-        // layers deliberately behave differently.
+        // The trunk (and branches) highlight together with the canopy - hover is a single
+        // "this whole tree is what you're pointing at" signal, unlike occlusion fade where
+        // the layers deliberately behave differently.
         if (_trunk is not null)
         {
             _trunk.Modulate = hovered ? HoverHighlight.TintFor(_trunkNormalModulate) : _trunkNormalModulate;
             _trunk.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+        }
+
+        if (_branches is not null)
+        {
+            _branches.Modulate = hovered ? HoverHighlight.TintFor(_branchesNormalModulate) : _branchesNormalModulate;
+            _branches.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
         }
     }
 
@@ -237,10 +277,12 @@ public partial class ResourceNodeView : Area3D
     }
 
     // A split tree has no single combined texture any more (see _Ready) - a point counts as
-    // opaque if it lands on either layer's own opaque pixels, since together they
-    // reconstruct exactly the same silhouette a single combined texture used to represent.
+    // opaque if it lands on any layer's own opaque pixels, since together they reconstruct
+    // exactly the same silhouette a single combined texture used to represent (branches
+    // included - a click on a bare twig tip should still select the tree).
     private bool IsOpaqueOnAnyLayer(Camera3D camera, Vector3 worldPosition) =>
         (_trunk is not null && SpritePixelHit.IsOpaqueAt(camera, worldPosition, _trunk, _trunkTexturePath!))
+        || (_branches is not null && SpritePixelHit.IsOpaqueAt(camera, worldPosition, _branches, _branchesTexturePath!))
         || SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _spriteTexturePath);
 
     // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
@@ -280,6 +322,16 @@ public partial class ResourceNodeView : Area3D
 
     private string CanopyTexturePathFor() => VariantSuffixed(InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
 
+    // Shared, kind-independent asset (art/generate_sprites.py's _generic_tree_branch_layer)
+    // - not derived from this kind's own texture path at all, unlike trunk/canopy. Its
+    // anchor positions are pre-computed to clear the fruit-tree canopy family's shapes
+    // specifically (see KindsWithGenericBranches), so every compatible kind quite
+    // literally shares the exact same three files instead of each baking its own
+    // near-duplicate copy.
+    private const string SharedBranchesBasePath = "res://Content/branches/tree_branches.png";
+
+    private string BranchesTexturePathFor() => VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
+
     private static string InsertBeforeExtension(string path, string suffix)
     {
         var dot = path.LastIndexOf('.');
@@ -316,6 +368,55 @@ public partial class ResourceNodeView : Area3D
         }
 
         TreeVariantCountCache[kind] = count;
+        return count;
+    }
+
+    // Geometrically valid only for kinds that share the fruit-tree canopy formula
+    // (art/generate_sprites.py's _FRUIT_TREE_CANOPY_VARIANTS) - the shared branch layer's
+    // anchor positions are pre-computed to clear specifically that family's canopy
+    // shapes. conifer_tree's canopy is a different, independently-tiered shape (see
+    // WorldState... no, generate_sprites.py's random_conifer_tiers) that was never
+    // checked against, so it stays excluded rather than risking a branch drawn across
+    // its leaves for real trees that happen to roll an unlucky tier layout.
+    private static readonly HashSet<string> KindsWithGenericBranches = new() { "apple", "pear", "deciduous_tree" };
+
+    private static readonly Dictionary<ResourceKindId, bool> HasBranchLayerCache = new();
+    private static readonly Dictionary<ResourceKindId, int> BranchVariantCountCache = new();
+
+    private static bool HasBranchLayer(ResourceKindId kind)
+    {
+        if (HasBranchLayerCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
+        var exists = KindsWithGenericBranches.Contains(kind.Value) && ResourceLoader.Exists(SharedBranchesBasePath);
+        HasBranchLayerCache[kind] = exists;
+        return exists;
+    }
+
+    // Same probing pattern as TreeVariantCount, but for the shared branches layer's own,
+    // independent set of variants - identical for every kind that uses it, but still
+    // cached per kind since callers key everything else off ResourceKindId too.
+    private static int BranchVariantCount(ResourceKindId kind)
+    {
+        if (BranchVariantCountCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
+        var count = 1;
+        for (var variant = 1; variant < MaxTreeVariantProbe; variant++)
+        {
+            if (!ResourceLoader.Exists(VariantSuffixed(SharedBranchesBasePath, variant)))
+            {
+                break;
+            }
+
+            count++;
+        }
+
+        BranchVariantCountCache[kind] = count;
         return count;
     }
 
