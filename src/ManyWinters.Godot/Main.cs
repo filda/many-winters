@@ -558,7 +558,8 @@ public partial class Main : Node3D
 
     private void OnSpawnButtonPressed()
     {
-        _world.Execute(new SpawnPersonCommand($"Person {_world.People.Count + 1}", FindFreeSpawnPosition()));
+        var name = PersonNames.Pool[Random.Shared.Next(PersonNames.Pool.Length)];
+        _world.Execute(new SpawnPersonCommand(name, FindFreeSpawnPosition()));
     }
 
     private void OnCraftButtonPressed()

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Maps;
@@ -9,12 +10,6 @@ public static class MapLoader
     // the actual Rokytka waterway runs well south of here (see art/fetch_stream.py's output),
     // so the camp sits on dry ground rather than in the middle of a real river.
     private static readonly Position CampCenter = new(5, 250);
-
-    private static readonly string[] StartingNames =
-    [
-        "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
-        "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
-    ];
 
     // A small band's age spread (winters) rather than fifteen newborns or fifteen near-identical
     // ages - mostly young/middle, with a couple of elders (MaxLifespanYears is 10). Fixed, not
@@ -122,7 +117,7 @@ public static class MapLoader
             var initialAgeTicks = StartingAgesInWinters[i] * WorldState.TicksPerYear;
             var motherId = StartingMotherIndex[i] is { } motherIndex ? new PersonId(motherIndex + 1) : (PersonId?)null;
             var fatherId = StartingFatherIndex[i] is { } fatherIndex ? new PersonId(fatherIndex + 1) : (PersonId?)null;
-            world.Execute(new SpawnPersonCommand(StartingNames[i], position, initialAgeTicks, motherId, fatherId));
+            world.Execute(new SpawnPersonCommand(PersonNames.Pool[i], position, initialAgeTicks, motherId, fatherId));
         }
 
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(-6f, 5f), 200f));
