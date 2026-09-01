@@ -221,7 +221,16 @@ public sealed class WorldState
                 // standing still first.
                 if (currentTick >= person.IdleGraceUntilTick && ShouldReconsiderIdleTask(person))
                 {
-                    person.Tasks.Interrupt(DecideIdleTask(person));
+                    var decidedTask = DecideIdleTask(person);
+                    // Keep the SAME IdleTask instance while the decision is still "just
+                    // wander" - IdleTask carries its own per-instance state (anchor, current
+                    // leg, pause countdown between legs), which replacing it every single
+                    // tick would silently throw away even though nothing actually changed.
+                    // Genuinely switching task type (to/from GatherTask) always interrupts.
+                    if (decidedTask is not IdleTask || person.Tasks.Current is not IdleTask)
+                    {
+                        person.Tasks.Interrupt(decidedTask);
+                    }
                 }
 
                 // Attempted every tick a gather order is active, not just once on arrival -

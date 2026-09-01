@@ -23,7 +23,12 @@ public class IdleTaskTests
         var person = NewPerson(new Position(3, 4));
         var task = new IdleTask();
 
-        task.Advance(person);
+        // A person pauses briefly before setting off (see IdleTask's own MaxPauseTicks) -
+        // enough ticks to clear even the longest possible pause before a leg starts.
+        for (var i = 0; i < 20; i++)
+        {
+            task.Advance(person);
+        }
 
         Assert.NotEqual(new Position(3, 4), person.Position);
     }
@@ -55,8 +60,13 @@ public class IdleTaskTests
         var avaTask = new IdleTask();
         var branTask = new IdleTask();
 
-        avaTask.Advance(ava);
-        branTask.Advance(bran);
+        // Clears even the longest possible pre-leg pause (see IdleTask's own MaxPauseTicks)
+        // for both of them before comparing positions.
+        for (var i = 0; i < 20; i++)
+        {
+            avaTask.Advance(ava);
+            branTask.Advance(bran);
+        }
 
         Assert.NotEqual(ava.Position, bran.Position);
     }

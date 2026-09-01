@@ -13,12 +13,19 @@ public sealed class IdleTask : PersonTask
     private const float MaxWanderRadius = 8f;
     private const float SpeedPerTick = 0.15f;
 
+    // A person stands still for a bit between wander legs (and before the very first one)
+    // instead of immediately setting off again the instant one ends - without this, idle
+    // reads as restless, constant walking rather than someone occasionally wandering.
+    private const int MinPauseTicks = 3;
+    private const int MaxPauseTicks = 10;
+
     // Seeded from the person, not shared/time-based, so a given person's wander path is
     // reproducible from a given start tick rather than depending on simulation order.
     private Random? _rng;
     private Position? _anchor;
     private float _wanderRadius;
     private MoveTask? _currentLeg;
+    private int _pauseTicksRemaining;
 
     public override bool IsComplete => false;
 
@@ -31,10 +38,17 @@ public sealed class IdleTask : PersonTask
             // Drawn once per person, not per leg - a personal "how far this one tends to
             // roam" rather than everyone sharing the same perimeter.
             _wanderRadius = MinWanderRadius + ((float)_rng.NextDouble() * (MaxWanderRadius - MinWanderRadius));
+            _pauseTicksRemaining = NextPauseTicks();
         }
 
         if (_currentLeg is null)
         {
+            if (_pauseTicksRemaining > 0)
+            {
+                _pauseTicksRemaining--;
+                return;
+            }
+
             _currentLeg = new MoveTask(NextWanderDestination(_anchor!.Value), SpeedPerTick);
         }
 
@@ -42,8 +56,11 @@ public sealed class IdleTask : PersonTask
         if (_currentLeg.IsComplete)
         {
             _currentLeg = null;
+            _pauseTicksRemaining = NextPauseTicks();
         }
     }
+
+    private int NextPauseTicks() => MinPauseTicks + _rng!.Next(MaxPauseTicks - MinPauseTicks + 1);
 
     // Uniform over the disk's area, not its bounding square - same math as MapLoader's
     // starting-crowd scatter (sampling angle and radius independently and uniformly would
