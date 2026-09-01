@@ -63,15 +63,6 @@ public static class MapLoader
     private const int RockCount = 150;
     private const int StumpCount = 25;
     private const int FallenLogCount = 18;
-    private const int WideTreeCount = 70;
-    private const int WideDeciduousTreeCount = 50;
-    private const int WideBushCount = 40;
-    private const int WideGrassCount = 500;
-    private const int WideFlowerCount = 120;
-    private const int WideFernCount = 300;
-    private const int WideRockCount = 30;
-    private const int WideStumpCount = 12;
-    private const int WideFallenLogCount = 8;
     private const int GroveTreeCount = 85;
     private const int GroveDeciduousTreeCount = 55;
     private const int GroveBushCount = 50;
@@ -81,6 +72,32 @@ public static class MapLoader
     private const int GroveRockCount = 30;
     private const int GroveStumpCount = 6;
     private const int GroveFallenLogCount = 4;
+
+    // Beyond the dense zone and the (still-forest-shaped) groves above, the rest of the
+    // terrain used to get only a very thin, uniform "wide pass" - at those counts spread
+    // across the whole terrain radius, that read as basically empty most places. A first
+    // fix scattered a couple dozen hand-picked circular patches (a meadow disk here, a
+    // rocky disk there) instead - visibly better, but still "randomly placed circles", not
+    // organic (todo #21's own follow-up). This instead samples two independent, coherent
+    // noise fields (see Noise2D) per candidate point across the whole open terrain: one
+    // decides how likely anything grows there at all, so genuine soft-edged clearings and
+    // barren stretches emerge instead of just "less of everything everywhere"; the other
+    // decides which biome band a surviving point falls into. Neighboring points naturally
+    // sample similar noise values, so they cluster into soft, irregularly-shaped regions of
+    // the same kind on their own - no explicit "draw a circle here" step at all.
+    private const int OpenWorldBiomeNoiseSeed = 7;
+    private const int OpenWorldDensityNoiseSeed = 8;
+    private const double BiomeNoiseFrequency = 1.0 / 220.0;
+    private const double DensityNoiseFrequency = 1.0 / 140.0;
+    private const int OpenWorldCandidateCount = 16000;
+
+    // Band thresholds over the biome noise's [0, 1] range. Forest is the rarest/densest
+    // band (there's already plenty of forest from the dense zone/groves above; the open
+    // world's own forest patches are a bonus, not the main event) - rocky, the most common,
+    // is everything below MeadowBandMin.
+    private const double ForestBandMin = 0.72;
+    private const double ThicketBandMin = 0.56;
+    private const double MeadowBandMin = 0.38;
 
     // Renewable ground cover/canopy (regenPerTick > 0) gets an amount in line with the
     // existing hand-placed fruit trees/wood pile below; the finite ones (rock/stump/log,
@@ -204,15 +221,67 @@ public static class MapLoader
             SpawnKind(FernKind, GroveFernCount, GroundCoverAmount, groveX, groveY, GroveRadius);
         }
 
-        SpawnKind(ConiferTreeKind, WideTreeCount, WoodAmount, 0, 0, TerrainHalfMeters);
-        SpawnKind(DeciduousTreeKind, WideDeciduousTreeCount, WoodAmount, 0, 0, TerrainHalfMeters);
-        SpawnKind(BushKind, WideBushCount, WoodAmount, 0, 0, TerrainHalfMeters);
-        SpawnKind(GrassKind, WideGrassCount, GroundCoverAmount, 0, 0, TerrainHalfMeters);
-        SpawnKind(FlowerKind, WideFlowerCount, GroundCoverAmount, 0, 0, TerrainHalfMeters);
-        SpawnKind(FernKind, WideFernCount, GroundCoverAmount, 0, 0, TerrainHalfMeters);
-        SpawnRock(WideRockCount, 0, 0, TerrainHalfMeters);
-        SpawnKind(TreeStumpKind, WideStumpCount, DeadWoodAmount, 0, 0, TerrainHalfMeters);
-        SpawnKind(FallenLogKind, WideFallenLogCount, DeadWoodAmount, 0, 0, TerrainHalfMeters);
+        ScatterOpenWorldBiomes(world, rng, occupied);
+    }
+
+    // See OpenWorldCandidateCount's own doc comment for the overall approach. Each
+    // candidate is one independent (x, y) sample across the whole terrain - not a center
+    // point for a cluster - so the two noise fields alone decide both whether it survives
+    // and what grows there; any clustering the result shows is the noise's own spatial
+    // coherence, not code drawing a shape.
+    private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Dictionary<(int, int), List<Position>> occupied)
+    {
+        var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
+        var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
+
+        (ResourceKindId Kind, float Amount) PickMeadowKind()
+        {
+            var roll = rng.NextDouble();
+            if (roll < 0.55)
+            {
+                return (GrassKind, GroundCoverAmount);
+            }
+
+            return roll < 0.8 ? (FlowerKind, GroundCoverAmount) : (FernKind, GroundCoverAmount);
+        }
+
+        (ResourceKindId Kind, float Amount) PickForestKind() =>
+            rng.NextDouble() < 0.55 ? (ConiferTreeKind, WoodAmount) : (DeciduousTreeKind, WoodAmount);
+
+        (ResourceKindId Kind, float Amount) PickThicketKind() =>
+            rng.NextDouble() < 0.6 ? (BushKind, WoodAmount) : (FernKind, GroundCoverAmount);
+
+        for (var i = 0; i < OpenWorldCandidateCount; i++)
+        {
+            var x = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
+            var y = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
+
+            // A roll against the density field, not a hard threshold - points near a
+            // region's edge fade out gradually rather than stopping dead at a boundary.
+            var density = densityNoise.Fbm(x, y, 3, DensityNoiseFrequency);
+            if (rng.NextDouble() > density)
+            {
+                continue;
+            }
+
+            var position = new Position(x, y);
+            if (IsTooCloseToAnExistingDecoration(occupied, position))
+            {
+                continue;
+            }
+
+            var biome = biomeNoise.Fbm(x, y, 3, BiomeNoiseFrequency);
+            var (kind, amount) = biome switch
+            {
+                >= ForestBandMin => PickForestKind(),
+                >= ThicketBandMin => PickThicketKind(),
+                >= MeadowBandMin => PickMeadowKind(),
+                _ => (RockKinds[rng.Next(RockKinds.Length)], RockAmount),
+            };
+
+            world.AddResourceNode(kind, position, amount);
+            MarkOccupied(occupied, position);
+        }
     }
 
     // Same spatial-hash rejection sampling as TerrainRenderer.ScatterDecoration (cell size =
