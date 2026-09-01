@@ -40,15 +40,26 @@ public partial class ResourceNodeView : Area3D
     private const int HeightScaleSalt = 404;
     private const int MirrorSalt = 405;
 
+    // Which of a kind's hand-authored trunk/canopy shape variants (art/generate_sprites.py -
+    // e.g. apple_tree_trunk_v1.png alongside the original apple_tree_trunk.png) this
+    // particular node drew - variant 0 is always the original, unsuffixed asset. Probing
+    // stops at the first missing variant, so this is a sane upper bound, not a promise every
+    // kind actually has this many.
+    private const int TreeVariantSalt = 406;
+    private const int MaxTreeVariantProbe = 8;
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
     private readonly Action<ResourceNodeId> _onSelected;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Color _baseColor;
+    private int _variantIndex;
     private Sprite3D _sprite = null!;
+    private string _spriteTexturePath = null!;
     private Color _normalModulate;
     private Sprite3D? _trunk;
+    private string? _trunkTexturePath;
     private Color _trunkNormalModulate;
     private Sprite3D? _fruitOverlay;
     private bool _isHovered;
@@ -95,18 +106,24 @@ public partial class ResourceNodeView : Area3D
         // or a future tree kind added before its split assets exist).
         if (HasTrunkCanopySplit(_kind))
         {
-            _trunk = BillboardSprite.Create(TrunkTexturePathFor(), Size, fallbackColor, excludeFromOcclusionFade: true);
+            var variantCount = TreeVariantCount(_kind);
+            _variantIndex = variantCount > 1 ? EntityVisualVariation.IndexFor(_nodeId.Value, TreeVariantSalt, variantCount) : 0;
+
+            _trunkTexturePath = TrunkTexturePathFor();
+            _trunk = BillboardSprite.Create(_trunkTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
             _trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
             _trunk.FlipH = mirrored;
             _trunkNormalModulate = _trunk.Modulate;
             AddChild(_trunk);
 
-            _sprite = BillboardSprite.Create(CanopyTexturePathFor(), Size, fallbackColor);
+            _spriteTexturePath = CanopyTexturePathFor();
+            _sprite = BillboardSprite.Create(_spriteTexturePath, Size, fallbackColor);
             _sprite.Modulate *= LayerBrightnessVariation(CanopyBrightnessSalt);
         }
         else
         {
-            _sprite = BillboardSprite.Create(TexturePathFor(), Size, fallbackColor);
+            _spriteTexturePath = TexturePathFor();
+            _sprite = BillboardSprite.Create(_spriteTexturePath, Size, fallbackColor);
         }
 
         _sprite.FlipH = mirrored;
@@ -133,7 +150,13 @@ public partial class ResourceNodeView : Area3D
         // Sized (and centered) to the sprite's actual drawn silhouette, not its full square
         // canvas - a canopy or a small icon doesn't fill the whole nominal Size, so a
         // collision box that size would hover/click-trigger well outside the visible shape.
-        var extent = SpriteVisibleExtent.Compute(TexturePathFor(), Size);
+        // A split tree has no single combined reference image any more (each shape variant
+        // only exists as separate trunk/canopy files) - the true silhouette is the union of
+        // both layers' own extents, which is exactly what the old single combined image's
+        // extent already amounted to.
+        var extent = _trunk is not null
+            ? CombineExtents(SpriteVisibleExtent.Compute(_trunkTexturePath!, Size), SpriteVisibleExtent.Compute(_spriteTexturePath, Size))
+            : SpriteVisibleExtent.Compute(_spriteTexturePath, Size);
         // The extent is computed from the unflipped texture - a mirrored sprite's visible
         // content sits the same distance from center but on the opposite side.
         var centerXOffset = mirrored ? -extent.CenterXOffset : extent.CenterXOffset;
@@ -178,6 +201,18 @@ public partial class ResourceNodeView : Area3D
         return new Color(value, value, value);
     }
 
+    // The true silhouette of a split tree is the union of its trunk's and canopy's own
+    // visible extents - equivalent to what a single combined image's extent already was,
+    // since the two are an exact partition of it (see split_trunk_canopy).
+    private static SpriteVisibleExtent.Extent CombineExtents(SpriteVisibleExtent.Extent a, SpriteVisibleExtent.Extent b)
+    {
+        var minX = Math.Min(a.CenterXOffset - (a.Width / 2f), b.CenterXOffset - (b.Width / 2f));
+        var maxX = Math.Max(a.CenterXOffset + (a.Width / 2f), b.CenterXOffset + (b.Width / 2f));
+        var minY = Math.Min(a.CenterYOffset - (a.Height / 2f), b.CenterYOffset - (b.Height / 2f));
+        var maxY = Math.Max(a.CenterYOffset + (a.Height / 2f), b.CenterYOffset + (b.Height / 2f));
+        return new SpriteVisibleExtent.Extent(maxX - minX, maxY - minY, (minX + maxX) / 2f, (minY + maxY) / 2f);
+    }
+
     private void OnMouseExited() => SetHovered(false);
 
     // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
@@ -185,14 +220,14 @@ public partial class ResourceNodeView : Area3D
     // not just a hypothetical.
     public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
     {
-        var opaque = SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, TexturePathFor());
+        var opaque = IsOpaqueOnAnyLayer(camera, worldPosition);
         SetHovered(opaque);
         return opaque;
     }
 
     public bool TryClickAt(Camera3D camera, Vector3 worldPosition)
     {
-        if (!SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, TexturePathFor()))
+        if (!IsOpaqueOnAnyLayer(camera, worldPosition))
         {
             return false;
         }
@@ -200,6 +235,13 @@ public partial class ResourceNodeView : Area3D
         _onSelected(_nodeId);
         return true;
     }
+
+    // A split tree has no single combined texture any more (see _Ready) - a point counts as
+    // opaque if it lands on either layer's own opaque pixels, since together they
+    // reconstruct exactly the same silhouette a single combined texture used to represent.
+    private bool IsOpaqueOnAnyLayer(Camera3D camera, Vector3 worldPosition) =>
+        (_trunk is not null && SpritePixelHit.IsOpaqueAt(camera, worldPosition, _trunk, _trunkTexturePath!))
+        || SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _spriteTexturePath);
 
     // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
     // fruit layer to show or hide.
@@ -222,21 +264,59 @@ public partial class ResourceNodeView : Area3D
         ? $"res://Content/resources/{kind.Value}/{kind.Value}_tree.png"
         : $"res://Content/resources/{kind.Value}/{kind.Value}.png";
 
-    private string FruitOverlayTexturePath() => $"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png";
+    // Fruit spots are authored per canopy variant (art/generate_sprites.py's
+    // _APPLE_FRUIT_SPOT_VARIANTS/_PEAR_FRUIT_SPOT_VARIANTS) so they land inside whichever
+    // canopy shape this node actually drew, not always the original's.
+    private string FruitOverlayTexturePath() => VariantSuffixed($"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png", _variantIndex);
 
     // Split filenames sit alongside whichever image BaseTexturePathFor already uses as the
     // whole tree - {kind}_tree_trunk.png for a kind with its own dedicated standing-tree
     // sprite (apple, pear...), or {kind}_trunk.png for one that doesn't, since its kind id
     // already ends in "_tree" itself (conifer_tree, deciduous_tree) - {kind}_tree_trunk.png
-    // there would double up the "_tree" and never match the actual asset on disk.
-    private string TrunkTexturePathFor() => InsertBeforeExtension(TexturePathFor(), "_trunk");
+    // there would double up the "_tree" and never match the actual asset on disk. A shape
+    // variant beyond the first (_variantIndex > 0) adds one more suffix on top, e.g.
+    // apple_tree_trunk_v1.png.
+    private string TrunkTexturePathFor() => VariantSuffixed(InsertBeforeExtension(TexturePathFor(), "_trunk"), _variantIndex);
 
-    private string CanopyTexturePathFor() => InsertBeforeExtension(TexturePathFor(), "_canopy");
+    private string CanopyTexturePathFor() => VariantSuffixed(InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
 
     private static string InsertBeforeExtension(string path, string suffix)
     {
         var dot = path.LastIndexOf('.');
         return path[..dot] + suffix + path[dot..];
+    }
+
+    private static string VariantSuffixed(string path, int variant) => variant == 0 ? path : InsertBeforeExtension(path, $"_v{variant}");
+
+    // How many hand-authored trunk/canopy shape variants this kind actually has on disk,
+    // starting from 1 (the original, unsuffixed asset - always assumed present once
+    // HasTrunkCanopySplit is true) and probing _v1, _v2, ... until one is missing. Cached
+    // per kind, same reasoning as HasTreeSprite/HasFruitOverlay below.
+    private static readonly Dictionary<ResourceKindId, int> TreeVariantCountCache = new();
+
+    private static int TreeVariantCount(ResourceKindId kind)
+    {
+        if (TreeVariantCountCache.TryGetValue(kind, out var cached))
+        {
+            return cached;
+        }
+
+        var basePath = BaseTexturePathFor(kind);
+        var count = 1;
+        for (var variant = 1; variant < MaxTreeVariantProbe; variant++)
+        {
+            var trunkPath = VariantSuffixed(InsertBeforeExtension(basePath, "_trunk"), variant);
+            var canopyPath = VariantSuffixed(InsertBeforeExtension(basePath, "_canopy"), variant);
+            if (!ResourceLoader.Exists(trunkPath) || !ResourceLoader.Exists(canopyPath))
+            {
+                break;
+            }
+
+            count++;
+        }
+
+        TreeVariantCountCache[kind] = count;
+        return count;
     }
 
     // Cached per kind (see VisualDefinitionCache above for why per-node ResourceLoader.Exists

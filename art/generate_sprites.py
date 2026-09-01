@@ -1019,8 +1019,12 @@ def random_conifer_tiers(rng):
     return tiers, last_base_y
 
 
-def _conifer_split(name):
-    seed = seed_for(name)
+def _conifer_split(name, variant=0):
+    # Already procedurally randomised (tiers, trunk lean) rather than a fixed silhouette
+    # like the fruit-tree family - a variant is simply a different roll of the same dice,
+    # via a distinct seed, no separate hand-authored shape needed.
+    split_name = _variant_name(name, variant)
+    seed = seed_for(split_name)
     rng = random.Random(seed)
     trunk_base = rgb(0.34, 0.24, 0.15)
     foliage = rgb(0.36, 0.42, 0.26)
@@ -1039,7 +1043,7 @@ def _conifer_split(name):
 
     tier_masks = [lobe_cluster_mask(apex, left, right, rng, rows=rng.choice([2, 3, 3])) for apex, right, left in tiers]
 
-    return split_trunk_canopy(name, trunk_mask, tier_masks, trunk_base, foliage)
+    return split_trunk_canopy(split_name, trunk_mask, tier_masks, trunk_base, foliage)
 
 
 def conifer_tree():
@@ -1052,6 +1056,22 @@ def conifer_tree_trunk():
 
 def conifer_tree_canopy():
     return _conifer_split("conifer_tree")[2]
+
+
+def conifer_tree_trunk_v1():
+    return _conifer_split("conifer_tree", 1)[1]
+
+
+def conifer_tree_canopy_v1():
+    return _conifer_split("conifer_tree", 1)[2]
+
+
+def conifer_tree_trunk_v2():
+    return _conifer_split("conifer_tree", 2)[1]
+
+
+def conifer_tree_canopy_v2():
+    return _conifer_split("conifer_tree", 2)[2]
 
 
 # Three hand-authored angular boulder outlines (8 points each, same walk order: top-
@@ -1193,19 +1213,59 @@ def rock_cluster():
     return c
 
 
-def _fruit_tree_canopy():
-    return (ellipse(32, 26, 22, 17) | ellipse(18, 30, 13, 12)
-            | ellipse(46, 30, 13, 12) | ellipse(32, 12, 15, 12))
+# Three hand-varied lobe arrangements per fruit-tree canopy (main, left, right, top -
+# each (cx, cy, rx, ry)) - same "four overlapping ellipses" formula every time (keeps the
+# silhouette identity readable as "this kind of tree"), but genuinely different
+# proportions/positions per variant, not just different hatch noise. Variant 0 is the
+# original, unchanged shape.
+_FRUIT_TREE_CANOPY_VARIANTS = [
+    [(32, 26, 22, 17), (18, 30, 13, 12), (46, 30, 13, 12), (32, 12, 15, 12)],
+    [(34, 24, 20, 19), (16, 34, 12, 11), (47, 26, 15, 13), (30, 9, 13, 11)],
+    [(31, 29, 24, 15), (14, 28, 14, 13), (49, 32, 12, 11), (33, 15, 17, 10)],
+]
+
+# Matching trunk quads (4 corner points each) - a plain quad, not jagged, same as the
+# original (see _fruit_tree_bare's own note on why the canopy isn't jagged either).
+_FRUIT_TREE_TRUNK_VARIANTS = [
+    [(29, 44), (35, 44), (35, GROUND_CONTACT_Y), (29, GROUND_CONTACT_Y)],
+    [(27, 44), (32, 44), (35, GROUND_CONTACT_Y), (30, GROUND_CONTACT_Y)],
+    [(30, 45), (37, 45), (34, GROUND_CONTACT_Y), (27, GROUND_CONTACT_Y)],
+]
+
+# Fruit spot positions matched to each canopy variant above (same lobe centers, so the
+# dots still land inside the canopy regardless of which variant is showing).
+_APPLE_FRUIT_SPOT_VARIANTS = [
+    ((22, 24, 3), (40, 20, 3), (30, 34, 3), (46, 32, 2), (18, 38, 2)),
+    ((34, 24, 3), (16, 34, 3), (47, 26, 3), (30, 9, 2), (38, 30, 2)),
+    ((31, 29, 3), (14, 28, 3), (49, 32, 3), (33, 15, 2), (38, 34, 2)),
+]
+_PEAR_FRUIT_SPOT_VARIANTS = [
+    ((24, 22, 3), (42, 22, 3), (32, 36, 3), (44, 34, 2), (20, 36, 2)),
+    ((30, 26, 3), (18, 32, 3), (44, 28, 3), (32, 11, 2), (40, 32, 2)),
+    ((28, 30, 3), (17, 30, 3), (46, 34, 3), (35, 17, 2), (36, 36, 2)),
+]
 
 
-def _fruit_tree_split(name):
+def _variant_name(name, variant):
+    return name if variant == 0 else f"{name}_v{variant}"
+
+
+def _fruit_tree_canopy(variant=0):
+    mask = None
+    for cx, cy, rx, ry in _FRUIT_TREE_CANOPY_VARIANTS[variant]:
+        lobe = ellipse(cx, cy, rx, ry)
+        mask = lobe if mask is None else (mask | lobe)
+    return mask
+
+
+def _fruit_tree_split(name, variant=0):
     trunk = rgb(0.34, 0.24, 0.15)
     foliage = rgb(0.30, 0.38, 0.22)
-    trunk_mask = rect(29, 44, 35, GROUND_CONTACT_Y)
-    return split_trunk_canopy(name, trunk_mask, [_fruit_tree_canopy()], trunk, foliage)
+    trunk_mask = poly(_FRUIT_TREE_TRUNK_VARIANTS[variant])
+    return split_trunk_canopy(_variant_name(name, variant), trunk_mask, [_fruit_tree_canopy(variant)], trunk, foliage)
 
 
-def _fruit_tree_bare(name):
+def _fruit_tree_bare(name, variant=0):
     """Shared deciduous canopy for the fruit-tree sprites - only the fruit color/
     placement differs between kinds, so the two trees stay readable as "the same kind
     of tree" at a glance. The canopy is a union of ellipses, not jagged (see the note
@@ -1214,16 +1274,16 @@ def _fruit_tree_bare(name):
     This is the WHOLE tree - a picked-clean node renders exactly this, with no fruit.
     _fruit_overlay is a second, separately composited layer (see ResourceNodeView) so a
     node with no stock left doesn't need its own distinct "bare" texture asset."""
-    return _fruit_tree_split(name)[0]
+    return _fruit_tree_split(name, variant)[0]
 
 
-def _fruit_overlay(name, fruit_color, fruit_spots):
+def _fruit_overlay(name, fruit_color, fruit_spots, variant=0):
     """Just the fruit dots, on an otherwise-transparent canvas, masked to the same
     canopy footprint _fruit_tree_bare fills - no outline of its own, since it's always
     composited on top of the bare tree's already-outlined canopy, never shown alone."""
-    seed = seed_for(name)
+    seed = seed_for(_variant_name(name, variant))
     c = Canvas(seed)
-    canopy = _fruit_tree_canopy()
+    canopy = _fruit_tree_canopy(variant)
     for px, py, r in fruit_spots:
         c.flat(ellipse(px, py, r, r) & canopy, fruit_color)
     return c
@@ -1242,9 +1302,31 @@ def apple_tree_canopy():
 
 
 def apple_tree_fruit():
-    return _fruit_overlay(
-        "apple_tree", rgb(0.70, 0.18, 0.16),
-        ((22, 24, 3), (40, 20, 3), (30, 34, 3), (46, 32, 2), (18, 38, 2)))
+    return _fruit_overlay("apple_tree", rgb(0.70, 0.18, 0.16), _APPLE_FRUIT_SPOT_VARIANTS[0])
+
+
+def apple_tree_trunk_v1():
+    return _fruit_tree_split("apple_tree", 1)[1]
+
+
+def apple_tree_canopy_v1():
+    return _fruit_tree_split("apple_tree", 1)[2]
+
+
+def apple_tree_fruit_v1():
+    return _fruit_overlay("apple_tree", rgb(0.70, 0.18, 0.16), _APPLE_FRUIT_SPOT_VARIANTS[1], variant=1)
+
+
+def apple_tree_trunk_v2():
+    return _fruit_tree_split("apple_tree", 2)[1]
+
+
+def apple_tree_canopy_v2():
+    return _fruit_tree_split("apple_tree", 2)[2]
+
+
+def apple_tree_fruit_v2():
+    return _fruit_overlay("apple_tree", rgb(0.70, 0.18, 0.16), _APPLE_FRUIT_SPOT_VARIANTS[2], variant=2)
 
 
 def pear_tree():
@@ -1260,9 +1342,31 @@ def pear_tree_canopy():
 
 
 def pear_tree_fruit():
-    return _fruit_overlay(
-        "pear_tree", rgb(0.62, 0.68, 0.20),
-        ((24, 22, 3), (42, 22, 3), (32, 36, 3), (44, 34, 2), (20, 36, 2)))
+    return _fruit_overlay("pear_tree", rgb(0.62, 0.68, 0.20), _PEAR_FRUIT_SPOT_VARIANTS[0])
+
+
+def pear_tree_trunk_v1():
+    return _fruit_tree_split("pear_tree", 1)[1]
+
+
+def pear_tree_canopy_v1():
+    return _fruit_tree_split("pear_tree", 1)[2]
+
+
+def pear_tree_fruit_v1():
+    return _fruit_overlay("pear_tree", rgb(0.62, 0.68, 0.20), _PEAR_FRUIT_SPOT_VARIANTS[1], variant=1)
+
+
+def pear_tree_trunk_v2():
+    return _fruit_tree_split("pear_tree", 2)[1]
+
+
+def pear_tree_canopy_v2():
+    return _fruit_tree_split("pear_tree", 2)[2]
+
+
+def pear_tree_fruit_v2():
+    return _fruit_overlay("pear_tree", rgb(0.62, 0.68, 0.20), _PEAR_FRUIT_SPOT_VARIANTS[2], variant=2)
 
 
 def deciduous_tree():
@@ -1278,6 +1382,22 @@ def deciduous_tree_trunk():
 
 def deciduous_tree_canopy():
     return _fruit_tree_split("deciduous_tree")[2]
+
+
+def deciduous_tree_trunk_v1():
+    return _fruit_tree_split("deciduous_tree", 1)[1]
+
+
+def deciduous_tree_canopy_v1():
+    return _fruit_tree_split("deciduous_tree", 1)[2]
+
+
+def deciduous_tree_trunk_v2():
+    return _fruit_tree_split("deciduous_tree", 2)[1]
+
+
+def deciduous_tree_canopy_v2():
+    return _fruit_tree_split("deciduous_tree", 2)[2]
 
 
 def bush():
@@ -1455,16 +1575,36 @@ SPRITES = {
     "conifer_tree": conifer_tree,
     "conifer_tree_trunk": conifer_tree_trunk,
     "conifer_tree_canopy": conifer_tree_canopy,
+    "conifer_tree_trunk_v1": conifer_tree_trunk_v1,
+    "conifer_tree_canopy_v1": conifer_tree_canopy_v1,
+    "conifer_tree_trunk_v2": conifer_tree_trunk_v2,
+    "conifer_tree_canopy_v2": conifer_tree_canopy_v2,
     "deciduous_tree": deciduous_tree,
     "deciduous_tree_trunk": deciduous_tree_trunk,
     "deciduous_tree_canopy": deciduous_tree_canopy,
+    "deciduous_tree_trunk_v1": deciduous_tree_trunk_v1,
+    "deciduous_tree_canopy_v1": deciduous_tree_canopy_v1,
+    "deciduous_tree_trunk_v2": deciduous_tree_trunk_v2,
+    "deciduous_tree_canopy_v2": deciduous_tree_canopy_v2,
     "apple_tree": apple_tree,
     "apple_tree_trunk": apple_tree_trunk,
     "apple_tree_canopy": apple_tree_canopy,
     "apple_tree_fruit": apple_tree_fruit,
+    "apple_tree_trunk_v1": apple_tree_trunk_v1,
+    "apple_tree_canopy_v1": apple_tree_canopy_v1,
+    "apple_tree_fruit_v1": apple_tree_fruit_v1,
+    "apple_tree_trunk_v2": apple_tree_trunk_v2,
+    "apple_tree_canopy_v2": apple_tree_canopy_v2,
+    "apple_tree_fruit_v2": apple_tree_fruit_v2,
     "pear_tree": pear_tree,
     "pear_tree_trunk": pear_tree_trunk,
     "pear_tree_canopy": pear_tree_canopy,
+    "pear_tree_trunk_v1": pear_tree_trunk_v1,
+    "pear_tree_canopy_v1": pear_tree_canopy_v1,
+    "pear_tree_fruit_v1": pear_tree_fruit_v1,
+    "pear_tree_trunk_v2": pear_tree_trunk_v2,
+    "pear_tree_canopy_v2": pear_tree_canopy_v2,
+    "pear_tree_fruit_v2": pear_tree_fruit_v2,
     "pear_tree_fruit": pear_tree_fruit,
     "bush": bush,
     "grass": grass,
