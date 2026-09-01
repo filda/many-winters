@@ -32,6 +32,14 @@ public partial class ResourceNodeView : Area3D
     private const float BrightnessJitterMin = 0.85f;
     private const float BrightnessJitterMax = 1.1f;
 
+    // Width and height used to be one shared EntityVisualVariation.Scale draw - every
+    // instance was a uniformly bigger/smaller copy of the same proportions. Separate salts
+    // let a given tree end up tall-and-narrow or short-and-wide instead of just "the same
+    // shape at a different zoom level".
+    private const int WidthScaleSalt = 403;
+    private const int HeightScaleSalt = 404;
+    private const int MirrorSalt = 405;
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
@@ -65,7 +73,15 @@ public partial class ResourceNodeView : Area3D
         InputRayPickable = true;
 
         var fallbackColor = EntityVisualVariation.Tint(_baseColor, _nodeId.Value);
-        Scale = Vector3.One * EntityVisualVariation.Scale(_nodeId.Value, MinScale, MaxScale);
+        var widthScale = EntityVisualVariation.RangeFor(_nodeId.Value, WidthScaleSalt, MinScale, MaxScale);
+        var heightScale = EntityVisualVariation.RangeFor(_nodeId.Value, HeightScaleSalt, MinScale, MaxScale);
+        Scale = new Vector3(widthScale, heightScale, widthScale);
+
+        // A coin flip, not a continuous value - shared by every layer below (trunk, canopy,
+        // fruit) so they stay aligned with each other; flipping trunk and canopy
+        // independently would misalign a silhouette that was authored - and split - as one
+        // asymmetric shape.
+        var mirrored = EntityVisualVariation.RangeFor(_nodeId.Value, MirrorSalt, 0f, 1f) < 0.5f;
 
         var groundShadow = GroundShadow.Create(Size * ShadowDiameterRatio);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
@@ -81,6 +97,7 @@ public partial class ResourceNodeView : Area3D
         {
             _trunk = BillboardSprite.Create(TrunkTexturePathFor(), Size, fallbackColor, excludeFromOcclusionFade: true);
             _trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
+            _trunk.FlipH = mirrored;
             _trunkNormalModulate = _trunk.Modulate;
             AddChild(_trunk);
 
@@ -92,6 +109,7 @@ public partial class ResourceNodeView : Area3D
             _sprite = BillboardSprite.Create(TexturePathFor(), Size, fallbackColor);
         }
 
+        _sprite.FlipH = mirrored;
         _normalModulate = _sprite.Modulate;
         AddChild(_sprite);
 
@@ -108,6 +126,7 @@ public partial class ResourceNodeView : Area3D
                 fallbackColor,
                 SpriteBase3D.AlphaCutMode.Disabled,
                 FruitOverlayRenderPriority);
+            _fruitOverlay.FlipH = mirrored;
             AddChild(_fruitOverlay);
         }
 
@@ -115,10 +134,13 @@ public partial class ResourceNodeView : Area3D
         // canvas - a canopy or a small icon doesn't fill the whole nominal Size, so a
         // collision box that size would hover/click-trigger well outside the visible shape.
         var extent = SpriteVisibleExtent.Compute(TexturePathFor(), Size);
+        // The extent is computed from the unflipped texture - a mirrored sprite's visible
+        // content sits the same distance from center but on the opposite side.
+        var centerXOffset = mirrored ? -extent.CenterXOffset : extent.CenterXOffset;
         AddChild(new CollisionShape3D
         {
             Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) },
-            Position = new Vector3(extent.CenterXOffset, extent.CenterYOffset, 0),
+            Position = new Vector3(centerXOffset, extent.CenterYOffset, 0),
         });
 
         InputEvent += OnInputEvent;

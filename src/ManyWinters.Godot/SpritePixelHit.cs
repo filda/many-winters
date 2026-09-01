@@ -94,10 +94,13 @@ public static class SpritePixelHit
         var localUp = offset.Dot(up);
 
         // Accumulated parent+self scale (EntityVisualVariation, HoverHighlight, ...) - PixelSize
-        // alone is fixed at creation time and doesn't reflect either.
-        var scale = sprite.GlobalTransform.Basis.Scale.X;
-        var halfWidth = (sprite.PixelSize * sprite.Texture.GetWidth() * scale) / 2f;
-        var halfHeight = (sprite.PixelSize * sprite.Texture.GetHeight() * scale) / 2f;
+        // alone is fixed at creation time and doesn't reflect either. Width and height read
+        // their own axis rather than sharing one - ResourceNodeView can give a resource
+        // independent width/height scaling (a tall-narrow vs. short-wide tree), so the two no
+        // longer necessarily match.
+        var scale = sprite.GlobalTransform.Basis.Scale;
+        var halfWidth = (sprite.PixelSize * sprite.Texture.GetWidth() * scale.X) / 2f;
+        var halfHeight = (sprite.PixelSize * sprite.Texture.GetHeight() * scale.Y) / 2f;
         if (halfWidth <= 0f || halfHeight <= 0f)
         {
             return false;
@@ -110,6 +113,15 @@ public static class SpritePixelHit
         if (u is < 0f or > 1f || v is < 0f or > 1f)
         {
             return false;
+        }
+
+        // FlipH mirrors the rendered texture horizontally (ResourceNodeView's per-instance
+        // mirroring) without touching the node's actual transform, so this manual UV lookup
+        // has to mirror U itself too or it would sample the wrong side of an asymmetric
+        // silhouette - reading opaque where the flipped render is actually transparent.
+        if (sprite.FlipH)
+        {
+            u = 1f - u;
         }
 
         uv = new Vector2(u, v);
