@@ -543,11 +543,27 @@ public sealed class WorldState
     // not match their exact silhouette.
     private const float PersonCollisionRadius = 0.35f;
 
+    // Caps how far a single tick's worth of untangling can shove someone, regardless of how
+    // many things they happen to be overlapping at once (a person standing in a dense thicket
+    // could otherwise be touching several trees' trunks simultaneously, and summing every one
+    // of those separations unclamped could shove them noticeably farther in one tick than
+    // their own MoveTask/IdleTask step - reading as the person's walk order having been
+    // silently hijacked toward some unrelated direction rather than a gentle nudge out of the
+    // way). Same order of magnitude as MoveCommand's own walking speed, so being untangled
+    // never outpaces an intentional step; a person still deeply stuck simply takes a couple of
+    // extra ticks to fully clear, spread out rather than dumped in one lurch.
+    private const float MaxCollisionPushPerTick = 1f;
+
     // MoveTask/IdleTask only ever aim at a destination, with no awareness of who/what else is
     // already there, so this untangles whatever overlap that produced after the fact, every
-    // tick - same O(n^2)-over-people precedent as AutoTeachNearbyPeople.
+    // tick - same O(n^2)-over-people precedent as AutoTeachNearbyPeople. Every separation this
+    // tick is computed against positions as they stood at the start of it (not updated
+    // mid-pass) and summed into one push per person, only applied - clamped - at the end, so
+    // the order overlaps happen to be discovered in can't itself bias the result.
     private void ResolveCollisions()
     {
+        var pushes = new (double X, double Y)[_people.Count];
+
         for (var i = 0; i < _people.Count; i++)
         {
             var a = _people[i];
@@ -564,31 +580,54 @@ public sealed class WorldState
                     continue;
                 }
 
-                a.Position = new Position(a.Position.X + (pushX / 2), a.Position.Y + (pushY / 2));
-                b.Position = new Position(b.Position.X - (pushX / 2), b.Position.Y - (pushY / 2));
+                pushes[i] = (pushes[i].X + (pushX / 2), pushes[i].Y + (pushY / 2));
+                pushes[j] = (pushes[j].X - (pushX / 2), pushes[j].Y - (pushY / 2));
             }
         }
 
-        foreach (var person in _people)
+        for (var i = 0; i < _people.Count; i++)
         {
+            var person = _people[i];
             if (!person.IsAlive)
             {
                 continue;
             }
 
+            var (pushX, pushY) = pushes[i];
             foreach (var node in _resourceNodes)
             {
                 var collisionRadius = ResourceCatalog.Get(node.Kind).CollisionRadius;
                 if (!node.IsAlive
                     || collisionRadius <= 0f
-                    || !TrySeparation(person.Position, node.Position, PersonCollisionRadius + collisionRadius, out var pushX, out var pushY))
+                    || !TrySeparation(person.Position, node.Position, PersonCollisionRadius + collisionRadius, out var nodePushX, out var nodePushY))
                 {
                     continue;
                 }
 
-                person.Position = new Position(person.Position.X + pushX, person.Position.Y + pushY);
+                pushX += nodePushX;
+                pushY += nodePushY;
             }
+
+            ApplyClampedPush(person, pushX, pushY);
         }
+    }
+
+    private static void ApplyClampedPush(Person person, double pushX, double pushY)
+    {
+        var magnitude = Math.Sqrt((pushX * pushX) + (pushY * pushY));
+        if (magnitude <= 0.0)
+        {
+            return;
+        }
+
+        if (magnitude > MaxCollisionPushPerTick)
+        {
+            var scale = MaxCollisionPushPerTick / magnitude;
+            pushX *= scale;
+            pushY *= scale;
+        }
+
+        person.Position = new Position(person.Position.X + pushX, person.Position.Y + pushY);
     }
 
     // A positive result moves `a` away from `b` by (pushX, pushY) - `b` moves by the negation

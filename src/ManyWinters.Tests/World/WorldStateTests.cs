@@ -701,6 +701,25 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceNeverPushesAPersonFartherThanOneTicksWorthOfWalkingEvenWhenSurroundedByManyTrees()
+    {
+        // A person standing in a dense thicket could be overlapping several trees' trunks at
+        // once. Summing every one of those separations unclamped would shove them noticeably
+        // farther in a single tick than their own walk speed - reading as their move order
+        // having been hijacked toward some unrelated direction rather than a gentle nudge.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        for (var i = 0; i < 8; i++)
+        {
+            world.AddResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100f);
+        }
+
+        world.Advance(1);
+
+        Assert.True(WorldState.Distance(person.Position, new Position(0, 0)) <= 1.0);
+    }
+
+    [Fact]
     public void AdvancePushesAPersonFartherOutOfABiggerRockThanASmallerOne()
     {
         // A rock's real-world footprint - not just whether it happens to be fellable - is
