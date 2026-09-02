@@ -1,1 +1,1 @@
-{ "id": "bush", "displayName": "Bush", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5, "canFell": true, "fellLeavesKind": "wood", "fellLeavesAmount": 30 }
+{ "id": "bush", "displayName": "Bush", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5, "canFell": true, "fellLeavesKind": "wood", "fellLeavesAmount": 30, "collisionRadius": 0.3 }

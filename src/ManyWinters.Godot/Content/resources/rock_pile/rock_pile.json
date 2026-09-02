@@ -1,1 +1,1 @@
-{ "id": "rock_pile", "displayName": "Rock Pile", "skill": "mining", "yieldsItem": "stone", "regenPerTick": 0 }
+{ "id": "rock_pile", "displayName": "Rock Pile", "skill": "mining", "yieldsItem": "stone", "regenPerTick": 0, "collisionRadius": 0.3 }

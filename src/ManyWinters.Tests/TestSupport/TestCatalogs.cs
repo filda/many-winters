@@ -110,6 +110,16 @@ public static class TestCatalogs
     public const float FellTreeStumpYield = 60f;
     public const float FellBushWoodYield = 30f;
 
+    // Mirrors Content/resources/{kind}/{kind}.json's collisionRadius exactly - see
+    // ResourceDefinition.CollisionRadius's own doc comment for why this is a deliberately
+    // separate axis from the billboard sprite's height.
+    public const float FruitTreeCollisionRadius = 0.35f;
+    public const float BushCollisionRadius = 0.3f;
+    public const float ForestTreeCollisionRadius = 0.4f;
+    public const float RockPileCollisionRadius = 0.3f;
+    public const float RockClusterCollisionRadius = 0.45f;
+    public const float RockBoulderCollisionRadius = 0.6f;
+
     // Carry capacity (see CarryCapacity.BaseWeightFor) ramps up with age - most command tests
     // don't care about age at all, so they add people old enough to already be at the full
     // adult baseline rather than a newborn's reduced one.
@@ -119,20 +129,20 @@ public static class TestCatalogs
 
     public static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging, AppleItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
-        new ResourceDefinition(Pear, "Pear", Foraging, PearItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield),
+        new ResourceDefinition(Apple, "Apple", Foraging, AppleItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield, CollisionRadius: FruitTreeCollisionRadius),
+        new ResourceDefinition(Pear, "Pear", Foraging, PearItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield, CollisionRadius: FruitTreeCollisionRadius),
         new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, MushroomItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Potato, "Potato", RootDigging, PotatoItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
         new ResourceDefinition(Grass, "Wild Grass", Foraging, GrassItem, RegenPerTick: GrassRegenPerTick),
-        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield),
-        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield),
-        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellBushWoodYield),
+        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield, CollisionRadius: ForestTreeCollisionRadius),
+        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield, CollisionRadius: ForestTreeCollisionRadius),
+        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellBushWoodYield, CollisionRadius: BushCollisionRadius),
         new ResourceDefinition(Flower, "Flower", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
         new ResourceDefinition(Fern, "Fern", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
-        new ResourceDefinition(RockPile, "Rock Pile", Mining, StoneItem),
-        new ResourceDefinition(RockBoulder, "Rock Boulder", Mining, StoneItem),
-        new ResourceDefinition(RockCluster, "Rock Cluster", Mining, StoneItem),
+        new ResourceDefinition(RockPile, "Rock Pile", Mining, StoneItem, CollisionRadius: RockPileCollisionRadius),
+        new ResourceDefinition(RockBoulder, "Rock Boulder", Mining, StoneItem, CollisionRadius: RockBoulderCollisionRadius),
+        new ResourceDefinition(RockCluster, "Rock Cluster", Mining, StoneItem, CollisionRadius: RockClusterCollisionRadius),
         new ResourceDefinition(TreeStump, "Tree Stump", Woodcutting, WoodItem),
         new ResourceDefinition(FallenLog, "Fallen Log", Woodcutting, WoodItem),
     });

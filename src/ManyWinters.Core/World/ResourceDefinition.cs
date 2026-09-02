@@ -21,7 +21,13 @@ public sealed record ResourceDefinition(
     // WorldState.Advance). float.MaxValue - effectively never - unless a definition opts in
     // with a finite value; a stray 0-multiplier ClimateYield shouldn't kill something by
     // accident just because nobody set this.
-    float TicksToWither = float.MaxValue)
+    float TicksToWither = float.MaxValue,
+    // How solid this resource's real-world footprint is, for WorldState.ResolveCollisions -
+    // 0 (the default) means people can freely walk through it (grass, a mushroom, a tree
+    // stump...). Deliberately independent of the billboard sprite's on-screen height
+    // (ResourceVisualDefinition.WorldHeight, Godot-only): a tall sprite can still be a flat,
+    // walk-through icon, and a short one (a rock pile) can still be genuinely solid.
+    float CollisionRadius = 0f)
 {
     public float YieldMultiplierFor(Climate climate)
     {

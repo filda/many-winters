@@ -258,6 +258,7 @@ public sealed class WorldState
             }
 
             AutoTeachNearbyPeople(currentTick);
+            ResolveCollisions();
 
             foreach (var node in _resourceNodes)
             {
@@ -535,6 +536,88 @@ public sealed class WorldState
 
             new EatCommand(person.Id, kind).Execute(this);
         }
+    }
+
+    // A person's own footprint half-width for collision purposes - deliberately smaller than
+    // PersonView's rendered sprite, this only needs to keep people from visibly overlapping,
+    // not match their exact silhouette.
+    private const float PersonCollisionRadius = 0.35f;
+
+    // MoveTask/IdleTask only ever aim at a destination, with no awareness of who/what else is
+    // already there, so this untangles whatever overlap that produced after the fact, every
+    // tick - same O(n^2)-over-people precedent as AutoTeachNearbyPeople.
+    private void ResolveCollisions()
+    {
+        for (var i = 0; i < _people.Count; i++)
+        {
+            var a = _people[i];
+            if (!a.IsAlive)
+            {
+                continue;
+            }
+
+            for (var j = i + 1; j < _people.Count; j++)
+            {
+                var b = _people[j];
+                if (!b.IsAlive || !TrySeparation(a.Position, b.Position, PersonCollisionRadius * 2f, out var pushX, out var pushY))
+                {
+                    continue;
+                }
+
+                a.Position = new Position(a.Position.X + (pushX / 2), a.Position.Y + (pushY / 2));
+                b.Position = new Position(b.Position.X - (pushX / 2), b.Position.Y - (pushY / 2));
+            }
+        }
+
+        foreach (var person in _people)
+        {
+            if (!person.IsAlive)
+            {
+                continue;
+            }
+
+            foreach (var node in _resourceNodes)
+            {
+                var collisionRadius = ResourceCatalog.Get(node.Kind).CollisionRadius;
+                if (!node.IsAlive
+                    || collisionRadius <= 0f
+                    || !TrySeparation(person.Position, node.Position, PersonCollisionRadius + collisionRadius, out var pushX, out var pushY))
+                {
+                    continue;
+                }
+
+                person.Position = new Position(person.Position.X + pushX, person.Position.Y + pushY);
+            }
+        }
+    }
+
+    // A positive result moves `a` away from `b` by (pushX, pushY) - `b` moves by the negation
+    // of it, wherever the caller wants that applied. False (no push) once they're already far
+    // enough apart. Exactly-coincident positions (distance zero, division would be undefined)
+    // fall back to a fixed direction rather than leaving two things permanently stuck together.
+    private static bool TrySeparation(Position a, Position b, float minDistance, out double pushX, out double pushY)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        var distance = Math.Sqrt((dx * dx) + (dy * dy));
+        if (distance >= minDistance)
+        {
+            pushX = 0;
+            pushY = 0;
+            return false;
+        }
+
+        var overlap = minDistance - distance;
+        if (distance < 0.0001)
+        {
+            pushX = overlap;
+            pushY = 0;
+            return true;
+        }
+
+        pushX = dx / distance * overlap;
+        pushY = dy / distance * overlap;
+        return true;
     }
 
     private static Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);

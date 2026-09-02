@@ -638,6 +638,90 @@ public class WorldStateTests
         Assert.Equal(0f, node.ColdStress);
     }
 
+    [Fact]
+    public void AdvancePushesTwoOverlappingPeopleApart()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var a = world.AddPerson("Ava", new Position(0, 0));
+        var b = world.AddPerson("Bran", new Position(0, 0));
+
+        world.Advance(1);
+
+        Assert.True(WorldState.Distance(a.Position, b.Position) > 0.5);
+    }
+
+    [Fact]
+    public void AdvanceLeavesTwoAlreadyFarApartPeopleExactlyWhereTheyWere()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var a = world.AddPerson("Ava", new Position(0, 0));
+        var b = world.AddPerson("Bran", new Position(10, 0));
+
+        world.Advance(1);
+
+        Assert.Equal(new Position(0, 0), a.Position);
+        Assert.Equal(new Position(10, 0), b.Position);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotPushADeadPersonAwayFromALivingOne()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var dead = world.AddPerson("Ava", new Position(0, 0));
+        dead.IsAlive = false;
+        var living = world.AddPerson("Bran", new Position(0, 0));
+
+        world.Advance(1);
+
+        Assert.Equal(new Position(0, 0), dead.Position);
+    }
+
+    [Fact]
+    public void AdvancePushesAPersonOutOfATreesTrunk()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.AddResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.True(WorldState.Distance(person.Position, new Position(0, 0)) > 0.5);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotPushAPersonAwayFromAWalkThroughResourceLikeGrass()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.AddResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.Equal(new Position(0, 0), person.Position);
+    }
+
+    [Fact]
+    public void AdvancePushesAPersonFartherOutOfABiggerRockThanASmallerOne()
+    {
+        // A rock's real-world footprint - not just whether it happens to be fellable - is
+        // what decides how solid it is; a boulder should shove someone out farther than a
+        // loose pile of rocks with the same starting overlap.
+        var pileWorld = TestCatalogs.CreateWorld();
+        var personNearPile = pileWorld.AddPerson("Ava", new Position(0, 0));
+        pileWorld.AddResourceNode(TestCatalogs.RockPile, new Position(0, 0), 100f);
+
+        var boulderWorld = TestCatalogs.CreateWorld();
+        var personNearBoulder = boulderWorld.AddPerson("Ava", new Position(0, 0));
+        boulderWorld.AddResourceNode(TestCatalogs.RockBoulder, new Position(0, 0), 100f);
+
+        pileWorld.Advance(1);
+        boulderWorld.Advance(1);
+
+        var pushedByPile = WorldState.Distance(personNearPile.Position, new Position(0, 0));
+        var pushedByBoulder = WorldState.Distance(personNearBoulder.Position, new Position(0, 0));
+        Assert.True(pushedByBoulder > pushedByPile);
+    }
+
     [Theory]
     [InlineData(0, 4, 1)]
     [InlineData(2, 1, 3)]

@@ -7,5 +7,6 @@
   "regenPerTick": 1,
   "canFell": true,
   "fellLeavesKind": "wood",
-  "fellLeavesAmount": 30
+  "fellLeavesAmount": 30,
+  "collisionRadius": 0.35
 }
