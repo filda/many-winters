@@ -10,7 +10,9 @@ These are general engineering conventions carried over from other projects, kept
 
 ## Engineering
 
+- All new code arrives with its tests, in the same change. A new type, method, or branch is not done until something exercises it; "tests in a follow-up" is how a mutation score quietly slides.
 - A bugfix is not complete without a test that would fail before the fix and pass after it.
+- Dead code is deleted the moment it becomes dead — an unreachable branch, a helper nothing calls any more, a path something newer has replaced. Don't keep it behind a comment explaining that it can never run, and don't leave it commented out: version control is the archive, and dead code still has to be read, tested, and mutated by everyone who comes past it.
 - Prefer small, extracted, pure/testable helpers for logic that is otherwise hard to test through UI or engine setup code.
 - Standardize a small set of entry-point commands for building, running, and checking the project, so the same commands work the same way regardless of which tool sits behind them.
 - Pin toolchain and dependency versions explicitly rather than floating on "latest", especially where a version mismatch causes hard-to-diagnose breakage.
