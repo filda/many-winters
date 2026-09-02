@@ -47,45 +47,22 @@ public sealed class GatherTask : PersonTask
         // walking - same lazy-first-Advance-call pattern as IdleTask's own _anchor, so this
         // doesn't need a WorldState-aware constructor.
         //
-        // ApproachDistance is shorter than MaxInteractionDistance, so the walk always ends at
-        // the check above rather than at the standoff point itself: the leg never completes,
-        // and neither the caching nor the reset below can be reached by any starting position.
-        // They're kept because the standoff is a rendering choice that could yet be moved past
-        // interaction range, at which point both start mattering again.
-        // Stryker disable all: unreachable while ApproachDistance stays under
-        // MaxInteractionDistance - the reach check above returns before either the caching or
-        // the leg reset can ever come into play
+        // The walk always ends at the reach check above, never at the standoff point itself:
+        // ApproachDistance is shorter than MaxInteractionDistance, so a person is already close
+        // enough to gather before the leg would finish. The leg is therefore only ever cleared
+        // by that check, on the tick it stops the walk.
         _approachPosition ??= ApproachPosition(person.Position, TargetPosition, ApproachDistance);
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);
-
-        // Stryker restore all
         _move.Advance(person);
-
-        // Stryker disable all: as above - the leg never reaches the standoff point, so it
-        // never reports itself complete
-        if (_move.IsComplete)
-        {
-            _move = null;
-        }
-
-        // Stryker restore all
     }
 
+    // Only ever called from further away than standoffDistance (see Advance's reach check), so
+    // the distance below is never zero.
     private static Position ApproachPosition(Position from, Position to, float standoffDistance)
     {
         var dx = from.X - to.X;
         var dy = from.Y - to.Y;
         var distance = Math.Sqrt((dx * dx) + (dy * dy));
-
-        // Stryker disable all: the only caller checks a larger reach first, so nobody already
-        // inside the standoff distance ever gets this far
-        if (distance <= standoffDistance)
-        {
-            return from;
-        }
-
-        // Stryker restore all
-
         var ratio = standoffDistance / distance;
         return new Position(to.X + (dx * ratio), to.Y + (dy * ratio));
     }

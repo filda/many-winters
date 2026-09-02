@@ -523,23 +523,16 @@ public sealed class WorldState
     // out of their own backpack.
     private void TryAutoEat(Person person)
     {
-        // Both checks below only save a pointless call: EatCommand refuses to do anything at
-        // zero hunger anyway, so neither of them can change what a person ends up eating.
-        // Stryker disable all: EatCommand's own zero-hunger check makes these two purely an
-        // early out, never a behaviour of their own
-        if (person.Needs.Hunger <= 0f)
-        {
-            return;
-        }
-
         foreach (var kind in person.Inventory.Counts.Keys.ToList())
         {
+            // Stops walking the rest of the inventory once there's nothing left to satisfy.
+            // Stryker disable once Equality,Statement: EatCommand refuses to do anything at
+            // zero hunger anyway, so this only saves the remaining calls
             if (person.Needs.Hunger <= 0f)
             {
                 break;
             }
 
-            // Stryker restore all
             new EatCommand(person.Id, kind).Execute(this);
         }
     }
