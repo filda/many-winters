@@ -215,27 +215,6 @@ jobs:
           "import exit code: $LASTEXITCODE"
           exit 0
 
-      # DIAGNOSTIC, remove once it has answered its question. The export step is a ten-minute
-      # black box and the guess that NuGet downloads dominated it turned out to be wrong, so
-      # measure the .NET build on its own: whatever it doesn't account for is Godot's packing.
-      # Its intermediate and output paths are deliberately its own, so it can neither warm nor
-      # disturb the real export below - the two numbers stay independent. Forward slashes on
-      # purpose: a trailing backslash before a closing quote is read as an escaped quote.
-      - name: Measure dotnet publish cost
-        continue-on-error: true
-        run: |
-          $root = (Get-Location).Path
-          $sw = [Diagnostics.Stopwatch]::StartNew()
-          dotnet publish src/ManyWinters.Godot/ManyWinters.Godot.csproj `
-            -c ExportRelease -r win-x64 --self-contained `
-            "-p:BaseIntermediateOutputPath=$root/probe/obj/" `
-            "-p:BaseOutputPath=$root/probe/bin/" `
-            -o "$root/probe/out"
-          $elapsed = $sw.Elapsed.TotalSeconds
-          $files = Get-ChildItem "$root/probe/out" -Recurse -File -ErrorAction SilentlyContinue
-          "PROBE: dotnet publish took {0:N0}s, exit {1}" -f $elapsed, $LASTEXITCODE
-          "PROBE: produced {0} files, {1:N0} MB" -f $files.Count, (($files | Measure-Object Length -Sum).Sum / 1MB)
-
       - name: Export Windows build
         run: |
           $ErrorActionPreference = "Stop"
