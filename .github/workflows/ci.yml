@@ -107,6 +107,17 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # Godot's export shells out to `dotnet publish` for a self-contained win-x64 build, which
+      # pulls the .NET runtime packs - a cold restore fetches around 311 MB. No lock files exist,
+      # so the key hashes the project files instead; restore-keys let an unrelated .csproj edit
+      # still reuse the previous cache rather than starting from empty.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
       - name: Compute version
         id: version
         run: |
@@ -215,13 +226,16 @@ jobs:
           # unmangled. Godot reports export failures on stderr and still exits 0, so both matter.
           # It joins ArgumentList with spaces and quotes nothing itself, so every argument has to
           # arrive pre-quoted - otherwise the preset name alone lands as five separate arguments.
+          # Nothing Godot prints reaches the Actions log until it exits, since both its streams
+          # go to files. Without this the step is a ten-minute black box with no timing at all.
+          $sw = [Diagnostics.Stopwatch]::StartNew()
           $godotArgs = @("--headless", "--path", "$root\src\ManyWinters.Godot",
                          "--export-release", $env:EXPORT_PRESET, $out) |
             ForEach-Object { '"' + $_ + '"' }
           $p = Start-Process -FilePath $env:GODOT -NoNewWindow -Wait -PassThru -WorkingDirectory $root `
             -ArgumentList $godotArgs `
             -RedirectStandardOutput "$root\export.out.log" -RedirectStandardError "$root\export.err.log"
-          "godot exit code: $($p.ExitCode)"
+          "godot exit code: $($p.ExitCode) after {0:N0}s" -f $sw.Elapsed.TotalSeconds
           Get-Content "$root\export.out.log" -Tail 20
           Get-Content "$root\export.err.log"
 
