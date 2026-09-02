@@ -74,6 +74,7 @@ public sealed class TerrainRenderer
     private readonly string _groundTexturePath;
     private readonly string _waterwaysPath;
     private HeightmapData _heightmap = null!;
+    private string _heightmapJson = null!;
     private float _minHeight;
 
     // Spatial hash (cell size = MinDecorationSpacing) of every decoration position placed so
@@ -94,6 +95,7 @@ public sealed class TerrainRenderer
     private void LoadHeightmap(string heightmapPath)
     {
         var json = ContentFiles.ReadText(heightmapPath);
+        _heightmapJson = json;
         _heightmap = JsonSerializer.Deserialize<HeightmapData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Heightmap '{heightmapPath}' could not be parsed.");
 
@@ -188,10 +190,87 @@ public sealed class TerrainRenderer
     private static float TerrainBump(float x, float z) =>
         (float)((TerrainBumpNoise.Fbm(x, z, TerrainBumpOctaves, TerrainBumpFrequency) - 0.5) * 2.0) * TerrainBumpAmplitudeMeters;
 
+    // Cache format, bump whenever the vertex/color/UV formula below changes shape (subdivision,
+    // bump noise params, or the low/high terrain colors) - the hash already covers every value
+    // that goes into the mesh, but not the code that combines them, so a formula change with no
+    // constant change wouldn't otherwise invalidate a stale cache.
+    private const int TerrainMeshCacheVersion = 1;
+    private const string TerrainMeshCacheDirectory = "user://terrain_mesh_cache";
+
+    // The whole build below - subdividing a 41x41 heightmap into a 401x401 grid, triangulating
+    // it, and building a matching collision trimesh - is a pure function of the heightmap file
+    // and the constants above; nothing here is random or time-based. Rebuilding it from scratch
+    // every single time the game starts (previously ~1.2s, the single biggest chunk of startup)
+    // buys nothing a cache keyed on those same inputs couldn't skip - a cache hit loads the same
+    // ArrayMesh/Shape3D data back from disk in a few ms instead. Keyed by a hash so a heightmap
+    // edit or a tuning change to the constants above transparently invalidates it, rather than
+    // silently serving stale terrain.
+    private string ComputeMeshCacheKey()
+    {
+        var input = string.Join(
+            '|',
+            TerrainMeshCacheVersion,
+            TerrainSubdivisionsPerCell,
+            TerrainBumpNoiseSeed,
+            TerrainBumpOctaves,
+            TerrainBumpFrequency,
+            TerrainBumpAmplitudeMeters,
+            LowColor,
+            HighColor,
+            _heightmapJson);
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash);
+    }
+
     // Builds the terrain mesh + matching collision into the given parent, and returns that
     // collision body so callers can hook their own click handling onto it (e.g. "click ground
     // to walk there").
     public StaticBody3D BuildTerrainMesh(Node3D parent)
+    {
+        var cacheKey = ComputeMeshCacheKey();
+        var meshCachePath = $"{TerrainMeshCacheDirectory}/{cacheKey}.mesh.res";
+        var shapeCachePath = $"{TerrainMeshCacheDirectory}/{cacheKey}.shape.res";
+
+        Mesh mesh;
+        Shape3D collisionShape;
+        if (ResourceLoader.Exists(meshCachePath) && ResourceLoader.Exists(shapeCachePath))
+        {
+            mesh = ResourceLoader.Load<Mesh>(meshCachePath, cacheMode: ResourceLoader.CacheMode.Replace);
+            collisionShape = ResourceLoader.Load<Shape3D>(shapeCachePath, cacheMode: ResourceLoader.CacheMode.Replace);
+        }
+        else
+        {
+            (mesh, collisionShape) = BuildMeshAndCollision();
+
+            DirAccess.MakeDirRecursiveAbsolute(TerrainMeshCacheDirectory);
+            ResourceSaver.Save(mesh, meshCachePath);
+            ResourceSaver.Save(collisionShape, shapeCachePath);
+        }
+
+        var groundTexture = ResourceLoader.Load<Texture2D>(_groundTexturePath);
+        var meshInstance = new MeshInstance3D
+        {
+            Mesh = mesh,
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoTexture = groundTexture,
+                // LinearWithMipmaps, not Nearest: BillboardSprite's engraving-detail sprites
+                // moved to this filter in 058cf05, but the ground kept the old hard-pixel
+                // filter, so its tiling read as blocky next to everything sitting on it.
+                TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
+                VertexColorUseAsAlbedo = true,
+                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+            },
+        };
+        parent.AddChild(meshInstance);
+
+        var collisionBody = new StaticBody3D { InputRayPickable = true };
+        collisionBody.AddChild(new CollisionShape3D { Shape = collisionShape });
+        parent.AddChild(collisionBody);
+        return collisionBody;
+    }
+
+    private (Mesh Mesh, Shape3D CollisionShape) BuildMeshAndCollision()
     {
         var heights = _heightmap.Heights;
 
@@ -218,19 +297,24 @@ public sealed class TerrainRenderer
         var fineGridSize = FineGridSize;
         var fineCellSize = FineCellSize;
 
-        Vector3 VertexAt(int row, int col)
+        // Each fine-grid vertex is shared by up to 4 quads, so building it inline per quad
+        // (the old VertexAt/ColorAt closures) recomputed the same TerrainBump noise (3 Fbm
+        // octaves) and the same SampleRawHeight bilinear sample up to 4x over - on a 401x401
+        // grid that's ~640,000 redundant noise evaluations instead of the 160,801 actually
+        // needed. Precomputing every vertex/color exactly once here and indexing into it below
+        // avoids that.
+        var vertices = new Vector3[fineGridSize, fineGridSize];
+        var colors = new Color[fineGridSize, fineGridSize];
+        for (var row = 0; row < fineGridSize; row++)
         {
-            var x = (col * fineCellSize) - Half;
-            var z = (row * fineCellSize) - Half;
-            return new Vector3(x, FineVertexHeight(row, col), z);
-        }
-
-        Color ColorAt(int row, int col)
-        {
-            var x = (col * fineCellSize) - Half;
-            var z = (row * fineCellSize) - Half;
-            var t = SampleRawHeight(x, z) / heightRange;
-            return LowColor.Lerp(HighColor, t);
+            for (var col = 0; col < fineGridSize; col++)
+            {
+                var x = (col * fineCellSize) - Half;
+                var z = (row * fineCellSize) - Half;
+                var rawHeight = SampleRawHeight(x, z);
+                vertices[row, col] = new Vector3(x, rawHeight + TerrainBump(x, z), z);
+                colors[row, col] = LowColor.Lerp(HighColor, rawHeight / heightRange);
+            }
         }
 
         Vector2 UvFor(Vector3 vertex) => new Vector2(vertex.X, vertex.Z) / TextureTileMeters;
@@ -242,48 +326,28 @@ public sealed class TerrainRenderer
         {
             for (var col = 0; col < fineGridSize - 1; col++)
             {
-                var a = VertexAt(row, col);
-                var b = VertexAt(row, col + 1);
-                var c = VertexAt(row + 1, col);
-                var d = VertexAt(row + 1, col + 1);
+                var a = vertices[row, col];
+                var b = vertices[row, col + 1];
+                var c = vertices[row + 1, col];
+                var d = vertices[row + 1, col + 1];
 
                 AddTriangle(
                     surfaceTool,
-                    (a, ColorAt(row, col), UvFor(a)),
-                    (b, ColorAt(row, col + 1), UvFor(b)),
-                    (c, ColorAt(row + 1, col), UvFor(c)));
+                    (a, colors[row, col], UvFor(a)),
+                    (b, colors[row, col + 1], UvFor(b)),
+                    (c, colors[row + 1, col], UvFor(c)));
                 AddTriangle(
                     surfaceTool,
-                    (b, ColorAt(row, col + 1), UvFor(b)),
-                    (d, ColorAt(row + 1, col + 1), UvFor(d)),
-                    (c, ColorAt(row + 1, col), UvFor(c)));
+                    (b, colors[row, col + 1], UvFor(b)),
+                    (d, colors[row + 1, col + 1], UvFor(d)),
+                    (c, colors[row + 1, col], UvFor(c)));
             }
         }
 
         surfaceTool.GenerateNormals();
         var mesh = surfaceTool.Commit();
-
-        var groundTexture = ResourceLoader.Load<Texture2D>(_groundTexturePath);
-        var meshInstance = new MeshInstance3D
-        {
-            Mesh = mesh,
-            MaterialOverride = new StandardMaterial3D
-            {
-                AlbedoTexture = groundTexture,
-                // LinearWithMipmaps, not Nearest: BillboardSprite's engraving-detail sprites
-                // moved to this filter in 058cf05, but the ground kept the old hard-pixel
-                // filter, so its tiling read as blocky next to everything sitting on it.
-                TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
-                VertexColorUseAsAlbedo = true,
-                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            },
-        };
-        parent.AddChild(meshInstance);
-
-        var collisionBody = new StaticBody3D { InputRayPickable = true };
-        collisionBody.AddChild(new CollisionShape3D { Shape = mesh.CreateTrimeshShape() });
-        parent.AddChild(collisionBody);
-        return collisionBody;
+        var collisionShape = mesh.CreateTrimeshShape();
+        return (mesh, collisionShape);
     }
 
     private static void AddTriangle(
