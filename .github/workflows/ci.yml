@@ -215,19 +215,6 @@ jobs:
           "import exit code: $LASTEXITCODE"
           exit 0
 
-      # Empirical, and the mechanism is genuinely not understood: a `dotnet` invocation before
-      # the export drops it from ~620s to ~11s. That was found by accident - a diagnostic step
-      # that failed to compile and produced nothing still had the effect, twice, and removing it
-      # put the ten minutes straight back. This is the cheap half of what that step did, with no
-      # compile to emit spurious errors. If the export times in the log climb back to ~620s,
-      # a restore alone isn't enough and the next thing to try is a full publish here.
-      - name: Warm the .NET restore
-        continue-on-error: true
-        run: |
-          $sw = [Diagnostics.Stopwatch]::StartNew()
-          dotnet restore src/ManyWinters.Godot/ManyWinters.Godot.csproj -r win-x64
-          "restore took {0:N0}s, exit {1}" -f $sw.Elapsed.TotalSeconds, $LASTEXITCODE
-
       - name: Export Windows build
         run: |
           $ErrorActionPreference = "Stop"
