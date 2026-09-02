@@ -98,6 +98,17 @@ public partial class ResourceNodeView : Area3D
         var heightScale = EntityVisualVariation.RangeFor(_nodeId.Value, HeightScaleSalt, MinScale, MaxScale);
         Scale = new Vector3(widthScale, heightScale, widthScale);
 
+        // WorldPresenter positioned this node's own origin at groundHeight + Size/2,
+        // assuming Scale stayed 1 - the sprite (centered, spanning local Y from -Size/2 to
+        // +Size/2) then has its bottom edge land exactly on the ground. Scale.Y above
+        // multiplies that -Size/2 by heightScale before it's added to Position, so a
+        // shorter tree (heightScale < 1) floats with a visible gap under it and a taller
+        // one (> 1) sinks in - the very "trees clearly in the air" a live check turned up.
+        // Shifting this node's own Position by the same amount the scale just displaced the
+        // ground-contact point cancels it back out, regardless of which way heightScale
+        // went.
+        Position += new Vector3(0f, (Size / 2f) * (heightScale - 1f), 0f);
+
         // A coin flip, not a continuous value - shared by every layer below (trunk, canopy,
         // fruit) so they stay aligned with each other; flipping trunk and canopy
         // independently would misalign a silhouette that was authored - and split - as one

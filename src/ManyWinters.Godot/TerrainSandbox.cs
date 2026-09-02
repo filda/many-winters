@@ -74,7 +74,8 @@ public partial class TerrainSandbox : Node3D
         _terrain.ScatterDecoration(this, rng, RockCount, new[] { RockPilePath }, RockHeightMeters, RockFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
         _terrain.ScatterDecoration(this, rng, PersonCount, new[] { PersonTexturePath }, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
 
-        _cameraRig = new FreeCameraRig(this, Vector3.Zero, InitialZoomDistance, MinZoom, MaxZoom);
+        var initialPosition = new Vector3(0f, _terrain.SampleHeight(0f, 0f), 0f);
+        _cameraRig = new FreeCameraRig(this, initialPosition, InitialZoomDistance, MinZoom, MaxZoom, _terrain.SampleHeight);
     }
 
     public override void _Process(double delta)

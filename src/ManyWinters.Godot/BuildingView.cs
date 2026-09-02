@@ -25,7 +25,14 @@ public partial class BuildingView : Node3D
     public override void _Ready()
     {
         var fallbackColor = EntityVisualVariation.Tint(ColorFor(_kind), _buildingId.Value);
-        Scale = Vector3.One * EntityVisualVariation.Scale(_buildingId.Value, MinScale, MaxScale);
+        var scale = EntityVisualVariation.Scale(_buildingId.Value, MinScale, MaxScale);
+        Scale = Vector3.One * scale;
+        // Same ground-contact fix as PersonView/ResourceNodeView: WorldPresenter set this
+        // node's own Position assuming Scale stayed 1, so Scale.Y != 1 shifts the sprite's
+        // (and the ground shadow's, both children scaled along with it) bottom edge away
+        // from the ground by Size/2*(scale-1). Shifting Position back by that same amount
+        // cancels it out.
+        Position += new Vector3(0f, (Size / 2f) * (scale - 1f), 0f);
 
         var groundShadow = GroundShadow.Create(ShadowDiameter);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);

@@ -43,10 +43,15 @@ public sealed class FreeCameraRig
     private const float MaxTiltDegrees = 70f;
     private const float TiltSpeedDegreesPerSecond = 45f;
 
+    // Minimum clearance the camera itself keeps above the ground directly under it - see
+    // UpdateCamera's own doc comment.
+    private const float MinCameraGroundClearance = 0.3f;
+
     private readonly Node3D _rig;
     private readonly Camera3D _camera;
     private readonly float _minZoom;
     private readonly float _maxZoom;
+    private readonly Func<float, float, float> _sampleHeight;
     private float _zoomDistance;
     private float _orthographicSize;
     private float _tiltDegrees = DefaultTiltDegrees;
@@ -65,12 +70,22 @@ public sealed class FreeCameraRig
     // IsPositionBehind aren't exposed any other way.
     public Camera3D Camera => _camera;
 
-    public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom)
+    // sampleHeight: the same ground-height function everything else on the ground uses
+    // (TerrainRenderer.SampleHeight) - the rig only ever moves in Main's/TerrainSandbox's
+    // XZ plane on its own (panning), so without this its own Y stays frozen at wherever it
+    // started forever, drifting away from the real terrain height under it as soon as it
+    // pans anywhere the ground isn't at exactly that same height. Harmless-looking on the
+    // old, gentle real elevation (drifts slowly over a large distance); a lot more obvious
+    // once the ground itself got a deliberately short-wavelength bump on top (todo:
+    // "použít Perlinův šum na lehkou modifikaci terénu") - the camera could end up visibly
+    // under a nearby bump after nothing more than ordinary panning.
+    public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom, Func<float, float, float> sampleHeight)
     {
         _minZoom = minZoom;
         _maxZoom = maxZoom;
         _zoomDistance = initialDistance;
         _orthographicSize = initialDistance;
+        _sampleHeight = sampleHeight;
 
         _rig = new Node3D { Position = initialPosition };
         parent.AddChild(_rig);
@@ -127,6 +142,15 @@ public sealed class FreeCameraRig
         _panVelocity = _panVelocity.Lerp(targetPanVelocity, panEase);
         _rig.Position += _panVelocity * delta;
 
+        // Every frame, not just while a pan key is actually held - the cheapest way to
+        // guarantee the rig's own Y never drifts from the real ground height under it,
+        // regardless of how it got to its current (X, Z) (also self-heals a rig that
+        // somehow started off already wrong, rather than only ever getting it right on the
+        // next pan).
+        var rigPosition = _rig.Position;
+        rigPosition.Y = _sampleHeight(rigPosition.X, rigPosition.Z);
+        _rig.Position = rigPosition;
+
         var rotateDirection = 0f;
         if (Input.IsKeyPressed(Key.Q))
         {
@@ -165,8 +189,6 @@ public sealed class FreeCameraRig
             {
                 _zoomDistance = Mathf.Clamp(_zoomDistance * zoomFactor, _minZoom, _maxZoom);
             }
-
-            UpdateCamera();
         }
 
         var tiltDirection = 0f;
@@ -183,8 +205,15 @@ public sealed class FreeCameraRig
         if (tiltDirection != 0f)
         {
             _tiltDegrees = Mathf.Clamp(_tiltDegrees + (tiltDirection * TiltSpeedDegreesPerSecond * delta), MinTiltDegrees, MaxTiltDegrees);
-            UpdateCamera();
         }
+
+        // Unconditional, every frame - not just when zoom/tilt actually changed this frame.
+        // UpdateCamera repositions the camera relative to the rig AND re-checks its own
+        // ground clearance (see its own doc comment) - while that clamp only ran on zoom/
+        // tilt input, ordinary WASD panning could carry the camera briefly *into* a bump
+        // between one of those and the next, with nothing there to catch and correct it
+        // until the player happened to also zoom or tilt.
+        UpdateCamera();
     }
 
     // Mouse-driven camera control: right-drag rotates/tilts, wheel zooms. Callers forward
@@ -242,5 +271,19 @@ public sealed class FreeCameraRig
         _camera.Position = CameraDirection() * _zoomDistance;
         _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
         _camera.Size = _orthographicSize;
+
+        // Belt-and-suspenders on top of HandleInput's own rig ground-following above - the
+        // camera sits at an offset from the rig (elevated, pulled back), so it's normally
+        // well clear of the ground even where the rig itself sits right at it, but a close,
+        // low tilt angle can still put the camera's own (X, Z) over a nearby bump the rig
+        // isn't directly on top of.
+        var globalPosition = _camera.GlobalPosition;
+        var minHeight = _sampleHeight(globalPosition.X, globalPosition.Z) + MinCameraGroundClearance;
+        if (globalPosition.Y < minHeight)
+        {
+            globalPosition.Y = minHeight;
+            _camera.GlobalPosition = globalPosition;
+            _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
+        }
     }
 }

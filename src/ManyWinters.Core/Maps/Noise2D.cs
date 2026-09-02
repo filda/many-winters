@@ -1,15 +1,25 @@
 namespace ManyWinters.Core.Maps;
 
-// Coherent 2D value noise: a smooth, continuous field instead of independent randomness
-// per sampled point - lets things like "which biome grows here" have organic,
-// spatially-correlated shapes (soft blobs blending into each other) rather than
-// picking a center point and drawing an explicit circle around it. Not true gradient
-// (Perlin) noise - a seeded lattice of scalar values, smoothstep-interpolated between
-// the four grid corners around each sampled point - simpler to get right and plenty
-// smooth enough for a decision like "what grows here", which doesn't need Perlin's
-// finer surface-detail guarantees.
+// Coherent 2D gradient (Perlin) noise: a smooth, continuous field instead of independent
+// randomness per sampled point - lets things like "which biome grows here" or "how the
+// ground rolls" have organic, spatially-correlated shapes rather than picking a center
+// point and drawing an explicit circle around it. A seeded lattice of unit gradient
+// vectors (not scalar values - that would be the simpler "value noise", which this
+// started as) dotted against the offset to each sampled point and blended with Perlin's
+// own quintic fade curve between the four surrounding grid corners. The extra step over
+// value noise matters here: value noise's peaks/valleys sit exactly on lattice points, which
+// reads as a faint grid-aligned "waffle" bias once you know to look for it; gradient
+// noise's extrema fall at arbitrary points inside a cell instead, which is what actually
+// looks natural.
 public sealed class Noise2D
 {
+    // Perlin's own bound for 2D noise built from unit gradients is |value| <= 1/sqrt(2) -
+    // dividing by it before remapping to [0, 1] uses the full output range instead of only
+    // ever landing in the middle third of it.
+    private const double MaxAmplitude = 0.7071067811865476;
+
+    private static readonly (double X, double Y)[] Gradients = BuildGradients();
+
     private readonly int[] _permutation;
 
     public Noise2D(int seed)
@@ -39,17 +49,23 @@ public sealed class Noise2D
     {
         var x0 = (int)Math.Floor(x);
         var y0 = (int)Math.Floor(y);
-        var tx = Smoothstep(x - x0);
-        var ty = Smoothstep(y - y0);
+        var xf = x - x0;
+        var yf = y - y0;
 
-        var v00 = LatticeValue(x0, y0);
-        var v10 = LatticeValue(x0 + 1, y0);
-        var v01 = LatticeValue(x0, y0 + 1);
-        var v11 = LatticeValue(x0 + 1, y0 + 1);
+        var d00 = DotGradient(x0, y0, xf, yf);
+        var d10 = DotGradient(x0 + 1, y0, xf - 1, yf);
+        var d01 = DotGradient(x0, y0 + 1, xf, yf - 1);
+        var d11 = DotGradient(x0 + 1, y0 + 1, xf - 1, yf - 1);
 
-        var top = v00 + ((v10 - v00) * tx);
-        var bottom = v01 + ((v11 - v01) * tx);
-        return top + ((bottom - top) * ty);
+        var u = Fade(xf);
+        var v = Fade(yf);
+
+        var top = d00 + ((d10 - d00) * u);
+        var bottom = d01 + ((d11 - d01) * u);
+        var raw = top + ((bottom - top) * v);
+
+        var normalized = Math.Clamp(raw / MaxAmplitude, -1.0, 1.0);
+        return (normalized + 1.0) / 2.0;
     }
 
     // Fractal Brownian motion: several octaves at doubling frequency and (by default)
@@ -74,14 +90,35 @@ public sealed class Noise2D
         return total / maxAmplitude;
     }
 
-    // A pseudo-random scalar in [0, 1) for an integer lattice point, stable across calls -
-    // bitwise AND (not modulo) so negative coordinates (this world's origin sits in the
-    // middle of the terrain, not a corner) still index the permutation table correctly.
-    private double LatticeValue(int x, int y)
+    // The unit gradient assigned to an integer lattice point, dotted with (dx, dy) - the
+    // offset from that same corner to the sampled point. Bitwise AND (not modulo) so
+    // negative coordinates (this world's origin sits in the middle of the terrain, not a
+    // corner) still index the permutation table correctly.
+    private double DotGradient(int x, int y, double dx, double dy)
     {
         var h = _permutation[(_permutation[x & 255] + y) & 255];
-        return h / 255.0;
+        var (gx, gy) = Gradients[h % Gradients.Length];
+        return (gx * dx) + (gy * dy);
     }
 
-    private static double Smoothstep(double t) => t * t * (3.0 - (2.0 * t));
+    // Eight unit vectors, 45 degrees apart - plenty for how coarsely this gets sampled
+    // (biome bands, a terrain bump), without the bookkeeping of Perlin's original
+    // hand-picked 3D-edge-midpoint set (this is 2D noise, that set doesn't apply here).
+    private static (double X, double Y)[] BuildGradients()
+    {
+        var gradients = new (double X, double Y)[8];
+        for (var i = 0; i < 8; i++)
+        {
+            var angle = i * Math.PI / 4.0;
+            gradients[i] = (Math.Cos(angle), Math.Sin(angle));
+        }
+
+        return gradients;
+    }
+
+    // Perlin's own quintic fade (6t^5 - 15t^4 + 10t^3) - second-derivative-continuous,
+    // unlike the cheaper 3t^2-2t^3 smoothstep, which matters more for gradient noise than
+    // it did for value noise: a visible facet/crease can show up right at cell boundaries
+    // otherwise, precisely where two cells' independently-oriented gradients disagree most.
+    private static double Fade(double t) => t * t * t * ((t * ((t * 6.0) - 15.0)) + 10.0);
 }

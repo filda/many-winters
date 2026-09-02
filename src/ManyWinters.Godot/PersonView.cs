@@ -143,7 +143,18 @@ public partial class PersonView : Area3D
     {
         InputRayPickable = true;
 
-        Scale = Vector3.One * EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
+        var scale = EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
+        Scale = Vector3.One * scale;
+        // WorldPresenter positioned this node's own origin at groundHeight + Height/2,
+        // assuming Scale stayed 1 - the sprite (centered, spanning local Y from -Height/2
+        // to +Height/2) then has its bottom edge land exactly on the ground. Scale.Y above
+        // multiplies that -Height/2 by scale before it's added to Position, so anyone
+        // shorter than scale=1 floats with a small gap under their feet and anyone taller
+        // sinks in - narrow enough a range here (0.92-1.08) to go unnoticed, unlike the
+        // same bug at ResourceNodeView's much wider tree range. Shifting this node's own
+        // Position by the same amount the scale just displaced the ground-contact point
+        // cancels it back out, regardless of which way it went.
+        Position += new Vector3(0f, (Height / 2f) * (scale - 1f), 0f);
         _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_personId.Value, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
         _bobAmplitude = EntityVisualVariation.RangeFor(_personId.Value, salt: 2, MinBobAmplitude, MaxBobAmplitude);
         _rockAmplitude = EntityVisualVariation.RangeFor(_personId.Value, salt: 3, MinRockAmplitude, MaxRockAmplitude);

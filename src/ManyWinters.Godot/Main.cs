@@ -418,7 +418,7 @@ public partial class Main : Node3D
         var campX = (float)_campCenter.X;
         var campZ = (float)_campCenter.Y;
         var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
-        _cameraRig = new FreeCameraRig(this, campPosition, InitialZoomDistance, MinZoom, MaxZoom);
+        _cameraRig = new FreeCameraRig(this, campPosition, InitialZoomDistance, MinZoom, MaxZoom, _terrain.SampleHeight);
     }
 
     private void SetUpUi()
