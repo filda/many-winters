@@ -54,6 +54,14 @@ public partial class ResourceNodeView : Area3D
     private const int BranchVariantSalt = 407;
     private const int BranchBrightnessSalt = 408;
 
+    // Fog of war's "remembered" tier (todo #13) - explored, but outside anyone's current sight
+    // (see ExplorationState) - reads as a sepia-ish memory of the place rather than what's
+    // actually there right now, same spirit as docs/ZemanConceptArt.png's own "Remembered"
+    // panel. Multiplied into each layer's own base modulate (see _baseModulate/_Ready), not a
+    // flat gray - a componentwise multiply that also darkens slightly keeps a warm, aged tone
+    // rather than looking merely faded.
+    private static readonly Color RememberedTint = new(0.78f, 0.68f, 0.52f);
+
     private readonly ResourceNodeId _nodeId;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
@@ -64,15 +72,19 @@ public partial class ResourceNodeView : Area3D
     private int _branchVariantIndex;
     private Sprite3D _sprite = null!;
     private string _spriteTexturePath = null!;
+    private Color _baseModulate;
     private Color _normalModulate;
     private Sprite3D? _trunk;
     private string? _trunkTexturePath;
+    private Color _trunkBaseModulate;
     private Color _trunkNormalModulate;
     private Sprite3D? _branches;
     private string? _branchesTexturePath;
+    private Color _branchesBaseModulate;
     private Color _branchesNormalModulate;
     private Sprite3D? _fruitOverlay;
     private bool _isHovered;
+    private bool _isRemembered;
 
     public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick)
     {
@@ -134,7 +146,8 @@ public partial class ResourceNodeView : Area3D
             _trunk = BillboardSprite.Create(_trunkTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
             _trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
             _trunk.FlipH = mirrored;
-            _trunkNormalModulate = _trunk.Modulate;
+            _trunkBaseModulate = _trunk.Modulate;
+            _trunkNormalModulate = _trunkBaseModulate;
             AddChild(_trunk);
 
             _spriteTexturePath = CanopyTexturePathFor();
@@ -154,7 +167,8 @@ public partial class ResourceNodeView : Area3D
                 _branches = BillboardSprite.Create(_branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
                 _branches.Modulate *= LayerBrightnessVariation(BranchBrightnessSalt);
                 _branches.FlipH = mirrored;
-                _branchesNormalModulate = _branches.Modulate;
+                _branchesBaseModulate = _branches.Modulate;
+                _branchesNormalModulate = _branchesBaseModulate;
                 AddChild(_branches);
             }
         }
@@ -165,7 +179,8 @@ public partial class ResourceNodeView : Area3D
         }
 
         _sprite.FlipH = mirrored;
-        _normalModulate = _sprite.Modulate;
+        _baseModulate = _sprite.Modulate;
+        _normalModulate = _baseModulate;
         AddChild(_sprite);
 
         // Composite sprite: the tree itself never changes, but whether it's currently
@@ -243,6 +258,38 @@ public partial class ResourceNodeView : Area3D
         {
             _branches.Modulate = hovered ? HoverHighlight.TintFor(_branchesNormalModulate) : _branchesNormalModulate;
             _branches.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+        }
+    }
+
+    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - explored, but nobody
+    // currently has this node in sight. Recomputes each layer's own _...NormalModulate from its
+    // fixed _...BaseModulate (the brightness-jitter variation baked in at _Ready, never
+    // touched again) so repeated calls - the exploration state can flip back and forth as the
+    // group wanders - never compound the tint. Re-applies whatever's currently showing
+    // (hovered or not) afterward, since SetHovered's own early-return would otherwise skip
+    // refreshing the displayed color when the hover state itself hasn't changed.
+    public void SetRemembered(bool remembered)
+    {
+        if (remembered == _isRemembered)
+        {
+            return;
+        }
+
+        _isRemembered = remembered;
+        var tint = remembered ? RememberedTint : Colors.White;
+        _normalModulate = _baseModulate * tint;
+        _trunkNormalModulate = _trunkBaseModulate * tint;
+        _branchesNormalModulate = _branchesBaseModulate * tint;
+
+        _sprite.Modulate = _isHovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
+        if (_trunk is not null)
+        {
+            _trunk.Modulate = _isHovered ? HoverHighlight.TintFor(_trunkNormalModulate) : _trunkNormalModulate;
+        }
+
+        if (_branches is not null)
+        {
+            _branches.Modulate = _isHovered ? HoverHighlight.TintFor(_branchesNormalModulate) : _branchesNormalModulate;
         }
     }
 

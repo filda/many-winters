@@ -72,6 +72,9 @@ public class SaveGameServiceTests
             Assert.Equal(building.Position, restoredBuilding.Position);
             Assert.Equal(building.Condition, restoredBuilding.Condition);
             Assert.Equal(building.Inventory.Get(TestCatalogs.WoodItem), restoredBuilding.Inventory.Get(TestCatalogs.WoodItem));
+
+            Assert.NotEmpty(world.Exploration.Explored);
+            Assert.Equal(world.Exploration.Explored.ToHashSet(), restored.Exploration.Explored.ToHashSet());
         }
         finally
         {

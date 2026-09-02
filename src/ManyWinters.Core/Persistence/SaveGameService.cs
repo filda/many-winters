@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 12;
+    private const int CurrentVersion = 13;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -72,6 +72,10 @@ public static class SaveGameService
                 grave.KnownTechniques))
             .ToList();
 
+        var exploredCells = world.Exploration.Explored
+            .Select(cell => new ExplorationCellSaveData(cell.X, cell.Y))
+            .ToList();
+
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
@@ -82,7 +86,8 @@ public static class SaveGameService
             world.NextBuildingId,
             buildings,
             world.NextGraveId,
-            graves);
+            graves,
+            exploredCells);
     }
 
     private static WorldState FromSaveData(SaveData data, WorldConfiguration? configuration = null)
@@ -182,6 +187,9 @@ public static class SaveGameService
         }
 
         world.SetNextGraveId(data.NextGraveId);
+
+        world.Exploration.RestoreExplored(data.ExploredCells.Select(cell => new ExplorationCell(cell.X, cell.Y)));
+
         return world;
     }
 

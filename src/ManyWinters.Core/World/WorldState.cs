@@ -48,6 +48,8 @@ public sealed class WorldState
 
     public SimulationClock Clock { get; } = new();
 
+    public ExplorationState Exploration { get; } = new();
+
     public ResourceCatalog ResourceCatalog { get; }
 
     public SkillCatalog SkillCatalog { get; }
@@ -105,6 +107,7 @@ public sealed class WorldState
 
         _people.Add(person);
         PersonAdded?.Invoke(person);
+        RefreshExploration();
         return person;
     }
 
@@ -259,6 +262,7 @@ public sealed class WorldState
 
             AutoTeachNearbyPeople(currentTick);
             ResolveCollisions();
+            RefreshExploration();
 
             foreach (var node in _resourceNodes)
             {
@@ -660,6 +664,9 @@ public sealed class WorldState
     }
 
     private static Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
+
+    private void RefreshExploration() =>
+        Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));
 
     internal void RestorePerson(Person person) => _people.Add(person);
 

@@ -1642,6 +1642,49 @@ def flower():
     return c
 
 
+def _cloud(name, lobes, rng):
+    """A puffy, non-grounded clump - same union-of-overlapping-ellipses construction as
+    bush()'s trunkless clump (each lobe individually jagged, not the clean union bush()
+    itself uses, since a cloud has no denser foliage silhouette to fall back on - its
+    edge IS the whole shape read), just wider/flatter and centered rather than sitting on
+    GROUND_CONTACT_Y - fog-of-war's mist ceiling (FogOfWarRenderer.cs) floats mid-air, it
+    doesn't stand on anything. Kept deliberately muted/cool (not white) - see
+    FogOfWarRenderer's own UnknownColor comment on why a flat white read as snow instead
+    of mist once it had shading; hatch_fill's diagonal ink crosshatch is what actually
+    keeps it from looking flat here, the same as every other sprite this pipeline draws."""
+    seed = seed_for(name)
+    c = Canvas(seed)
+    mist = rgb(0.70, 0.73, 0.78)
+    mask = np.zeros((S, S), dtype=bool)
+    for cx, cy, rx, ry in lobes:
+        lobe_pts = [
+            (cx - rx, cy), (cx - rx * 0.6, cy - ry), (cx + rx * 0.6, cy - ry),
+            (cx + rx, cy), (cx + rx * 0.6, cy + ry), (cx - rx * 0.6, cy + ry),
+        ]
+        mask |= poly(jagged_poly(lobe_pts, rng, amp=rx * 0.12, segments_per_edge=4, smooth_passes=2))
+    c.fill(mask, mist)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+# Three independent lobe layouts (not one shape re-scaled) so a scatter of these reads as
+# a genuinely varied mist bank rather than the same puff resized - same "distinct
+# hand-authored variants, blended per instance" reasoning as the robe silhouettes above.
+def cloud_1():
+    rng = random.Random(seed_for("cloud_1"))
+    return _cloud("cloud_1", [(20, 36, 14, 10), (34, 29, 16, 12), (48, 36, 13, 10), (32, 42, 22, 12)], rng)
+
+
+def cloud_2():
+    rng = random.Random(seed_for("cloud_2"))
+    return _cloud("cloud_2", [(15, 34, 11, 8), (28, 25, 15, 11), (43, 29, 14, 11), (53, 36, 10, 8), (33, 40, 25, 11)], rng)
+
+
+def cloud_3():
+    rng = random.Random(seed_for("cloud_3"))
+    return _cloud("cloud_3", [(23, 33, 13, 10), (40, 27, 12, 10), (30, 41, 18, 11), (46, 40, 11, 9)], rng)
+
+
 def selection_marker():
     """A bright downward-pointing marker floated above a selected unit's head - a flat
     engraved emblem, not a physical object, so it keeps a clean triangle (only a whisper
@@ -1725,6 +1768,9 @@ SPRITES = {
     "wild_grass": wild_grass,
     "flower": flower,
     "fern": fern,
+    "cloud_1": cloud_1,
+    "cloud_2": cloud_2,
+    "cloud_3": cloud_3,
     "rock_pile": rock_pile,
     "rock_boulder": rock_boulder,
     "rock_cluster": rock_cluster,

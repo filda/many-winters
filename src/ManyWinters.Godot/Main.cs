@@ -72,6 +72,7 @@ public partial class Main : Node3D
 
     private WorldState _world = null!;
     private WorldPresenter _presenter = null!;
+    private FogOfWarRenderer _fogOfWar = null!;
     private TerrainRenderer _terrain = null!;
     private FreeCameraRig _cameraRig = null!;
     private Position _campCenter;
@@ -118,6 +119,7 @@ public partial class Main : Node3D
         SetUpUi();
 
         _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
+        _fogOfWar = new FogOfWarRenderer(this, _world.Exploration, _terrain.SampleGroundHeightFast, _terrain.Half);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
     }
@@ -144,6 +146,8 @@ public partial class Main : Node3D
         }
 
         _world.Advance(1);
+        _presenter.RefreshExploration();
+        _fogOfWar.Refresh();
         ResolvePendingGathers();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
         RefreshInfoLabel();

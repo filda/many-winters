@@ -16,7 +16,8 @@ public sealed record SaveData(
     int NextBuildingId,
     IReadOnlyList<BuildingSaveData> Buildings,
     int NextGraveId,
-    IReadOnlyList<GraveSaveData> Graves);
+    IReadOnlyList<GraveSaveData> Graves,
+    IReadOnlyList<ExplorationCellSaveData> ExploredCells);
 
 public sealed record PersonSaveData(
     int Id,
@@ -67,3 +68,5 @@ public sealed record GraveSaveData(
     string? MotherName,
     string? FatherName,
     IReadOnlyList<TechniqueId> KnownTechniques);
+
+public sealed record ExplorationCellSaveData(int X, int Y);

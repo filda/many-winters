@@ -15,8 +15,16 @@ public sealed class WorldPresenter
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
+    private readonly ExplorationState _exploration;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
+
+    // Fog of war (todo #13): a node outside anyone's ever-explored area gets no Godot view at
+    // all yet, not just a hidden one - creating a ResourceNodeView for all ~17,000+ decoration-
+    // turned-resource nodes at once (MapLoader.ScatterDecorations) up front was itself the
+    // single biggest chunk of the game's startup time. Kept here until its own cell is explored
+    // (see RefreshExploration), then created for real exactly like any other node.
+    private readonly Dictionary<ResourceNodeId, ResourceNode> _pendingResourceNodes = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
 
@@ -36,6 +44,7 @@ public sealed class WorldPresenter
         _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight ?? ((x, z) => 0f);
         _resourceCatalog = world.ResourceCatalog;
+        _exploration = world.Exploration;
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
@@ -130,11 +139,59 @@ public sealed class WorldPresenter
 
     private void CreateResourceNodeView(ResourceNode node)
     {
+        if (!_exploration.IsExplored(ExplorationState.CellFor(node.Position)))
+        {
+            _pendingResourceNodes[node.Id] = node;
+            return;
+        }
+
+        CreateResourceNodeViewNow(node);
+    }
+
+    private void CreateResourceNodeViewNow(ResourceNode node)
+    {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
         var view = new ResourceNodeView(node.Id, node.Kind, canFell, _onResourceNodeSelected, _onMissedClick);
         view.Position = ToVector3(node.Position, view.Size / 2f);
+        view.SetRemembered(!_exploration.IsVisible(ExplorationState.CellFor(node.Position)));
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
+    }
+
+    // Called once per simulation tick (Main._Process's tick block) - cheap enough at that
+    // cadence (a HashSet lookup per pending/created node, not per frame) even at decoration
+    // scale. Two jobs: promote any still-pending node whose cell has now been explored to a
+    // real view, and keep every already-created view's "remembered" (explored, not currently
+    // visible) tint in sync as the group wanders in and out of sight of it.
+    public void RefreshExploration()
+    {
+        if (_pendingResourceNodes.Count > 0)
+        {
+            List<ResourceNodeId>? newlyExplored = null;
+            foreach (var (id, node) in _pendingResourceNodes)
+            {
+                if (_exploration.IsExplored(ExplorationState.CellFor(node.Position)))
+                {
+                    (newlyExplored ??= new List<ResourceNodeId>()).Add(id);
+                }
+            }
+
+            if (newlyExplored is not null)
+            {
+                foreach (var id in newlyExplored)
+                {
+                    var node = _pendingResourceNodes[id];
+                    _pendingResourceNodes.Remove(id);
+                    CreateResourceNodeViewNow(node);
+                }
+            }
+        }
+
+        foreach (var view in _resourceNodeViews.Values)
+        {
+            var cell = ExplorationState.CellFor(new Position(view.Position.X, view.Position.Z));
+            view.SetRemembered(!_exploration.IsVisible(cell));
+        }
     }
 
     private void CreateBuildingView(Building building)

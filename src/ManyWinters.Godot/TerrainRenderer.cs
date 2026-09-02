@@ -161,11 +161,20 @@ public sealed class TerrainRenderer
         return Mathf.Lerp(h0, h1, tz);
     }
 
+    // Public wrapper around SampleRawHeight (see its own doc comment) for callers that don't
+    // need the bump noise's fine detail and would rather not pay for it -
+    // FogOfWarRenderer's overlay quads, for one: at tens of thousands of samples per rebuild,
+    // routing them through the full SampleHeight (each call re-evaluates TerrainBump's Fbm
+    // noise at all four bilinear corners) would make fog the new startup/per-tick bottleneck
+    // for no visible benefit - a translucent wash or mist ceiling doesn't need to track every
+    // 2m ripple the real terrain mesh does.
+    public float SampleGroundHeightFast(float x, float z) => SampleRawHeight(x, z);
+
     // Bilinear height sample at any local (x, z) from the real elevation data alone, clamped
     // to the grid's edge beyond its bounds - no bump noise. Water (WaterVertex) is the only
-    // caller: a river surface is naturally smoother than the ground around it in reality, not
-    // textured with the same small-scale variation, so it tracks the DEM's own valley
-    // without the bump making it look choppy.
+    // other caller: a river surface is naturally smoother than the ground around it in
+    // reality, not textured with the same small-scale variation, so it tracks the DEM's own
+    // valley without the bump making it look choppy.
     private float SampleRawHeight(float x, float z)
     {
         var gridSize = _heightmap.GridSize;
