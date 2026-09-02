@@ -43,13 +43,16 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # Buildless extraction, which is what GitHub's own default setup uses for C#. It needs no
+      # Autobuild step, and it's the only mode overlay (incremental) analysis works with, so it
+      # also silences the "cannot build an overlay-base database" notice on every run. Source
+      # generators don't run under it, so Godot.NET.Sdk's generated files drop out of the
+      # analysis - which is the wanted outcome, they were never ours to fix.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: csharp
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
+          build-mode: none
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
