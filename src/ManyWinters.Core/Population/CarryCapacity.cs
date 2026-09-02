@@ -16,17 +16,23 @@ public static class CarryCapacity
 
     public static float BaseWeightFor(long ageInYears, long maxLifespanYears)
     {
+        // Stryker disable once Equality: at age 0 the growth branch below works out to exactly
+        // NewbornFraction anyway, so <= 0 and < 0 return the same weight
         if (ageInYears <= 0)
         {
             return AdultBaseWeight * NewbornFraction;
         }
 
+        // Stryker disable once Equality: at AdultAge the growth factor is exactly 1, so the
+        // growth branch and the adult baseline below agree - < and <= are indistinguishable
         if (ageInYears < AdultAge)
         {
             var growth = ageInYears / (float)AdultAge;
             return AdultBaseWeight * (NewbornFraction + ((1f - NewbornFraction) * growth));
         }
 
+        // Stryker disable once Equality: at ElderAgeStart the decline is exactly 0, so the
+        // decline branch below also returns the full adult baseline
         if (ageInYears < ElderAgeStart)
         {
             return AdultBaseWeight;

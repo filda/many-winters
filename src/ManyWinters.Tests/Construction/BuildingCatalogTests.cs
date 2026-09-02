@@ -89,6 +89,10 @@ public class BuildingCatalogTests
             var ex = Assert.Throws<InvalidDataException>(() => BuildingCatalog.LoadFromDirectory(root));
 
             Assert.Contains(filePath, ex.Message, StringComparison.Ordinal);
+
+            // Every catalog loads the same way through the same parser, so the message has to
+            // say which kind of content it was reading, not just which file.
+            Assert.StartsWith("Building definition", ex.Message, StringComparison.Ordinal);
         }
         finally
         {

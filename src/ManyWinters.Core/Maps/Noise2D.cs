@@ -31,6 +31,8 @@ public sealed class Noise2D
             source[i] = i;
         }
 
+        // Stryker disable once Equality: a final i = 0 pass can only draw j = 0 and swap
+        // source[0] with itself, so > 0 and >= 0 produce the same permutation
         for (var i = 255; i > 0; i--)
         {
             var j = rng.Next(i + 1);

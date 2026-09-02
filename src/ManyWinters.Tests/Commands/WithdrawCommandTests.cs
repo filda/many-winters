@@ -8,6 +8,22 @@ namespace ManyWinters.Tests.Commands;
 public class WithdrawCommandTests
 {
     [Fact]
+    public void WithdrawingEverythingThatFitsLeavesNoEmptyEntryInTheBuilding()
+    {
+        // Nothing goes back when it all fit, so the building's store has to end up genuinely
+        // empty - a zero-count entry reads as "there's wood in here" to anything listing it.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+
+        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 5));
+
+        Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Empty(building.Inventory.Counts);
+    }
+
+    [Fact]
     public void WithdrawingMovesItemsFromBuildingToPerson()
     {
         var world = TestCatalogs.CreateWorld();

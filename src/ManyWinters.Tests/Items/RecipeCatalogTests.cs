@@ -88,6 +88,7 @@ public class RecipeCatalogTests
             var ex = Assert.Throws<InvalidDataException>(() => RecipeCatalog.LoadFromDirectory(root));
 
             Assert.Contains(filePath, ex.Message, StringComparison.Ordinal);
+            Assert.StartsWith("Recipe definition", ex.Message, StringComparison.Ordinal);
         }
         finally
         {

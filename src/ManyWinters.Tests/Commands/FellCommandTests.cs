@@ -8,6 +8,65 @@ namespace ManyWinters.Tests.Commands;
 public class FellCommandTests
 {
     [Fact]
+    public void ADeadPersonFellsNothingEvenWithSomebodyElseStandingRightThere()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var living = world.AddPerson("Ava", new Position(3, 4));
+        living.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var deceased = world.AddPerson("Bran", new Position(3, 4));
+        deceased.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        deceased.IsAlive = false;
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
+
+        world.Execute(new FellCommand(deceased.Id, node.Id));
+
+        Assert.True(node.IsAlive);
+        Assert.Single(world.ResourceNodes);
+    }
+
+    [Fact]
+    public void FellingAnAlreadyFelledNodeLeavesTheOnesStillStandingAlone()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(3, 4));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var felled = world.AddResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
+        var standing = world.AddResourceNode(TestCatalogs.Pear, new Position(3, 4), 100);
+        felled.IsAlive = false;
+
+        world.Execute(new FellCommand(person.Id, felled.Id));
+
+        Assert.True(standing.IsAlive);
+        Assert.Equal(2, world.ResourceNodes.Count);
+    }
+
+    [Fact]
+    public void FellingSomethingWhoseLeftoverAmountIsZeroLeavesNothingBehind()
+    {
+        // A definition that names a leftover kind but no amount would otherwise drop an empty
+        // node on the spot - a nothing to walk to and gather nothing from.
+        var hollow = new ResourceKindId("hollow_tree");
+        var configuration = new WorldConfiguration(
+            new ResourceCatalog([
+                new ResourceDefinition(hollow, "Hollow Tree", TestCatalogs.Foraging, CanFell: true, FellLeavesKind: TestCatalogs.Wood, FellLeavesAmount: 0f),
+            ]),
+            TestCatalogs.CreateSkillCatalog(),
+            TestCatalogs.CreateRecipeCatalog(),
+            TestCatalogs.CreateBuildingCatalog(),
+            TestCatalogs.CreateItemCatalog(),
+            SeasonParameters.Default);
+        var world = new WorldState(configuration);
+        var person = world.AddPerson("Ava", new Position(3, 4));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.AddResourceNode(hollow, new Position(3, 4), 100);
+
+        world.Execute(new FellCommand(person.Id, node.Id));
+
+        Assert.False(node.IsAlive);
+        Assert.Single(world.ResourceNodes);
+    }
+
+    [Fact]
     public void FellingATreeKillsItAndLeavesAWoodNodeInItsPlace()
     {
         var world = TestCatalogs.CreateWorld();

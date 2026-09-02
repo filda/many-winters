@@ -89,6 +89,7 @@ public class ResourceCatalogTests
             var ex = Assert.Throws<InvalidDataException>(() => ResourceCatalog.LoadFromDirectory(root));
 
             Assert.Contains(filePath, ex.Message, StringComparison.Ordinal);
+            Assert.StartsWith("Resource definition", ex.Message, StringComparison.Ordinal);
         }
         finally
         {

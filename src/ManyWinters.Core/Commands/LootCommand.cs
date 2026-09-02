@@ -22,6 +22,8 @@ public sealed record LootCommand(PersonId LootingPersonId, PersonId DeceasedPers
         foreach (var (item, count) in deceased.Inventory.Counts.ToList())
         {
             var taken = lootingPerson.Inventory.AddUpToCapacity(item, count, world.ItemCatalog, world.MaxCarryWeightFor(lootingPerson));
+            // Stryker disable once Equality: removing zero units leaves the count exactly as it
+            // was, so skipping the call and making it are indistinguishable
             if (taken > 0)
             {
                 deceased.Inventory.Remove(item, taken);

@@ -7,6 +7,55 @@ namespace ManyWinters.Tests.Commands;
 public class GatherCommandTests
 {
     [Fact]
+    public void GatheringAResourceThatYieldsNoItemEatsStraightFromItInsteadOfFillingTheInventory()
+    {
+        // Nothing in the shipped content works this way yet, but a resource with no YieldsItem
+        // (a berry patch grazed on the spot, a spring drunk from) is the one case where the
+        // harvest relieves hunger directly rather than going into the backpack first.
+        var grazing = new ResourceKindId("grazing");
+        var configuration = new WorldConfiguration(
+            new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
+            TestCatalogs.CreateSkillCatalog(),
+            TestCatalogs.CreateRecipeCatalog(),
+            TestCatalogs.CreateBuildingCatalog(),
+            TestCatalogs.CreateItemCatalog(),
+            SeasonParameters.Default);
+        var world = new WorldState(configuration);
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 50f;
+        var node = world.AddResourceNode(grazing, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(30f, person.Needs.Hunger);
+        Assert.Equal(80f, node.RemainingAmount);
+        Assert.Empty(person.Inventory.Counts);
+    }
+
+    [Fact]
+    public void GatheringAResourceThatYieldsNoItemNeverDrivesHungerBelowZero()
+    {
+        var grazing = new ResourceKindId("grazing");
+        var configuration = new WorldConfiguration(
+            new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
+            TestCatalogs.CreateSkillCatalog(),
+            TestCatalogs.CreateRecipeCatalog(),
+            TestCatalogs.CreateBuildingCatalog(),
+            TestCatalogs.CreateItemCatalog(),
+            SeasonParameters.Default);
+        var world = new WorldState(configuration);
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 5f;
+        var node = world.AddResourceNode(grazing, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person.Id, node.Id));
+
+        Assert.Equal(0f, person.Needs.Hunger);
+    }
+
+    [Fact]
     public void GatheringAddsToInventoryAndDepletesTheNode()
     {
         var world = TestCatalogs.CreateWorld();

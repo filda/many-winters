@@ -141,6 +141,7 @@ public class ItemCatalogTests
             var ex = Assert.Throws<InvalidDataException>(() => ItemCatalog.LoadFromDirectory(root));
 
             Assert.Contains(filePath, ex.Message, StringComparison.Ordinal);
+            Assert.StartsWith("Item definition", ex.Message, StringComparison.Ordinal);
         }
         finally
         {

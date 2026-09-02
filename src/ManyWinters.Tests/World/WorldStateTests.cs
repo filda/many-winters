@@ -430,6 +430,262 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceReconsidersAnIdlePersonOnceSomethingWorthGatheringTurnsUp()
+    {
+        // Idle is the one autonomous choice that always gets a second look - something better
+        // might now apply that didn't when they started wandering.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+
+        world.Advance(1);
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+
+        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(3, 0), 100f);
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(node.Id, task.TargetNodeId);
+    }
+
+    [Theory]
+    [InlineData(49f, false)]
+    [InlineData(50f, true)]
+    public void AdvanceSendsAPersonLookingForFoodTheMomentHungerReachesTheThresholdNotOnlyPastIt(float hunger, bool expectFood)
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.Needs.Hunger = hunger;
+
+        // Wood is much the nearer of the two, so it wins on distance alone right up until
+        // hunger turns urgent and food starts being sought ahead of everything else.
+        var wood = world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        var food = world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(expectFood ? food.Id : wood.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceLeavesAHungryPersonWhoIsCarryingFoodToGetOnWithWhateverElseTheyKnow()
+    {
+        // Hunger only redirects someone who has nothing to eat on them - a woodcutter with
+        // apples in their pack has no reason to break off and go pick more.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.Needs.Hunger = 60f;
+        person.Inventory.Add(TestCatalogs.AppleItem, 5);
+
+        var wood = world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(wood.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceStillSendsAHungryPersonForFoodWhenAllTheyAreCarryingIsInedible()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.Needs.Hunger = 60f;
+        person.Inventory.Add(TestCatalogs.WoodItem, 5);
+
+        world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        var food = world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(food.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotCountAnEmptyInventoryEntryAsFoodOnHand()
+    {
+        // A kind whose count has fallen to zero is still a key in the inventory; counting it
+        // would leave a starving person convinced they have an apple left.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.Needs.Hunger = 60f;
+        person.Inventory.Add(TestCatalogs.AppleItem, 0);
+
+        world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        var food = world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(food.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceReassignsAGatherTaskWhoseTargetNodeIsNotInTheWorldAtAll()
+    {
+        // A save loaded against changed content, or a stale order - either way the target
+        // simply isn't there to look up, which is a reason to re-plan rather than to crash.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.Tasks.Interrupt(new GatherTask(new ResourceNodeId(404), new Position(5, 0)));
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceReassignsAGatherTaskOnceItsTargetHasBeenPickedCleanEvenThoughItIsStillAlive()
+    {
+        // Depleted-but-alive nodes regenerate eventually, but standing next to one waiting is
+        // not the plan - with a fuller one of the same kind nearby, that's where to go.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var primary = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var backup = world.AddResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
+
+        world.Advance(1);
+        Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
+
+        primary.RemainingAmount = 0f;
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(backup.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceLeavesAPersonWanderingWhenTheOnlyResourceAroundNeedsASkillTheCatalogNeverHeardOf()
+    {
+        // Find, not Get, all the way down: a resource pointing at a skill nobody registered
+        // just means nobody can work it, not a crash mid-tick.
+        var unknownSkillResource = new ResourceKindId("moon_rock");
+        var configuration = new WorldConfiguration(
+            new ResourceCatalog([new ResourceDefinition(unknownSkillResource, "Moon Rock", new SkillTypeId("moon_mining"))]),
+            TestCatalogs.CreateSkillCatalog(),
+            TestCatalogs.CreateRecipeCatalog(),
+            TestCatalogs.CreateBuildingCatalog(),
+            TestCatalogs.CreateItemCatalog(),
+            SeasonParameters.Default);
+        var world = new WorldState(configuration);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicMining);
+        world.AddResourceNode(unknownSkillResource, new Position(1, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceSendsAnIdlePersonToTheFirstOfTwoEquallyDistantResources()
+    {
+        // Nothing about a tie makes the later node the better pick, and picking one of them
+        // consistently is what keeps a world reproducible from the same starting state.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var first = world.AddResourceNode(TestCatalogs.Wood, new Position(5, 0), 100f);
+        world.AddResourceNode(TestCatalogs.Wood, new Position(-5, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(first.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceStillSendsAnIdlePersonToAResourceSittingExactlyAtTheIdleSearchRadius()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(60, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(node.Id, task.TargetNodeId);
+    }
+
+    [Fact]
+    public void AdvanceLeavesADeadResourceNodeAloneInsteadOfRegrowingIt()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var node = world.AddResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
+        node.RemainingAmount = 10f;
+        node.IsAlive = false;
+
+        world.Advance(20);
+
+        Assert.Equal(10f, node.RemainingAmount);
+        Assert.Equal(0f, node.ColdStress);
+    }
+
+    [Theory]
+    [InlineData(0, 4, 1)]
+    [InlineData(2, 1, 3)]
+    public void AutoTeachNearbyPeopleRollsTheSameWayEveryRunForAGivenPairAndTick(
+        int peopleBefore, int expectedTeachingTick, int expectedWoodcuttingTick)
+    {
+        // The roll is derived from the teacher's and student's ids, the technique and the tick
+        // alone - no shared mutable Random, so the same starting state always plays out the
+        // same way regardless of the order people happen to be advanced in. Pinning the exact
+        // ticks is what actually holds that: a hash that quietly changed would still look
+        // random, just not the same random.
+        var world = TestCatalogs.CreateWorld();
+        for (var i = 0; i < peopleBefore; i++)
+        {
+            world.AddPerson($"Bystander {i}", new Position(500, 500));
+        }
+
+        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var student = world.AddPerson("Bran", new Position(1, 0));
+        teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
+        teacher.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+
+        var learnedTeaching = -1;
+        var learnedWoodcutting = -1;
+        for (var tick = 1; tick <= 50; tick++)
+        {
+            foreach (var person in world.People)
+            {
+                person.Needs.Hunger = 0f;
+            }
+
+            world.Advance(1);
+            if (learnedTeaching < 0 && student.KnownTechniques.Contains(TestCatalogs.BasicTeaching))
+            {
+                learnedTeaching = tick;
+            }
+
+            if (learnedWoodcutting < 0 && student.KnownTechniques.Contains(TestCatalogs.BasicWoodcutting))
+            {
+                learnedWoodcutting = tick;
+            }
+        }
+
+        Assert.Equal(expectedTeachingTick, learnedTeaching);
+        Assert.Equal(expectedWoodcuttingTick, learnedWoodcutting);
+    }
+
+    [Fact]
     public void AutoTeachNearbyPeopleSpreadsEatingFasterThanASpecialisedSkill()
     {
         var world = TestCatalogs.CreateWorld();

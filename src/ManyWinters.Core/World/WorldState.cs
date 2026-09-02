@@ -488,6 +488,9 @@ public sealed class WorldState
     private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick, float chance)
     {
         var seed = CasualTeachingSeed(teacherId.Value, studentId.Value, technique.Value, tick);
+
+        // Stryker disable once Equality: NextDouble() returning exactly `chance` has
+        // probability zero, so < and <= are the same roll
         return new Random(seed).NextDouble() < chance;
     }
 
@@ -520,6 +523,10 @@ public sealed class WorldState
     // out of their own backpack.
     private void TryAutoEat(Person person)
     {
+        // Both checks below only save a pointless call: EatCommand refuses to do anything at
+        // zero hunger anyway, so neither of them can change what a person ends up eating.
+        // Stryker disable all: EatCommand's own zero-hunger check makes these two purely an
+        // early out, never a behaviour of their own
         if (person.Needs.Hunger <= 0f)
         {
             return;
@@ -532,6 +539,7 @@ public sealed class WorldState
                 break;
             }
 
+            // Stryker restore all
             new EatCommand(person.Id, kind).Execute(this);
         }
     }

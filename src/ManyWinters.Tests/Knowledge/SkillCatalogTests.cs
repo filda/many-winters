@@ -88,6 +88,7 @@ public class SkillCatalogTests
             var ex = Assert.Throws<InvalidDataException>(() => SkillCatalog.LoadFromDirectory(root));
 
             Assert.Contains(filePath, ex.Message, StringComparison.Ordinal);
+            Assert.StartsWith("Skill definition", ex.Message, StringComparison.Ordinal);
         }
         finally
         {

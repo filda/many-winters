@@ -6,6 +6,7 @@ public class InventoryTests
 {
     private static readonly ItemKindId Wood = new("wood");
     private static readonly ItemKindId Feather = new("feather");
+    private static readonly ItemKindId Stone = new("stone");
 
     [Fact]
     public void GetReturnsZeroForAKindThatWasNeverAdded()
@@ -134,5 +135,34 @@ public class InventoryTests
 
         Assert.Equal(10, added);
         Assert.Equal(1010, inventory.Get(Wood));
+    }
+
+    [Fact]
+    public void AddUpToCapacityCountsHowManyUnitsFitRatherThanHowMuchTheyWeigh()
+    {
+        // Ten kilos of headroom is five stones, not twenty - what fits is the headroom divided
+        // by the unit weight.
+        var catalog = new ItemCatalog([new ItemDefinition(Stone, "Stone", Weight: 2f)]);
+        var inventory = new Inventory();
+
+        var added = inventory.AddUpToCapacity(Stone, 20, catalog, maxWeight: 10f);
+
+        Assert.Equal(5, added);
+        Assert.Equal(10f, inventory.TotalWeight(catalog));
+    }
+
+    [Fact]
+    public void AddUpToCapacityLeavesNoEmptyEntryBehindWhenNothingFits()
+    {
+        // A zero-count entry would show up in Counts as "carrying stone" - to anything walking
+        // the inventory (the UI, HasEdibleFood) that's indistinguishable from actually having
+        // some, so a refused add has to leave no trace at all.
+        var catalog = new ItemCatalog([new ItemDefinition(Stone, "Stone", Weight: 2f)]);
+        var inventory = new Inventory();
+
+        var added = inventory.AddUpToCapacity(Stone, 5, catalog, maxWeight: 0f);
+
+        Assert.Equal(0, added);
+        Assert.Empty(inventory.Counts);
     }
 }

@@ -234,6 +234,9 @@ public static class MapLoader
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
         var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
 
+        // Stryker disable Equality: every threshold here is compared against a continuous
+        // NextDouble(), which lands exactly on one of them with probability zero - < and <=
+        // pick the same kind
         (ResourceKindId Kind, float Amount) PickMeadowKind()
         {
             var roll = rng.NextDouble();
@@ -251,6 +254,8 @@ public static class MapLoader
         (ResourceKindId Kind, float Amount) PickThicketKind() =>
             rng.NextDouble() < 0.6 ? (BushKind, WoodAmount) : (FernKind, GroundCoverAmount);
 
+        // Stryker restore Equality
+
         for (var i = 0; i < OpenWorldCandidateCount; i++)
         {
             var x = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
@@ -259,6 +264,9 @@ public static class MapLoader
             // A roll against the density field, not a hard threshold - points near a
             // region's edge fade out gradually rather than stopping dead at a boundary.
             var density = densityNoise.Fbm(x, y, 3, DensityNoiseFrequency);
+
+            // Stryker disable once Equality: a draw landing exactly on the density value has
+            // probability zero, so > and >= reject the same points
             if (rng.NextDouble() > density)
             {
                 continue;
@@ -271,6 +279,9 @@ public static class MapLoader
             }
 
             var biome = biomeNoise.Fbm(x, y, 3, BiomeNoiseFrequency);
+
+            // Stryker disable Equality: the noise landing exactly on a band edge has
+            // probability zero, so >= and > put the same points in the same band
             var (kind, amount) = biome switch
             {
                 >= ForestBandMin => PickForestKind(),
@@ -278,6 +289,8 @@ public static class MapLoader
                 >= MeadowBandMin => PickMeadowKind(),
                 _ => (RockKinds[rng.Next(RockKinds.Length)], RockAmount),
             };
+
+            // Stryker restore Equality
 
             world.AddResourceNode(kind, position, amount);
             MarkOccupied(occupied, position);
@@ -292,6 +305,10 @@ public static class MapLoader
     private static Position NextDecorationPosition(Random rng, Dictionary<(int, int), List<Position>> occupied, double centerX, double centerY, double radius)
     {
         var position = new Position(centerX, centerY);
+
+        // Stryker disable once Equality,Update: the attempt cap is a give-up guard, and at
+        // these densities a free spot always turns up long before it - how many attempts it
+        // allows, or whether the counter moves at all, changes nothing that gets placed
         for (var attempt = 0; attempt < MaxDecorationPlacementAttempts; attempt++)
         {
             var angle = rng.NextDouble() * Math.Tau;
@@ -307,6 +324,9 @@ public static class MapLoader
         return position;
     }
 
+    // Stryker disable once Arithmetic: the cell size is only how finely the hash buckets
+    // positions - a coarser one still gathers every neighbour the 3x3 scan below needs, and
+    // that scan measures real distances anyway, so the placements come out identical
     private static (int, int) CellFor(Position position) =>
         ((int)Math.Floor(position.X / MinDecorationSpacing), (int)Math.Floor(position.Y / MinDecorationSpacing));
 
@@ -317,6 +337,8 @@ public static class MapLoader
         {
             for (var dy = -1; dy <= 1; dy++)
             {
+                // Stryker disable once Arithmetic: the offsets run symmetrically from -1 to 1,
+                // so adding and subtracting them visit the same nine cells
                 if (!occupied.TryGetValue((cellX + dx, cellY + dy), out var positions))
                 {
                     continue;
@@ -324,6 +346,8 @@ public static class MapLoader
 
                 foreach (var existing in positions)
                 {
+                    // Stryker disable once Equality: two decorations at exactly the spacing has
+                    // probability zero, so < and <= reject the same candidates
                     if (WorldState.Distance(existing, candidate) < MinDecorationSpacing)
                     {
                         return true;
@@ -354,9 +378,16 @@ public static class MapLoader
     private static Position NextCrowdPosition(Random rng, List<Position> placed)
     {
         const int maxAttempts = 30;
+
+        // Stryker disable once Equality,Update: as with the decoration scatter, fifteen people
+        // in a four-metre disk always fit well inside the attempt budget, so the cap and its
+        // counter never decide anything
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             var candidate = RandomDiskPosition(rng);
+
+            // Stryker disable once Equality: a candidate landing at exactly CrowdMinSpacing has
+            // probability zero, so >= and > accept the same positions
             if (placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing))
             {
                 return candidate;
