@@ -38,7 +38,21 @@ public static class CloudScatter
 
     private static readonly Color FallbackColor = new(0.85f, 0.87f, 0.90f);
 
-    private const string CloudMaskProxyShaderPath = "res://Content/effects/cloud_mask_proxy.gdshader";
+    // Deliberately outside the normal [0, 1] color range - Godot's Color doesn't clamp at
+    // construction, and multiplying a cloud texture's own (fairly light, never fully
+    // black) pixels by this pushes every one of them, dark hatch ink included, past the
+    // fog shader's own color-match thresholds (fog_of_war_screen.gdshader's cloud_pixel
+    // test) uniformly - not just the texture's already-brightest pixels. A custom
+    // shader forcing a flat ALBEDO output (tried first) needed its own hand-rolled
+    // billboard math to replace what Sprite3D's *own* auto-generated material otherwise
+    // provides for free (see BillboardSprite.Create's own doc comment on Billboard=
+    // FixedY) - two different reference conventions for "face the camera" were tried and
+    // both left a visible mismatch (a green fringe of real, unfogged ground) between the
+    // proxy's own silhouette and the real sprite's. Reusing the exact same Sprite3D
+    // pipeline for both - differing only in Modulate and which camera's cull mask
+    // includes them - makes that mismatch structurally impossible: there's no second
+    // implementation of "face the camera" left to disagree with the first.
+    private static readonly Color MaskFlagModulate = new(12f, 0f, 12f, 1f);
 
     public static void Scatter(Node3D parent, float halfExtentMeters)
     {
@@ -67,20 +81,21 @@ public static class CloudScatter
             sprite.Layers = CloudFogMask.VisibleCloudLayerBit;
             parent.AddChild(sprite);
 
-            // A second, mask-only stand-in - never seen by the main camera (see
+            // A second, mask-only stand-in, identical in every way that affects its own
+            // shape/silhouette (same texture, same size, same position, same default
+            // material and billboard mode) - never seen by the main camera (see
             // FreeCameraRig's own CullMask, which excludes CloudLayerBit), only by
-            // CloudFogMask's mask camera. See cloud_mask_proxy.gdshader's own doc
-            // comment for why this needs to be a *separate* object with its own flag-
-            // color material rather than just adding this same visible sprite to that
-            // camera's cull mask.
+            // CloudFogMask's mask camera. AlphaCutMode.OpaquePrepass's own alpha-scissor
+            // depth-write still keeps it a real occluder there too (see CloudFogMask's
+            // own doc comment on why a hill in front of a cloud needs to occlude this
+            // proxy the same way it occludes the real sprite) - correctly proportional
+            // Alpha too, so a cloud faded down by occlusion fade (its Modulate.A, not
+            // touched here) stops registering as "a cloud" here in step with it, instead
+            // of fog-of-war staying skipped over its whole silhouette regardless.
             var proxy = BillboardSprite.Create(texturePath, size, FallbackColor, useMipmaps: false);
             proxy.Position = position;
             proxy.Layers = CloudFogMask.CloudLayerBit;
-            proxy.MaterialOverride = new ShaderMaterial
-            {
-                Shader = ResourceLoader.Load<Shader>(CloudMaskProxyShaderPath),
-            };
-            ((ShaderMaterial)proxy.MaterialOverride).SetShaderParameter("cloud_texture", TextureCache.Get(texturePath));
+            proxy.Modulate = MaskFlagModulate;
             parent.AddChild(proxy);
         }
     }

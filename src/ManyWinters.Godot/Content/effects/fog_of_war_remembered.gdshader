@@ -50,8 +50,10 @@ void fragment() {
     bool implausible = uv.x < -0.1 || uv.x > 1.1 || uv.y < -0.1 || uv.y > 1.1;
     // See fog_of_war_screen.gdshader's own doc comment on why this checks color, not
     // just alpha.
+    // See fog_of_war_screen.gdshader's own doc comment on why only the green channel is
+    // checked.
     vec4 maskSample = texture(cloud_mask, SCREEN_UV);
-    bool cloudPixel = maskSample.a > 0.5 && maskSample.r > 0.9 && maskSample.b > 0.9 && maskSample.g < 0.1;
+    bool cloudPixel = maskSample.a > 0.5 && maskSample.g < 0.02;
 
     // See fog_of_war_screen.gdshader's own doc comment on "fleky" - the empty sky reconstructs
     // to a wildly out-of-range world position, and multiplying by a stray sampled value there

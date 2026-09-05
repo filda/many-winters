@@ -131,7 +131,7 @@ public partial class Main : Node3D
         // I'm running" (a repeated real source of confusion this session - the editor's
         // own hot-reload, or forgetting to relaunch, can silently leave an old process
         // running) is a one-line log check instead of a fresh round of guessing.
-        GD.Print("Build tag: cloud-mask-proxy-billboard-fix-05");
+        GD.Print("Build tag: cloud-mask-proxy-native-billboard-fix-08");
     }
 
     public override void _Process(double delta)

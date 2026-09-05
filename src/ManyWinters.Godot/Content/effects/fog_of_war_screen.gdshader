@@ -111,8 +111,17 @@ void fragment() {
     // thresholds on each channel (rather than an exact equality no float comparison
     // should ever rely on) still comfortably reject every real material this game's own
     // muted palette can produce, which has nothing anywhere near this saturated.
+    // Only the green channel is checked - CloudScatter.cs's own proxy Modulate has a
+    // green component of exactly 0, and any color times 0 is exactly 0 regardless of
+    // the source texture's own value there, unlike the red/blue channels (whose >1
+    // multiplied values still visibly differ hatch-to-highlight after the render
+    // pipeline's own tonemapping/clamping - checking those too rejected the proxy's own
+    // darker hatch-line pixels, exactly the same "fog painted over most of the cloud,
+    // a thin sliver of real texture left" symptom as the very first version of this
+    // mask). No real material in this game's own muted palette lands on exactly 0.0
+    // green, so this alone is still a reliable signal.
     vec4 maskSample = texture(cloud_mask, SCREEN_UV);
-    bool cloudPixel = maskSample.a > 0.5 && maskSample.r > 0.9 && maskSample.b > 0.9 && maskSample.g < 0.1;
+    bool cloudPixel = maskSample.a > 0.5 && maskSample.g < 0.02;
 
     // The empty sky (nothing drawn there at all) clears to the far plane exactly - dividing
     // by INV_PROJECTION_MATRIX's own w there lands right on/past a singularity, reconstructing
