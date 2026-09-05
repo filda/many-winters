@@ -11,18 +11,20 @@ namespace ManyWinters.Godot;
 // CloudScatter's sky clouds are untouched and stay where they are; these reuse its
 // sprite-plus-mask-proxy pair so fog-of-war leaves them unpainted the same way.
 //
-// Candidate spots are scattered once, on a jittered grid across the whole map, each with
-// its own fixed size, texture and random roll; every fog refresh only decides which of
-// them currently show. Sprites are created lazily the first time a spot shows and merely
+// Candidate spots are scattered once across the whole map (CloudSpotScatter - an
+// irregular Poisson-disc layout whose minimum spacing comes from the clouds' own sizes, so
+// they never stack), each with its own fixed size, texture and random roll; every fog
+// refresh only decides which of them currently show. Sprites are created lazily the first time a spot shows and merely
 // hidden when it stops (the explored area only ever grows, so a hidden spot near camp
 // never comes back - but a spot far out toggles as the coverage band moves past it, and
 // re-creating nodes for that would be needless churn).
 public sealed class GroundClouds
 {
     // Smaller than the sky's sizes but still big enough that a handful of them read as a
-    // bank of cloud, not a row of bushes.
-    private const float MinWorldSize = 9f;
-    private const float MaxWorldSize = 18f;
+    // bank of cloud, not a row of bushes. A wide spread of sizes is part of what keeps the
+    // layout from reading as regular - same-sized puffs at even gaps look stamped out.
+    private const float MinWorldSize = 7f;
+    private const float MaxWorldSize = 20f;
 
     // Where the sprite's centre sits relative to the terrain, as a fraction of its height.
     // The cloud art only occupies roughly the middle 27%-72% of its canvas (the rest is
@@ -33,18 +35,19 @@ public sealed class GroundClouds
     // next) left only the transparent top margin above ground - the clouds vanished.
     private const float CenterAboveGroundFraction = 0.05f;
 
-    private const float CandidateSpacingMeters = 14f;
+    // Mean centre-to-centre spacing the scatter aims for; the actual gaps vary around it
+    // (see CloudSpotScatter). Much tighter than the 14m grid it replaced - the cover was
+    // too thin at 14, 11, 8.5 and 6.5.
+    private const float MeanSpacingMeters = 5f;
 
     // Fixed for reproducibility, like every other scatter here; distinct from
     // CloudScatter.Seed so the two layers don't share a pattern.
     private const int Seed = 23;
 
-    private readonly record struct Candidate(float X, float Z, float Size, string TexturePath, float Roll);
-
     private readonly Node3D _parent;
     private readonly FogOfWarRenderer _fogOfWar;
     private readonly Func<float, float, float> _sampleHeight;
-    private readonly List<Candidate> _candidates = new();
+    private readonly IReadOnlyList<CloudSpot> _candidates;
     private readonly Dictionary<int, (Sprite3D Sprite, Sprite3D Proxy)> _live = new();
 
     public GroundClouds(Node3D parent, FogOfWarRenderer fogOfWar, float halfExtentMeters, Func<float, float, float> sampleHeight)
@@ -52,20 +55,7 @@ public sealed class GroundClouds
         _parent = parent;
         _fogOfWar = fogOfWar;
         _sampleHeight = sampleHeight;
-
-        var rng = new RandomNumberGenerator { Seed = Seed };
-        for (var z = -halfExtentMeters; z < halfExtentMeters; z += CandidateSpacingMeters)
-        {
-            for (var x = -halfExtentMeters; x < halfExtentMeters; x += CandidateSpacingMeters)
-            {
-                _candidates.Add(new Candidate(
-                    x + rng.RandfRange(0f, CandidateSpacingMeters),
-                    z + rng.RandfRange(0f, CandidateSpacingMeters),
-                    rng.RandfRange(MinWorldSize, MaxWorldSize),
-                    CloudScatter.TexturePaths[rng.RandiRange(0, CloudScatter.TexturePaths.Length - 1)],
-                    rng.Randf()));
-            }
-        }
+        _candidates = CloudSpotScatter.Generate(halfExtentMeters, MeanSpacingMeters, MinWorldSize, MaxWorldSize, CloudScatter.TexturePaths.Length, Seed);
 
         Refresh();
     }
@@ -95,7 +85,8 @@ public sealed class GroundClouds
                 // the real sprite and the mask in agreement.
                 var y = _sampleHeight(candidate.X, candidate.Z) + (candidate.Size * CenterAboveGroundFraction);
                 var position = new Vector3(candidate.X, y, candidate.Z);
-                _live[i] = CloudScatter.CreateCloudWithMaskProxy(_parent, candidate.TexturePath, candidate.Size, position, excludeFromOcclusionFade: true);
+                var texturePath = CloudScatter.TexturePaths[candidate.TextureIndex];
+                _live[i] = CloudScatter.CreateCloudWithMaskProxy(_parent, texturePath, candidate.Size, position, excludeFromOcclusionFade: true);
             }
         }
     }

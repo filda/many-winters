@@ -12,35 +12,36 @@ public class GroundCloudCoverageTests
     }
 
     [Fact]
-    public void CoverageAtTheBoundaryIsTheBoundaryShare()
+    public void CoverageIsCompleteRightAtTheBoundary()
     {
-        Assert.Equal(GroundCloudCoverage.BoundaryCoverage, GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters), 5);
+        Assert.Equal(1f, GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters), 5);
     }
 
     [Fact]
-    public void CoverageGrowsWithDistance()
+    public void CoverageThinsWithDistance()
     {
-        var band = GroundCloudCoverage.FullCoverageDistanceMeters - GroundCloudCoverage.HugDistanceMeters;
+        var band = GroundCloudCoverage.MaxDistanceMeters - GroundCloudCoverage.HugDistanceMeters;
         var near = GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.25f));
         var mid = GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.5f));
         var far = GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.9f));
 
-        Assert.True(near < mid);
-        Assert.True(mid < far);
+        Assert.True(near > mid);
+        Assert.True(mid > far);
+        Assert.True(far > 0f);
     }
 
     [Fact]
-    public void CoverageIsCompleteFromTheFullCoverageDistanceOn()
+    public void CoverageStaysNearlyFullJustPastTheBoundary()
     {
-        var pastFull = (GroundCloudCoverage.FullCoverageDistanceMeters + GroundCloudCoverage.MaxDistanceMeters) / 2f;
+        var band = GroundCloudCoverage.MaxDistanceMeters - GroundCloudCoverage.HugDistanceMeters;
 
-        Assert.Equal(1f, GroundCloudCoverage.Coverage(GroundCloudCoverage.FullCoverageDistanceMeters), 5);
-        Assert.Equal(1f, GroundCloudCoverage.Coverage(pastFull), 5);
+        Assert.True(GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.1f)) > 0.8f);
     }
 
     [Fact]
     public void NothingIsPlacedBeyondTheMaximumDistance()
     {
+        Assert.Equal(0f, GroundCloudCoverage.Coverage(GroundCloudCoverage.MaxDistanceMeters), 5);
         Assert.Equal(0f, GroundCloudCoverage.Coverage(GroundCloudCoverage.MaxDistanceMeters + 0.1f));
         Assert.Equal(0f, GroundCloudCoverage.Coverage(GridDistanceField.Unreachable));
     }
@@ -49,10 +50,12 @@ public class GroundCloudCoverageTests
     public void ShouldShowComparesTheRollAgainstCoverage()
     {
         var atBoundary = GroundCloudCoverage.HugDistanceMeters;
+        var midway = (GroundCloudCoverage.HugDistanceMeters + GroundCloudCoverage.MaxDistanceMeters) / 2f;
+        var midwayCoverage = GroundCloudCoverage.Coverage(midway);
 
-        Assert.True(GroundCloudCoverage.ShouldShow(atBoundary, GroundCloudCoverage.BoundaryCoverage - 0.01f));
-        Assert.False(GroundCloudCoverage.ShouldShow(atBoundary, GroundCloudCoverage.BoundaryCoverage + 0.01f));
-        Assert.True(GroundCloudCoverage.ShouldShow(GroundCloudCoverage.FullCoverageDistanceMeters, 0.999f));
+        Assert.True(GroundCloudCoverage.ShouldShow(atBoundary, 0.999f));
+        Assert.True(GroundCloudCoverage.ShouldShow(midway, midwayCoverage - 0.01f));
+        Assert.False(GroundCloudCoverage.ShouldShow(midway, midwayCoverage + 0.01f));
         Assert.False(GroundCloudCoverage.ShouldShow(0f, 0f));
     }
 }
