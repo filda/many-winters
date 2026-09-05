@@ -2,8 +2,10 @@ namespace ManyWinters.Core.World;
 
 // One candidate spot for a low cloud (GroundCloudCoverage decides whether it currently
 // shows). Roll is the spot's own fixed random number in [0, 1) for that decision;
-// TextureIndex picks which cloud sprite it uses.
-public readonly record struct CloudSpot(float X, float Z, float Size, int TextureIndex, float Roll);
+// TextureIndex picks which cloud sprite it uses; Lift in [0, 1) is how high the puff
+// rides relative to the ground (the presentation layer maps it onto its own range) - all
+// at one height, they read as stuck into the terrain in a row.
+public readonly record struct CloudSpot(float X, float Z, float Size, int TextureIndex, float Roll, float Lift);
 
 // Scatters cloud spots across the map with the irregular, blue-noise look of a Poisson-disc
 // distribution: random candidates are kept only if they clear every already-placed
@@ -50,7 +52,7 @@ public static class CloudSpotScatter
                 continue;
             }
 
-            var spot = new CloudSpot(x, z, size, rng.Next(textureCount), ClumpyRoll(x, z, (float)rng.NextDouble(), seed));
+            var spot = new CloudSpot(x, z, size, rng.Next(textureCount), ClumpyRoll(x, z, (float)rng.NextDouble(), seed), (float)rng.NextDouble());
             spots.Add(spot);
             if (!buckets.TryGetValue((cx, cz), out var bucket))
             {

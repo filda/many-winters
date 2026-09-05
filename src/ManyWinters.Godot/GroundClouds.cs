@@ -26,14 +26,18 @@ public sealed class GroundClouds
     private const float MinWorldSize = 7f;
     private const float MaxWorldSize = 20f;
 
-    // Where the sprite's centre sits relative to the terrain, as a fraction of its height.
-    // The cloud art only occupies roughly the middle 27%-72% of its canvas (the rest is
-    // transparent margin - see art/generate_sprites.py's cloud lobe layouts), so a centre
-    // right at ground level shows the upper half of the actual puff rising out of the
-    // terrain like low fog. Standing the canvas bottom on the ground (+0.5) floated the
-    // puff a quarter of its height in the air like a row of pale shrubs, and +0.2 (tried
-    // next) left only the transparent top margin above ground - the clouds vanished.
-    private const float CenterAboveGroundFraction = 0.05f;
+    // Where the sprite's centre sits relative to the terrain, as a fraction of its height,
+    // picked per cloud between these two by its own CloudSpot.Lift. The cloud art only
+    // occupies roughly the middle 27%-72% of its canvas (the rest is transparent margin -
+    // see art/generate_sprites.py's cloud lobe layouts), so a centre right at ground level
+    // shows the upper half of the actual puff rising out of the terrain like low fog; the
+    // top of this range lifts the whole puff clear of the ground. Standing the canvas
+    // bottom on the ground (+0.5) floated the puff a quarter of its height in the air like
+    // a row of pale shrubs, and +0.2 for every cloud left only the transparent top margin
+    // above ground - the clouds vanished. One shared height, whatever it was, also read as
+    // a row of puffs stuck into the terrain, hence the per-cloud spread.
+    private const float MinCenterAboveGroundFraction = -0.05f;
+    private const float MaxCenterAboveGroundFraction = 0.3f;
 
     // Mean centre-to-centre spacing the scatter aims for; the actual gaps vary around it
     // (see CloudSpotScatter). Much tighter than the 14m grid it replaced - the cover was
@@ -83,7 +87,8 @@ public sealed class GroundClouds
                 // in the fog's own colour. These sit at ground level right where the view
                 // target usually is, so that happened constantly; never fading them keeps
                 // the real sprite and the mask in agreement.
-                var y = _sampleHeight(candidate.X, candidate.Z) + (candidate.Size * CenterAboveGroundFraction);
+                var aboveGround = Mathf.Lerp(MinCenterAboveGroundFraction, MaxCenterAboveGroundFraction, candidate.Lift);
+                var y = _sampleHeight(candidate.X, candidate.Z) + (candidate.Size * aboveGround);
                 var position = new Vector3(candidate.X, y, candidate.Z);
                 var texturePath = CloudScatter.TexturePaths[candidate.TextureIndex];
                 _live[i] = CloudScatter.CreateCloudWithMaskProxy(_parent, texturePath, candidate.Size, position, excludeFromOcclusionFade: true);

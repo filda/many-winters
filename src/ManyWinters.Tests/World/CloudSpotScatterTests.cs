@@ -25,7 +25,16 @@ public class CloudSpotScatterTests
             Assert.InRange(spot.Size, 9f, 18f);
             Assert.InRange(spot.TextureIndex, 0, 2);
             Assert.InRange(spot.Roll, 0f, 1f);
+            Assert.InRange(spot.Lift, 0f, 1f);
         }
+    }
+
+    [Fact]
+    public void LiftVariesBetweenSpots()
+    {
+        var lifts = Scatter().Select(spot => spot.Lift).ToList();
+
+        Assert.True(lifts.Max() - lifts.Min() > 0.5f);
     }
 
     [Fact]
