@@ -20,9 +20,10 @@ public class GroundCloudCoverageTests
     [Fact]
     public void CoverageGrowsWithDistance()
     {
-        var near = GroundCloudCoverage.Coverage(20f);
-        var mid = GroundCloudCoverage.Coverage(50f);
-        var far = GroundCloudCoverage.Coverage(80f);
+        var band = GroundCloudCoverage.FullCoverageDistanceMeters - GroundCloudCoverage.HugDistanceMeters;
+        var near = GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.25f));
+        var mid = GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.5f));
+        var far = GroundCloudCoverage.Coverage(GroundCloudCoverage.HugDistanceMeters + (band * 0.9f));
 
         Assert.True(near < mid);
         Assert.True(mid < far);

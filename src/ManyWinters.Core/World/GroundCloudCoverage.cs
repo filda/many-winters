@@ -16,12 +16,14 @@ public static class GroundCloudCoverage
     public const float BoundaryCoverage = 0.45f;
 
     // Distance past the boundary at which every candidate spot carries a cloud.
-    public const float FullCoverageDistanceMeters = 55f;
+    public const float FullCoverageDistanceMeters = 30f;
 
-    // Beyond this nothing is placed at all: the fog's own sheet has faded into the sky
-    // colour by ~70m (fog_of_war_screen.gdshader's fade_end_meters), so the clouds only
-    // need to cover the still-visible band of it, not the whole 1 km map.
-    public const float MaxDistanceMeters = 80f;
+    // Beyond this nothing is placed at all. The fog's own sheet fades into the sky colour
+    // between 10m and 70m (fog_of_war_screen.gdshader's fade_start/end_meters, squared)
+    // and is already half gone around 50m; a cloud's own art reaches up to ~9m past its
+    // centre. Stopping the centres here keeps every cloud on visibly pale ground - one
+    // standing on the dark, faded-out ground beyond read as a stray white puff on a table.
+    public const float MaxDistanceMeters = 42f;
 
     public static float Coverage(float distanceMeters)
     {
