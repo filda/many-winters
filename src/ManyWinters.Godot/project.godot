@@ -21,3 +21,12 @@ config/features=PackedStringArray("4.7", "C#")
 [dotnet]
 
 project/assembly_name="ManyWinters.Godot"
+
+[rendering]
+
+; Warm grey-brown instead of Godot's neutral grey default: the empty sky is the table the
+; chronicle's map lies on. It frames the parchment of the unknown fog tier (which fades into
+; this exact colour - FogOfWarRenderer passes it to the shader) and lets the cool grey clouds
+; read against it. A neutral grey void made the whole scene read as an unlit 3D scene; a
+; near-black sepia (0.17) was tried and was too heavy.
+environment/defaults/default_clear_color=Color(0.32, 0.29, 0.26, 1)

@@ -20,7 +20,7 @@ render_mode unshaded, depth_test_disabled, depth_draw_never, cull_disabled, fog_
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 uniform sampler2D exploration_texture : filter_linear, repeat_disable;
-uniform vec3 remembered_tint : source_color = vec3(0.72, 0.72, 0.76);
+uniform vec3 remembered_tint : source_color = vec3(0.80, 0.74, 0.64);
 uniform float half_extent_meters = 500.0;
 
 // See fog_of_war_screen.gdshader's own doc comment on cloud_mask for the full reasoning.

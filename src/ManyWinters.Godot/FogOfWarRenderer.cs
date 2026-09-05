@@ -21,8 +21,15 @@ namespace ManyWinters.Godot;
 // actually already Explored.
 public sealed class FogOfWarRenderer
 {
-    private static readonly Color UnknownColor = new(0.6f, 0.62f, 0.66f);
-    private static readonly Color RememberedTint = new(0.72f, 0.72f, 0.76f);
+    // Aged paper, not snow: docs/ZemanConceptArt.png's "Unknown" visibility panel is warm
+    // parchment (its midtone samples around (175, 156, 134) sRGB), and the unknown tier is
+    // meant to read as the blank part of the chronicle's own map rather than a bank of cold
+    // mist. Slightly lighter than that midtone because the shader's own paper mottling
+    // (see fog_of_war_screen.gdshader) darkens patches of it back down. The remembered
+    // tier's multiply tint is warmed to match so the two tiers meet as one sheet of paper
+    // rather than warm parchment against blue-grey ash.
+    private static readonly Color UnknownColor = new(0.72f, 0.66f, 0.58f);
+    private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
 
     // Resolution of the *sharp* channels (R/B below) - one texel per ExplorationState cell
     // (computed in the constructor from halfExtentMeters and CellSizeMeters), not some
@@ -65,6 +72,14 @@ public sealed class FogOfWarRenderer
     private readonly float _halfExtentMeters;
     private readonly ImageTexture _explorationTexture;
 
+    // Metres from each texel to the nearest ever-explored cell (GridDistanceField), one float
+    // per texel - what lets the unknown shader fade its parchment out into darkness with
+    // distance from where the group has actually been, not from some fixed map landmark:
+    // concentric rings of party, visible ground, parchment, then nothing. Kept as its own
+    // texture rather than squeezed into a spare channel of _explorationTexture because that
+    // one is Rgba8 (0..1 per channel) and all four channels are already spoken for.
+    private readonly ImageTexture _distanceTexture;
+
     public FogOfWarRenderer(ExplorationState exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
     {
         _exploration = exploration;
@@ -73,6 +88,8 @@ public sealed class FogOfWarRenderer
 
         var initialImage = Image.CreateEmpty(_explorationTextureResolution, _explorationTextureResolution, false, Image.Format.Rgba8);
         _explorationTexture = ImageTexture.CreateFromImage(initialImage);
+        var initialDistance = Image.CreateEmpty(_explorationTextureResolution, _explorationTextureResolution, false, Image.Format.Rf);
+        _distanceTexture = ImageTexture.CreateFromImage(initialDistance);
 
         // Two reconstruction-based ways to exempt CloudScatter's sprites from fog-of-war
         // were tried and rejected first - see CloudFogMask's own doc comment for the full
@@ -99,6 +116,10 @@ public sealed class FogOfWarRenderer
         var unknownMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(UnknownShaderPath), RenderPriority = 127 };
         unknownMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         unknownMaterial.SetShaderParameter("fog_albedo", UnknownColor);
+        unknownMaterial.SetShaderParameter("distance_texture", _distanceTexture);
+        // The sheet fades into whatever the empty sky renders as, so it dissolves rather
+        // than stopping at a visible seam - see the shader's own far_color comment.
+        unknownMaterial.SetShaderParameter("far_color", RenderingServer.GetDefaultClearColor());
         unknownMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         unknownMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
 
@@ -173,16 +194,31 @@ public sealed class FogOfWarRenderer
         var unexploredBlurred = BoxBlur(unexploredSharp, size);
         var rememberedBlurred = BoxBlur(rememberedSharp, size);
 
+        var exploredMask = new bool[size, size];
+        for (var ty = 0; ty < size; ty++)
+        {
+            for (var tx = 0; tx < size; tx++)
+            {
+                exploredMask[ty, tx] = unexploredSharp[ty, tx] == 0f;
+            }
+        }
+
+        var distanceCells = GridDistanceField.DistanceToNearestTrue(exploredMask);
+        var metersPerTexel = (2f * _halfExtentMeters) / size;
+
         var image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        var distanceImage = Image.CreateEmpty(size, size, false, Image.Format.Rf);
         for (var ty = 0; ty < size; ty++)
         {
             for (var tx = 0; tx < size; tx++)
             {
                 image.SetPixel(tx, ty, new Color(unexploredSharp[ty, tx], rememberedSharp[ty, tx], unexploredBlurred[ty, tx], rememberedBlurred[ty, tx]));
+                distanceImage.SetPixel(tx, ty, new Color(distanceCells[ty, tx] * metersPerTexel, 0f, 0f));
             }
         }
 
         _explorationTexture.Update(image);
+        _distanceTexture.Update(distanceImage);
     }
 
     // Separable box blur (horizontal pass, then vertical) - simple and, at
