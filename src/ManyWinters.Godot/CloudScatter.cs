@@ -29,7 +29,8 @@ public static class CloudScatter
     // a seeded RNG rather than System.Random with no seed.
     private const int Seed = 9;
 
-    private static readonly string[] TexturePaths =
+    // Shared with GroundClouds - one set of cloud art for both the sky and the low cover.
+    public static readonly string[] TexturePaths =
     [
         "res://Content/effects/cloud_1.png",
         "res://Content/effects/cloud_2.png",
@@ -64,39 +65,48 @@ public static class CloudScatter
             var y = rng.RandfRange(MinHeight, MaxHeight);
             var size = rng.RandfRange(MinWorldSize, MaxWorldSize);
             var texturePath = TexturePaths[rng.RandiRange(0, TexturePaths.Length - 1)];
-            var position = new Vector3(x, y, z);
-
-            // NOT excluded from occlusion fade (Main.ComputeOccludingSprites) - a cloud
-            // low/near enough to sit between the camera and the current view target
-            // should dim like anything else in the way, the same as a nearby tree
-            // canopy. Mipmaps off, unlike every other billboard - see BillboardSprite.
-            // Create's own doc comment on useMipmaps: with only 40 of these, sparse and
-            // never filling the screen with a repeated silhouette, there's no real
-            // aliasing risk to trade the woodcut hatching/outline away for.
-            // VisibleCloudLayerBit, not the default layer - see CloudFogMask's own doc
-            // comment on why the real sprite and its mask-only proxy below can never
-            // both be visible to the mask camera at once.
-            var sprite = BillboardSprite.Create(texturePath, size, FallbackColor, useMipmaps: false);
-            sprite.Position = position;
-            sprite.Layers = CloudFogMask.VisibleCloudLayerBit;
-            parent.AddChild(sprite);
-
-            // A second, mask-only stand-in, identical in every way that affects its own
-            // shape/silhouette (same texture, same size, same position, same default
-            // material and billboard mode) - never seen by the main camera (see
-            // FreeCameraRig's own CullMask, which excludes CloudLayerBit), only by
-            // CloudFogMask's mask camera. AlphaCutMode.OpaquePrepass's own alpha-scissor
-            // depth-write still keeps it a real occluder there too (see CloudFogMask's
-            // own doc comment on why a hill in front of a cloud needs to occlude this
-            // proxy the same way it occludes the real sprite) - correctly proportional
-            // Alpha too, so a cloud faded down by occlusion fade (its Modulate.A, not
-            // touched here) stops registering as "a cloud" here in step with it, instead
-            // of fog-of-war staying skipped over its whole silhouette regardless.
-            var proxy = BillboardSprite.Create(texturePath, size, FallbackColor, useMipmaps: false);
-            proxy.Position = position;
-            proxy.Layers = CloudFogMask.CloudLayerBit;
-            proxy.Modulate = MaskFlagModulate;
-            parent.AddChild(proxy);
+            CreateCloudWithMaskProxy(parent, texturePath, size, new Vector3(x, y, z));
         }
+    }
+
+    // One cloud as the main camera sees it plus its fog-mask stand-in - the same pair for
+    // sky clouds here and GroundClouds' low cover, so both are exempted from fog-of-war by
+    // exactly one mechanism.
+    public static (Sprite3D Sprite, Sprite3D Proxy) CreateCloudWithMaskProxy(Node3D parent, string texturePath, float size, Vector3 position, bool excludeFromOcclusionFade = false)
+    {
+        // Sky clouds are NOT excluded from occlusion fade (Main.ComputeOccludingSprites) -
+        // a cloud low/near enough to sit between the camera and the current view target
+        // should dim like anything else in the way, the same as a nearby tree canopy.
+        // GroundClouds opts out - see its own comment on why a faded cloud and its mask
+        // proxy fall out of step. Mipmaps off, unlike every other billboard - see BillboardSprite.
+        // Create's own doc comment on useMipmaps: with only 40 of these, sparse and
+        // never filling the screen with a repeated silhouette, there's no real
+        // aliasing risk to trade the woodcut hatching/outline away for.
+        // VisibleCloudLayerBit, not the default layer - see CloudFogMask's own doc
+        // comment on why the real sprite and its mask-only proxy below can never
+        // both be visible to the mask camera at once.
+        var sprite = BillboardSprite.Create(texturePath, size, FallbackColor, excludeFromOcclusionFade: excludeFromOcclusionFade, useMipmaps: false);
+        sprite.Position = position;
+        sprite.Layers = CloudFogMask.VisibleCloudLayerBit;
+        parent.AddChild(sprite);
+
+        // A second, mask-only stand-in, identical in every way that affects its own
+        // shape/silhouette (same texture, same size, same position, same default
+        // material and billboard mode) - never seen by the main camera (see
+        // FreeCameraRig's own CullMask, which excludes CloudLayerBit), only by
+        // CloudFogMask's mask camera. AlphaCutMode.OpaquePrepass's own alpha-scissor
+        // depth-write still keeps it a real occluder there too (see CloudFogMask's
+        // own doc comment on why a hill in front of a cloud needs to occlude this
+        // proxy the same way it occludes the real sprite) - correctly proportional
+        // Alpha too, so a cloud faded down by occlusion fade (its Modulate.A, not
+        // touched here) stops registering as "a cloud" here in step with it, instead
+        // of fog-of-war staying skipped over its whole silhouette regardless.
+        var proxy = BillboardSprite.Create(texturePath, size, FallbackColor, excludeFromOcclusionFade: excludeFromOcclusionFade, useMipmaps: false);
+        proxy.Position = position;
+        proxy.Layers = CloudFogMask.CloudLayerBit;
+        proxy.Modulate = MaskFlagModulate;
+        parent.AddChild(proxy);
+
+        return (sprite, proxy);
     }
 }

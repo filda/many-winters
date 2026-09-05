@@ -37,18 +37,8 @@ render_mode unshaded, depth_test_disabled, depth_draw_never, cull_disabled, fog_
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 uniform sampler2D exploration_texture : filter_linear, repeat_disable;
-uniform vec3 fog_albedo : source_color = vec3(0.72, 0.66, 0.58);
+uniform vec3 fog_albedo : source_color = vec3(0.70, 0.73, 0.78);
 uniform float half_extent_meters = 500.0;
-// Engraved hatching over the parchment, in world space so it stays pinned to the ground.
-// A flat fill - any hue - read as sand or mud; what makes the reference's paper read as
-// paper is that it's visibly *drawn*. Tone comes from line density, the same rule every
-// sprite in this game follows (see art/generate_sprites.py): lines are thin and sparse
-// right past the explored boundary and thicken with distance until they cross-hatch into
-// darkness. hatch_spacing is the gap between lines in metres.
-uniform vec3 hatch_color : source_color = vec3(0.26, 0.21, 0.16);
-uniform float hatch_spacing = 1.3;
-uniform float hatch_min_width = 0.06;
-uniform float hatch_max_width = 0.35;
 // How far the paper mottling below pushes the albedo up or down (a fraction of it). Two
 // octaves: broad blotches at mottle_scale metres, a finer grain at ~6x that frequency.
 // Kept broad and faint - at 12m and 0.10 the blotches read as sand dunes, not paper.
@@ -108,35 +98,6 @@ float value_noise(vec2 p) {
     vec2 u = f * f * (3.0 - 2.0 * f);
     return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
                mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-
-// One family of parallel hand-ruled hatch lines. `across` runs perpendicular to the lines
-// (in line-spacing units, so consecutive integers are consecutive lines), `along` runs
-// with them (metres). Each line gets its own lateral wobble and its own pen lifts, keyed by
-// its integer index, so they don't bend in lockstep - the same "per-line personality" the
-// sprite generator's hatch uses. Returns ink coverage in [0, 1], anti-aliased, and
-// collapsing to its own average tone once the lines get denser than screen pixels (a raw
-// step() there just shimmers with moire).
-float hatch_ink(float across, float along, float width) {
-    float line_index = floor(across);
-    // Per-line personality, all keyed by the line's own index: where it sits between its
-    // neighbours, how thick the nib was, how it bows, and how long each stroke runs before
-    // the pen lifts. Evenly spaced identical lines read as a ploughed field, not a drawing.
-    float lateral = (hash21(vec2(line_index, 1.7)) - 0.5) * 0.8;
-    float thickness = 0.5 + hash21(vec2(line_index, 9.3)) * 1.0;
-    float curve_freq = 0.12 + hash21(vec2(line_index, 4.1)) * 0.25;
-    float curve_amp = 0.08 + hash21(vec2(line_index, 6.7)) * 0.16;
-    float curve = sin(along * curve_freq + hash21(vec2(line_index, 2.9)) * 6.2832) * curve_amp;
-    float stroke_len = 1.5 + hash21(vec2(line_index, 8.2)) * 2.5;
-    float segment = floor(along / stroke_len);
-    float pen_down = step(0.32, hash21(vec2(line_index * 13.0 + segment, segment * 0.37 + line_index)));
-
-    float w = width * thickness;
-    float pos = fract(across - lateral - curve);
-    float aa = fwidth(across);
-    float line = (1.0 - smoothstep(w - aa, w + aa, pos)) * pen_down;
-    float too_dense = smoothstep(0.35, 0.9, aa);
-    return mix(line, width * 0.6, too_dense);
 }
 
 void vertex() {
@@ -230,16 +191,6 @@ void fragment() {
         // stain spreading across the sheet, not a clean ring around the explored area.
         float meters = texture(distance_texture, uv).r + blotch * 0.15 * fade_end_meters;
         float far = smoothstep(fade_start_meters, fade_end_meters, meters);
-
-        // Diagonal hatching whose line width grows with distance from the explored area;
-        // a second, perpendicular family joins in past the halfway point so the far zone
-        // cross-hatches into darkness rather than just getting thicker stripes.
-        vec2 diag = vec2(world.x + world.z, world.x - world.z) * 0.7071;
-        float width = mix(hatch_min_width, hatch_max_width, far);
-        float ink = hatch_ink(diag.x / hatch_spacing, diag.y, width);
-        float cross_width = hatch_max_width * smoothstep(0.45, 1.0, far);
-        ink = max(ink, hatch_ink(diag.y / hatch_spacing, diag.x, cross_width));
-        vec3 drawn = mix(paper, hatch_color, ink);
-        ALBEDO = mix(drawn, far_color, far * far);
+        ALBEDO = mix(paper, far_color, far * far);
     }
 }

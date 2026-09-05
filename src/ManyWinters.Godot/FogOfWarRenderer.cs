@@ -21,14 +21,14 @@ namespace ManyWinters.Godot;
 // actually already Explored.
 public sealed class FogOfWarRenderer
 {
-    // Aged paper, not snow: docs/ZemanConceptArt.png's "Unknown" visibility panel is warm
-    // parchment (its midtone samples around (175, 156, 134) sRGB), and the unknown tier is
-    // meant to read as the blank part of the chronicle's own map rather than a bank of cold
-    // mist. Slightly lighter than that midtone because the shader's own paper mottling
-    // (see fog_of_war_screen.gdshader) darkens patches of it back down. The remembered
-    // tier's multiply tint is warmed to match so the two tiers meet as one sheet of paper
-    // rather than warm parchment against blue-grey ash.
-    private static readonly Color UnknownColor = new(0.72f, 0.66f, 0.58f);
+    // The same muted cool grey the cloud sprites are painted in (art/generate_sprites.py's
+    // _cloud), so the unknown sheet and the low clouds GroundClouds lays over it read as one
+    // bank of cloud. A warm parchment (docs/ZemanConceptArt.png's "Unknown" panel) was tried
+    // in several shades first; with the clouds on top it clashed rather than framed them.
+    // The mottling in fog_of_war_screen.gdshader and GroundClouds' low cover are what keep
+    // this from reading as flat fog or snow, not the hue (a world-space hatch over the sheet
+    // was tried too and dropped - it read as a ploughed field).
+    private static readonly Color UnknownColor = new(0.70f, 0.73f, 0.78f);
     private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
 
     // Resolution of the *sharp* channels (R/B below) - one texel per ExplorationState cell
@@ -80,11 +80,18 @@ public sealed class FogOfWarRenderer
     // one is Rgba8 (0..1 per channel) and all four channels are already spoken for.
     private readonly ImageTexture _distanceTexture;
 
+    // The same field on the CPU side, kept from the last rebuild for GroundClouds to query
+    // per candidate spot - one lookup into an already-computed grid, not a second transform.
+    private float[,] _distanceCells;
+    private readonly float _metersPerTexel;
+
     public FogOfWarRenderer(ExplorationState exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
     {
         _exploration = exploration;
         _halfExtentMeters = halfExtentMeters;
         _explorationTextureResolution = (int)MathF.Ceiling((2f * halfExtentMeters) / ExplorationState.CellSizeMeters);
+        _metersPerTexel = (2f * halfExtentMeters) / _explorationTextureResolution;
+        _distanceCells = new float[_explorationTextureResolution, _explorationTextureResolution];
 
         var initialImage = Image.CreateEmpty(_explorationTextureResolution, _explorationTextureResolution, false, Image.Format.Rgba8);
         _explorationTexture = ImageTexture.CreateFromImage(initialImage);
@@ -162,6 +169,16 @@ public sealed class FogOfWarRenderer
 
     public void Refresh() => RebuildExplorationTexture();
 
+    // Metres from a world position to the nearest ever-explored cell, as of the last
+    // Refresh - the same mapping from world to texel RebuildExplorationTexture uses.
+    public float DistanceToExploredMeters(float worldX, float worldZ)
+    {
+        var size = _explorationTextureResolution;
+        var tx = Math.Clamp((int)MathF.Floor(((worldX / (2f * _halfExtentMeters)) + 0.5f) * size), 0, size - 1);
+        var ty = Math.Clamp((int)MathF.Floor(((worldZ / (2f * _halfExtentMeters)) + 0.5f) * size), 0, size - 1);
+        return _distanceCells[ty, tx] * _metersPerTexel;
+    }
+
     // One texel per (worldX, worldZ) sample across the whole map, in two layers:
     //   R/G: the *sharp* (exact, unblurred) state - R: 1 where that point's cell has never
     //   been explored, else 0. G: 1 where it's explored but not in anyone's current sight
@@ -203,8 +220,7 @@ public sealed class FogOfWarRenderer
             }
         }
 
-        var distanceCells = GridDistanceField.DistanceToNearestTrue(exploredMask);
-        var metersPerTexel = (2f * _halfExtentMeters) / size;
+        _distanceCells = GridDistanceField.DistanceToNearestTrue(exploredMask);
 
         var image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         var distanceImage = Image.CreateEmpty(size, size, false, Image.Format.Rf);
@@ -213,7 +229,7 @@ public sealed class FogOfWarRenderer
             for (var tx = 0; tx < size; tx++)
             {
                 image.SetPixel(tx, ty, new Color(unexploredSharp[ty, tx], rememberedSharp[ty, tx], unexploredBlurred[ty, tx], rememberedBlurred[ty, tx]));
-                distanceImage.SetPixel(tx, ty, new Color(distanceCells[ty, tx] * metersPerTexel, 0f, 0f));
+                distanceImage.SetPixel(tx, ty, new Color(_distanceCells[ty, tx] * _metersPerTexel, 0f, 0f));
             }
         }
 

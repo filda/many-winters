@@ -73,6 +73,7 @@ public partial class Main : Node3D
     private WorldState _world = null!;
     private WorldPresenter _presenter = null!;
     private FogOfWarRenderer _fogOfWar = null!;
+    private GroundClouds _groundClouds = null!;
     private CloudFogMask _cloudFogMask = null!;
     private TerrainRenderer _terrain = null!;
     private FreeCameraRig _cameraRig = null!;
@@ -124,6 +125,7 @@ public partial class Main : Node3D
 
         _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
         _fogOfWar = new FogOfWarRenderer(_world.Exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
+        _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
         // A permanent build tag, not a one-off debug leftover - bump the string whenever
@@ -161,6 +163,7 @@ public partial class Main : Node3D
         _world.Advance(1);
         _presenter.RefreshExploration();
         _fogOfWar.Refresh();
+        _groundClouds.Refresh();
         ResolvePendingGathers();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
         RefreshInfoLabel();
