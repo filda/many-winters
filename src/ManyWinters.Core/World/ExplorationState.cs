@@ -13,7 +13,16 @@ public sealed class ExplorationState
     // both work in centimeters-to-single-digit-meters) - fog only needs to track roughly where
     // the group has been, and a grid this fine would just mean tracking (and, on the Godot side,
     // rendering) many more cells for no gameplay benefit.
-    public const float CellSizeMeters = 5f;
+    //
+    // 5m used to mean a person's own SightRadiusMeters (15m) circle rasterized to a mere
+    // 3-cell radius - visibly a rough octagon, not a circle, no matter how much the rendered
+    // mesh's surface got smoothed afterward (see FogOfWarRenderer's own history and the
+    // user's "ty hrany u osadníků" - the explored *shape* itself was polygonal, not the mesh's
+    // texture/lighting). 2.5m instead gives that circle roughly double the resolution
+    // (6-cell radius) while staying coarse enough that rebuilding the fog mesh (which scales
+    // with cell count squared) on every newly-explored cell stays a rare-event cost, not a
+    // per-tick one.
+    public const float CellSizeMeters = 2.5f;
 
     // How far a person can currently see - deliberately smaller than IdleSearchRadius
     // (WorldState's autonomous "go find something to do" range): sight is what the *player*

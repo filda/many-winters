@@ -999,14 +999,57 @@ def random_conifer_tiers(rng):
     """A pine as an irregular stack of 3-5 branch tiers instead of 3 identical
     triangles: tier count, width, vertical spacing and horizontal drift all vary."""
     tier_count = rng.randint(3, 5)
-    tiers = []
-    apex_y = rng.uniform(2, 8)
+    # 14, not the original 2: this is where lobe_cluster_mask draws its own topmost row
+    # (a single tapered sprig, not the raw apex point itself) - that sprig's own tip
+    # extends roughly 1.4x its own radius *above* this y, and that radius scales with the
+    # tier's half_width below (~9-12 at the very top tier), so the true topmost drawn
+    # pixel can sit 10+ units above whatever's passed in here. The original 2-8 range
+    # left far too little headroom - worst-case rolls put that sprig tip above the
+    # canvas's own y=0, hard-clipped flat by the canvas boundary during rasterization
+    # instead of coming to its natural point (visible in-game as a "cut off" tree top).
+    apex_y = rng.uniform(14, 20)
     apex_x = 32 + rng.uniform(-2, 2)
-    cur_y = apex_y
     half_width = rng.uniform(9, 12)
-    last_base_y = cur_y
-    for _ in range(tier_count):
-        tier_h = rng.uniform(11, 15)
+
+    # Drawn up front (not inside the stacking loop below) so the raw, unscaled stack's
+    # own final base_y - and the *width* it ends up reaching, which is what actually
+    # controls how far past it lobe_cluster_mask's bottom-row sprigs (and their own
+    # closing dilation) draw real pixels - can be projected before anything is actually
+    # placed. A tree with several tall, wide tiers (tier_count up to 5, half_width
+    # growing every tier) can run this well past the canvas's own bottom edge, hard-
+    # clipped flat during rasterization the same way an under-margined apex clipped at
+    # the top. Scaling every tier's own height down uniformly (never up - a stack that
+    # already fits is left untouched) keeps tiers' relative proportions intact, unlike
+    # clamping each tier's base_y individually, which would bunch every overflowing tier
+    # onto one flat line.
+    raw_heights = [rng.uniform(11, 15) for _ in range(tier_count)]
+    gap_fracs = [rng.uniform(0.28, 0.4) for _ in range(tier_count)]
+    width_growths = [rng.uniform(3.0, 5.0) for _ in range(tier_count - 1)]
+    final_half_width = half_width + sum(width_growths)
+
+    cur_y = apex_y
+    for tier_h, gap_frac in zip(raw_heights, gap_fracs):
+        base_y = cur_y + tier_h
+        cur_y = base_y - tier_h * gap_frac
+    projected_last_base_y = base_y
+
+    # lobe_cluster_mask's own last row sits at roughly t=0.87 of the way from that
+    # tier's apex to its base_y, with a lobe radius of up to ~(half_width * t) - worst
+    # case (its n_lobes floor of 2) - and each sprig's own bottom vertices reach a
+    # further 0.7x that radius past the row itself. 0.75 approximates that whole chain
+    # (0.87 * 1.0 * 0.7 ~= 0.6, plus dilate's own close_r and rounding slack) as one
+    # fraction of final_half_width, without duplicating lobe_cluster_mask's exact math
+    # here - this only has to be a safe overestimate, not a precise one.
+    required_margin = (final_half_width * 0.75) + 3
+    max_base_y = 63 - required_margin
+    if projected_last_base_y > max_base_y:
+        scale = (max_base_y - apex_y) / (projected_last_base_y - apex_y)
+        raw_heights = [h * scale for h in raw_heights]
+
+    tiers = []
+    cur_y = apex_y
+    last_base_y = apex_y
+    for i, (tier_h, gap_frac) in enumerate(zip(raw_heights, gap_fracs)):
         base_y = cur_y + tier_h
         last_base_y = base_y
         drift = rng.uniform(-2.5, 2.5)
@@ -1014,8 +1057,9 @@ def random_conifer_tiers(rng):
         right = (apex_x + drift + half_width, base_y)
         apex = (apex_x + rng.uniform(-1.5, 1.5), cur_y - rng.uniform(0, 3))
         tiers.append([apex, right, left])
-        cur_y = base_y - tier_h * rng.uniform(0.28, 0.4)
-        half_width += rng.uniform(3.0, 5.0)
+        cur_y = base_y - tier_h * gap_frac
+        if i < len(width_growths):
+            half_width += width_growths[i]
     return tiers, last_base_y
 
 
@@ -1218,9 +1262,17 @@ def rock_cluster():
 # silhouette identity readable as "this kind of tree"), but genuinely different
 # proportions/positions per variant, not just different hatch noise. Variant 0 is the
 # original, unchanged shape.
+# Each lobe's own (cy - ry) must stay a couple of pixels clear of the canvas top (y=0) -
+# an ellipse whose top edge touches or crosses it gets hard-clipped flat by the canvas
+# boundary during rasterization, replacing that lobe's naturally round top with a
+# perfectly straight, sharp-cornered line (visible in-game as a "cut off" canopy). The
+# top lobe in variants 0 and 1 originally clipped this way (cy-ry of 0 and -2
+# respectively) - ry alone is trimmed here, not cx/cy, since _APPLE_FRUIT_SPOT_VARIANTS'
+# own per-variant fruit dot for this same lobe is positioned at its exact (cx, cy) and
+# would otherwise need to move too.
 _FRUIT_TREE_CANOPY_VARIANTS = [
-    [(32, 26, 22, 17), (18, 30, 13, 12), (46, 30, 13, 12), (32, 12, 15, 12)],
-    [(34, 24, 20, 19), (16, 34, 12, 11), (47, 26, 15, 13), (30, 9, 13, 11)],
+    [(32, 26, 22, 17), (18, 30, 13, 12), (46, 30, 13, 12), (32, 12, 15, 10)],
+    [(34, 24, 20, 19), (16, 34, 12, 11), (47, 26, 15, 13), (30, 9, 13, 7)],
     [(31, 29, 24, 15), (14, 28, 14, 13), (49, 32, 12, 11), (33, 15, 17, 10)],
 ]
 
@@ -1647,11 +1699,11 @@ def _cloud(name, lobes, rng):
     bush()'s trunkless clump (each lobe individually jagged, not the clean union bush()
     itself uses, since a cloud has no denser foliage silhouette to fall back on - its
     edge IS the whole shape read), just wider/flatter and centered rather than sitting on
-    GROUND_CONTACT_Y - fog-of-war's mist ceiling (FogOfWarRenderer.cs) floats mid-air, it
-    doesn't stand on anything. Kept deliberately muted/cool (not white) - see
-    FogOfWarRenderer's own UnknownColor comment on why a flat white read as snow instead
-    of mist once it had shading; hatch_fill's diagonal ink crosshatch is what actually
-    keeps it from looking flat here, the same as every other sprite this pipeline draws."""
+    GROUND_CONTACT_Y - CloudScatter.cs floats these at a fixed height band well above the
+    terrain, they don't stand on anything. Kept deliberately muted/cool (not white) - a
+    flat white read as snow instead of cloud once it had shading; hatch_fill's diagonal
+    ink crosshatch is what actually keeps it from looking flat here, the same as every
+    other sprite this pipeline draws."""
     seed = seed_for(name)
     c = Canvas(seed)
     mist = rgb(0.70, 0.73, 0.78)
@@ -1668,8 +1720,8 @@ def _cloud(name, lobes, rng):
 
 
 # Three independent lobe layouts (not one shape re-scaled) so a scatter of these reads as
-# a genuinely varied mist bank rather than the same puff resized - same "distinct
-# hand-authored variants, blended per instance" reasoning as the robe silhouettes above.
+# a genuinely varied sky rather than the same puff resized - same "distinct hand-authored
+# variants, blended per instance" reasoning as the robe silhouettes above.
 def cloud_1():
     rng = random.Random(seed_for("cloud_1"))
     return _cloud("cloud_1", [(20, 36, 14, 10), (34, 29, 16, 12), (48, 36, 13, 10), (32, 42, 22, 12)], rng)

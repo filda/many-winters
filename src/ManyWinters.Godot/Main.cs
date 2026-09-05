@@ -73,6 +73,7 @@ public partial class Main : Node3D
     private WorldState _world = null!;
     private WorldPresenter _presenter = null!;
     private FogOfWarRenderer _fogOfWar = null!;
+    private CloudFogMask _cloudFogMask = null!;
     private TerrainRenderer _terrain = null!;
     private FreeCameraRig _cameraRig = null!;
     private Position _campCenter;
@@ -118,10 +119,19 @@ public partial class Main : Node3D
         SetUpCamera();
         SetUpUi();
 
+        CloudScatter.Scatter(this, _terrain.Half);
+        _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
+
         _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
-        _fogOfWar = new FogOfWarRenderer(this, _world.Exploration, _terrain.SampleGroundHeightFast, _terrain.Half);
+        _fogOfWar = new FogOfWarRenderer(_world.Exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
+        // A permanent build tag, not a one-off debug leftover - bump the string whenever
+        // this build meaningfully changes, so "am I actually running the build I think
+        // I'm running" (a repeated real source of confusion this session - the editor's
+        // own hot-reload, or forgetting to relaunch, can silently leave an old process
+        // running) is a one-line log check instead of a fresh round of guessing.
+        GD.Print("Build tag: cloud-mask-proxy-billboard-fix-05");
     }
 
     public override void _Process(double delta)
@@ -132,6 +142,9 @@ public partial class Main : Node3D
         // ticks, so what's currently standing in the way of the view changes continuously too.
         UpdateOcclusionFade();
         UpdateSelectionMarkerOverlay();
+        // Also every frame, same reasoning - the mask camera has to track the main
+        // camera's own continuous movement/zoom, not just once per simulation tick.
+        _cloudFogMask.Update();
 
         _tickAccumulator += delta;
         if (_tickAccumulator < TickIntervalSeconds)

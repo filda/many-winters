@@ -90,7 +90,21 @@ public sealed class FreeCameraRig
         _rig = new Node3D { Position = initialPosition };
         parent.AddChild(_rig);
 
-        _camera = new Camera3D { Far = 5000f };
+        // Near matters as much as Far for depth buffer precision - it's the Far/Near *ratio*
+        // that determines how much of the buffer's precision actually lands in the distances
+        // gameplay cares about (tens to a couple hundred meters), not Far alone. The engine
+        // default Near (0.05) against this Far gave a 100,000:1 ratio - so little precision
+        // remained by the time a background tree's own depth got encoded that
+        // FogOfWarRenderer's depth-reconstruction shaders (fog_of_war_screen.gdshader,
+        // fog_of_war_remembered.gdshader) recovered visibly wrong world positions for some of
+        // its pixels, cutting a flat "ceiling" through unrelated tree canopies at a roughly
+        // consistent height. 0.5 cuts that ratio by 10x - nothing in this game is ever
+        // legitimately closer to the camera than that anyway.
+        // CullMask excludes CloudFogMask.CloudLayerBit - that layer holds only
+        // CloudScatter's mask-only proxies (cloud_mask_proxy.gdshader's flat flag-color
+        // stand-ins), never meant to be seen directly; the default cull mask (every bit
+        // set) would otherwise render them right on top of each real cloud sprite.
+        _camera = new Camera3D { Far = 5000f, Near = 0.5f, CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit };
         _rig.AddChild(_camera);
         UpdateCamera();
     }

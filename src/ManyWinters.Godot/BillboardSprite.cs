@@ -56,7 +56,8 @@ public static class BillboardSprite
         Color fallbackColor,
         SpriteBase3D.AlphaCutMode alphaCut = SpriteBase3D.AlphaCutMode.OpaquePrepass,
         int renderPriority = 0,
-        bool excludeFromOcclusionFade = false)
+        bool excludeFromOcclusionFade = false,
+        bool useMipmaps = true)
     {
         var sprite = new Sprite3D
         {
@@ -66,7 +67,13 @@ public static class BillboardSprite
             // fine detail aliases into shimmering noise once a sprite is small on screen -
             // mipmaps let minified sprites sample a properly pre-blurred, smaller version
             // instead of resampling the full-detail texture at a handful of screen pixels.
-            TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
+            // useMipmaps=false opts out of that trade for a kind where it isn't worth it -
+            // CloudScatter's own sprites are few and sparse (no dense repeated silhouette
+            // to alias against, unlike a forest of trees), and the woodcut hatching/outline
+            // that trade blurs away is thin enough that even a moderate mip level washes it
+            // out into one flat tone - a cloud reading as a featureless pale blob instead of
+            // the same hand-drawn style every other sprite keeps.
+            TextureFilter = useMipmaps ? BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps : BaseMaterial3D.TextureFilterEnum.Linear,
             // OpaquePrepass, not Discard: Discard is a hard alpha-test cutoff with no
             // blending at all, which throws away every soft anti-aliased/shadow edge pixel
             // the new art actually has (each edge pixel snaps to either fully opaque or
