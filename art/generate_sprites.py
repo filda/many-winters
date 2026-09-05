@@ -260,6 +260,12 @@ class Canvas:
         self.rgb[mask] = color
         self.alpha |= mask
 
+    def ink(self, mask):
+        """Hand-drawn ink linework on top of an existing fill - for marks that aren't
+        part of the crosshatch grid itself (a cloud's curl, an outline tick)."""
+        self.rgb[mask] = INK
+        self.alpha |= mask
+
     def rough_outline(self, width=2):
         """A hand-inked contour: an uneven ring that thins and thickens in patches,
         not a uniform machine-drawn outline."""
@@ -267,8 +273,7 @@ class Canvas:
         idx = np.floor((_XX + _YY) / 3).astype(np.int64)
         keep = _line_hash(idx, self.seed * 13 + 7) > 0.22
         ring &= keep
-        self.rgb[ring] = INK
-        self.alpha |= ring
+        self.ink(ring)
 
     def image(self):
         out = np.zeros((S, S, 4), dtype=np.uint8)
@@ -1694,27 +1699,185 @@ def flower():
     return c
 
 
-def _cloud(name, lobes, rng):
-    """A puffy, non-grounded clump - same union-of-overlapping-ellipses construction as
-    bush()'s trunkless clump (each lobe individually jagged, not the clean union bush()
-    itself uses, since a cloud has no denser foliage silhouette to fall back on - its
-    edge IS the whole shape read), just wider/flatter and centered rather than sitting on
-    GROUND_CONTACT_Y - CloudScatter.cs floats these at a fixed height band well above the
-    terrain, they don't stand on anything. Kept deliberately muted/cool (not white) - a
-    flat white read as snow instead of cloud once it had shading; hatch_fill's diagonal
-    ink crosshatch is what actually keeps it from looking flat here, the same as every
-    other sprite this pipeline draws."""
+# ---------------------------------------------------------------- clouds
+# The engraved-cloud convention in docs/ZemanConceptArt.png (the sky above the mountains,
+# and the "Unknown" visibility panel) is three things at once, none of which the generic
+# hatch_fill supplies: each round lobe's rim rolls inward into a volute (the curl IS the
+# edge, it doesn't float in the middle of the puff), the shading lines run parallel to
+# the lobe's contour rather than as a diagonal grid, and the whole clump is sheared off
+# flat along its underside. (The reference's trailing wisp tails were tried and dropped -
+# at sprite scale they read as a plate the cloud sat on.) A first pass that just dropped
+# free-standing spirals onto the existing diagonal hatch read as doodles on a rain cloud.
+
+
+def _circle_points(cx, cy, r, n=12):
+    return [(cx + math.cos(2 * math.pi * i / n) * r, cy + math.sin(2 * math.pi * i / n) * r)
+            for i in range(n)]
+
+
+def _polyline_mask(points, widths):
+    """Rasterise a polyline whose stroke width varies along its length (one width per
+    segment, in grid units) - PIL's line() takes a single width, so it's drawn per
+    segment with round joints."""
+    img = _blank()
+    draw = ImageDraw.Draw(img)
+    for (x0, y0), (x1, y1), w in zip(points, points[1:], widths):
+        draw.line([(x0 * SCALE, y0 * SCALE), (x1 * SCALE, y1 * SCALE)],
+                  fill=255, width=max(1, round(w * SCALE)), joint="curve")
+    return _to_mask(img)
+
+
+def _cloud_volute(lobe, rim_angle, rng):
+    """One rim curl on a lobe: an inward spiral whose outermost point sits on the lobe's
+    rim at rim_angle, so the outline ink runs straight into it - like a wave crest rolling
+    over. Always rolls 'up and over' first (the way every curl in the reference does),
+    which in y-down screen coordinates means increasing angle on the left side of a lobe
+    and decreasing on the right. Returns (ink_mask, (center_x, center_y, radius))."""
+    cx, cy, r = lobe
+    rs = r * rng.uniform(0.38, 0.50)
+    ccx = cx + math.cos(rim_angle) * (r - rs - 0.4)
+    ccy = cy + math.sin(rim_angle) * (r - rs - 0.4)
+    direction = 1 if math.cos(rim_angle) < 0 else -1
+    turns = rng.uniform(1.6, 2.1)
+    n = 40
+    pts, widths = [], []
+    for i in range(n):
+        t = i / (n - 1)
+        angle = rim_angle + direction * turns * 2 * math.pi * t
+        rad = rs * (1.0 - 0.9 * t)
+        pts.append((ccx + math.cos(angle) * rad, ccy + math.sin(angle) * rad))
+        widths.append(1.05 - 0.5 * t)
+    ink = _polyline_mask(pts, widths)
+    ink |= ellipse(pts[-1][0], pts[-1][1], 0.7, 0.7)
+    return ink, (ccx, ccy, rs)
+
+
+def _cloud_shade(mask, lobes, volutes, base_color, seed):
+    """Contour hatching for a cloud: every pixel belongs to its nearest lobe and its
+    hatch lines run concentric to that lobe (so they wrap around each puff), dense on the
+    lobe's underside and toward the flat base, sparse on the lit top. Inside a volute the
+    lines run concentric to the spiral instead and darken toward its core, which is what
+    the reference does - the spiral's own turns are its shading. Reuses _hatch_direction's
+    per-line personality (wobble, pen lifts) with polar coordinates in place of the
+    diagonal ones, so the line quality matches every other sprite."""
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        return np.zeros((S, S, 3), dtype=np.uint8)
+    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
+    px, py = _XX / SCALE, _YY / SCALE
+
+    best = np.full((S, S), np.inf)
+    contour = np.zeros((S, S))
+    along = np.zeros((S, S))
+    rel_x = np.zeros((S, S))
+    rel_y = np.zeros((S, S))
+    for cx, cy, r in lobes:
+        dx, dy = px - cx, py - cy
+        dist = np.hypot(dx, dy)
+        sel = dist / r < best
+        best = np.where(sel, dist / r, best)
+        contour = np.where(sel, dist * SCALE, contour)
+        # arc length, with the wrap seam at the lobe's bottom where another lobe or the
+        # base usually covers it instead of on its exposed left flank
+        seam = np.mod(np.arctan2(dy, dx) - math.pi / 2 + math.pi, 2 * math.pi) - math.pi
+        along = np.where(sel, seam * r * SCALE, along)
+        rel_x = np.where(sel, dx / r, rel_x)
+        rel_y = np.where(sel, dy / r, rel_y)
+
+    # Each lobe is clean paper from its crown down to just past its equator, then the
+    # contour lines gather along its underside - a puff, not a target. The whole clump
+    # darkens only gently toward the shelf it sits on.
+    t_glob = np.clip((_YY - y0) / max(y1 - y0, 1), 0.0, 1.0)
+    t_lobe = np.clip((rel_y + 0.05) / 0.95, 0.0, 1.0)
+    tone = 0.10 + 0.32 * t_lobe ** 1.4 + 0.06 * np.clip(rel_x, 0.0, 1.0) * t_lobe + 0.10 * t_glob ** 2
+
+    # inside a volute the spiral's own turns do the drawing - paper between them, a
+    # tight dark knot only at the very core
+    in_volute = np.zeros((S, S), dtype=bool)
+    for ccx, ccy, rs in volutes:
+        dx, dy = px - ccx, py - ccy
+        dist = np.hypot(dx, dy)
+        inside = dist < rs * 1.08
+        in_volute |= inside
+        contour = np.where(inside, dist * SCALE, contour)
+        along = np.where(inside, np.arctan2(dy, dx) * rs * SCALE, along)
+        core = np.clip(1.0 - dist / rs, 0.0, 1.0)
+        tone = np.where(inside, 0.04 + 0.70 * core ** 3.2, tone)
+
+    tone = np.clip(tone, 0.0, 0.86)
+    salt = (seed % 97) * 11
+    # thinner than hatch_fill's 1.3 - contour lines that thicken into bands stop reading
+    # as separate pen strokes wrapping the puff
+    line_a = _hatch_direction(contour, along, tone, 0.95, 0.12, salt + 1)
+    line_b = _hatch_direction(_XX + _YY, _XX - _YY, tone, 2.0, 0.60, salt + 11)
+
+    # hatch_fill's own diagonal crosshatch (upper-left lit, lower-right shadowed) laid
+    # over the contour lines - the same tone-by-line-density that every other sprite
+    # carries, so the clouds sit in the same drawing. Kept out of the volute discs so the
+    # spirals stay legible, and a touch lighter than hatch_fill's full 0.86 since the
+    # contour lines already add ink on the undersides.
+    diag = max((x1 - x0) + (y1 - y0), 1)
+    diag_tone = np.clip(((_XX - x0) + (_YY - y0)) / diag, 0.0, 1.0) * 0.58
+    line_c = _hatch_direction(_XX - _YY, _XX + _YY, diag_tone, 1.3, 0.12, salt + 21)
+    line_d = _hatch_direction(_XX + _YY, _XX - _YY, diag_tone, 2.0, 0.55, salt + 31)
+    diagonal = (line_c | line_d) & ~in_volute
+
+    ink_mask = mask & (line_a | line_b | diagonal)
+
+    out_rgb = np.zeros((S, S, 3), dtype=np.uint8)
+    out_rgb[mask] = base_color
+    out_rgb[ink_mask] = INK
+    return out_rgb
+
+
+def _cloud(name, lobes, base_y, rng):
+    """A clump of round lobes (cx, cy, r) sheared off flat along base_y, each lobe's outer
+    rim rolling into a volute (see the section comment above). Not grounded - CloudScatter.cs floats
+    these at a fixed height band well above the terrain. Kept deliberately muted/cool
+    (not white) - a flat white read as snow instead of cloud once it had shading."""
     seed = seed_for(name)
     c = Canvas(seed)
-    mist = rgb(0.70, 0.73, 0.78)
+    paper = rgb(0.70, 0.73, 0.78)
+
     mask = np.zeros((S, S), dtype=bool)
-    for cx, cy, rx, ry in lobes:
-        lobe_pts = [
-            (cx - rx, cy), (cx - rx * 0.6, cy - ry), (cx + rx * 0.6, cy - ry),
-            (cx + rx, cy), (cx + rx * 0.6, cy + ry), (cx - rx * 0.6, cy + ry),
-        ]
-        mask |= poly(jagged_poly(lobe_pts, rng, amp=rx * 0.12, segments_per_edge=4, smooth_passes=2))
-    c.fill(mask, mist)
+    for cx, cy, r in lobes:
+        mask |= poly(jagged_poly(_circle_points(cx, cy, r), rng, amp=r * 0.07,
+                                 segments_per_edge=3, smooth_passes=2))
+    # flat, slightly wavy underside - the reference clouds sit on a shelf, they aren't
+    # round all the way around
+    wave = 0.7 * np.sin(_XX / SCALE * 0.55 + rng.uniform(0, 6.28))
+    mask &= (_YY / SCALE) <= base_y + wave
+
+    cloud_cx = sum(cx for cx, _, _ in lobes) / len(lobes)
+    volutes, ink = [], np.zeros((S, S), dtype=bool)
+    for i, (cx, cy, r) in enumerate(lobes):
+        # curls sit on each lobe's OUTER upper flank (away from the cloud's middle), the
+        # side the wind would roll; the biggest lobe always gets one, the rest usually
+        biggest = r == max(l[2] for l in lobes)
+        if not biggest and rng.random() > 0.8:
+            continue
+        outward_left = cx < cloud_cx - 2 or (abs(cx - cloud_cx) <= 2 and rng.random() < 0.5)
+        # a rim point buried inside a neighbouring lobe can't roll - try a few spots
+        # along the outer flank, then the other flank, before giving up on this lobe
+        rim_angle = None
+        for attempt in range(8):
+            left = outward_left if attempt < 4 else not outward_left
+            candidate = math.radians(rng.uniform(165, 240) if left else rng.uniform(300, 375))
+            rim = (cx + math.cos(candidate) * r, cy + math.sin(candidate) * r)
+            if not any(math.hypot(rim[0] - ox, rim[1] - oy) < orad * 0.9
+                       for j, (ox, oy, orad) in enumerate(lobes) if j != i):
+                rim_angle = candidate
+                break
+        if rim_angle is None:
+            continue
+        curl_ink, volute = _cloud_volute((cx, cy, r), rim_angle, rng)
+        volutes.append(volute)
+        ink |= curl_ink
+
+    out_rgb = _cloud_shade(mask, lobes, volutes, paper, seed)
+    c.rgb[mask] = out_rgb[mask]
+    c.alpha |= mask
+    c.ink(ink & mask)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -1724,17 +1887,20 @@ def _cloud(name, lobes, rng):
 # variants, blended per instance" reasoning as the robe silhouettes above.
 def cloud_1():
     rng = random.Random(seed_for("cloud_1"))
-    return _cloud("cloud_1", [(20, 36, 14, 10), (34, 29, 16, 12), (48, 36, 13, 10), (32, 42, 22, 12)], rng)
+    return _cloud("cloud_1", [(31, 31, 13), (17, 38, 9), (45, 35, 10), (55, 41, 6)],
+                  base_y=46, rng=rng)
 
 
 def cloud_2():
     rng = random.Random(seed_for("cloud_2"))
-    return _cloud("cloud_2", [(15, 34, 11, 8), (28, 25, 15, 11), (43, 29, 14, 11), (53, 36, 10, 8), (33, 40, 25, 11)], rng)
+    return _cloud("cloud_2", [(36, 28, 13), (22, 34, 10), (49, 34, 9), (11, 40, 6)],
+                  base_y=44, rng=rng)
 
 
 def cloud_3():
     rng = random.Random(seed_for("cloud_3"))
-    return _cloud("cloud_3", [(23, 33, 13, 10), (40, 27, 12, 10), (30, 41, 18, 11), (46, 40, 11, 9)], rng)
+    return _cloud("cloud_3", [(29, 28, 12), (41, 35, 10), (17, 37, 8)],
+                  base_y=45, rng=rng)
 
 
 def selection_marker():
