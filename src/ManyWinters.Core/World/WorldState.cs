@@ -414,8 +414,13 @@ public sealed class WorldState(WorldConfiguration configuration)
     private static int CasualTeachingSeed(int teacherSeed, int studentSeed, string technique, long tick)
     {
         var x = unchecked((uint)(teacherSeed * 73856093) ^ (uint)(studentSeed * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
+        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+
+        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+
+        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
         x = (x >> 16) ^ x;
         return unchecked((int)x);
     }
@@ -443,8 +448,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         foreach (var kind in person.Inventory.Counts.Keys.ToList())
         {
             // Stops walking the rest of the inventory once there's nothing left to satisfy.
-            // Stryker disable once Equality,Statement: EatCommand refuses to do anything at
-            // zero hunger anyway, so this only saves the remaining calls
+            // Stryker disable once Equality,Statement,Block: EatCommand no-ops at zero hunger anyway, so this only saves the remaining calls
             if (person.Needs.Hunger <= 0f)
             {
                 break;
@@ -519,11 +523,12 @@ public sealed class WorldState(WorldConfiguration configuration)
     private static void ApplyClampedPush(Person person, double pushX, double pushY, float maxPushPerTick)
     {
         var magnitude = Math.Sqrt((pushX * pushX) + (pushY * pushY));
+        // Stryker disable once Equality,Statement,Block: falling through adds a zero push and lands on the same spot
         if (magnitude <= 0.0)
         {
             return;
         }
-
+        // Stryker disable once Equality: at exactly the cap the scale is 1, so clamping changes nothing
         if (magnitude > maxPushPerTick)
         {
             var scale = maxPushPerTick / magnitude;
@@ -543,14 +548,17 @@ public sealed class WorldState(WorldConfiguration configuration)
         var dx = a.X - b.X;
         var dy = a.Y - b.Y;
         var distance = Math.Sqrt((dx * dx) + (dy * dy));
+        // Stryker disable once Equality: at exactly the minimum the overlap is zero, so either branch stands still
         if (distance >= minDistance)
         {
             pushX = 0;
             pushY = 0;
+            // Stryker disable once Boolean: both out parameters are zero here, so either answer leaves every position as it was
             return false;
         }
 
         var overlap = minDistance - distance;
+        // Stryker disable once Equality: two positions exactly this far apart has probability zero
         if (distance < 0.0001)
         {
             pushX = overlap;

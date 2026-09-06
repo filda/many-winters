@@ -336,4 +336,50 @@ public class GatherCommandTests
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(80f, node.RemainingAmount);
     }
+
+    [Fact]
+    public void ADeadPersonGathersNothingEvenWithTheSkillAndTheNodeInReach()
+    {
+        // Every other reason to refuse is removed here - the skill is known, the node is alive
+        // and full, and they are standing on it - so being dead is on its own what stops it.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        person.IsAlive = false;
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AFelledNodeYieldsNothingToALivingSkilledGathererStandingOnIt()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        node.IsAlive = false;
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AnOutOfReachNodeYieldsNothingToALivingSkilledGatherer()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(50, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(100f, node.RemainingAmount);
+    }
 }

@@ -126,4 +126,81 @@ public class CloudSpotScatterTests
 
         Assert.True(nearest.Max() - nearest.Min() > 4f);
     }
+
+    [Fact]
+    public void MinGapIsAFixedShareOfBothCloudsSizesCombined()
+    {
+        // Exact, not just "greater than either" - the gap is what caps how densely the cover
+        // can pack, so the factor and the sum are both load-bearing.
+        Assert.Equal(5.4f, CloudSpotScatter.MinGap(9f, 18f), 5);
+        Assert.Equal(7.2f, CloudSpotScatter.MinGap(18f, 18f), 5);
+    }
+
+    [Fact]
+    public void GenerateStopsExactlyAtTheTargetCount()
+    {
+        // 200m x 200m at an 11m mean spacing targets 330 spots and rejection sampling reaches
+        // it here. Asserted exactly rather than as a range: the loop's two bounds (attempts
+        // used up, target reached) are the only thing deciding when scattering stops.
+        Assert.Equal(330, Scatter().Count);
+    }
+
+    [Fact]
+    public void ALayoutForAGivenSeedIsFixedDownToEachSpotsOwnNumbers()
+    {
+        // Characterization: the scatter is a deterministic seeded generator whose output the
+        // presentation layer places verbatim, so every arithmetic step between the seed and a
+        // spot's fields is behaviour, not an implementation detail. Regenerate these numbers
+        // deliberately if the generator is meant to change; don't relax them.
+        var spots = Scatter();
+
+        AssertSpot(spots[0], x: 74.251144f, z: 32.18773f, size: 12.448984f, texture: 0, roll: 0.34839553f, lift: 0.67616946f);
+        AssertSpot(spots[1], x: 90.79375f, z: 68.71333f, size: 9.381816f, texture: 2, roll: 0.43212456f, lift: 0.9323158f);
+        AssertSpot(spots[2], x: -77.74025f, z: 76.39087f, size: 13.003348f, texture: 1, roll: 0.7170906f, lift: 0.33534238f);
+    }
+
+    [Theory]
+    [InlineData(0f, 0f, 7, 0.38902715f)]
+    [InlineData(13.5f, -4.25f, 7, 0.29719213f)]
+    [InlineData(-31f, 62f, 3, 0.17521806f)]
+    [InlineData(5f, 5f, 0, 0.061756227f)]
+    public void ClumpyRollsSpatialGrainIsAFixedFunctionOfPositionAndSeed(float x, float z, int seed, float expected)
+    {
+        // independent: 0 leaves only the spatial grain, so this pins the value noise and its
+        // hash - the part that decides which patches of cover tear open together - rather than
+        // the blend with the per-spot draw.
+        Assert.Equal(expected, CloudSpotScatter.ClumpyRoll(x, z, independent: 0f, seed: seed), 6);
+    }
+
+    [Fact]
+    public void ClumpyRollBlendsTheIndependentDrawInAtAFixedWeight()
+    {
+        // Same position and seed, two different independent draws: the difference between the
+        // rolls is the independent share, so this pins the weight without restating the grain.
+        var low = CloudSpotScatter.ClumpyRoll(0f, 0f, independent: 0f, seed: 7);
+        var high = CloudSpotScatter.ClumpyRoll(0f, 0f, independent: 1f, seed: 7);
+
+        Assert.Equal(0.4f, high - low, 5);
+    }
+
+    private static void AssertSpot(CloudSpot spot, float x, float z, float size, int texture, float roll, float lift)
+    {
+        Assert.Equal(x, spot.X, 4);
+        Assert.Equal(z, spot.Z, 4);
+        Assert.Equal(size, spot.Size, 4);
+        Assert.Equal(texture, spot.TextureIndex);
+        Assert.Equal(roll, spot.Roll, 6);
+        Assert.Equal(lift, spot.Lift, 6);
+    }
+
+    [Fact]
+    public void ScatteringStopsWhenTheAttemptBudgetRunsOutOnAMapThatCannotHoldTheTarget()
+    {
+        // A 40m map asked for 400 spots that a 5.4m-plus gap can never fit: the target is
+        // unreachable, so the attempt budget is what ends the run. Exact, because that budget
+        // and the way it is counted down are then the only things deciding the answer.
+        var spots = CloudSpotScatter.Generate(halfExtentMeters: 20f, meanSpacingMeters: 2f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: 7);
+
+        Assert.Equal(53, spots.Count);
+    }
 }

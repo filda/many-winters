@@ -88,8 +88,12 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         var alive = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
 
-        Assert.Throws<ArgumentException>(() => world.AddForebear(alive));
+        var ex = Assert.Throws<ArgumentException>(() => world.AddForebear(alive));
 
+        // A forebear is defined by having died before the story began; a living one would be a
+        // person hidden from the simulation, so the refusal says which of the two it wanted.
+        Assert.Contains("forebear died before the story began", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("forebear", ex.ParamName);
         Assert.Empty(world.Forebears);
     }
 
@@ -1512,5 +1516,56 @@ public class WorldStateTests
 
         Assert.Equal(Season.Spring, world.CurrentSeason);
         Assert.Equal(1f, person.Needs.Hunger);
+    }
+
+    [Fact]
+    public void AdvanceRefreshesExplorationFromWhereEveryoneNowStands()
+    {
+        // Exploration is recomputed every tick, not only when someone is added - otherwise a
+        // group could walk clean across the map without the fog ever opening ahead of them.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), TestCatalogs.AdultAgeTicks);
+        world.Execute(new GrantIdleGraceCommand(person, 1000));
+        var destination = new Position(500, 500);
+        var destinationCell = ExplorationState.CellFor(destination);
+        Assert.False(world.Exploration.IsExplored(destinationCell));
+
+        person.Position = destination;
+        world.Advance(1);
+
+        Assert.True(world.Exploration.IsExplored(destinationCell));
+    }
+
+    [Fact]
+    public void AGathererGivesUpOnANodeWithNothingLeftInIt()
+    {
+        // Nothing left is not the same as "nearly empty" - a node sitting at exactly zero is
+        // finished, and standing over it forever waiting for it to refill is not work.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var exhausted = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), amount: 0f);
+        person.Tasks.Interrupt(new GatherTask(exhausted, world.Configuration.Rules.MaxInteractionDistance));
+
+        world.Advance(1);
+
+        Assert.IsNotType<GatherTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AGathererStaysOnANodeThatStillHasSomethingInIt()
+    {
+        // The other half of giving up on an empty one: a node still worth working must not be
+        // re-planned every tick, or the walk there restarts before anyone ever arrives.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), amount: 100f);
+        var task = new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance);
+        person.Tasks.Interrupt(task);
+
+        world.Advance(1);
+
+        Assert.Same(task, person.Tasks.Current);
     }
 }

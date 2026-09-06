@@ -238,4 +238,33 @@ public class SaveGameServiceTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void LoadRefusesASaveThatNamesAParentItHasNotRestoredYet()
+    {
+        // People are restored in file order and wired to their parents by id as they go, so a
+        // child stored ahead of its own mother has nothing to point at when its turn comes.
+        // Better to say so than to silently hand the child an Unknown parent and quietly lose
+        // the lineage on the next save.
+        var world = TestCatalogs.CreateWorld();
+        var mother = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var child = new Person { Name = "Ava", BirthTick = 0, Mother = mother, Father = Person.Unknown };
+        world.AddPerson(child);
+        world.AddPerson(mother);
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            SaveGameService.Save(world, path);
+
+            var ex = Assert.Throws<InvalidDataException>(() => SaveGameService.Load(path, TestCatalogs.CreateConfiguration()));
+
+            Assert.Contains(mother.Id.Value.ToString(), ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("as a parent before", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

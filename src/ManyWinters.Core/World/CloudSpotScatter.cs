@@ -35,10 +35,12 @@ public static class CloudSpotScatter
 
         // Spatial hash keyed by a cell at least as wide as the largest possible gap, so a
         // candidate only ever has to check the 3x3 cells around it.
+        // Stryker disable once Arithmetic: any cell at least this wide rejects the same candidates - bucket count, not layout
         var cell = MathF.Max(2f * MinGapFactor * maxSize, 1f);
         var buckets = new Dictionary<(int, int), List<CloudSpot>>();
         var spots = new List<CloudSpot>(target);
 
+        // Stryker disable once Equality: a give-up budget, not a quantity - one more roll against an already saturated map
         for (var attempt = 0; attempt < target * AttemptsPerTargetSpot && spots.Count < target; attempt++)
         {
             var size = minSize + ((float)rng.NextDouble() * (maxSize - minSize));
@@ -92,7 +94,9 @@ public static class CloudSpotScatter
         unchecked
         {
             var h = (uint)(ix * 374761393) + (uint)(iz * 668265263);
+            // Stryker disable once Bitwise: h is uint, so >> and >>> are the same operation
             h = (h ^ (h >> 13)) * 1274126177u;
+            // Stryker disable once Bitwise: as above
             h ^= h >> 16;
             return (h & 0xFFFFFF) / (float)0x1000000;
         }
@@ -117,6 +121,7 @@ public static class CloudSpotScatter
         {
             for (var dx = -1; dx <= 1; dx++)
             {
+                // Stryker disable once Arithmetic: dx and dz run symmetrically, so subtracting walks the same nine cells
                 if (!buckets.TryGetValue((cx + dx, cz + dz), out var bucket))
                 {
                     continue;
@@ -127,6 +132,7 @@ public static class CloudSpotScatter
                     var gap = MinGap(size, other.Size);
                     var ddx = other.X - x;
                     var ddz = other.Z - z;
+                    // Stryker disable once Equality: two candidates at exactly the gap has probability zero
                     if ((ddx * ddx) + (ddz * ddz) < gap * gap)
                     {
                         return true;

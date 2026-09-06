@@ -160,6 +160,8 @@ public static class MapLoader
         var rules = world.Configuration.Rules;
         var rng = new Random(CrowdPlacementSeed);
         var positions = new List<Position>();
+
+        // Stryker disable once Equality: only fills the list; everything below indexes it by the ages array, so a spare entry moves nobody
         for (var i = 0; i < StartingAgesInWinters.Length; i++)
         {
             positions.Add(NextCrowdPosition(rng, positions));
@@ -314,14 +316,17 @@ public static class MapLoader
             return roll < 0.8 ? (FlowerKind, GroundCoverAmount) : (FernKind, GroundCoverAmount);
         }
 
+        // Stryker disable once Equality: continuous draw, as the disabled block above - which does not reach into a local function's body
         (ResourceKindId Kind, float Amount) PickForestKind() =>
             rng.NextDouble() < 0.55 ? (ConiferTreeKind, WoodAmount) : (DeciduousTreeKind, WoodAmount);
 
+        // Stryker disable once Equality: as PickForestKind above
         (ResourceKindId Kind, float Amount) PickThicketKind() =>
             rng.NextDouble() < 0.6 ? (BushKind, WoodAmount) : (FernKind, GroundCoverAmount);
 
         // Stryker restore Equality
 
+        // Stryker disable once Equality: a sampling budget, not a quantity - one more roll against the same density field
         for (var i = 0; i < OpenWorldCandidateCount; i++)
         {
             var x = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;

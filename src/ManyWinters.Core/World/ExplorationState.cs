@@ -60,6 +60,7 @@ public sealed class ExplorationState
             {
                 for (var dy = -radiusCells; dy <= radiusCells; dy++)
                 {
+                    // Stryker disable once Arithmetic: dx and dy run symmetrically, so subtracting enumerates the same cells
                     var cell = new ExplorationCell(center.X + dx, center.Y + dy);
                     var cellCenterX = (cell.X + 0.5) * CellSizeMeters;
                     var cellCenterY = (cell.Y + 0.5) * CellSizeMeters;

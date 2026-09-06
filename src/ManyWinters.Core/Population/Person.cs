@@ -20,13 +20,17 @@ public sealed class Person
     {
     }
 
+    // Stryker disable once Block: as the fields below - this initializer runs once per process, never for the test that checks it
     [SetsRequiredMembers]
     private Person(string unknownRootName)
     {
         Id = new PersonId(Guid.Empty);
         Name = unknownRootName;
         BirthTick = 0;
+
+        // Stryker disable once Boolean: PersonTests.UnknownIsLongDeadAndBuried asserts this, but a static initializer runs once per process - never for that test
         IsAlive = false;
+        // Stryker disable once Boolean: as IsAlive above
         IsBuried = true;
         Mother = this;
         Father = this;

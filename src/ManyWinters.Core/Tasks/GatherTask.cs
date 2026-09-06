@@ -51,7 +51,9 @@ public sealed class GatherTask(ResourceNode target, float reachDistance) : Perso
         // the standoff is shorter than ReachDistance, so a person is already close enough to
         // gather before the leg would finish. The leg is therefore only ever cleared by that
         // check, on the tick it stops the walk.
+        // Stryker disable once Assignment: same straight line to a resource that never moves, so recomputing walks the same route
         _approachPosition ??= Position.Approach(person.Position, Target.Position, ReachDistance * ApproachFractionOfReach);
+        // Stryker disable once Assignment: the reach check above always ends the leg first, so a rebuilt MoveTask steps identically
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);
         _move.Advance(person);
     }

@@ -197,7 +197,10 @@ public class SimulationScriptTests
         Assert.Contains(output, line => line.Contains("Person 1") && line.Contains("[dead]"));
         // Not "at Position { X = 0, Y = 0 }" too, unlike before IdleTask made an ordersless
         // person wander (see WorldState.Advance) instead of staying frozen where they spawned.
-        Assert.Contains(output, line => line.Contains("Person 2") && !line.Contains("[dead]"));
+        // A living person gets no status marker at all, not merely a different one - the line
+        // ends at where they are standing.
+        var living = Assert.Single(output, line => line.Contains("Person 2", StringComparison.Ordinal));
+        Assert.EndsWith(script.World.People[1].Position.ToString(), living, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -263,5 +266,16 @@ public class SimulationScriptTests
         {
             File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void SplitIntoCommandsStartsANewCommandAtAVerbEvenPartWayThroughTheArguments()
+    {
+        // "generate" appearing first would begin a command whether or not it were recognized
+        // at all, so it has to be tested somewhere it follows another one - otherwise nothing
+        // says the verb list actually knows about it.
+        var commands = SimulationScript.SplitIntoCommands(["create", "2", "generate", "simulate", "5"]);
+
+        Assert.Equal(["create 2", "generate", "simulate 5"], commands);
     }
 }

@@ -80,8 +80,13 @@ public sealed class IdleTask : PersonTask
     private static int SeedFor(int personSeed)
     {
         var x = unchecked((uint)personSeed);
+        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+
+        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+
+        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
         x = (x >> 16) ^ x;
         return unchecked((int)x);
     }

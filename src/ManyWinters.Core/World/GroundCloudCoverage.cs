@@ -26,6 +26,7 @@ public static class GroundCloudCoverage
 
     public static float Coverage(float distanceMeters)
     {
+        // Stryker disable once Equality: at exactly the maximum the curve below is pow(0, e) = 0 either way
         if (distanceMeters < HugDistanceMeters || distanceMeters > MaxDistanceMeters)
         {
             return 0f;

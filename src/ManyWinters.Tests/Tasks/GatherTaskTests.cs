@@ -179,4 +179,40 @@ public class GatherTaskTests
         Assert.True(west.Position.X < Target.X, $"The western walker ended up east of the resource at {west.Position.X}.");
         Assert.True(east.Position.X > Target.X, $"The eastern walker ended up west of the resource at {east.Position.X}.");
     }
+
+    [Fact]
+    public void TheWalkStopsAsSoonAsTheGathererIsInReachRatherThanAtTheStandoffPoint()
+    {
+        // The standoff (60% of reach) is deliberately shorter than reach, so the reach check
+        // ends the leg first - the walker never actually arrives at the point they aimed at.
+        var task = NewTask();
+        var person = NewPerson(new Position(30, 10));
+
+        for (var i = 0; i < 500; i++)
+        {
+            task.Advance(person);
+        }
+
+        Assert.Equal(Reach, WorldState.Distance(person.Position, Target), precision: 5);
+    }
+
+    [Fact]
+    public void TheWalkIsOneContinuousLegNotARestartedOneEveryTick()
+    {
+        // A fresh MoveTask each tick would throw away whatever progress the current one keeps,
+        // so the walker's position after n ticks has to match one leg advanced n times.
+        var task = NewTask();
+        var person = NewPerson(new Position(30, 10));
+        var referencePerson = NewPerson(new Position(30, 10));
+        var reference = new MoveTask(Position.Approach(referencePerson.Position, Target, Reach * 0.6), 0.3f);
+
+        for (var i = 0; i < 20; i++)
+        {
+            task.Advance(person);
+            reference.Advance(referencePerson);
+        }
+
+        Assert.Equal(referencePerson.Position.X, person.Position.X, precision: 9);
+        Assert.Equal(referencePerson.Position.Y, person.Position.Y, precision: 9);
+    }
 }

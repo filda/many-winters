@@ -13,6 +13,7 @@ public readonly record struct Position(double X, double Y)
         var dx = from.X - to.X;
         var dy = from.Y - to.Y;
         var distance = Math.Sqrt((dx * dx) + (dy * dy));
+        // Stryker disable once Equality: at exactly the standoff the other branch returns `from` as well
         if (distance <= standoffDistance)
         {
             return from;
