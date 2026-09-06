@@ -12,7 +12,7 @@ public class GrantIdleGraceCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
-        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+        world.Execute(new GrantIdleGraceCommand(person, 5));
 
         Assert.Equal(5, person.IdleGraceUntilTick);
     }
@@ -24,7 +24,7 @@ public class GrantIdleGraceCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Advance(10);
 
-        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+        world.Execute(new GrantIdleGraceCommand(person, 5));
 
         Assert.Equal(15, person.IdleGraceUntilTick);
     }
@@ -36,16 +36,8 @@ public class GrantIdleGraceCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
 
-        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+        world.Execute(new GrantIdleGraceCommand(person, 5));
 
         Assert.Equal(0, person.IdleGraceUntilTick);
-    }
-
-    [Fact]
-    public void GrantingGraceToAnUnknownPersonDoesNotThrow()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        world.Execute(new GrantIdleGraceCommand(new PersonId(999), 5));
     }
 }

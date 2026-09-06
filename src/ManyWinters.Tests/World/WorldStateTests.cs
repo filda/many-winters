@@ -267,7 +267,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new MoveCommand(person.Id, new Position(100, 0)));
+        world.Execute(new MoveCommand(person, new Position(100, 0)));
 
         world.Advance(1);
 
@@ -279,7 +279,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+        world.Execute(new GrantIdleGraceCommand(person, 5));
         var start = person.Position;
 
         world.Advance(4);
@@ -293,7 +293,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new GrantIdleGraceCommand(person.Id, 5));
+        world.Execute(new GrantIdleGraceCommand(person, 5));
 
         world.Advance(5);
 
@@ -311,7 +311,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(node.Id, task.TargetNodeId);
+        Assert.Equal(node.Id, task.Target.Id);
         Assert.True(person.Inventory.Get(TestCatalogs.WoodItem) > 0);
     }
 
@@ -346,7 +346,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(foodNode.Id, task.TargetNodeId);
+        Assert.Equal(foodNode.Id, task.Target.Id);
     }
 
     [Fact]
@@ -364,7 +364,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(foodNode.Id, task.TargetNodeId);
+        Assert.Equal(foodNode.Id, task.Target.Id);
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class WorldStateTests
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 30f;
         person.Inventory.Add(TestCatalogs.AppleItem, 50);
-        world.Execute(new MoveCommand(person.Id, new Position(100, 0)));
+        world.Execute(new MoveCommand(person, new Position(100, 0)));
 
         world.Advance(1);
 
@@ -407,13 +407,13 @@ public class WorldStateTests
         var backup = world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
 
         world.Advance(1);
-        Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
+        Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).Target.Id);
 
         primary.IsAlive = false;
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(backup.Id, task.TargetNodeId);
+        Assert.Equal(backup.Id, task.Target.Id);
     }
 
     [Fact]
@@ -428,7 +428,7 @@ public class WorldStateTests
         var farWood = world.SpawnResourceNode(TestCatalogs.Wood, new Position(50, 0), 100f);
 
         world.Advance(1);
-        Assert.Equal(farWood.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
+        Assert.Equal(farWood.Id, ((GatherTask)person.Tasks.Current!).Target.Id);
 
         // A closer food source only becomes relevant once hunger turns urgent - otherwise
         // she'd have gone for it from the very start instead of the (nearer, at the time) wood.
@@ -437,7 +437,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(nearbyFood.Id, task.TargetNodeId);
+        Assert.Equal(nearbyFood.Id, task.Target.Id);
     }
 
     [Fact]
@@ -456,7 +456,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(node.Id, task.TargetNodeId);
+        Assert.Equal(node.Id, task.Target.Id);
     }
 
     [Theory]
@@ -479,7 +479,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(expectFood ? food.Id : wood.Id, task.TargetNodeId);
+        Assert.Equal(expectFood ? food.Id : wood.Id, task.Target.Id);
     }
 
     [Fact]
@@ -501,7 +501,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(wood.Id, task.TargetNodeId);
+        Assert.Equal(wood.Id, task.Target.Id);
     }
 
     [Fact]
@@ -521,7 +521,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(food.Id, task.TargetNodeId);
+        Assert.Equal(food.Id, task.Target.Id);
     }
 
     [Fact]
@@ -543,21 +543,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(food.Id, task.TargetNodeId);
-    }
-
-    [Fact]
-    public void AdvanceReassignsAGatherTaskWhoseTargetNodeIsNotInTheWorldAtAll()
-    {
-        // A save loaded against changed content, or a stale order - either way the target
-        // simply isn't there to look up, which is a reason to re-plan rather than to crash.
-        var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0));
-        person.Tasks.Interrupt(new GatherTask(new ResourceNodeId(404), new Position(5, 0), world.Configuration.Rules.MaxInteractionDistance));
-
-        world.Advance(1);
-
-        Assert.IsType<IdleTask>(person.Tasks.Current);
+        Assert.Equal(food.Id, task.Target.Id);
     }
 
     [Fact]
@@ -572,13 +558,13 @@ public class WorldStateTests
         var backup = world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
 
         world.Advance(1);
-        Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
+        Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).Target.Id);
 
         primary.RemainingAmount = 0f;
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(backup.Id, task.TargetNodeId);
+        Assert.Equal(backup.Id, task.Target.Id);
     }
 
     [Fact]
@@ -615,7 +601,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(first.Id, task.TargetNodeId);
+        Assert.Equal(first.Id, task.Target.Id);
     }
 
     [Fact]
@@ -629,7 +615,7 @@ public class WorldStateTests
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
-        Assert.Equal(node.Id, task.TargetNodeId);
+        Assert.Equal(node.Id, task.Target.Id);
     }
 
     [Fact]
@@ -1173,7 +1159,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new MoveCommand(person.Id, new Position(10, 0)));
+        world.Execute(new MoveCommand(person, new Position(10, 0)));
 
         world.Advance(3);
 
@@ -1185,7 +1171,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
+        world.Execute(new MoveCommand(person, new Position(2, 0)));
 
         world.Advance(2);
 
@@ -1197,7 +1183,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
+        world.Execute(new MoveCommand(person, new Position(2, 0)));
 
         world.Advance(20);
 
@@ -1210,7 +1196,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        world.Execute(new MoveCommand(person.Id, new Position(1000, 0)));
+        world.Execute(new MoveCommand(person, new Position(1000, 0)));
 
         world.Advance(100);
         Assert.False(person.IsAlive);

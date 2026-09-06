@@ -13,7 +13,7 @@ public class CraftCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount);
 
-        world.Execute(new CraftCommand(person.Id, TestCatalogs.Axe));
+        world.Execute(new CraftCommand(person, TestCatalogs.Axe));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(1, person.Inventory.Get(TestCatalogs.Axe));
@@ -26,7 +26,7 @@ public class CraftCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount + 3);
 
-        world.Execute(new CraftCommand(person.Id, TestCatalogs.Axe));
+        world.Execute(new CraftCommand(person, TestCatalogs.Axe));
 
         Assert.Equal(3, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(1, person.Inventory.Get(TestCatalogs.Axe));
@@ -39,7 +39,7 @@ public class CraftCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount - 1);
 
-        world.Execute(new CraftCommand(person.Id, TestCatalogs.Axe));
+        world.Execute(new CraftCommand(person, TestCatalogs.Axe));
 
         Assert.Equal(TestCatalogs.AxeInputAmount - 1, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.Axe));
@@ -53,17 +53,9 @@ public class CraftCommandTests
         person.IsAlive = false;
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount);
 
-        world.Execute(new CraftCommand(person.Id, TestCatalogs.Axe));
+        world.Execute(new CraftCommand(person, TestCatalogs.Axe));
 
         Assert.Equal(TestCatalogs.AxeInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.Axe));
-    }
-
-    [Fact]
-    public void CraftingForAnUnknownPersonDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        world.Execute(new CraftCommand(new PersonId(999), TestCatalogs.Axe));
     }
 }

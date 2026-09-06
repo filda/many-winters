@@ -16,7 +16,7 @@ public class RepairCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(75f, building.Condition);
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -31,7 +31,7 @@ public class RepairCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 90f;
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(100f, building.Condition);
     }
@@ -44,7 +44,7 @@ public class RepairCommandTests
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(100f, building.Condition);
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -59,7 +59,7 @@ public class RepairCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(50f, building.Condition);
         Assert.Equal(4, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -75,7 +75,7 @@ public class RepairCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(50f, building.Condition);
     }
@@ -89,7 +89,7 @@ public class RepairCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         building.Condition = 50f;
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(75f, building.Condition);
     }
@@ -103,33 +103,9 @@ public class RepairCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Condition = 50f;
 
-        world.Execute(new RepairCommand(person.Id, building.Id));
+        world.Execute(new RepairCommand(person, building));
 
         Assert.Equal(50f, building.Condition);
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-    }
-
-    [Fact]
-    public void RepairingAnUnknownBuildingDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0));
-        person.Inventory.Add(TestCatalogs.WoodItem, 5);
-
-        world.Execute(new RepairCommand(person.Id, new BuildingId(999)));
-
-        Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-    }
-
-    [Fact]
-    public void RepairingByAnUnknownPersonDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Condition = 50f;
-
-        world.Execute(new RepairCommand(new PersonId(999), building.Id));
-
-        Assert.Equal(50f, building.Condition);
     }
 }

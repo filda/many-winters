@@ -1,16 +1,15 @@
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record LootCommand(PersonId LootingPersonId, PersonId DeceasedPersonId) : ICommand
+public sealed record LootCommand(Person LootingPerson, Person Deceased) : ICommand
 {
     public void Execute(WorldState world)
     {
-        var lootingPerson = world.People.FirstOrDefault(p => p.Id == LootingPersonId && p.IsAlive);
-        var deceased = world.People.FirstOrDefault(p => p.Id == DeceasedPersonId && !p.IsAlive);
-        if (lootingPerson is null
-            || deceased is null
-            || !world.IsWithinReach(lootingPerson.Position, deceased.Position))
+        if (!LootingPerson.IsAlive
+            || Deceased.IsAlive
+            || !world.IsWithinReach(LootingPerson.Position, Deceased.Position))
         {
             return;
         }
@@ -19,14 +18,14 @@ public sealed record LootCommand(PersonId LootingPersonId, PersonId DeceasedPers
         // behind (still lootable later, e.g. by someone else) rather than it vanishing.
         // Recomputed every iteration, not hoisted: looting a capacity-boosting item (a
         // basket) partway through should raise the room left for whatever's looted next.
-        foreach (var (item, count) in deceased.Inventory.Counts.ToList())
+        foreach (var (item, count) in Deceased.Inventory.Counts.ToList())
         {
-            var taken = lootingPerson.Inventory.AddUpToCapacity(item, count, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(lootingPerson));
+            var taken = LootingPerson.Inventory.AddUpToCapacity(item, count, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(LootingPerson));
             // Stryker disable once Equality: removing zero units leaves the count exactly as it
             // was, so skipping the call and making it are indistinguishable
             if (taken > 0)
             {
-                deceased.Inventory.Remove(item, taken);
+                Deceased.Inventory.Remove(item, taken);
             }
         }
     }

@@ -190,7 +190,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                 // this while still en route.
                 if (person.Tasks.Current is GatherTask activeGather)
                 {
-                    new GatherCommand(person.Id, activeGather.TargetNodeId).Execute(this);
+                    new GatherCommand(person, activeGather.Target).Execute(this);
                 }
 
                 var insulation = person.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
@@ -258,7 +258,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         null => true,
         IdleTask => true,
-        GatherTask gather => !IsWorthGathering(gather.TargetNodeId) || NeedsToSeekFoodUrgently(person),
+        GatherTask gather => !IsWorthGathering(gather.Target) || NeedsToSeekFoodUrgently(person),
         _ => false,
     };
 
@@ -268,11 +268,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         && person.KnownTechniques.Contains(eating.BaseTechnique)
         && !HasEdibleFood(person);
 
-    private bool IsWorthGathering(ResourceNodeId nodeId)
-    {
-        var node = _resourceNodes.FirstOrDefault(n => n.Id == nodeId);
-        return node is { IsAlive: true, RemainingAmount: > 0f };
-    }
+    private static bool IsWorthGathering(ResourceNode node) => node is { IsAlive: true, RemainingAmount: > 0f };
 
     // "Idle" now means "put whatever skill this person already has to use, or go find food if
     // hungry and empty-handed" (todo: "Pokud už má osoba v idle nějaký skill, tak by ho měl
@@ -291,7 +287,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             var foodNode = FindNearestGatherableResourceNode(person.Position, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
             if (foodNode is not null)
             {
-                return new GatherTask(foodNode.Id, foodNode.Position, reachDistance);
+                return new GatherTask(foodNode, reachDistance);
             }
         }
 
@@ -304,7 +300,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         var node = FindNearestGatherableResourceNode(person.Position, definition => IsKnownSkill(person, definition.Skill));
         if (node is not null)
         {
-            return new GatherTask(node.Id, node.Position, reachDistance);
+            return new GatherTask(node, reachDistance);
         }
 
         return new IdleTask();
@@ -407,7 +403,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
                 if (teachableTechnique is { } techniqueToTeach)
                 {
-                    new TeachCommand(teacher.Id, student.Id, techniqueToTeach).Execute(this);
+                    new TeachCommand(teacher, student, techniqueToTeach).Execute(this);
                 }
             }
         }
@@ -464,7 +460,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                 break;
             }
 
-            new EatCommand(person.Id, kind).Execute(this);
+            new EatCommand(person, kind).Execute(this);
         }
     }
 

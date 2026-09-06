@@ -23,7 +23,7 @@ public class GatherCommandTests
         person.Needs.Hunger = 50f;
         var node = world.SpawnResourceNode(grazing, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(30f, person.Needs.Hunger);
         Assert.Equal(80f, node.RemainingAmount);
@@ -44,7 +44,7 @@ public class GatherCommandTests
         person.Needs.Hunger = 5f;
         var node = world.SpawnResourceNode(grazing, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(0f, person.Needs.Hunger);
     }
@@ -57,7 +57,7 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(80f, node.RemainingAmount);
@@ -72,7 +72,7 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 5);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(0f, node.RemainingAmount);
@@ -87,7 +87,7 @@ public class GatherCommandTests
         person.Inventory.Add(TestCatalogs.AppleItem, (int)world.MaxCarryWeightFor(person) - 5);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(95f, node.RemainingAmount);
@@ -100,7 +100,7 @@ public class GatherCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(0f, node.RemainingAmount);
@@ -113,9 +113,9 @@ public class GatherCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -128,7 +128,7 @@ public class GatherCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -142,7 +142,7 @@ public class GatherCommandTests
         person.IsAlive = false;
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -156,7 +156,7 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
     }
@@ -168,21 +168,7 @@ public class GatherCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
-
-        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
-        Assert.Equal(100f, node.RemainingAmount);
-    }
-
-    [Fact]
-    public void GatheringWithAnUnknownPersonOrNodeDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
-
-        world.Execute(new GatherCommand(new PersonId(999), node.Id));
-        world.Execute(new GatherCommand(person.Id, new ResourceNodeId(999)));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -198,12 +184,12 @@ public class GatherCommandTests
 
         for (var i = 0; i < 4; i++)
         {
-            world.Execute(new GatherCommand(person.Id, node.Id));
+            world.Execute(new GatherCommand(person, node));
         }
 
         Assert.DoesNotContain(TestCatalogs.EfficientForaging, person.KnownTechniques);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(5f, person.Skills.Get(TestCatalogs.Foraging));
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
@@ -218,7 +204,7 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(40, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(960f, node.RemainingAmount);
@@ -233,8 +219,8 @@ public class GatherCommandTests
         var appleNode = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         var pearNode = world.SpawnResourceNode(TestCatalogs.Pear, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, appleNode.Id));
-        world.Execute(new GatherCommand(person.Id, pearNode.Id));
+        world.Execute(new GatherCommand(person, appleNode));
+        world.Execute(new GatherCommand(person, pearNode));
 
         Assert.Equal(2f, person.Skills.Get(TestCatalogs.Foraging));
     }
@@ -249,8 +235,8 @@ public class GatherCommandTests
         var appleNode = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         var mushroomNode = world.SpawnResourceNode(TestCatalogs.Mushroom, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, appleNode.Id));
-        world.Execute(new GatherCommand(person.Id, mushroomNode.Id));
+        world.Execute(new GatherCommand(person, appleNode));
+        world.Execute(new GatherCommand(person, mushroomNode));
 
         Assert.Equal(1f, person.Skills.Get(TestCatalogs.Foraging));
         Assert.Equal(1f, person.Skills.Get(TestCatalogs.MushroomForaging));
@@ -266,7 +252,7 @@ public class GatherCommandTests
 
         for (var i = 0; i < 5; i++)
         {
-            world.Execute(new GatherCommand(person.Id, node.Id));
+            world.Execute(new GatherCommand(person, node));
         }
 
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
@@ -282,7 +268,7 @@ public class GatherCommandTests
         person.Needs.Hunger = 50;
         var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(50f, person.Needs.Hunger);
         Assert.Equal(80f, node.RemainingAmount);
@@ -298,7 +284,7 @@ public class GatherCommandTests
         person.Inventory.Add(TestCatalogs.Axe, 1);
         var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 1000);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(20 + TestCatalogs.AxeHarvestBonus, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(1000f - (20 + TestCatalogs.AxeHarvestBonus), node.RemainingAmount);
@@ -313,7 +299,7 @@ public class GatherCommandTests
         person.Inventory.Add(TestCatalogs.Axe, 1);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 1000);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(980f, node.RemainingAmount);
     }
@@ -327,7 +313,7 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(Season.Winter, world.CurrentSeason);
         var expectedHarvest = 20f * TestCatalogs.ColdFoodYieldMultiplier;
@@ -344,7 +330,7 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100);
 
-        world.Execute(new GatherCommand(person.Id, node.Id));
+        world.Execute(new GatherCommand(person, node));
 
         Assert.Equal(Season.Winter, world.CurrentSeason);
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));

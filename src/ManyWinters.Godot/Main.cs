@@ -47,7 +47,7 @@ public partial class Main : Node3D
     // already in range when the order was given. Resolved once they arrive (see
     // ResolvePendingGathers), so clicking a distant node reads as "go gather that" instead
     // of silently doing nothing the way a bare out-of-range GatherCommand would.
-    private readonly Dictionary<PersonId, ResourceNodeId> _pendingGathers = new();
+    private readonly Dictionary<Person, ResourceNode> _pendingGathers = new();
 
     public override void _Ready()
     {
@@ -98,9 +98,9 @@ public partial class Main : Node3D
         }
 
         _tickAccumulator -= _pacing.TickIntervalSeconds;
-        if (_selectedPersonId is { } selectedPersonId)
+        if (FindSelectedPerson() is { } selectedPerson)
         {
-            _world.Execute(new GrantIdleGraceCommand(selectedPersonId, _pacing.SelectedPersonIdleGraceTicks));
+            _world.Execute(new GrantIdleGraceCommand(selectedPerson, _pacing.SelectedPersonIdleGraceTicks));
         }
 
         _world.Advance(1);
@@ -535,49 +535,49 @@ public partial class Main : Node3D
 
     private void OnCraftButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (FindSelectedPerson() is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
-        _world.Execute(new CraftCommand(personId, new ItemKindId("axe")));
+        _world.Execute(new CraftCommand(person, new ItemKindId("axe")));
         RefreshInfoLabel();
     }
 
     private void OnCraftClothingButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (FindSelectedPerson() is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
-        _world.Execute(new CraftCommand(personId, new ItemKindId("warm_clothing")));
+        _world.Execute(new CraftCommand(person, new ItemKindId("warm_clothing")));
         RefreshInfoLabel();
     }
 
     private void OnCraftBasketButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (FindSelectedPerson() is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
-        _world.Execute(new CraftCommand(personId, new ItemKindId("basket")));
+        _world.Execute(new CraftCommand(person, new ItemKindId("basket")));
         RefreshInfoLabel();
     }
 
     private void OnCraftBagButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (FindSelectedPerson() is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
-        _world.Execute(new CraftCommand(personId, new ItemKindId("bag")));
+        _world.Execute(new CraftCommand(person, new ItemKindId("bag")));
         RefreshInfoLabel();
     }
 
@@ -596,7 +596,7 @@ public partial class Main : Node3D
         }
 
         var buildPosition = FindFreeBuildingPosition(person.Position);
-        _world.Execute(new ConstructCommand(personId, new BuildingKindId("storage_hut"), buildPosition));
+        _world.Execute(new ConstructCommand(person, new BuildingKindId("storage_hut"), buildPosition));
         RefreshInfoLabel();
         RefreshBuildingsLabel();
     }
@@ -628,7 +628,7 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new RepairCommand(personId, nearestBuilding.Id));
+        _world.Execute(new RepairCommand(person, nearestBuilding));
         RefreshInfoLabel();
         RefreshBuildingsLabel();
     }
@@ -668,7 +668,7 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new DepositCommand(personId, nearestBuilding.Id, woodItem, amount));
+        _world.Execute(new DepositCommand(person, nearestBuilding, woodItem, amount));
         RefreshInfoLabel();
         RefreshBuildingsLabel();
     }
@@ -710,7 +710,7 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new WithdrawCommand(personId, nearestBuilding.Id, woodItem, amount));
+        _world.Execute(new WithdrawCommand(person, nearestBuilding, woodItem, amount));
         RefreshInfoLabel();
         RefreshBuildingsLabel();
     }
@@ -742,8 +742,8 @@ public partial class Main : Node3D
             return;
         }
 
-        TeachBaseTechniqueIfNeeded(personId, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
-        _world.Execute(new FellCommand(personId, node.Id));
+        TeachBaseTechniqueIfNeeded(person, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
+        _world.Execute(new FellCommand(person, node));
         _presenter.RemoveResourceNodeView(node.Id);
         RefreshInfoLabel();
     }
@@ -785,7 +785,7 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new BuryCommand(personId, deceased.Id));
+        _world.Execute(new BuryCommand(person, deceased));
         _presenter.RemovePersonView(deceased.Id);
         RefreshInfoLabel();
         RefreshGravesLabel();
@@ -826,7 +826,7 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new LootCommand(personId, deceased.Id));
+        _world.Execute(new LootCommand(person, deceased));
         RefreshInfoLabel();
     }
 
@@ -848,7 +848,7 @@ public partial class Main : Node3D
             return;
         }
 
-        TeachBaseTechniqueIfNeeded(personId, EatCommand.Skill);
+        TeachBaseTechniqueIfNeeded(person, EatCommand.Skill);
         foreach (var item in person.Inventory.Counts.Keys.ToList())
         {
             if (person.Needs.Hunger <= 0f)
@@ -856,7 +856,7 @@ public partial class Main : Node3D
                 break;
             }
 
-            _world.Execute(new EatCommand(personId, item));
+            _world.Execute(new EatCommand(person, item));
         }
 
         RefreshInfoLabel();
@@ -961,18 +961,19 @@ public partial class Main : Node3D
         }
 
         var teacher = _world.People.FirstOrDefault(p => p.Id == teacherId);
-        if (teacher is null)
+        var student = _world.People.FirstOrDefault(p => p.Id == studentId);
+        if (teacher is null || student is null)
         {
             return;
         }
 
         // Directing a person to teach at all is the player showing them how to teach in the
         // first place - same as TeachBaseTechniqueIfNeeded for gather/fell/eat.
-        TeachBaseTechniqueIfNeeded(teacherId, TeachCommand.TeachingSkill);
+        TeachBaseTechniqueIfNeeded(teacher, TeachCommand.TeachingSkill);
 
         foreach (var technique in teacher.KnownTechniques)
         {
-            _world.Execute(new TeachCommand(teacherId, studentId, technique));
+            _world.Execute(new TeachCommand(teacher, student, technique));
         }
 
         RefreshInfoLabel();
@@ -995,15 +996,15 @@ public partial class Main : Node3D
 
         if (!_world.IsWithinReach(person.Position, node.Position))
         {
-            _pendingGathers[personId] = id;
+            _pendingGathers[person] = node;
             // Fully qualified: inside a Node3D, a bare `Position` is the node's own Vector3.
-            _world.Execute(new MoveCommand(personId, Core.World.Position.Approach(person.Position, node.Position, _presentation.ApproachDistance)));
+            _world.Execute(new MoveCommand(person, Core.World.Position.Approach(person.Position, node.Position, _presentation.ApproachDistance)));
             RefreshInfoLabel();
             return;
         }
 
-        _pendingGathers.Remove(personId);
-        GatherFrom(personId, node);
+        _pendingGathers.Remove(person);
+        GatherFrom(person, node);
         RefreshInfoLabel();
     }
 
@@ -1017,13 +1018,11 @@ public partial class Main : Node3D
             return;
         }
 
-        foreach (var (personId, nodeId) in _pendingGathers.ToList())
+        foreach (var (person, node) in _pendingGathers.ToList())
         {
-            var person = _world.People.FirstOrDefault(p => p.Id == personId && p.IsAlive);
-            var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == nodeId);
-            if (person is null || node is null)
+            if (!person.IsAlive)
             {
-                _pendingGathers.Remove(personId);
+                _pendingGathers.Remove(person);
                 continue;
             }
 
@@ -1032,36 +1031,30 @@ public partial class Main : Node3D
                 continue;
             }
 
-            _pendingGathers.Remove(personId);
-            GatherFrom(personId, node);
+            _pendingGathers.Remove(person);
+            GatherFrom(person, node);
         }
     }
 
     // Depleting a node down to zero doesn't remove its view - the plant/tree is still there,
     // just fruitless until RegenPerTick brings it back. Only IsAlive turning false (felled or
     // withered - see FellCommand, WorldState.Advance) means the thing itself is actually gone.
-    private void GatherFrom(PersonId personId, ResourceNode node)
+    private void GatherFrom(Person person, ResourceNode node)
     {
-        TeachBaseTechniqueIfNeeded(personId, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
-        _world.Execute(new GatherCommand(personId, node.Id));
+        TeachBaseTechniqueIfNeeded(person, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
+        _world.Execute(new GatherCommand(person, node));
     }
 
     // Nobody starts knowing anything (see SkillDefinition.BaseTechnique) - the player directing
     // an action at all is how "God" shows a person the way, so every player-driven action that
     // needs a skill grants its base technique first if the selected person doesn't have it yet,
     // rather than silently no-oping or requiring a separate "teach" step beforehand.
-    private void TeachBaseTechniqueIfNeeded(PersonId personId, SkillTypeId skill)
+    private void TeachBaseTechniqueIfNeeded(Person person, SkillTypeId skill)
     {
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
-            return;
-        }
-
         var baseTechnique = _world.Configuration.SkillCatalog.Get(skill).BaseTechnique;
         if (!person.KnownTechniques.Contains(baseTechnique))
         {
-            _world.Execute(new GrantTechniqueCommand(personId, baseTechnique));
+            _world.Execute(new GrantTechniqueCommand(person, baseTechnique));
         }
     }
 
@@ -1081,15 +1074,21 @@ public partial class Main : Node3D
             return;
         }
 
-        if (_selectedPersonId is not { } personId)
+        if (FindSelectedPerson() is not { } person)
         {
             _statusBar.Notify("Select a person first, then click the ground to walk there.");
             return;
         }
 
-        _world.Execute(new MoveCommand(personId, new Position(position.X, position.Z)));
+        _world.Execute(new MoveCommand(person, new Position(position.X, position.Z)));
         RefreshInfoLabel();
     }
+
+    // The selection itself stays an id (that's what the views report clicks with - see
+    // WorldPresenter), but every command wants the person, so this is the one place that
+    // translates between the two.
+    private Person? FindSelectedPerson() =>
+        _selectedPersonId is { } id ? _world.People.FirstOrDefault(p => p.Id == id) : null;
 
     private void RefreshInfoLabel()
     {
@@ -1100,7 +1099,7 @@ public partial class Main : Node3D
             return;
         }
 
-        var person = _selectedPersonId is { } id ? _world.People.FirstOrDefault(p => p.Id == id) : null;
+        var person = FindSelectedPerson();
         if (person is null)
         {
             _infoLabel.Text = "No selection.";
@@ -1134,7 +1133,7 @@ public partial class Main : Node3D
     private static string TaskText(Person person) => person.Tasks.Current switch
     {
         MoveTask move => $"Walking to {move.Destination}",
-        GatherTask gather => $"Gathering ({gather.TargetNodeId})",
+        GatherTask gather => $"Gathering ({gather.Target.Id})",
         _ => "Idle",
     };
 

@@ -14,7 +14,7 @@ namespace ManyWinters.Core.Tasks;
 // `reachDistance` is the world's SimulationRules.MaxInteractionDistance, handed in by whoever
 // creates the task (DecideIdleTask) - Advance itself never sees the world, so it can't look
 // the rule up.
-public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosition, float reachDistance) : PersonTask
+public sealed class GatherTask(ResourceNode target, float reachDistance) : PersonTask
 {
     private const float SpeedPerTick = 0.3f;
 
@@ -29,9 +29,7 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
     private Position? _approachPosition;
     private MoveTask? _move;
 
-    public ResourceNodeId TargetNodeId { get; } = targetNodeId;
-
-    public Position TargetPosition { get; } = targetPosition;
+    public ResourceNode Target { get; } = target;
 
     public float ReachDistance { get; } = reachDistance;
 
@@ -39,7 +37,7 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
 
     public override void Advance(Person person)
     {
-        if (WorldState.Distance(person.Position, TargetPosition) <= ReachDistance)
+        if (WorldState.Distance(person.Position, Target.Position) <= ReachDistance)
         {
             _move = null;
             return;
@@ -53,7 +51,7 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
         // the standoff is shorter than ReachDistance, so a person is already close enough to
         // gather before the leg would finish. The leg is therefore only ever cleared by that
         // check, on the tick it stops the walk.
-        _approachPosition ??= Position.Approach(person.Position, TargetPosition, ReachDistance * ApproachFractionOfReach);
+        _approachPosition ??= Position.Approach(person.Position, Target.Position, ReachDistance * ApproachFractionOfReach);
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);
         _move.Advance(person);
     }

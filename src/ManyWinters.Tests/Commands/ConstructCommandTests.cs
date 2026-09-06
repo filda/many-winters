@@ -13,7 +13,7 @@ public class ConstructCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(1, 1)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(1, 1)));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
         var building = Assert.Single(world.Buildings);
@@ -28,7 +28,7 @@ public class ConstructCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(0, 0)));
 
         var building = Assert.Single(world.Buildings);
         Assert.Equal(100f, building.Condition);
@@ -42,7 +42,7 @@ public class ConstructCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount + 3);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(0, 0)));
 
         Assert.Equal(3, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Single(world.Buildings);
@@ -55,7 +55,7 @@ public class ConstructCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount - 1);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(0, 0)));
 
         Assert.Equal(TestCatalogs.StorageHutInputAmount - 1, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Empty(world.Buildings);
@@ -69,7 +69,7 @@ public class ConstructCommandTests
         person.IsAlive = false;
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(0, 0)));
 
         Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Empty(world.Buildings);
@@ -82,7 +82,7 @@ public class ConstructCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0)));
 
         Assert.Single(world.Buildings);
     }
@@ -94,19 +94,9 @@ public class ConstructCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0)));
+        world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0)));
 
         Assert.Empty(world.Buildings);
         Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
-    }
-
-    [Fact]
-    public void ConstructingForAnUnknownPersonDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        world.Execute(new ConstructCommand(new PersonId(999), TestCatalogs.StorageHut, new Position(0, 0)));
-
-        Assert.Empty(world.Buildings);
     }
 }

@@ -13,7 +13,7 @@ public class GrantTechniqueCommandTests
         var ava = world.SpawnPerson("Ava", new Position(0, 0));
         var bran = world.SpawnPerson("Bran", new Position(1, 0));
 
-        world.Execute(new GrantTechniqueCommand(bran.Id, TestCatalogs.BasicForaging));
+        world.Execute(new GrantTechniqueCommand(bran, TestCatalogs.BasicForaging));
 
         Assert.Contains(TestCatalogs.BasicForaging, bran.KnownTechniques);
         Assert.DoesNotContain(TestCatalogs.BasicForaging, ava.KnownTechniques);
@@ -29,8 +29,8 @@ public class GrantTechniqueCommandTests
         var world = TestCatalogs.CreateWorld();
         var ava = world.SpawnPerson("Ava", new Position(0, 0));
 
-        world.Execute(new GrantTechniqueCommand(ava.Id, TestCatalogs.BasicTeaching));
-        world.Execute(new GrantTechniqueCommand(ava.Id, TestCatalogs.EfficientWoodcutting));
+        world.Execute(new GrantTechniqueCommand(ava, TestCatalogs.BasicTeaching));
+        world.Execute(new GrantTechniqueCommand(ava, TestCatalogs.EfficientWoodcutting));
 
         Assert.Contains(TestCatalogs.BasicTeaching, ava.KnownTechniques);
         Assert.Contains(TestCatalogs.EfficientWoodcutting, ava.KnownTechniques);
@@ -42,21 +42,10 @@ public class GrantTechniqueCommandTests
         var world = TestCatalogs.CreateWorld();
         var ava = world.SpawnPerson("Ava", new Position(0, 0));
 
-        world.Execute(new GrantTechniqueCommand(ava.Id, TestCatalogs.BasicForaging));
-        world.Execute(new GrantTechniqueCommand(ava.Id, TestCatalogs.BasicForaging));
+        world.Execute(new GrantTechniqueCommand(ava, TestCatalogs.BasicForaging));
+        world.Execute(new GrantTechniqueCommand(ava, TestCatalogs.BasicForaging));
 
         Assert.Single(ava.KnownTechniques);
-    }
-
-    [Fact]
-    public void DoesNothingForAPersonWhoIsNotInTheWorld()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var ava = world.SpawnPerson("Ava", new Position(0, 0));
-
-        world.Execute(new GrantTechniqueCommand(new PersonId(99), TestCatalogs.BasicForaging));
-
-        Assert.Empty(ava.KnownTechniques);
     }
 
     [Fact]
@@ -67,7 +56,7 @@ public class GrantTechniqueCommandTests
         var bran = world.SpawnPerson("Bran", new Position(1, 0));
         bran.IsAlive = false;
 
-        world.Execute(new GrantTechniqueCommand(bran.Id, TestCatalogs.BasicForaging));
+        world.Execute(new GrantTechniqueCommand(bran, TestCatalogs.BasicForaging));
 
         Assert.Empty(bran.KnownTechniques);
         Assert.Empty(ava.KnownTechniques);

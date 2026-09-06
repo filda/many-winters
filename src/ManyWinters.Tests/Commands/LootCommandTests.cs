@@ -15,7 +15,7 @@ public class LootCommandTests
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
         var looter = world.SpawnPerson("Bran", new Position(0, 0));
 
-        world.Execute(new LootCommand(looter.Id, deceased.Id));
+        world.Execute(new LootCommand(looter, deceased));
 
         Assert.Equal(0, deceased.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(5, looter.Inventory.Get(TestCatalogs.WoodItem));
@@ -30,7 +30,7 @@ public class LootCommandTests
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
         var bystander = world.SpawnPerson("Bystander", new Position(0, 0));
 
-        world.Execute(new LootCommand(bystander.Id, deceased.Id));
+        world.Execute(new LootCommand(bystander, deceased));
 
         Assert.Equal(5, bystander.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -45,7 +45,7 @@ public class LootCommandTests
         var otherDeceased = world.SpawnPerson("Bran", new Position(0, 0));
         otherDeceased.IsAlive = false;
 
-        world.Execute(new LootCommand(otherDeceased.Id, deceased.Id));
+        world.Execute(new LootCommand(otherDeceased, deceased));
 
         Assert.Equal(5, deceased.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -58,7 +58,7 @@ public class LootCommandTests
         stillAlive.Inventory.Add(TestCatalogs.WoodItem, 5);
         var looter = world.SpawnPerson("Bran", new Position(0, 0));
 
-        world.Execute(new LootCommand(looter.Id, stillAlive.Id));
+        world.Execute(new LootCommand(looter, stillAlive));
 
         Assert.Equal(5, stillAlive.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, looter.Inventory.Get(TestCatalogs.WoodItem));
@@ -73,7 +73,7 @@ public class LootCommandTests
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
         var looter = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
 
-        world.Execute(new LootCommand(looter.Id, deceased.Id));
+        world.Execute(new LootCommand(looter, deceased));
 
         Assert.Equal(5, looter.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -87,24 +87,10 @@ public class LootCommandTests
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
         var looter = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
-        world.Execute(new LootCommand(looter.Id, deceased.Id));
+        world.Execute(new LootCommand(looter, deceased));
 
         Assert.Equal(5, deceased.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, looter.Inventory.Get(TestCatalogs.WoodItem));
-    }
-
-    [Fact]
-    public void LootingWithUnknownPersonIdsDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
-        deceased.IsAlive = false;
-        deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-
-        world.Execute(new LootCommand(new PersonId(999), deceased.Id));
-        world.Execute(new LootCommand(new PersonId(998), new PersonId(999)));
-
-        Assert.Equal(5, deceased.Inventory.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -117,7 +103,7 @@ public class LootCommandTests
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
         var looter = world.SpawnPerson("Bran", new Position(0, 0));
 
-        world.Execute(new LootCommand(looter.Id, deceased.Id));
+        world.Execute(new LootCommand(looter, deceased));
 
         Assert.Equal(5, looter.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -132,7 +118,7 @@ public class LootCommandTests
         var looter = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         looter.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(looter) - 5);
 
-        world.Execute(new LootCommand(looter.Id, deceased.Id));
+        world.Execute(new LootCommand(looter, deceased));
 
         Assert.Equal(world.MaxCarryWeightFor(looter), looter.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, deceased.Inventory.Get(TestCatalogs.WoodItem));

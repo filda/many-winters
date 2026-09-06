@@ -13,7 +13,7 @@ public class MoveCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
-        world.Execute(new MoveCommand(person.Id, new Position(5, 5)));
+        world.Execute(new MoveCommand(person, new Position(5, 5)));
 
         var task = Assert.IsType<MoveTask>(person.Tasks.Current);
         Assert.Equal(new Position(5, 5), task.Destination);
@@ -27,7 +27,7 @@ public class MoveCommandTests
         var previousTask = new IdleTask();
         person.Tasks.Interrupt(previousTask);
 
-        world.Execute(new MoveCommand(person.Id, new Position(5, 5)));
+        world.Execute(new MoveCommand(person, new Position(5, 5)));
 
         Assert.NotSame(previousTask, person.Tasks.Current);
         Assert.IsType<MoveTask>(person.Tasks.Current);
@@ -40,16 +40,8 @@ public class MoveCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
 
-        world.Execute(new MoveCommand(person.Id, new Position(5, 5)));
+        world.Execute(new MoveCommand(person, new Position(5, 5)));
 
         Assert.Null(person.Tasks.Current);
-    }
-
-    [Fact]
-    public void UnknownPersonDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        world.Execute(new MoveCommand(new PersonId(999), new Position(5, 5)));
     }
 }

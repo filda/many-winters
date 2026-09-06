@@ -17,7 +17,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 5);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 5));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5));
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Empty(building.Inventory.Counts);
@@ -31,7 +31,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(5, building.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -45,7 +45,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 5);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(5, building.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -60,7 +60,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -74,7 +74,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(15, person.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -87,33 +87,10 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
-    }
-
-    [Fact]
-    public void WithdrawingFromAnUnknownBuildingDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-
-        world.Execute(new WithdrawCommand(person.Id, new BuildingId(999), TestCatalogs.WoodItem, 15));
-
-        Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
-    }
-
-    [Fact]
-    public void WithdrawingByAnUnknownPersonDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 20);
-
-        world.Execute(new WithdrawCommand(new PersonId(999), building.Id, TestCatalogs.WoodItem, 15));
-
-        Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -125,7 +102,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));

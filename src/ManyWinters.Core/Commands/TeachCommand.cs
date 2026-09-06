@@ -1,4 +1,5 @@
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -11,7 +12,7 @@ namespace ManyWinters.Core.Commands;
 // explainer of it. Teaching the "teaching" base technique itself is the one case where those
 // two requirements collapse into the same check - there's no separate bootstrap for it, it has
 // to spread the same way everything else past the player's own initial lessons does.
-public sealed record TeachCommand(PersonId TeacherId, PersonId StudentId, TechniqueId Technique) : ICommand
+public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Technique) : ICommand
 {
     // Public, not private - WorldState.Advance's own autonomous teaching pass
     // (AutoTeachNearbyPeople) needs it too, to skip a teacher who can't teach at all before
@@ -29,33 +30,31 @@ public sealed record TeachCommand(PersonId TeacherId, PersonId StudentId, Techni
 
     public void Execute(WorldState world)
     {
-        var teacher = world.People.FirstOrDefault(p => p.Id == TeacherId && p.IsAlive);
-        var student = world.People.FirstOrDefault(p => p.Id == StudentId && p.IsAlive);
         // Find, not Get - a caller with no "teaching" skill registered at all (a minimal test
         // world, say) just means nobody could possibly teach anything, not a crash.
-        if (teacher is null
-            || student is null
-            || !teacher.KnownTechniques.Contains(Technique)
+        if (!Teacher.IsAlive
+            || !Student.IsAlive
+            || !Teacher.KnownTechniques.Contains(Technique)
             || world.Configuration.SkillCatalog.Find(TeachingSkill) is not { } teachingDefinition
-            || !teacher.KnownTechniques.Contains(teachingDefinition.BaseTechnique))
+            || !Teacher.KnownTechniques.Contains(teachingDefinition.BaseTechnique))
         {
             return;
         }
 
-        var rangeMultiplier = teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
+        var rangeMultiplier = Teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
             ? EfficientTeachingRangeMultiplier
             : 1f;
-        if (!world.IsWithinReach(teacher.Position, student.Position, rangeMultiplier))
+        if (!world.IsWithinReach(Teacher.Position, Student.Position, rangeMultiplier))
         {
             return;
         }
 
-        student.KnownTechniques.Add(Technique);
+        Student.KnownTechniques.Add(Technique);
 
-        teacher.Skills.Increase(TeachingSkill, SkillGainPerLesson);
-        if (teacher.Skills.Get(TeachingSkill) >= DiscoveryThreshold)
+        Teacher.Skills.Increase(TeachingSkill, SkillGainPerLesson);
+        if (Teacher.Skills.Get(TeachingSkill) >= DiscoveryThreshold)
         {
-            teacher.KnownTechniques.Add(teachingDefinition.EfficientTechnique);
+            Teacher.KnownTechniques.Add(teachingDefinition.EfficientTechnique);
         }
     }
 }

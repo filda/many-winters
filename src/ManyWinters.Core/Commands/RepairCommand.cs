@@ -1,32 +1,30 @@
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record RepairCommand(PersonId PersonId, BuildingId BuildingId) : ICommand
+public sealed record RepairCommand(Person Person, Building Building) : ICommand
 {
     private const float RepairConditionAmount = 25f;
     private const float MaxCondition = 100f;
 
     public void Execute(WorldState world)
     {
-        var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
-        var building = world.Buildings.FirstOrDefault(b => b.Id == BuildingId);
-        if (person is null
-            || building is null
-            || building.Condition >= MaxCondition
-            || !world.IsWithinReach(person.Position, building.Position))
+        if (!Person.IsAlive
+            || Building.Condition >= MaxCondition
+            || !world.IsWithinReach(Person.Position, Building.Position))
         {
             return;
         }
 
-        var definition = world.Configuration.BuildingCatalog.Get(building.Kind);
+        var definition = world.Configuration.BuildingCatalog.Get(Building.Kind);
         var repairCost = Math.Max(1, definition.RequiredAmount / 4);
-        if (!person.Inventory.Remove(definition.RequiredItem, repairCost))
+        if (!Person.Inventory.Remove(definition.RequiredItem, repairCost))
         {
             return;
         }
 
-        building.Condition = Math.Min(MaxCondition, building.Condition + RepairConditionAmount);
+        Building.Condition = Math.Min(MaxCondition, Building.Condition + RepairConditionAmount);
     }
 }

@@ -14,7 +14,10 @@ public class GatherTaskTests
     private static Person NewPerson(Position position) =>
         new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position };
 
-    private static GatherTask NewTask(float? reach = null) => new(new ResourceNodeId(1), Target, reach ?? Reach);
+    private static ResourceNode NewTargetNode() =>
+        new() { Id = new ResourceNodeId(1), Kind = new ResourceKindId("apple"), Position = Target };
+
+    private static GatherTask NewTask(float? reach = null, ResourceNode? target = null) => new(target ?? NewTargetNode(), reach ?? Reach);
 
     [Fact]
     public void IsNeverComplete()
@@ -34,10 +37,11 @@ public class GatherTaskTests
     [Fact]
     public void RemembersWhatItWasSentTo()
     {
-        var task = NewTask();
+        var node = NewTargetNode();
 
-        Assert.Equal(new ResourceNodeId(1), task.TargetNodeId);
-        Assert.Equal(Target, task.TargetPosition);
+        var task = NewTask(target: node);
+
+        Assert.Same(node, task.Target);
         Assert.Equal(Reach, task.ReachDistance);
     }
 

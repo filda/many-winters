@@ -18,7 +18,7 @@ public class BuryCommandTests
         deceased.IsAlive = false;
         deceased.DeathTick = world.Configuration.Rules.TicksPerYear * 3;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.False(grave.IsMarked);
@@ -40,7 +40,7 @@ public class BuryCommandTests
         deceased.IsAlive = false;
         deceased.DeathTick = world.Configuration.Rules.TicksPerYear * 3;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.True(grave.IsMarked);
@@ -61,7 +61,7 @@ public class BuryCommandTests
         deceased.IsAlive = false;
         deceased.CauseOfDeath = DeathCause.OldAge;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.Equal(DeathCause.OldAge, grave.CauseOfDeath);
@@ -78,7 +78,7 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.Null(grave.CauseOfDeath);
@@ -99,7 +99,7 @@ public class BuryCommandTests
             fatherId: new PersonId(998));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.Null(grave.MotherName);
@@ -117,7 +117,7 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id);
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.Equal("Sela", grave.MotherName);
@@ -134,7 +134,7 @@ public class BuryCommandTests
         deceased.IsAlive = false;
         deceased.CauseOfDeath = DeathCause.Hunger;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.Null(grave.CauseOfDeath);
@@ -152,7 +152,7 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
         Assert.Equal(0, grave.AgeAtDeath);
@@ -168,7 +168,7 @@ public class BuryCommandTests
         Grave? raised = null;
         world.GraveAdded += g => raised = g;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var tracked = Assert.Single(world.Graves);
         Assert.Same(tracked, raised);
@@ -182,7 +182,7 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         Assert.Equal(1f, buryingPerson.Skills.Get(TestCatalogs.Burial));
     }
@@ -197,14 +197,14 @@ public class BuryCommandTests
         {
             var deceased = world.SpawnPerson($"Deceased{i}", new Position(1, 1));
             deceased.IsAlive = false;
-            world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+            world.Execute(new BuryCommand(buryingPerson, deceased));
         }
 
         Assert.DoesNotContain(TestCatalogs.EfficientBurial, buryingPerson.KnownTechniques);
 
         var fifthDeceased = world.SpawnPerson("Deceased4", new Position(1, 1));
         fifthDeceased.IsAlive = false;
-        world.Execute(new BuryCommand(buryingPerson.Id, fifthDeceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, fifthDeceased));
 
         Assert.Equal(5f, buryingPerson.Skills.Get(TestCatalogs.Burial));
         Assert.Contains(TestCatalogs.EfficientBurial, buryingPerson.KnownTechniques);
@@ -219,7 +219,7 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         Assert.Empty(world.Graves);
         Assert.False(deceased.IsBuried);
@@ -232,7 +232,7 @@ public class BuryCommandTests
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         var stillAlive = world.SpawnPerson("Ava", new Position(1, 1));
 
-        world.Execute(new BuryCommand(buryingPerson.Id, stillAlive.Id));
+        world.Execute(new BuryCommand(buryingPerson, stillAlive));
 
         Assert.Empty(world.Graves);
     }
@@ -244,9 +244,9 @@ public class BuryCommandTests
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         Assert.Single(world.Graves);
         Assert.Equal(1f, buryingPerson.Skills.Get(TestCatalogs.Burial));
@@ -260,7 +260,7 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         Assert.Single(world.Graves);
     }
@@ -273,23 +273,9 @@ public class BuryCommandTests
         var deceased = world.SpawnPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         deceased.IsAlive = false;
 
-        world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
+        world.Execute(new BuryCommand(buryingPerson, deceased));
 
         Assert.Empty(world.Graves);
         Assert.False(deceased.IsBuried);
-    }
-
-    [Fact]
-    public void BuryingWithUnknownPersonIdsDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
-        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
-        deceased.IsAlive = false;
-
-        world.Execute(new BuryCommand(new PersonId(999), deceased.Id));
-        world.Execute(new BuryCommand(buryingPerson.Id, new PersonId(999)));
-
-        Assert.Empty(world.Graves);
     }
 }

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
@@ -12,11 +13,13 @@ namespace ManyWinters.Core.Commands;
 // triggers this implicitly (TeachBaseTechniqueIfNeeded) the moment the player directs a person
 // to gather/fell/eat/teach something they don't already know how to: pointing at the resource
 // (or the student) *is* showing them how, not a separate step beforehand.
-public sealed record GrantTechniqueCommand(PersonId PersonId, TechniqueId Technique) : ICommand
+public sealed record GrantTechniqueCommand(Person Person, TechniqueId Technique) : ICommand
 {
     public void Execute(WorldState world)
     {
-        var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
-        person?.KnownTechniques.Add(Technique);
+        if (Person.IsAlive)
+        {
+            Person.KnownTechniques.Add(Technique);
+        }
     }
 }

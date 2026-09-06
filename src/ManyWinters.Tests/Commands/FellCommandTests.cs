@@ -18,7 +18,7 @@ public class FellCommandTests
         deceased.IsAlive = false;
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
 
-        world.Execute(new FellCommand(deceased.Id, node.Id));
+        world.Execute(new FellCommand(deceased, node));
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -34,7 +34,7 @@ public class FellCommandTests
         var standing = world.SpawnResourceNode(TestCatalogs.Pear, new Position(3, 4), 100);
         felled.IsAlive = false;
 
-        world.Execute(new FellCommand(person.Id, felled.Id));
+        world.Execute(new FellCommand(person, felled));
 
         Assert.True(standing.IsAlive);
         Assert.Equal(2, world.ResourceNodes.Count);
@@ -57,7 +57,7 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(hollow, new Position(3, 4), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.False(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -71,7 +71,7 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.False(node.IsAlive);
         Assert.Equal(ResourceDeathCause.Felled, node.CauseOfDeath);
@@ -91,10 +91,10 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
         var leftover = Assert.Single(world.ResourceNodes, n => n.Id != node.Id);
 
-        world.Execute(new GatherCommand(person.Id, leftover.Id));
+        world.Execute(new GatherCommand(person, leftover));
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -108,7 +108,7 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.Equal(5, node.DeathTick);
     }
@@ -121,7 +121,7 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.False(node.IsAlive);
     }
@@ -133,7 +133,7 @@ public class FellCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Mushroom, new Position(0, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -147,7 +147,7 @@ public class FellCommandTests
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         node.IsAlive = false;
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.Single(world.ResourceNodes);
     }
@@ -159,7 +159,7 @@ public class FellCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -173,7 +173,7 @@ public class FellCommandTests
         person.IsAlive = false;
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -187,7 +187,7 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.False(node.IsAlive);
     }
@@ -199,21 +199,7 @@ public class FellCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
-
-        Assert.True(node.IsAlive);
-        Assert.Single(world.ResourceNodes);
-    }
-
-    [Fact]
-    public void FellingWithAnUnknownPersonOrNodeDoesNothing()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0));
-        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
-
-        world.Execute(new FellCommand(new PersonId(999), node.Id));
-        world.Execute(new FellCommand(person.Id, new ResourceNodeId(999)));
+        world.Execute(new FellCommand(person, node));
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -237,7 +223,7 @@ public class FellCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
-        world.Execute(new FellCommand(person.Id, node.Id));
+        world.Execute(new FellCommand(person, node));
 
         Assert.False(node.IsAlive);
         Assert.Single(world.ResourceNodes);
