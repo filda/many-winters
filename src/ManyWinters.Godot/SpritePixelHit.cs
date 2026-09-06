@@ -17,9 +17,17 @@ namespace ManyWinters.Godot;
 // world up regardless of camera pitch (that's what keeps a sprite's own base sitting at its
 // real world-space height instead of floating - see BillboardSprite's own doc comment). The
 // rendered plane's basis has to match that: up is always world up, and right/forward are
-// derived from the horizontal component of the direction to the camera, not the camera's own
+// derived from the horizontal component of the camera's own backward axis, not its full
 // (pitched) basis vectors - those would describe a full/spherical billboard's plane instead,
 // which tilts to match camera elevation and this game's sprites never do.
+//
+// Both the plane and the ray are taken from the camera, never reconstructed from the camera's
+// position and the sprite's: Godot's shader orients every FixedY billboard by the camera's
+// yaw alone (BaseMaterial3D's BILLBOARD_FIXED_Y builds the plane from INV_VIEW_MATRIX, which
+// is the same for every sprite on screen), and a pick ray is only "camera position toward the
+// hit" for a perspective camera - in orthographic (FreeCameraRig.ToggleProjection) every ray
+// is parallel to the view axis and starts on the near plane, so that reconstruction sampled
+// the wrong pixel for anything off the screen's center.
 public static class SpritePixelHit
 {
     private static readonly Dictionary<string, Image> _imageCache = new();
@@ -64,34 +72,28 @@ public static class SpritePixelHit
         uv = default;
 
         var up = Vector3.Up;
-        var toCameraHorizontal = new Vector3(
-            camera.GlobalPosition.X - spriteCenter.X,
-            0f,
-            camera.GlobalPosition.Z - spriteCenter.Z);
-        var horizontalDistance = toCameraHorizontal.Length();
-        if (horizontalDistance < 0.0001f)
+        // The direction the billboard's plane faces: the camera's backward axis (Basis.Z
+        // points from the scene toward the viewer) flattened to the horizontal - exactly
+        // the shader's normalize(cross(up, INV_VIEW_MATRIX[2])) right vector, transposed.
+        var cameraBackward = camera.GlobalTransform.Basis.Z;
+        var look = new Vector3(cameraBackward.X, 0f, cameraBackward.Z);
+        var horizontalLength = look.Length();
+        if (horizontalLength < 0.0001f)
         {
-            // Camera directly overhead (or underneath) the sprite - a FixedY billboard has
-            // nothing left to yaw toward and renders edge-on/degenerate here. FreeCameraRig's
-            // own tilt clamp keeps normal play well clear of this.
+            // Camera looking straight down (or up) - a FixedY billboard has nothing left to
+            // yaw toward and renders edge-on/degenerate here. FreeCameraRig's own tilt clamp
+            // keeps normal play well clear of this.
             return false;
         }
 
-        // The direction the billboard's plane faces (from the sprite toward the camera,
-        // horizontally) - matches camera.GlobalTransform.Basis.X exactly whenever the camera
-        // has zero pitch, and stays correct at any pitch since only yaw affects it.
-        var look = toCameraHorizontal / horizontalDistance;
+        look /= horizontalLength;
         var right = up.Cross(look);
 
-        var rayOrigin = camera.GlobalPosition;
-        var toHit = rayHitPosition - rayOrigin;
-        var rayLength = toHit.Length();
-        if (rayLength < 0.0001f)
-        {
-            return false;
-        }
-
-        var rayDirection = toHit / rayLength;
+        // The pick ray as Godot itself cast it, rebuilt back through the hit's screen point -
+        // right for both projections (see the class doc comment).
+        var screenPosition = camera.UnprojectPosition(rayHitPosition);
+        var rayOrigin = camera.ProjectRayOrigin(screenPosition);
+        var rayDirection = camera.ProjectRayNormal(screenPosition);
         var denominator = rayDirection.Dot(look);
         if (Mathf.Abs(denominator) < 0.0001f)
         {
