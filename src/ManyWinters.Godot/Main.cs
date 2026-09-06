@@ -13,62 +13,12 @@ namespace ManyWinters.Godot;
 
 public partial class Main : Node3D
 {
-    private const double TickIntervalSeconds = 1.0;
-
-    // Renewed every tick the person stays selected (see _Process), so they never wander off
-    // mid-attention - only once selection moves on does this window actually run out.
-    private const long SelectedPersonIdleGraceTicks = 5;
-
-    // Comfortably inside SimulationRules.MaxInteractionDistance (2f by default), but far enough
-    // out that a person's own sprite doesn't overlap the resource node's.
-    private const float ApproachDistance = 1.2f;
-
-    // Godot's UI default (16) reads oversized for a dense debug/dev panel crammed with
-    // labels and a growing list of contextual buttons.
-    private const int InspectorFontSize = 13;
-
-    // Extra margin (in meters) added on top of each candidate's own on-screen half-width -
-    // roughly the selected person's own half-width, so something has to clear the target's
-    // own silhouette, not just its exact center point, to not count as blocking it - and how
-    // transparent something fades to once it does.
-    private const float OcclusionMargin = 0.3f;
-    private const float OcclusionFadedAlpha = 0.25f;
-
-    // Slack (in meters) added past the target's own distance before something stops counting
-    // as "in the way" - without it, a tree that was fading to reveal a whole crowd (the
-    // no-selection fallback target sits farther out) can snap solid the instant you select
-    // one specific person who happens to stand just this side of it, since the strict
-    // distance check alone then says the tree is beyond, not blocking, that exact point. That
-    // reads as broken right at the start of a session, when a first-time player is still
-    // clicking around to get their bearings.
-    private const float OcclusionDistanceTolerance = 2f;
-
-    // A fixed screen-space size/gap, not a 3D world one: the marker used to be a billboarded
-    // Sprite3D offset in local space, but a billboard's own on-screen "left/right" is
-    // redefined every frame to match whatever the camera's current right vector is (that's
-    // what "always face the camera" means) - so a fixed local offset drifted sideways by a
-    // different amount depending on which way the camera was currently facing. Projecting a
-    // single stable world point (the head) with Camera3D.UnprojectPosition and drawing the
-    // marker as a plain 2D UI overlay above it sidesteps that entirely - Godot's own
-    // projection handles the camera math, nothing here has to reconstruct it by hand.
     private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
-    private const float SelectionMarkerScreenSize = 28f;
 
-    // A person standing genuinely behind something opaque (a tree trunk, say - not just
-    // sharing an oversized collision box with it, see OnMissedClick) can never be reached by
-    // raycasting at all: the ray hits the opaque trunk pixel first and that *is* a real hit,
-    // not a miss to fall through from. Screen-space distance to a person's own projected
-    // position sidesteps 3D occlusion entirely - close enough on screen counts as "aiming at
-    // them" regardless of what's actually in front of them along the ray.
-    private const float PersonClickScreenRadius = 32f;
-    private const float SelectionMarkerScreenGap = 6f;
-
-    // The starting band spans roughly 8x4 units and is centered exactly on campPosition
-    // (see MapLoader.LoadDefault), so a close default zoom lets it fill most of the frame
-    // right away rather than reading as a handful of specks in a huge empty field.
-    private const float InitialZoomDistance = 10f;
-    private const float MinZoom = 3f;
-    private const float MaxZoom = 2000f;
+    // Every tunable number this scene runs on lives in these two, not in constants here - what
+    // is a rule of the world itself belongs in SimulationRules (via WorldConfiguration) instead.
+    private readonly SimulationPacing _pacing = SimulationPacing.Default;
+    private readonly PresentationSettings _presentation = PresentationSettings.Default;
 
     private WorldState _world = null!;
     private WorldPresenter _presenter = null!;
@@ -142,15 +92,15 @@ public partial class Main : Node3D
         _cloudFogMask.Update();
 
         _tickAccumulator += delta;
-        if (_tickAccumulator < TickIntervalSeconds)
+        if (_tickAccumulator < _pacing.TickIntervalSeconds)
         {
             return;
         }
 
-        _tickAccumulator -= TickIntervalSeconds;
+        _tickAccumulator -= _pacing.TickIntervalSeconds;
         if (_selectedPersonId is { } selectedPersonId)
         {
-            _world.Execute(new GrantIdleGraceCommand(selectedPersonId, SelectedPersonIdleGraceTicks));
+            _world.Execute(new GrantIdleGraceCommand(selectedPersonId, _pacing.SelectedPersonIdleGraceTicks));
         }
 
         _world.Advance(1);
@@ -171,7 +121,7 @@ public partial class Main : Node3D
             // last visible step before they stop forever, reading as the corpse still
             // "sliding" a little. Snapping instead (overSeconds: 0) once dead pins the view
             // to its exact final position immediately, with nothing left to glide.
-            _presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)TickIntervalSeconds : 0f);
+            _presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)_pacing.TickIntervalSeconds : 0f);
         }
 
         foreach (var node in _world.ResourceNodes)
@@ -201,7 +151,7 @@ public partial class Main : Node3D
         // Checked ahead of Godot's own physics-object-picking (which fires later in the same
         // input dispatch, from unhandled input) precisely so it can win even when that pick
         // would have legitimately landed on something opaque standing in front of a person -
-        // see PersonClickScreenRadius's own doc comment.
+        // see PresentationSettings.PersonClickScreenRadius's own doc comment.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
             && GetViewport().GuiGetHoveredControl() is null
             && FindNearestPersonOnScreen(mouseButton.Position) is { } personId)
@@ -226,7 +176,7 @@ public partial class Main : Node3D
             }
 
             var distance = camera.UnprojectPosition(personGlobalPosition).DistanceTo(screenPosition);
-            if (distance <= PersonClickScreenRadius && distance < nearestDistance)
+            if (distance <= _presentation.PersonClickScreenRadius && distance < nearestDistance)
             {
                 nearestDistance = distance;
                 nearest = person.Id;
@@ -268,7 +218,7 @@ public partial class Main : Node3D
         foreach (var sprite in occluding)
         {
             _fadedSprites.Add(sprite);
-            SetSpriteAlpha(sprite, OcclusionFadedAlpha);
+            SetSpriteAlpha(sprite, _presentation.OcclusionFadedAlpha);
         }
 
         _fadedSprites.RemoveWhere(sprite =>
@@ -353,9 +303,10 @@ public partial class Main : Node3D
             var toSprite = sprite.GlobalPosition - cameraPosition;
             var along = toSprite.Dot(direction);
             // Beyond the target (along >= toTargetLength, plus a little slack - see
-            // OcclusionDistanceTolerance) or behind the camera (along <= 0) isn't "in the
-            // way" of this particular line of sight - only strictly between the two counts.
-            if (along <= 0f || along >= toTargetLength + OcclusionDistanceTolerance)
+            // PresentationSettings.OcclusionDistanceTolerance) or behind the camera (along <= 0)
+            // isn't "in the way" of this particular line of sight - only strictly between the
+            // two counts.
+            if (along <= 0f || along >= toTargetLength + _presentation.OcclusionDistanceTolerance)
             {
                 continue;
             }
@@ -367,7 +318,7 @@ public partial class Main : Node3D
             // much bigger "in the way" radius than a thin grass blade, not the same flat
             // distance regardless of how big it actually draws.
             var spriteRadius = (sprite.PixelSize * sprite.Texture!.GetWidth()) / 2f;
-            if (perpendicularDistance < spriteRadius + OcclusionMargin)
+            if (perpendicularDistance < spriteRadius + _presentation.OcclusionMargin)
             {
                 result.Add(sprite);
             }
@@ -383,9 +334,10 @@ public partial class Main : Node3D
         sprite.Modulate = color;
     }
 
-    // A 2D screen-space overlay, not a 3D billboard - see SelectionMarkerScreenSize's doc
-    // comment for why. Camera3D.UnprojectPosition/IsPositionBehind do the actual perspective
-    // math; this just anchors a plain Control on top of that one projected point.
+    // A 2D screen-space overlay, not a 3D billboard - see
+    // PresentationSettings.SelectionMarkerScreenSize's doc comment for why.
+    // Camera3D.UnprojectPosition/IsPositionBehind do the actual perspective math; this just
+    // anchors a plain Control on top of that one projected point.
     private void UpdateSelectionMarkerOverlay()
     {
         if (_selectedPersonId is not { } personId
@@ -409,7 +361,7 @@ public partial class Main : Node3D
         var screenPosition = camera.UnprojectPosition(headPosition);
         _selectionMarkerOverlay.Position = new Vector2(
             screenPosition.X - (_selectionMarkerOverlay.Size.X / 2f),
-            screenPosition.Y - SelectionMarkerScreenGap - _selectionMarkerOverlay.Size.Y);
+            screenPosition.Y - _presentation.SelectionMarkerScreenGap - _selectionMarkerOverlay.Size.Y);
         _selectionMarkerOverlay.Visible = true;
     }
 
@@ -431,7 +383,13 @@ public partial class Main : Node3D
         var campX = (float)_campCenter.X;
         var campZ = (float)_campCenter.Y;
         var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
-        _cameraRig = new FreeCameraRig(this, campPosition, InitialZoomDistance, MinZoom, MaxZoom, _terrain.SampleHeight);
+        _cameraRig = new FreeCameraRig(
+            this,
+            campPosition,
+            _presentation.InitialZoomDistance,
+            _presentation.MinZoom,
+            _presentation.MaxZoom,
+            _terrain.SampleHeight);
     }
 
     private void SetUpUi()
@@ -452,7 +410,7 @@ public partial class Main : Node3D
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspect,
             MouseFilter = Control.MouseFilterEnum.Ignore,
-            Size = new Vector2(SelectionMarkerScreenSize, SelectionMarkerScreenSize),
+            Size = new Vector2(_presentation.SelectionMarkerScreenSize, _presentation.SelectionMarkerScreenSize),
             Visible = false,
         };
         canvas.AddChild(_selectionMarkerOverlay);
@@ -486,7 +444,7 @@ public partial class Main : Node3D
             // that doesn't set its own override - unlike AddThemeFontSizeOverride, which only
             // affects the single Control it's called on - so this alone shrinks the title,
             // every label, and every contextual button inside.
-            Theme = new Theme { DefaultFontSize = InspectorFontSize },
+            Theme = new Theme { DefaultFontSize = _presentation.InspectorFontSize },
         };
         panel.AddThemeStyleboxOverride("panel", PanelBackground());
         canvas.AddChild(panel);
@@ -1038,7 +996,8 @@ public partial class Main : Node3D
         if (!_world.IsWithinReach(person.Position, node.Position))
         {
             _pendingGathers[personId] = id;
-            _world.Execute(new MoveCommand(personId, ApproachPosition(person.Position, node.Position, ApproachDistance)));
+            // Fully qualified: inside a Node3D, a bare `Position` is the node's own Vector3.
+            _world.Execute(new MoveCommand(personId, Core.World.Position.Approach(person.Position, node.Position, _presentation.ApproachDistance)));
             RefreshInfoLabel();
             return;
         }
@@ -1104,23 +1063,6 @@ public partial class Main : Node3D
         {
             _world.Execute(new GrantTechniqueCommand(personId, baseTechnique));
         }
-    }
-
-    // A destination short of the node's own position, approaching from wherever the
-    // person currently is - so they end up standing next to the resource rather than
-    // walking on top of and visually covering it.
-    private static Position ApproachPosition(Position from, Position to, float standoffDistance)
-    {
-        var dx = from.X - to.X;
-        var dy = from.Y - to.Y;
-        var distance = Math.Sqrt((dx * dx) + (dy * dy));
-        if (distance <= standoffDistance)
-        {
-            return from;
-        }
-
-        var ratio = standoffDistance / distance;
-        return new Position(to.X + (dx * ratio), to.Y + (dy * ratio));
     }
 
     // By the time a view forwards here, it has already tried HoverRescue.TryClickElsewhere

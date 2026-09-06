@@ -37,11 +37,9 @@ public partial class TerrainSandbox : Node3D
     private const int PropScatterSeed = 1;
 
     // Sized for this heightmap's real scale (1000 m across, ~80 m of relief) - not the tiny
-    // 20-unit test map Main.cs uses. A camera at the old (test-map-sized) distances would sit
-    // inside the terrain itself here.
-    private const float InitialZoomDistance = 700f;
-    private const float MinZoom = 3f;
-    private const float MaxZoom = 2000f;
+    // 20-unit test map Main.cs uses. A camera at the default (test-map-sized) distance would
+    // sit inside the terrain itself here; the zoom bounds themselves are the shared ones.
+    private static readonly PresentationSettings Presentation = PresentationSettings.Default with { InitialZoomDistance = 700f };
 
     private static readonly Color TreeFallbackColor = new(0.20f, 0.32f, 0.18f);
     private static readonly Color DeciduousTreeFallbackColor = new(0.30f, 0.38f, 0.22f);
@@ -75,7 +73,13 @@ public partial class TerrainSandbox : Node3D
         _terrain.ScatterDecoration(this, rng, PersonCount, new[] { PersonTexturePath }, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
 
         var initialPosition = new Vector3(0f, _terrain.SampleHeight(0f, 0f), 0f);
-        _cameraRig = new FreeCameraRig(this, initialPosition, InitialZoomDistance, MinZoom, MaxZoom, _terrain.SampleHeight);
+        _cameraRig = new FreeCameraRig(
+            this,
+            initialPosition,
+            Presentation.InitialZoomDistance,
+            Presentation.MinZoom,
+            Presentation.MaxZoom,
+            _terrain.SampleHeight);
     }
 
     public override void _Process(double delta)

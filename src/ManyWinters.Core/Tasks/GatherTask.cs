@@ -18,11 +18,12 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
 {
     private const float SpeedPerTick = 0.3f;
 
-    // Short of the resource's own position, not standing exactly on it - same standoff Main.cs
-    // uses for a player-directed gather-walk (ApproachPosition), so an autonomous approach
-    // reads the same as a manually clicked one instead of the person visually overlapping the
-    // sprite. As a fraction of reach rather than an absolute: a world with a shorter reach
-    // still has its people stop inside it, not at a standoff point they can't gather from.
+    // Short of the resource's own position, not standing exactly on it - the same standoff
+    // Main.cs uses for a player-directed gather-walk (PresentationSettings.ApproachDistance,
+    // via Position.Approach), so an autonomous approach reads the same as a manually clicked
+    // one instead of the person visually overlapping the sprite. As a fraction of reach rather
+    // than an absolute: a world with a shorter reach still has its people stop inside it, not
+    // at a standoff point they can't gather from.
     private const float ApproachFractionOfReach = 0.6f;
 
     private Position? _approachPosition;
@@ -52,19 +53,8 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
         // the standoff is shorter than ReachDistance, so a person is already close enough to
         // gather before the leg would finish. The leg is therefore only ever cleared by that
         // check, on the tick it stops the walk.
-        _approachPosition ??= ApproachPosition(person.Position, TargetPosition, ReachDistance * ApproachFractionOfReach);
+        _approachPosition ??= Position.Approach(person.Position, TargetPosition, ReachDistance * ApproachFractionOfReach);
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);
         _move.Advance(person);
-    }
-
-    // Only ever called from further away than standoffDistance (see Advance's reach check), so
-    // the distance below is never zero.
-    private static Position ApproachPosition(Position from, Position to, float standoffDistance)
-    {
-        var dx = from.X - to.X;
-        var dy = from.Y - to.Y;
-        var distance = Math.Sqrt((dx * dx) + (dy * dy));
-        var ratio = standoffDistance / distance;
-        return new Position(to.X + (dx * ratio), to.Y + (dy * ratio));
     }
 }
