@@ -3,5 +3,10 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
     <AnalysisMode>Recommended</AnalysisMode>
+    <!-- Runs the IDE code-style rules as build analyzers too, so whatever .editorconfig sets
+         to warning/error is enforced by `dotnet build` itself - notably IDE0055 (formatting),
+         which makes a tab-indented or CRLF file fail the build here rather than only in CI's
+         `dotnet format` step. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 </Project>

@@ -9,6 +9,12 @@ indent_style = space
 [*.cs]
 indent_size = 4
 
+# IDE0055: whitespace formatting (indentation, line endings, spacing) as a build error, via
+# EnforceCodeStyleInBuild in Directory.Build.props. Editors honouring this file never produce
+# it; a tool that doesn't (a tab-indenting script editor, say) now fails `dotnet build` on the
+# spot instead of surfacing a day later as a red CI run. `dotnet format ManyWinters.sln` fixes it.
+dotnet_diagnostic.IDE0055.severity = error
+
 # CA1711: this is a private game simulation library, not a public API surface —
 # domain terms like "...Queue" are clearer than avoiding the suffix.
 dotnet_diagnostic.CA1711.severity = none

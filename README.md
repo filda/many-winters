@@ -132,6 +132,16 @@ Configuration lives in `src/ManyWinters.Tests/stryker-config.json`. The break th
 
 This is slow enough that it isn't part of the main `ci.yml` gate; it runs daily and on manual dispatch via `.github/workflows/mutation.yml`.
 
+## Formatting
+
+Whitespace formatting (indentation, line endings, spacing — whatever `.editorconfig` says) is a build error, not a suggestion: `Directory.Build.props` turns on `EnforceCodeStyleInBuild`, and `.editorconfig` sets the formatting rule IDE0055 to `error`, so a file that drifted — a tab-indented one saved from a tool that ignores `.editorconfig`, say — fails `dotnet build` right there instead of only failing CI's `dotnet format` step later. Fix it with:
+
+```powershell
+dotnet format ManyWinters.sln
+```
+
+`.gitattributes` pins every text file to LF on checkout regardless of the machine's `core.autocrlf`, so line endings can't drift either.
+
 ## Inspections
 
 Roslyn analyzers run as part of every build (`Directory.Build.props`), but they only ever see one project at a time, so a public member nothing outside its type reads, a collection only ever written to, or a class nothing instantiates all pass them silently. [ReSharper InspectCode](https://www.jetbrains.com/help/resharper/InspectCode.html) — free, pinned as a local tool alongside Stryker — does solution-wide analysis and is what catches those. CI runs it after the build and fails on anything at warning severity or above.
