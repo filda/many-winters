@@ -50,7 +50,13 @@ public sealed record PresentationSettings
     // real hit, not a miss to fall through from. Screen-space distance to a person's own
     // projected position sidesteps 3D occlusion entirely - close enough on screen counts as
     // "aiming at them" regardless of what's actually in front of them along the ray.
-    public float PersonClickScreenRadius { get; } = 32f;
+    //
+    // Measured from the person's origin at mid-body, so it also decides how much ground
+    // around a bystander's feet a walk order can't be aimed at (the click selects them
+    // instead) - 32 reached well past the silhouette at the usual zoom. 20 still covers the
+    // torso of a half-hidden figure; the selected person is exempt regardless (see
+    // Main.FindNearestPersonOnScreen).
+    public float PersonClickScreenRadius { get; } = 20f;
 
     // Comfortably inside SimulationRules.MaxInteractionDistance (2f by default), but far enough
     // out that a person's own sprite doesn't overlap the resource node's - a visual standoff,

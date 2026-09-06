@@ -164,6 +164,12 @@ public partial class Main : Node3D
         }
     }
 
+    // The already-selected person is deliberately never a candidate: re-selecting them is a
+    // no-op, and the radius around them used to swallow every click on the ground right at
+    // their feet (the very place a player aims a short "step over there" order), so the
+    // person just stood still. With them excluded the click falls through to picking as
+    // usual - their own opaque pixels still re-select them harmlessly, anything else is the
+    // ground or a real neighbour.
     private Person? FindNearestPersonOnScreen(Vector2 screenPosition)
     {
         var camera = _cameraRig.Camera;
@@ -172,7 +178,8 @@ public partial class Main : Node3D
 
         foreach (var person in _world.People)
         {
-            if (_presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
+            if (person == _selectedPerson
+                || _presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
                 || camera.IsPositionBehind(personGlobalPosition))
             {
                 continue;
@@ -1005,23 +1012,44 @@ public partial class Main : Node3D
     // along the ray panned out, so this genuinely is a ground click (or a click into empty
     // space with nothing real anywhere near it) - a plain move order is the correct read, not
     // a guess.
-    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
-        OnGroundInputEvent(camera, @event, position, normal, shapeIdx);
-
-    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
+    //
+    // The position the view hands over is the ray's hit on the view's own collision box, not
+    // on the ground - a point up in the air on the front face of a tree-sized box, whose X/Z
+    // can be tens of meters off from the ground the cursor is actually over (see GroundPick).
+    // Only the screen position is reused; where the ground really is under it is re-derived.
+    // A click that finds no ground at all (into the sky past the terrain's edge) is dropped
+    // rather than guessed at.
+    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        if (camera is not Camera3D camera3D
+            || @event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton)
         {
             return;
         }
 
+        if (GroundPick.FindGround(camera3D, mouseButton.Position) is { } groundPosition)
+        {
+            OrderWalkTo(groundPosition);
+        }
+    }
+
+    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
+    {
+        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        {
+            OrderWalkTo(position);
+        }
+    }
+
+    private void OrderWalkTo(Vector3 groundPosition)
+    {
         if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then click the ground to walk there.");
             return;
         }
 
-        _world.Execute(new MoveCommand(person, new Position(position.X, position.Z)));
+        _world.Execute(new MoveCommand(person, new Position(groundPosition.X, groundPosition.Z)));
         RefreshInfoLabel();
     }
 

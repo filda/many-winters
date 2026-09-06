@@ -15,6 +15,13 @@ namespace ManyWinters.Godot;
 // have two different, inconsistent fallbacks (this one for hover, a plain world-space nearby
 // search in Main.OnMissedClick for clicks); one shared mechanism means a click and a hover at
 // the exact same point always agree on what's actually there.
+//
+// The re-cast runs the full length of the camera's view, not just a step past the original
+// miss - it used to end 1 m behind the first box's front face, and a tree's box is as deep
+// as its canopy is wide, so anything standing behind it (and the ground itself) was out of
+// reach and the whole rescue silently came back empty. The ground is where it stops: the
+// terrain's StaticBody3D is the only body-type collider in the scene, and nothing behind the
+// ground can be what the cursor is over.
 public static class HoverRescue
 {
     // Only ever a handful of real candidates plausibly overlap at one exact screen point -
@@ -44,19 +51,25 @@ public static class HoverRescue
     private static bool TryElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition, Func<CollisionObject3D, Camera3D, Vector3, bool> tryHandle)
     {
         var spaceState = missedCollider.GetWorld3D().DirectSpaceState;
-        var origin = camera.GlobalPosition;
+        // Back through the screen, not straight from the camera's own position toward the
+        // miss - that only describes a perspective camera's pick ray. Projecting from the
+        // miss's screen point stays right after FreeCameraRig.ToggleProjection too.
+        var screenPosition = camera.UnprojectPosition(missedPosition);
+        var origin = camera.ProjectRayOrigin(screenPosition);
+        var direction = camera.ProjectRayNormal(screenPosition);
         var excluded = new global::Godot.Collections.Array<Rid> { missedCollider.GetRid() };
 
         for (var attempt = 0; attempt < MaxAttempts; attempt++)
         {
-            var direction = (missedPosition - origin).Normalized();
-            var query = PhysicsRayQueryParameters3D.Create(origin, origin + (direction * (origin.DistanceTo(missedPosition) + 1f)));
+            var query = PhysicsRayQueryParameters3D.Create(origin, origin + (direction * camera.Far));
             query.Exclude = excluded;
             query.CollideWithAreas = true;
             query.CollideWithBodies = true;
 
             var result = spaceState.IntersectRay(query);
-            if (result.Count == 0 || result["collider"].AsGodotObject() is not CollisionObject3D collider)
+            if (result.Count == 0
+                || result["collider"].AsGodotObject() is not CollisionObject3D collider
+                || collider is StaticBody3D)
             {
                 return false;
             }
