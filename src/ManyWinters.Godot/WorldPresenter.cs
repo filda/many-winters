@@ -10,8 +10,8 @@ public sealed class WorldPresenter
 {
     private readonly Node3D _container;
     private readonly Action<Person, MouseButton> _onPersonClicked;
-    private readonly Action<ResourceNodeId> _onResourceNodeSelected;
-    private readonly Action<GraveId> _onGraveSelected;
+    private readonly Action<ResourceNode> _onResourceNodeSelected;
+    private readonly Action<Grave> _onGraveSelected;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
@@ -30,8 +30,8 @@ public sealed class WorldPresenter
         Node3D container,
         WorldState world,
         Action<Person, MouseButton> onPersonClicked,
-        Action<ResourceNodeId> onResourceNodeSelected,
-        Action<GraveId> onGraveSelected,
+        Action<ResourceNode> onResourceNodeSelected,
+        Action<Grave> onGraveSelected,
         CollisionObject3D.InputEventEventHandler onMissedClick,
         Func<float, float, float> sampleHeight)
     {
@@ -149,7 +149,7 @@ public sealed class WorldPresenter
     private void CreateResourceNodeViewNow(ResourceNode node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
-        var view = new ResourceNodeView(node.Id, node.Kind, canFell, _onResourceNodeSelected, _onMissedClick);
+        var view = new ResourceNodeView(node, canFell, _onResourceNodeSelected, _onMissedClick);
         view.Position = ToVector3(node.Position, view.Size / 2f);
         view.SetRemembered(!_exploration.IsVisible(ExplorationState.CellFor(node.Position)));
         _container.AddChild(view);
@@ -203,7 +203,7 @@ public sealed class WorldPresenter
 
     private void CreateGraveView(Grave grave)
     {
-        var view = new GraveView(grave.Id, grave.IsMarked, _onGraveSelected, _onMissedClick)
+        var view = new GraveView(grave, _onGraveSelected, _onMissedClick)
         {
             Position = ToVector3(grave.Position, GraveView.Size / 2f),
         };

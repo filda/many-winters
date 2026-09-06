@@ -3,7 +3,7 @@ using ManyWinters.Core.Continuity;
 
 namespace ManyWinters.Godot;
 
-public partial class GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick) : Area3D
+public partial class GraveView(Grave grave, Action<Grave> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick) : Area3D
 {
     public const float Size = 0.8f;
     private const float ShadowDiameter = 0.9f;
@@ -21,8 +21,8 @@ public partial class GraveView(GraveId graveId, bool isMarked, Action<GraveId> o
     {
         InputRayPickable = true;
 
-        _texturePath = isMarked ? MarkedTexturePath : UnmarkedTexturePath;
-        var fallbackColor = isMarked ? MarkedColor : UnmarkedColor;
+        _texturePath = grave.IsMarked ? MarkedTexturePath : UnmarkedTexturePath;
+        var fallbackColor = grave.IsMarked ? MarkedColor : UnmarkedColor;
 
         var groundShadow = GroundShadow.Create(ShadowDiameter);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
@@ -68,7 +68,7 @@ public partial class GraveView(GraveId graveId, bool isMarked, Action<GraveId> o
             return false;
         }
 
-        onSelected(graveId);
+        onSelected(grave);
         return true;
     }
 }

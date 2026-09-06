@@ -62,10 +62,10 @@ public partial class ResourceNodeView : Area3D
     // rather than looking merely faded.
     private static readonly Color RememberedTint = new(0.78f, 0.68f, 0.52f);
 
-    private readonly ResourceNodeId _nodeId;
+    private readonly ResourceNode _node;
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
-    private readonly Action<ResourceNodeId> _onSelected;
+    private readonly Action<ResourceNode> _onSelected;
     private readonly InputEventEventHandler _onMissedClick;
     private readonly Color _baseColor;
     private int _variantIndex;
@@ -86,15 +86,15 @@ public partial class ResourceNodeView : Area3D
     private bool _isHovered;
     private bool _isRemembered;
 
-    public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected, InputEventEventHandler onMissedClick)
+    public ResourceNodeView(ResourceNode node, bool canFell, Action<ResourceNode> onSelected, InputEventEventHandler onMissedClick)
     {
-        _nodeId = nodeId;
-        _kind = kind;
+        _node = node;
+        _kind = node.Kind;
         _canFell = canFell;
         _onSelected = onSelected;
         _onMissedClick = onMissedClick;
 
-        var visual = LoadVisualDefinition(kind);
+        var visual = LoadVisualDefinition(_kind);
         _baseColor = visual?.Color ?? new Color(0.2f, 0.8f, 0.2f);
         Size = visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
     }
@@ -105,9 +105,9 @@ public partial class ResourceNodeView : Area3D
     {
         InputRayPickable = true;
 
-        var fallbackColor = EntityVisualVariation.Tint(_baseColor, _nodeId.Value);
-        var widthScale = EntityVisualVariation.RangeFor(_nodeId.Value, WidthScaleSalt, MinScale, MaxScale);
-        var heightScale = EntityVisualVariation.RangeFor(_nodeId.Value, HeightScaleSalt, MinScale, MaxScale);
+        var fallbackColor = EntityVisualVariation.Tint(_baseColor, _node.Id.Value);
+        var widthScale = EntityVisualVariation.RangeFor(_node.Id.Value, WidthScaleSalt, MinScale, MaxScale);
+        var heightScale = EntityVisualVariation.RangeFor(_node.Id.Value, HeightScaleSalt, MinScale, MaxScale);
         Scale = new Vector3(widthScale, heightScale, widthScale);
 
         // WorldPresenter positioned this node's own origin at groundHeight + Size/2,
@@ -125,7 +125,7 @@ public partial class ResourceNodeView : Area3D
         // fruit) so they stay aligned with each other; flipping trunk and canopy
         // independently would misalign a silhouette that was authored - and split - as one
         // asymmetric shape.
-        var mirrored = EntityVisualVariation.RangeFor(_nodeId.Value, MirrorSalt, 0f, 1f) < 0.5f;
+        var mirrored = EntityVisualVariation.RangeFor(_node.Id.Value, MirrorSalt, 0f, 1f) < 0.5f;
 
         var groundShadow = GroundShadow.Create(Size * ShadowDiameterRatio);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
@@ -140,7 +140,7 @@ public partial class ResourceNodeView : Area3D
         if (HasTrunkCanopySplit(_kind))
         {
             var variantCount = TreeVariantCount(_kind);
-            _variantIndex = variantCount > 1 ? EntityVisualVariation.IndexFor(_nodeId.Value, TreeVariantSalt, variantCount) : 0;
+            _variantIndex = variantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Value, TreeVariantSalt, variantCount) : 0;
 
             _trunkTexturePath = TrunkTexturePathFor();
             _trunk = BillboardSprite.Create(_trunkTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
@@ -161,7 +161,7 @@ public partial class ResourceNodeView : Area3D
             if (HasBranchLayer(_kind))
             {
                 var branchVariantCount = BranchVariantCount(_kind);
-                _branchVariantIndex = branchVariantCount > 1 ? EntityVisualVariation.IndexFor(_nodeId.Value, BranchVariantSalt, branchVariantCount) : 0;
+                _branchVariantIndex = branchVariantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Value, BranchVariantSalt, branchVariantCount) : 0;
 
                 _branchesTexturePath = BranchesTexturePathFor();
                 _branches = BillboardSprite.Create(_branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
@@ -295,7 +295,7 @@ public partial class ResourceNodeView : Area3D
 
     private Color LayerBrightnessVariation(int salt)
     {
-        var value = EntityVisualVariation.RangeFor(_nodeId.Value, salt, BrightnessJitterMin, BrightnessJitterMax);
+        var value = EntityVisualVariation.RangeFor(_node.Id.Value, salt, BrightnessJitterMin, BrightnessJitterMax);
         return new Color(value, value, value);
     }
 
@@ -330,7 +330,7 @@ public partial class ResourceNodeView : Area3D
             return false;
         }
 
-        _onSelected(_nodeId);
+        _onSelected(_node);
         return true;
     }
 

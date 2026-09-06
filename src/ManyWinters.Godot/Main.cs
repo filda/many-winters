@@ -39,7 +39,7 @@ public partial class Main : Node3D
     // object, and the views hand it over on click (see PersonView), so there's never a lookup
     // between "clicked" and "acted on".
     private Person? _selectedPerson;
-    private GraveId? _selectedGraveId;
+    private Grave? _selectedGrave;
     private double _tickAccumulator;
 
     // Faded in/out every frame in UpdateOcclusionFade depending on whether each one
@@ -895,14 +895,14 @@ public partial class Main : Node3D
         }
 
         _selectedPerson = person;
-        _selectedGraveId = null;
+        _selectedGrave = null;
         _contextualActions.Visible = true;
         RefreshInfoLabel();
     }
 
-    private void OnGraveSelected(GraveId id)
+    private void OnGraveSelected(Grave grave)
     {
-        _selectedGraveId = id;
+        _selectedGrave = grave;
         _selectedPerson = null;
         _contextualActions.Visible = false;
         RefreshInfoLabel();
@@ -927,17 +927,11 @@ public partial class Main : Node3D
         RefreshInfoLabel();
     }
 
-    private void OnResourceNodeSelected(ResourceNodeId id)
+    private void OnResourceNodeSelected(ResourceNode node)
     {
         if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then click a resource node to gather.");
-            return;
-        }
-
-        var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == id);
-        if (node is null)
-        {
             return;
         }
 
@@ -1033,10 +1027,9 @@ public partial class Main : Node3D
 
     private void RefreshInfoLabel()
     {
-        if (_selectedGraveId is { } graveId)
+        if (_selectedGrave is { } grave)
         {
-            var grave = _world.Graves.FirstOrDefault(g => g.Id == graveId);
-            _infoLabel.Text = grave is null ? "No selection." : GraveText(grave);
+            _infoLabel.Text = GraveText(grave);
             return;
         }
 
