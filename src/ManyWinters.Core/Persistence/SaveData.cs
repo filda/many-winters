@@ -9,19 +9,15 @@ namespace ManyWinters.Core.Persistence;
 public sealed record SaveData(
     int Version,
     long Tick,
-    int NextPersonId,
     IReadOnlyList<PersonSaveData> People,
     IReadOnlyList<PersonSaveData> Forebears,
-    int NextResourceNodeId,
     IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
-    int NextBuildingId,
     IReadOnlyList<BuildingSaveData> Buildings,
-    int NextGraveId,
     IReadOnlyList<GraveSaveData> Graves,
     IReadOnlyList<ExplorationCellSaveData> ExploredCells);
 
 public sealed record PersonSaveData(
-    int Id,
+    Guid Id,
     string Name,
     double PositionX,
     double PositionY,
@@ -35,17 +31,17 @@ public sealed record PersonSaveData(
     long? DeathTick,
     DeathCause? CauseOfDeath,
     bool IsBuried,
-    // 0 is Person.Unknown - the only id a Person can carry without being in People or
-    // Forebears (see Person.Unknown).
-    int MotherId,
-    int FatherId);
+    // Guid.Empty is Person.Unknown - the only id a Person can carry without being in People
+    // or Forebears (see Person.Unknown).
+    Guid MotherId,
+    Guid FatherId);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
 public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 
 public sealed record ResourceNodeSaveData(
-    int Id,
+    Guid Id,
     ResourceKindId Kind,
     double PositionX,
     double PositionY,
@@ -53,7 +49,7 @@ public sealed record ResourceNodeSaveData(
     float MaxAmount);
 
 public sealed record BuildingSaveData(
-    int Id,
+    Guid Id,
     BuildingKindId Kind,
     double PositionX,
     double PositionY,
@@ -61,7 +57,7 @@ public sealed record BuildingSaveData(
     IReadOnlyList<ItemStackSaveData> Inventory);
 
 public sealed record GraveSaveData(
-    int Id,
+    Guid Id,
     double PositionX,
     double PositionY,
     bool IsMarked,

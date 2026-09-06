@@ -21,7 +21,6 @@ public sealed record ConstructCommand(Person Person, BuildingKindId Kind, Positi
 
         world.AddBuilding(new Building
         {
-            Id = world.NextBuildingId,
             Kind = Kind,
             Position = Position,
         });

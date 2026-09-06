@@ -1,6 +1,5 @@
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
-using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.Tasks;
 
@@ -17,7 +16,7 @@ public class PersonTaskQueueTests
         public override void Advance(Person person) => AdvancedWith = person;
     }
 
-    private static Person NewPerson() => new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+    private static Person NewPerson() => new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
 
     [Fact]
     public void NewQueueHasNoCurrentTask()

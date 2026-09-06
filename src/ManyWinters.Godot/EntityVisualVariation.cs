@@ -2,9 +2,9 @@ using Godot;
 
 namespace ManyWinters.Godot;
 
-// Deterministic per-instance variety: same seed (an entity's stable id) always produces the same
-// tint/scale, so repeated saves/reloads don't reshuffle how things look, but instances of the
-// same kind don't render as identical clones either.
+// Deterministic per-instance variety: same seed (an entity's stable id, via EntityId.SeedOf)
+// always produces the same tint/scale, so repeated saves/reloads don't reshuffle how things
+// look, but instances of the same kind don't render as identical clones either.
 public static class EntityVisualVariation
 {
     public static Color Tint(Color baseColor, int seed)
@@ -29,7 +29,7 @@ public static class EntityVisualVariation
     // id) - a distinguishing salt per attribute avoids each one just landing on the same
     // underlying draw, rescaled differently. Also avalanches seed+salt first (Thomas Wang's
     // 32-bit integer hash): System.Random's legacy algorithm correlates badly on adjacent
-    // small integer seeds, and entity ids are exactly that (1, 2, 3, ...).
+    // small integer seeds, and two ids' seeds can land anywhere, close together included.
     public static float RangeFor(int seed, int salt, float min, float max)
     {
         var random = new Random(Avalanche(seed, salt));

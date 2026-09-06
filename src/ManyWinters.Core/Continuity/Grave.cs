@@ -11,7 +11,7 @@ namespace ManyWinters.Core.Continuity;
 // stays meaningful even after a referenced parent is later buried themselves.
 public sealed class Grave
 {
-    public required GraveId Id { get; init; }
+    public GraveId Id { get; init; } = GraveId.New();
 
     public required Position Position { get; init; }
 

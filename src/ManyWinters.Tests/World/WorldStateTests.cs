@@ -46,23 +46,10 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void NextPersonIdStartsAtOneAndAdvancesWithEveryAddedPerson()
-    {
-        var world = TestCatalogs.CreateWorld();
-        Assert.Equal(new PersonId(1), world.NextPersonId);
-
-        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
-        Assert.Equal(new PersonId(2), world.NextPersonId);
-
-        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Bran", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
-        Assert.Equal(new PersonId(3), world.NextPersonId);
-    }
-
-    [Fact]
     public void AddPersonTracksThemInPeople()
     {
         var world = TestCatalogs.CreateWorld();
-        var ava = new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var ava = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
 
         world.AddPerson(ava);
 
@@ -70,29 +57,15 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void AddPersonRejectsAnIdThatIsNotTheWorldsNextOne()
+    public void AddForebearTracksThemInForebearsNotPeople()
     {
         var world = TestCatalogs.CreateWorld();
-        var stale = new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
-        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Bran", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
-
-        Assert.Throws<ArgumentException>(() => world.AddPerson(stale));
-
-        Assert.DoesNotContain(stale, world.People);
-        Assert.Equal(new PersonId(2), world.NextPersonId);
-    }
-
-    [Fact]
-    public void AddForebearTracksThemInForebearsNotPeopleAndTakesTheNextPersonId()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var forebear = new Person { Id = world.NextPersonId, Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown };
+        var forebear = new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown };
 
         world.AddForebear(forebear);
 
         Assert.Same(forebear, Assert.Single(world.Forebears));
         Assert.Empty(world.People);
-        Assert.Equal(new PersonId(2), world.NextPersonId);
     }
 
     [Fact]
@@ -102,7 +75,7 @@ public class WorldStateTests
         var raised = false;
         world.PersonAdded += _ => raised = true;
 
-        world.AddForebear(new Person { Id = world.NextPersonId, Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown });
+        world.AddForebear(new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown });
 
         Assert.False(raised);
         Assert.Empty(world.Exploration.Explored);
@@ -112,22 +85,9 @@ public class WorldStateTests
     public void AddForebearRejectsALivingPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var alive = new Person { Id = world.NextPersonId, Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var alive = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
 
         Assert.Throws<ArgumentException>(() => world.AddForebear(alive));
-
-        Assert.Empty(world.Forebears);
-        Assert.Equal(new PersonId(1), world.NextPersonId);
-    }
-
-    [Fact]
-    public void AddForebearRejectsAnIdThatIsNotTheWorldsNextOne()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var stale = new Person { Id = world.NextPersonId, Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown };
-        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
-
-        Assert.Throws<ArgumentException>(() => world.AddForebear(stale));
 
         Assert.Empty(world.Forebears);
     }
@@ -137,7 +97,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Position = new Position(0, 0), Mother = Person.Unknown, Father = Person.Unknown });
+        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Position = new Position(0, 0), Mother = Person.Unknown, Father = Person.Unknown });
 
         Assert.NotEmpty(world.Exploration.Explored);
     }
@@ -791,19 +751,20 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleRollsTheSameWayEveryRunForAGivenPairAndTick(
         int peopleBefore, int expectedTeachingTick, int expectedWoodcuttingTick)
     {
-        // The roll is derived from the teacher's and student's ids, the technique and the tick
-        // alone - no shared mutable Random, so the same starting state always plays out the
-        // same way regardless of the order people happen to be advanced in. Pinning the exact
-        // ticks is what actually holds that: a hash that quietly changed would still look
-        // random, just not the same random.
+        // The roll is derived from the teacher's and student's id seeds, the technique and the
+        // tick alone - no shared mutable Random, so the same starting state always plays out
+        // the same way regardless of the order people happen to be advanced in. Pinning the
+        // exact ticks is what actually holds that: a hash that quietly changed would still look
+        // random, just not the same random. The seeds are chosen (see TestIds) - a randomly
+        // drawn id would make the pinned ticks meaningless.
         var world = TestCatalogs.CreateWorld();
         for (var i = 0; i < peopleBefore; i++)
         {
             world.SpawnPerson($"Bystander {i}", new Position(500, 500));
         }
 
-        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
-        var student = world.SpawnPerson("Bran", new Position(1, 0));
+        var teacher = world.SpawnPerson(TestIds.Person(peopleBefore + 1), "Ava", new Position(0, 0));
+        var student = world.SpawnPerson(TestIds.Person(peopleBefore + 2), "Bran", new Position(1, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
 
@@ -1147,40 +1108,14 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void NextGraveIdStartsAtOneAndAdvancesWithEveryAddedGrave()
-    {
-        var world = TestCatalogs.CreateWorld();
-        Assert.Equal(new GraveId(1), world.NextGraveId);
-
-        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false });
-        Assert.Equal(new GraveId(2), world.NextGraveId);
-
-        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(1, 1), IsMarked = false });
-        Assert.Equal(new GraveId(3), world.NextGraveId);
-    }
-
-    [Fact]
     public void AddGraveTracksItInGraves()
     {
         var world = TestCatalogs.CreateWorld();
-        var grave = new Grave { Id = world.NextGraveId, Position = new Position(2, 3), IsMarked = true, Name = "Ava" };
+        var grave = new Grave { Position = new Position(2, 3), IsMarked = true, Name = "Ava" };
 
         world.AddGrave(grave);
 
         Assert.Same(grave, Assert.Single(world.Graves));
-    }
-
-    [Fact]
-    public void AddGraveRejectsAnIdThatIsNotTheWorldsNextOne()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var stale = new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false };
-        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(1, 1), IsMarked = false });
-
-        Assert.Throws<ArgumentException>(() => world.AddGrave(stale));
-
-        Assert.DoesNotContain(stale, world.Graves);
-        Assert.Equal(new GraveId(2), world.NextGraveId);
     }
 
     [Fact]
@@ -1189,7 +1124,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Grave? raised = null;
         world.GraveAdded += g => raised = g;
-        var grave = new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false };
+        var grave = new Grave { Position = new Position(0, 0), IsMarked = false };
 
         world.AddGrave(grave);
 
@@ -1201,7 +1136,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false });
+        world.AddGrave(new Grave { Position = new Position(0, 0), IsMarked = false });
     }
 
     [Fact]
@@ -1258,40 +1193,14 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void NextResourceNodeIdStartsAtOneAndAdvancesWithEveryAddedNode()
-    {
-        var world = TestCatalogs.CreateWorld();
-        Assert.Equal(new ResourceNodeId(1), world.NextResourceNodeId);
-
-        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple });
-        Assert.Equal(new ResourceNodeId(2), world.NextResourceNodeId);
-
-        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple });
-        Assert.Equal(new ResourceNodeId(3), world.NextResourceNodeId);
-    }
-
-    [Fact]
     public void AddResourceNodeTracksItInResourceNodes()
     {
         var world = TestCatalogs.CreateWorld();
-        var node = new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple };
+        var node = new ResourceNode { Kind = TestCatalogs.Apple };
 
         world.AddResourceNode(node);
 
         Assert.Same(node, Assert.Single(world.ResourceNodes));
-    }
-
-    [Fact]
-    public void AddResourceNodeRejectsAnIdThatIsNotTheWorldsNextOne()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var stale = new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple };
-        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Pear });
-
-        Assert.Throws<ArgumentException>(() => world.AddResourceNode(stale));
-
-        Assert.DoesNotContain(stale, world.ResourceNodes);
-        Assert.Equal(new ResourceNodeId(2), world.NextResourceNodeId);
     }
 
     [Fact]
@@ -1300,7 +1209,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Person? raised = null;
         world.PersonAdded += p => raised = p;
-        var person = new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
 
         world.AddPerson(person);
 
@@ -1312,7 +1221,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
+        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
     }
 
     [Fact]
@@ -1321,7 +1230,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         ResourceNode? raised = null;
         world.ResourceNodeAdded += n => raised = n;
-        var node = new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple };
+        var node = new ResourceNode { Kind = TestCatalogs.Apple };
 
         world.AddResourceNode(node);
 
@@ -1333,44 +1242,18 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple });
-    }
-
-    [Fact]
-    public void NextBuildingIdStartsAtOneAndAdvancesWithEveryAddedBuilding()
-    {
-        var world = TestCatalogs.CreateWorld();
-        Assert.Equal(new BuildingId(1), world.NextBuildingId);
-
-        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
-        Assert.Equal(new BuildingId(2), world.NextBuildingId);
-
-        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
-        Assert.Equal(new BuildingId(3), world.NextBuildingId);
+        world.AddResourceNode(new ResourceNode { Kind = TestCatalogs.Apple });
     }
 
     [Fact]
     public void AddBuildingTracksItInBuildings()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut };
+        var building = new Building { Kind = TestCatalogs.StorageHut };
 
         world.AddBuilding(building);
 
         Assert.Same(building, Assert.Single(world.Buildings));
-    }
-
-    [Fact]
-    public void AddBuildingRejectsAnIdThatIsNotTheWorldsNextOne()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var stale = new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut };
-        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
-
-        Assert.Throws<ArgumentException>(() => world.AddBuilding(stale));
-
-        Assert.DoesNotContain(stale, world.Buildings);
-        Assert.Equal(new BuildingId(2), world.NextBuildingId);
     }
 
     [Fact]
@@ -1379,7 +1262,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Building? raised = null;
         world.BuildingAdded += b => raised = b;
-        var building = new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut };
+        var building = new Building { Kind = TestCatalogs.StorageHut };
 
         world.AddBuilding(building);
 
@@ -1391,7 +1274,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
+        world.AddBuilding(new Building { Kind = TestCatalogs.StorageHut });
     }
 
     [Fact]

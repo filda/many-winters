@@ -31,7 +31,6 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
 
         world.AddGrave(new Grave
         {
-            Id = world.NextGraveId,
             Position = Deceased.Position,
             IsMarked = isMarked,
             Name = isMarked ? Deceased.Name : null,

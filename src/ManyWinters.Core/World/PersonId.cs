@@ -1,8 +1,12 @@
-using System.Globalization;
-
 namespace ManyWinters.Core.World;
 
-public readonly record struct PersonId(int Value)
+public readonly record struct PersonId(Guid Value)
 {
-    public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);
+    public static PersonId New() => new(Guid.NewGuid());
+
+    public static PersonId New(Random rng) => new(EntityId.NextGuid(rng));
+
+    public int Seed => EntityId.SeedOf(Value);
+
+    public override string ToString() => Value.ToString();
 }

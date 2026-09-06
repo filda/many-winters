@@ -105,9 +105,9 @@ public partial class ResourceNodeView : Area3D
     {
         InputRayPickable = true;
 
-        var fallbackColor = EntityVisualVariation.Tint(_baseColor, _node.Id.Value);
-        var widthScale = EntityVisualVariation.RangeFor(_node.Id.Value, WidthScaleSalt, MinScale, MaxScale);
-        var heightScale = EntityVisualVariation.RangeFor(_node.Id.Value, HeightScaleSalt, MinScale, MaxScale);
+        var fallbackColor = EntityVisualVariation.Tint(_baseColor, _node.Id.Seed);
+        var widthScale = EntityVisualVariation.RangeFor(_node.Id.Seed, WidthScaleSalt, MinScale, MaxScale);
+        var heightScale = EntityVisualVariation.RangeFor(_node.Id.Seed, HeightScaleSalt, MinScale, MaxScale);
         Scale = new Vector3(widthScale, heightScale, widthScale);
 
         // WorldPresenter positioned this node's own origin at groundHeight + Size/2,
@@ -125,7 +125,7 @@ public partial class ResourceNodeView : Area3D
         // fruit) so they stay aligned with each other; flipping trunk and canopy
         // independently would misalign a silhouette that was authored - and split - as one
         // asymmetric shape.
-        var mirrored = EntityVisualVariation.RangeFor(_node.Id.Value, MirrorSalt, 0f, 1f) < 0.5f;
+        var mirrored = EntityVisualVariation.RangeFor(_node.Id.Seed, MirrorSalt, 0f, 1f) < 0.5f;
 
         var groundShadow = GroundShadow.Create(Size * ShadowDiameterRatio);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
@@ -140,7 +140,7 @@ public partial class ResourceNodeView : Area3D
         if (HasTrunkCanopySplit(_kind))
         {
             var variantCount = TreeVariantCount(_kind);
-            _variantIndex = variantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Value, TreeVariantSalt, variantCount) : 0;
+            _variantIndex = variantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Seed, TreeVariantSalt, variantCount) : 0;
 
             _trunkTexturePath = TrunkTexturePathFor();
             _trunk = BillboardSprite.Create(_trunkTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
@@ -161,7 +161,7 @@ public partial class ResourceNodeView : Area3D
             if (HasBranchLayer(_kind))
             {
                 var branchVariantCount = BranchVariantCount(_kind);
-                _branchVariantIndex = branchVariantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Value, BranchVariantSalt, branchVariantCount) : 0;
+                _branchVariantIndex = branchVariantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Seed, BranchVariantSalt, branchVariantCount) : 0;
 
                 _branchesTexturePath = BranchesTexturePathFor();
                 _branches = BillboardSprite.Create(_branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
@@ -295,7 +295,7 @@ public partial class ResourceNodeView : Area3D
 
     private Color LayerBrightnessVariation(int salt)
     {
-        var value = EntityVisualVariation.RangeFor(_node.Id.Value, salt, BrightnessJitterMin, BrightnessJitterMax);
+        var value = EntityVisualVariation.RangeFor(_node.Id.Seed, salt, BrightnessJitterMin, BrightnessJitterMax);
         return new Color(value, value, value);
     }
 

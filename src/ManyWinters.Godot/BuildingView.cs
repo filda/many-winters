@@ -15,8 +15,8 @@ public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : 
 
     public override void _Ready()
     {
-        var fallbackColor = EntityVisualVariation.Tint(ColorFor(kind), buildingId.Value);
-        var scale = EntityVisualVariation.Scale(buildingId.Value, MinScale, MaxScale);
+        var fallbackColor = EntityVisualVariation.Tint(ColorFor(kind), buildingId.Seed);
+        var scale = EntityVisualVariation.Scale(buildingId.Seed, MinScale, MaxScale);
         Scale = Vector3.One * scale;
         // Same ground-contact fix as PersonView/ResourceNodeView: WorldPresenter set this
         // node's own Position assuming Scale stayed 1, so Scale.Y != 1 shifts the sprite's

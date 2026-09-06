@@ -25,7 +25,7 @@ public class SpawnPersonCommandTests
         var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(1000);
 
-        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, InitialAgeTicks: 300));
+        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, initialAgeTicks: 300));
 
         var person = Assert.Single(world.People);
         Assert.Equal(700, person.BirthTick);

@@ -6,9 +6,19 @@ namespace ManyWinters.Tests.Population;
 public class PersonTests
 {
     [Fact]
-    public void UnknownHasIdZeroWhichNoWorldEverHandsOut()
+    public void UnknownHasTheEmptyIdWhichNoEntityEverDraws()
     {
-        Assert.Equal(new PersonId(0), Person.Unknown.Id);
+        Assert.Equal(new PersonId(Guid.Empty), Person.Unknown.Id);
+    }
+
+    [Fact]
+    public void ANewPersonDrawsItsOwnIdDistinctFromEveryOther()
+    {
+        var first = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var second = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.NotEqual(Person.Unknown.Id, first.Id);
     }
 
     [Fact]

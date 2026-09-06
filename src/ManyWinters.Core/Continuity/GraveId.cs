@@ -1,8 +1,8 @@
-using System.Globalization;
-
 namespace ManyWinters.Core.Continuity;
 
-public readonly record struct GraveId(int Value)
+public readonly record struct GraveId(Guid Value)
 {
-    public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);
+    public static GraveId New() => new(Guid.NewGuid());
+
+    public override string ToString() => Value.ToString();
 }

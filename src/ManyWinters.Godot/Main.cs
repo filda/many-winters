@@ -1066,7 +1066,7 @@ public partial class Main : Node3D
     private static string TaskText(Person person) => person.Tasks.Current switch
     {
         MoveTask move => $"Walking to {move.Destination}",
-        GatherTask gather => $"Gathering ({gather.Target.Id})",
+        GatherTask gather => $"Gathering {gather.Target.Kind}",
         _ => "Idle",
     };
 

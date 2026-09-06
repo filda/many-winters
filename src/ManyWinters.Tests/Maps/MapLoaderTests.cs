@@ -161,13 +161,39 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultGivesForebearsAndPeopleIdsFromOneSequenceWithoutCollisions()
+    public void LoadDefaultGivesForebearsAndPeopleDistinctIdsNoneOfThemUnknowns()
     {
         var map = LoadDefault();
 
         var ids = map.World.People.Concat(map.World.Forebears).Select(p => p.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
         Assert.DoesNotContain(Person.Unknown.Id, ids);
+    }
+
+    [Fact]
+    public void LoadDefaultGivesEveryEntityTheSameIdOnEveryNewGame()
+    {
+        // Ids are normally an entity's own random draw; the starting map names them from a
+        // seeded generator instead (see MapLoader.EntityIdSeed), so everything keyed off an
+        // id's seed - a tree's variant, a person's hairstyle, their wander path - is the same
+        // world twice rather than a reshuffle per new game.
+        var first = LoadDefault().World;
+        var second = LoadDefault().World;
+
+        Assert.Equal(first.People.Select(p => p.Id), second.People.Select(p => p.Id));
+        Assert.Equal(first.Forebears.Select(p => p.Id), second.Forebears.Select(p => p.Id));
+        Assert.Equal(first.ResourceNodes.Select(n => n.Id), second.ResourceNodes.Select(n => n.Id));
+    }
+
+    [Fact]
+    public void LoadDefaultDrawsIdsFromTheirOwnGeneratorSoTheyNeverCollideEitherWithinOrAcrossKinds()
+    {
+        var map = LoadDefault();
+
+        var nodeIds = map.World.ResourceNodes.Select(n => n.Id.Value).ToList();
+        var personIds = map.World.People.Concat(map.World.Forebears).Select(p => p.Id.Value).ToList();
+        Assert.Equal(nodeIds.Count, nodeIds.Distinct().Count());
+        Assert.Empty(nodeIds.Intersect(personIds));
     }
 
     [Fact]

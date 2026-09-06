@@ -17,11 +17,22 @@ public static class WorldStateSpawnExtensions
         Position position,
         long initialAgeTicks = 0,
         Person? mother = null,
+        Person? father = null) =>
+        world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father);
+
+    // With a chosen id - for tests pinning an outcome that runs on the id's seed (see TestIds).
+    public static Person SpawnPerson(
+        this WorldState world,
+        PersonId id,
+        string name,
+        Position position,
+        long initialAgeTicks = 0,
+        Person? mother = null,
         Person? father = null)
     {
         var person = new Person
         {
-            Id = world.NextPersonId,
+            Id = id,
             Name = name,
             Position = position,
             BirthTick = world.Clock.CurrentTick - initialAgeTicks,
@@ -38,7 +49,6 @@ public static class WorldStateSpawnExtensions
     {
         var forebear = new Person
         {
-            Id = world.NextPersonId,
             Name = name,
             BirthTick = -2000,
             IsAlive = false,
@@ -57,7 +67,6 @@ public static class WorldStateSpawnExtensions
     {
         var node = new ResourceNode
         {
-            Id = world.NextResourceNodeId,
             Kind = kind,
             Position = position,
             RemainingAmount = amount,
@@ -72,7 +81,6 @@ public static class WorldStateSpawnExtensions
     {
         var building = new Building
         {
-            Id = world.NextBuildingId,
             Kind = kind,
             Position = position,
         };
@@ -94,7 +102,6 @@ public static class WorldStateSpawnExtensions
     {
         var grave = new Grave
         {
-            Id = world.NextGraveId,
             Position = position,
             IsMarked = isMarked,
             Name = name,

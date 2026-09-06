@@ -10,9 +10,10 @@ public sealed class Person
 {
     // Where every family line ends. Parents are always real Person objects (see Mother), so
     // someone with no recorded ancestry still has to point at *somebody* - this is that
-    // somebody: id 0 (never handed out by any world), long dead, never on any map, and its own
-    // mother and father so the chain terminates without a null anywhere along it. Nobody can
-    // ever click it and discover the loop, because nothing ever puts it into a world.
+    // somebody: the empty id (no entity ever draws it - see EntityId), long dead, never on any
+    // map, and its own mother and father so the chain terminates without a null anywhere along
+    // it. Nobody can ever click it and discover the loop, because nothing ever puts it into a
+    // world.
     public static Person Unknown { get; } = new(unknownRootName: "Unknown");
 
     public Person()
@@ -22,7 +23,7 @@ public sealed class Person
     [SetsRequiredMembers]
     private Person(string unknownRootName)
     {
-        Id = new PersonId(0);
+        Id = new PersonId(Guid.Empty);
         Name = unknownRootName;
         BirthTick = 0;
         IsAlive = false;
@@ -31,7 +32,8 @@ public sealed class Person
         Father = this;
     }
 
-    public required PersonId Id { get; init; }
+    // Drawn here, not handed out by a world - see EntityId.
+    public PersonId Id { get; init; } = PersonId.New();
 
     public required string Name { get; init; }
 

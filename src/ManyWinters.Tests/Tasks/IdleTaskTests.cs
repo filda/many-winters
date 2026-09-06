@@ -1,13 +1,14 @@
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
 public class IdleTaskTests
 {
     private static Person NewPerson(Position position) =>
-        new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown };
+        new() { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown };
 
     [Fact]
     public void IsNeverComplete()
@@ -55,8 +56,8 @@ public class IdleTaskTests
     public void TwoDifferentPeopleWanderIndependently()
     {
         var start = new Position(3, 4);
-        var ava = new Person { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
-        var bran = new Person { Id = new PersonId(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
+        var ava = new Person { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
+        var bran = new Person { Id = TestIds.Person(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
         var avaTask = new IdleTask();
         var branTask = new IdleTask();
 
@@ -79,8 +80,8 @@ public class IdleTaskTests
         // avalanche in IdleTask.SeedFor, these two would land suspiciously close together on
         // every single tick, reading as synchronized rather than independent wandering.
         var start = new Position(0, 0);
-        var ava = new Person { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
-        var bran = new Person { Id = new PersonId(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
+        var ava = new Person { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
+        var bran = new Person { Id = TestIds.Person(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
         var avaTask = new IdleTask();
         var branTask = new IdleTask();
 
@@ -113,7 +114,7 @@ public class IdleTaskTests
         // than everyone clustered at one end of it.
         var farthestReached = Enumerable.Range(1, 30).Select(id =>
         {
-            var person = new Person { Id = new PersonId(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
+            var person = new Person { Id = TestIds.Person(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
             var task = new IdleTask();
             var farthest = 0.0;
             for (var i = 0; i < 800; i++)
@@ -139,7 +140,7 @@ public class IdleTaskTests
         var leadingStillTicks = Enumerable.Range(1, 200).Select(id =>
         {
             var start = new Position(0, 0);
-            var person = new Person { Id = new PersonId(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
+            var person = new Person { Id = TestIds.Person(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown };
             var task = new IdleTask();
             var still = 0;
             while (still < 100)
@@ -223,7 +224,7 @@ public class IdleTaskTests
         // guaranteed identical across platforms.
         var person = new Person
         {
-            Id = new PersonId(personId),
+            Id = TestIds.Person(personId),
             Name = $"Person {personId}",
             BirthTick = 0,
             Position = new Position(0, 0),

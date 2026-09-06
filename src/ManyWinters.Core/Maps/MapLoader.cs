@@ -32,6 +32,13 @@ public static class MapLoader
     // same reproducibility reason the ages/family ties above are a fixed array rather than
     // randomized.
     private const int CrowdPlacementSeed = 1;
+
+    // Ids are otherwise an entity's own random draw (see EntityId) - the starting map names
+    // them from this one seeded generator instead, so a new game is the same world twice,
+    // down to every tree's variant and every person's hairstyle (both keyed off the id's
+    // seed). Its own generator, not the placement ones: drawing 16 bytes per entity from
+    // those would shift every position that follows.
+    private const int EntityIdSeed = 3;
     private const float CrowdRadius = 4f;
     private const float CrowdMinSpacing = 1f;
 
@@ -124,18 +131,19 @@ public static class MapLoader
     public static LoadedMap LoadDefault(WorldConfiguration configuration)
     {
         var world = new WorldState(configuration);
+        var idRng = new Random(EntityIdSeed);
 
-        SpawnStartingCrowd(world);
+        SpawnStartingCrowd(world, idRng);
 
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(-6f, 5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("pear"), Offset(0f, -5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("mushroom"), Offset(6f, 5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("potato"), Offset(-6f, -5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(6f, -5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("wood"), Offset(0f, 5f), 300f));
-        world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("grass"), Offset(10f, 0f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("apple"), Offset(-6f, 5f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("pear"), Offset(0f, -5f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("mushroom"), Offset(6f, 5f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("potato"), Offset(-6f, -5f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("apple"), Offset(6f, -5f), 200f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("wood"), Offset(0f, 5f), 300f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("grass"), Offset(10f, 0f), 200f));
 
-        ScatterDecorations(world);
+        ScatterDecorations(world, idRng);
 
         return new LoadedMap(world, CampCenter);
     }
@@ -147,7 +155,7 @@ public static class MapLoader
     // who happens to be whose parent. A starting person with no parent recorded gets a
     // forebear instead (see SpawnForebear) - never Person.Unknown directly, so every grave in
     // camp can name real parents.
-    private static void SpawnStartingCrowd(WorldState world)
+    private static void SpawnStartingCrowd(WorldState world, Random idRng)
     {
         var rules = world.Configuration.Rules;
         var rng = new Random(CrowdPlacementSeed);
@@ -168,7 +176,7 @@ public static class MapLoader
             var deathTick = -rules.TicksPerYear;
             var forebear = new Person
             {
-                Id = world.NextPersonId,
+                Id = PersonId.New(idRng),
                 Name = PersonNames.Forebears[nextForebearName++],
                 BirthTick = deathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
                 IsAlive = false,
@@ -193,7 +201,7 @@ public static class MapLoader
             var mother = StartingMotherIndex[index] is { } motherIndex ? SpawnStarting(motherIndex) : SpawnForebear();
             var father = StartingFatherIndex[index] is { } fatherIndex ? SpawnStarting(fatherIndex) : SpawnForebear();
             var initialAgeTicks = StartingAgesInWinters[index] * rules.TicksPerYear;
-            world.Execute(new SpawnPersonCommand(PersonNames.Pool[index], positions[index], mother, father, initialAgeTicks));
+            world.Execute(new SpawnPersonCommand(PersonId.New(idRng), PersonNames.Pool[index], positions[index], mother, father, initialAgeTicks));
 
             // The command doesn't hand the person back (commands are plain data - see
             // ICommand); the one it just added is the newest in People.
@@ -213,7 +221,7 @@ public static class MapLoader
     // Ported from TerrainSetup.cs's dense-zone/wide-pass/grove decoration scatter, which used
     // to spawn purely-visual sprites - now spawns real ResourceNodes instead, at the same
     // counts/radii, so the world reads exactly as dense/varied as it did as pure decoration.
-    private static void ScatterDecorations(WorldState world)
+    private static void ScatterDecorations(WorldState world, Random idRng)
     {
         var rng = new Random(DecorationScatterSeed);
         var occupied = new Dictionary<(int, int), List<Position>>();
@@ -223,7 +231,7 @@ public static class MapLoader
             for (var i = 0; i < count; i++)
             {
                 var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
-                world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
+                world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, amount));
             }
         }
 
@@ -233,7 +241,7 @@ public static class MapLoader
             {
                 var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
                 var kind = RockKinds[rng.Next(RockKinds.Length)];
-                world.Execute(new SpawnResourceNodeCommand(kind, position, RockAmount));
+                world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, RockAmount));
             }
         }
 
@@ -279,7 +287,7 @@ public static class MapLoader
             SpawnKind(FernKind, GroveFernCount, GroundCoverAmount, groveX, groveY, GroveRadius);
         }
 
-        ScatterOpenWorldBiomes(world, rng, occupied);
+        ScatterOpenWorldBiomes(world, rng, idRng, occupied);
     }
 
     // See OpenWorldCandidateCount's own doc comment for the overall approach. Each
@@ -287,7 +295,7 @@ public static class MapLoader
     // point for a cluster - so the two noise fields alone decide both whether it survives
     // and what grows there; any clustering the result shows is the noise's own spatial
     // coherence, not code drawing a shape.
-    private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Dictionary<(int, int), List<Position>> occupied)
+    private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Random idRng, Dictionary<(int, int), List<Position>> occupied)
     {
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
         var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
@@ -350,7 +358,7 @@ public static class MapLoader
 
             // Stryker restore Equality
 
-            world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
+            world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, amount));
             MarkOccupied(occupied, position);
         }
     }

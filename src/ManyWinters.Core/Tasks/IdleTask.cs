@@ -33,7 +33,7 @@ public sealed class IdleTask : PersonTask
     {
         if (_rng is null)
         {
-            _rng = new Random(SeedFor(person.Id.Value));
+            _rng = new Random(SeedFor(person.Id.Seed));
             _anchor = person.Position;
             // Drawn once per person, not per leg - a personal "how far this one tends to
             // roam" rather than everyone sharing the same perimeter.
@@ -72,14 +72,14 @@ public sealed class IdleTask : PersonTask
         return new Position(anchor.X + (distance * Math.Cos(angle)), anchor.Y + (distance * Math.Sin(angle)));
     }
 
-    // Person ids are small sequential integers (1, 2, 3, ...), and System.Random's legacy
-    // algorithm correlates badly on nearby small seeds - everyone's first few draws would
-    // land eerily close together, reading as synchronized wandering rather than independent
-    // people. This avalanches the seed apart first (Thomas Wang's 32-bit integer hash) while
-    // staying deterministic per person.
-    private static int SeedFor(int personId)
+    // System.Random's legacy algorithm correlates badly on nearby small seeds - two people
+    // whose id seeds (see EntityId.SeedOf) happen to sit close together would have their
+    // first few draws land eerily close, reading as synchronized wandering rather than
+    // independent people. This avalanches the seed apart first (Thomas Wang's 32-bit integer
+    // hash) while staying deterministic per person.
+    private static int SeedFor(int personSeed)
     {
-        var x = unchecked((uint)personId);
+        var x = unchecked((uint)personSeed);
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
         x = (x >> 16) ^ x;

@@ -2,7 +2,7 @@ namespace ManyWinters.Core.World;
 
 public sealed class ResourceNode
 {
-    public required ResourceNodeId Id { get; init; }
+    public ResourceNodeId Id { get; init; } = ResourceNodeId.New();
 
     public required ResourceKindId Kind { get; init; }
 

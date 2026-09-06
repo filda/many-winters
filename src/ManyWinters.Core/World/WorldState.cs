@@ -18,10 +18,6 @@ public sealed class WorldState(WorldConfiguration configuration)
     private readonly List<ResourceNode> _resourceNodes = new();
     private readonly List<Building> _buildings = new();
     private readonly List<Grave> _graves = new();
-    private int _nextPersonId = 1;
-    private int _nextResourceNodeId = 1;
-    private int _nextBuildingId = 1;
-    private int _nextGraveId = 1;
 
     public SimulationClock Clock { get; } = new();
 
@@ -34,9 +30,9 @@ public sealed class WorldState(WorldConfiguration configuration)
     public IReadOnlyList<Person> People => _people;
 
     // People who died before the story began and only exist to be somebody's mother or father
-    // (see Person.Mother) - full Person objects with names and ids from the same sequence as
-    // everyone else, so a grave's "child of X" and a save file can refer to them like anyone,
-    // but never in People: nothing simulates, draws, counts or clicks them.
+    // (see Person.Mother) - full Person objects with names and ids like everyone else, so a
+    // grave's "child of X" and a save file can refer to them like anyone, but never in People:
+    // nothing simulates, draws, counts or clicks them.
     public IReadOnlyList<Person> Forebears => _forebears;
 
     public IReadOnlyList<ResourceNode> ResourceNodes => _resourceNodes;
@@ -44,17 +40,6 @@ public sealed class WorldState(WorldConfiguration configuration)
     public IReadOnlyList<Building> Buildings => _buildings;
 
     public IReadOnlyList<Grave> Graves => _graves;
-
-    // The id the next Add* call expects on the object it's handed - ids are the world's to
-    // hand out (sequential, never reused), not the caller's to invent, so a caller builds
-    // its object around this and Add* refuses anything else (see AddPerson).
-    public PersonId NextPersonId => new(_nextPersonId);
-
-    public ResourceNodeId NextResourceNodeId => new(_nextResourceNodeId);
-
-    public BuildingId NextBuildingId => new(_nextBuildingId);
-
-    public GraveId NextGraveId => new(_nextGraveId);
 
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
@@ -68,12 +53,10 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Add* take a finished object rather than building one - what a person/node/building/grave
     // is made of is the caller's business (SpawnPersonCommand, BuryCommand, ...), the world's
-    // is only to keep the list, hand out the id and tell the presentation layer. The id has to
-    // be exactly NextPersonId: anything else means the caller either invented one or built the
-    // object before something else got added in between, and both would corrupt the sequence.
+    // is only to keep the list and tell the presentation layer. Ids aren't the world's concern
+    // either: an entity draws its own (see EntityId).
     public void AddPerson(Person person)
     {
-        ClaimId(person.Id.Value, ref _nextPersonId, nameof(person));
         _people.Add(person);
         PersonAdded?.Invoke(person);
         RefreshExploration();
@@ -89,39 +72,25 @@ public sealed class WorldState(WorldConfiguration configuration)
             throw new ArgumentException("A forebear died before the story began - a living person belongs in People.", nameof(forebear));
         }
 
-        ClaimId(forebear.Id.Value, ref _nextPersonId, nameof(forebear));
         _forebears.Add(forebear);
     }
 
     public void AddResourceNode(ResourceNode node)
     {
-        ClaimId(node.Id.Value, ref _nextResourceNodeId, nameof(node));
         _resourceNodes.Add(node);
         ResourceNodeAdded?.Invoke(node);
     }
 
     public void AddBuilding(Building building)
     {
-        ClaimId(building.Id.Value, ref _nextBuildingId, nameof(building));
         _buildings.Add(building);
         BuildingAdded?.Invoke(building);
     }
 
     public void AddGrave(Grave grave)
     {
-        ClaimId(grave.Id.Value, ref _nextGraveId, nameof(grave));
         _graves.Add(grave);
         GraveAdded?.Invoke(grave);
-    }
-
-    private static void ClaimId(int id, ref int nextId, string parameterName)
-    {
-        if (id != nextId)
-        {
-            throw new ArgumentException($"Expected id {nextId} (the world's next one), got {id}.", parameterName);
-        }
-
-        nextId++;
     }
 
     public void Execute(ICommand command) => command.Execute(this);
@@ -430,21 +399,21 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // Deterministic from the ids and the tick alone (same seeded-randomness style as
-    // IdleTask.SeedFor) rather than a shared mutable Random - reproducible from the same
-    // starting state without depending on call order between people.
+    // Deterministic from the ids (their seeds - see EntityId.SeedOf) and the tick alone (same
+    // seeded-randomness style as IdleTask.SeedFor) rather than a shared mutable Random -
+    // reproducible from the same starting state without depending on call order between people.
     private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick, float chance)
     {
-        var seed = CasualTeachingSeed(teacherId.Value, studentId.Value, technique.Value, tick);
+        var seed = CasualTeachingSeed(teacherId.Seed, studentId.Seed, technique.Value, tick);
 
         // Stryker disable once Equality: NextDouble() returning exactly `chance` has
         // probability zero, so < and <= are the same roll
         return new Random(seed).NextDouble() < chance;
     }
 
-    private static int CasualTeachingSeed(int teacherId, int studentId, string technique, long tick)
+    private static int CasualTeachingSeed(int teacherSeed, int studentSeed, string technique, long tick)
     {
-        var x = unchecked((uint)(teacherId * 73856093) ^ (uint)(studentId * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
+        var x = unchecked((uint)(teacherSeed * 73856093) ^ (uint)(studentSeed * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
         x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
         x = (x >> 16) ^ x;
@@ -601,17 +570,9 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     internal void RestoreForebear(Person forebear) => _forebears.Add(forebear);
 
-    internal void SetNextPersonId(int value) => _nextPersonId = value;
-
     internal void RestoreResourceNode(ResourceNode node) => _resourceNodes.Add(node);
-
-    internal void SetNextResourceNodeId(int value) => _nextResourceNodeId = value;
 
     internal void RestoreBuilding(Building building) => _buildings.Add(building);
 
-    internal void SetNextBuildingId(int value) => _nextBuildingId = value;
-
     internal void RestoreGrave(Grave grave) => _graves.Add(grave);
-
-    internal void SetNextGraveId(int value) => _nextGraveId = value;
 }

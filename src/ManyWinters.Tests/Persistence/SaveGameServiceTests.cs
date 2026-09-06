@@ -137,7 +137,6 @@ public class SaveGameServiceTests
             Assert.Same(restoredForebear, restoredChild.Mother);
             Assert.Same(Person.Unknown, restoredChild.Father);
             Assert.Equal(child.Id, restoredChild.Id);
-            Assert.Equal(world.NextPersonId, restored.NextPersonId);
         }
         finally
         {
@@ -194,98 +193,6 @@ public class SaveGameServiceTests
             Assert.Null(restoredAnonymous.MotherName);
             Assert.Null(restoredAnonymous.FatherName);
             Assert.Empty(restoredAnonymous.KnownTechniques);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void RestoredWorldContinuesGraveIdSequenceWithoutCollisions()
-    {
-        var world = TestCatalogs.CreateWorld();
-        world.SpawnGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
-        world.SpawnGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
-
-        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
-        try
-        {
-            SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
-
-            var newGrave = restored.SpawnGrave(new Position(2, 2), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
-
-            Assert.DoesNotContain(restored.Graves, g => g != newGrave && g.Id == newGrave.Id);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void RestoredWorldContinuesIdSequenceWithoutCollisions()
-    {
-        var world = TestCatalogs.CreateWorld();
-        world.SpawnPerson("Ava", new Position(0, 0));
-        world.SpawnPerson("Bran", new Position(0, 0));
-
-        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
-        try
-        {
-            SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
-
-            var newPerson = restored.SpawnPerson("Cora", new Position(0, 0));
-
-            Assert.DoesNotContain(restored.People, p => p != newPerson && p.Id == newPerson.Id);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void RestoredWorldContinuesResourceNodeIdSequenceWithoutCollisions()
-    {
-        var world = TestCatalogs.CreateWorld();
-        world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 10);
-        world.SpawnResourceNode(TestCatalogs.Apple, new Position(1, 1), 10);
-
-        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
-        try
-        {
-            SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
-
-            var newNode = restored.SpawnResourceNode(TestCatalogs.Apple, new Position(2, 2), 10);
-
-            Assert.DoesNotContain(restored.ResourceNodes, n => n != newNode && n.Id == newNode.Id);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void RestoredWorldContinuesBuildingIdSequenceWithoutCollisions()
-    {
-        var world = TestCatalogs.CreateWorld();
-        world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        world.SpawnBuilding(TestCatalogs.StorageHut, new Position(1, 1));
-
-        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
-        try
-        {
-            SaveGameService.Save(world, path);
-            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
-
-            var newBuilding = restored.SpawnBuilding(TestCatalogs.StorageHut, new Position(2, 2));
-
-            Assert.DoesNotContain(restored.Buildings, b => b != newBuilding && b.Id == newBuilding.Id);
         }
         finally
         {

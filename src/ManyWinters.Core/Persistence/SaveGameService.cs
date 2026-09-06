@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 14;
+    private const int CurrentVersion = 15;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -62,14 +62,10 @@ public static class SaveGameService
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
-            world.NextPersonId.Value,
             people,
             forebears,
-            world.NextResourceNodeId.Value,
             resourceNodes,
-            world.NextBuildingId.Value,
             buildings,
-            world.NextGraveId.Value,
             graves,
             exploredCells);
     }
@@ -99,8 +95,8 @@ public static class SaveGameService
 
         // A person is built around its parents (see Person.Mother), so they have to be back
         // before the child is. Forebears first (nobody's child but Unknown's), then people in
-        // save order: a parent always has a lower id than its child and was saved before it.
-        var peopleById = new Dictionary<int, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
+        // save order: a parent always existed before its child, so it was saved before it too.
+        var peopleById = new Dictionary<Guid, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
         foreach (var forebearData in data.Forebears)
         {
             world.RestoreForebear(RestorePerson(forebearData, peopleById));
@@ -110,8 +106,6 @@ public static class SaveGameService
         {
             world.RestorePerson(RestorePerson(personData, peopleById));
         }
-
-        world.SetNextPersonId(data.NextPersonId);
 
         foreach (var nodeData in data.ResourceNodes)
         {
@@ -126,8 +120,6 @@ public static class SaveGameService
 
             world.RestoreResourceNode(node);
         }
-
-        world.SetNextResourceNodeId(data.NextResourceNodeId);
 
         foreach (var buildingData in data.Buildings)
         {
@@ -147,8 +139,6 @@ public static class SaveGameService
             world.RestoreBuilding(building);
         }
 
-        world.SetNextBuildingId(data.NextBuildingId);
-
         foreach (var graveData in data.Graves)
         {
             var grave = new Grave
@@ -167,14 +157,12 @@ public static class SaveGameService
             world.RestoreGrave(grave);
         }
 
-        world.SetNextGraveId(data.NextGraveId);
-
         world.Exploration.RestoreExplored(data.ExploredCells.Select(cell => new ExplorationCell(cell.X, cell.Y)));
 
         return world;
     }
 
-    private static Person RestorePerson(PersonSaveData personData, Dictionary<int, Person> peopleById)
+    private static Person RestorePerson(PersonSaveData personData, Dictionary<Guid, Person> peopleById)
     {
         var person = new Person
         {
@@ -210,7 +198,7 @@ public static class SaveGameService
         return person;
     }
 
-    private static Person ParentById(int id, Dictionary<int, Person> peopleById) =>
+    private static Person ParentById(Guid id, Dictionary<Guid, Person> peopleById) =>
         peopleById.TryGetValue(id, out var parent)
             ? parent
             : throw new InvalidDataException($"Save refers to person {id} as a parent before (or without) saving that person.");
