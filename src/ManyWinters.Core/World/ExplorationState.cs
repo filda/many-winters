@@ -35,8 +35,6 @@ public sealed class ExplorationState
 
     public IReadOnlyCollection<ExplorationCell> Explored => _explored;
 
-    public IReadOnlyCollection<ExplorationCell> Visible => _visible;
-
     public static ExplorationCell CellFor(Position position) =>
         new((int)Math.Floor(position.X / CellSizeMeters), (int)Math.Floor(position.Y / CellSizeMeters));
 

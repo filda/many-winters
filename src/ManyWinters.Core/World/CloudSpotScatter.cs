@@ -20,7 +20,7 @@ public static class CloudSpotScatter
     // merge - while still stopping two from sitting on the same spot. 0.4, 0.36 and 0.27
     // all kept the cover a row of separate pillows no matter how many spots were
     // requested, because the gap itself, not the count, was capping the density.
-    public const float MinGapFactor = 0.2f;
+    private const float MinGapFactor = 0.2f;
 
     // How many random candidates to try per spot ultimately wanted. Rejection sampling
     // needs headroom; this saturates the available space in practice without looping for
@@ -70,14 +70,14 @@ public static class CloudSpotScatter
 
     // Wavelength of the spatial grain mixed into each spot's roll, in metres - the size of
     // the clumps and gaps the thinning cover breaks into.
-    public const float ClumpScaleMeters = 22f;
+    private const float ClumpScaleMeters = 22f;
 
     // How much of the roll is spatial grain rather than independent chance. A purely
     // independent roll thins the cover as an even sprinkle (every spot equally likely to
     // vanish), which on a Poisson-disc layout still reads as regular; sharing part of the
     // roll between neighbours makes whole patches drop out together, so the cover tears
     // into clumps and openings the way real low cloud does.
-    public const float ClumpWeight = 0.6f;
+    private const float ClumpWeight = 0.6f;
 
     // Blends the spot's own independent chance with smooth value noise sampled at its
     // position, staying in [0, 1).

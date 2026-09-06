@@ -29,32 +29,32 @@ public static class TestCatalogs
 
     public static readonly SkillTypeId Foraging = new("foraging");
     public static readonly SkillTypeId MushroomForaging = new("mushroom_foraging");
-    public static readonly SkillTypeId RootDigging = new("root_digging");
+    private static readonly SkillTypeId RootDigging = new("root_digging");
     public static readonly SkillTypeId Woodcutting = new("woodcutting");
-    public static readonly SkillTypeId Mining = new("mining");
+    private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
     // Nobody is born knowing how to eat or teach either - see SkillDefinition.BaseTechnique.
-    public static readonly SkillTypeId Eating = new("eating");
-    public static readonly SkillTypeId Teaching = new("teaching");
+    private static readonly SkillTypeId Eating = new("eating");
+    private static readonly SkillTypeId Teaching = new("teaching");
 
     // Never self-taught (see SkillDefinition.BaseTechnique's own doc comment) - the only way
     // any of these ever end up in a person's KnownTechniques is GrantTechniqueCommand (the
     // player) or TeachCommand (another person who already knows it).
     public static readonly TechniqueId BasicForaging = new("basic_foraging");
     public static readonly TechniqueId BasicMushroomForaging = new("basic_mushroom_foraging");
-    public static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
+    private static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
     public static readonly TechniqueId BasicWoodcutting = new("basic_woodcutting");
     public static readonly TechniqueId BasicMining = new("basic_mining");
-    public static readonly TechniqueId BasicBurial = new("basic_burial");
+    private static readonly TechniqueId BasicBurial = new("basic_burial");
     public static readonly TechniqueId BasicEating = new("basic_eating");
     public static readonly TechniqueId BasicTeaching = new("basic_teaching");
 
     public static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     public static readonly TechniqueId EfficientMushroomForaging = new("efficient_mushroom_foraging");
-    public static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
+    private static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
-    public static readonly TechniqueId EfficientMining = new("efficient_mining");
+    private static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
     public static readonly TechniqueId EfficientEating = new("efficient_eating");
     public static readonly TechniqueId EfficientTeaching = new("efficient_teaching");
@@ -63,62 +63,62 @@ public static class TestCatalogs
     public static readonly ItemKindId Axe = new("axe");
     public static readonly ItemKindId WarmClothing = new("warm_clothing");
     public static readonly ItemKindId AppleItem = new("apple");
-    public static readonly ItemKindId PearItem = new("pear");
-    public static readonly ItemKindId MushroomItem = new("mushroom");
-    public static readonly ItemKindId PotatoItem = new("potato");
-    public static readonly ItemKindId GrassItem = new("grass");
-    public static readonly ItemKindId StoneItem = new("stone");
-    public static readonly ItemKindId Basket = new("basket");
-    public static readonly ItemKindId Bag = new("bag");
+    private static readonly ItemKindId PearItem = new("pear");
+    private static readonly ItemKindId MushroomItem = new("mushroom");
+    private static readonly ItemKindId PotatoItem = new("potato");
+    private static readonly ItemKindId GrassItem = new("grass");
+    private static readonly ItemKindId StoneItem = new("stone");
+    private static readonly ItemKindId Basket = new("basket");
+    private static readonly ItemKindId Bag = new("bag");
 
     public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
     public const float WarmClothingInsulation = 1f;
-    public const int WarmClothingInputAmount = 10;
-    public const float FoodHungerRestoredPerUnit = 1f;
-    public const float ItemWeight = 1f;
-    public const float StoneWeight = 2f;
-    public const float AxeWeight = 5f;
-    public const float WarmClothingWeight = 3f;
+    private const int WarmClothingInputAmount = 10;
+    private const float FoodHungerRestoredPerUnit = 1f;
+    private const float ItemWeight = 1f;
+    private const float StoneWeight = 2f;
+    private const float AxeWeight = 5f;
+    private const float WarmClothingWeight = 3f;
 
     // Basket (wood, carried on the back) and bag (grass, lighter but holds less) - see
     // WorldState.MaxCarryWeightFor for how CarryCapacityBonus is applied.
-    public const int BasketInputAmount = 8;
-    public const float BasketWeight = 2f;
-    public const float BasketCarryCapacityBonus = 20f;
-    public const int BagInputAmount = 10;
-    public const float BagWeight = 1f;
-    public const float BagCarryCapacityBonus = 10f;
-    public const float GrassRegenPerTick = 1f;
+    private const int BasketInputAmount = 8;
+    private const float BasketWeight = 2f;
+    private const float BasketCarryCapacityBonus = 20f;
+    private const int BagInputAmount = 10;
+    private const float BagWeight = 1f;
+    private const float BagCarryCapacityBonus = 10f;
+    private const float GrassRegenPerTick = 1f;
 
     public static readonly BuildingKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
 
     public const float ColdFoodYieldMultiplier = 0.4f;
     public const float FoodRegenPerTick = 1f;
-    public const float WoodRegenPerTick = 0.5f;
+    private const float WoodRegenPerTick = 0.5f;
     public const float FellWoodYield = 30f;
 
     // Former terrain decoration (see ConiferTree etc. above) - regenPerTick 0 for rocks/dead
     // wood (finite, never regrow) mirrors Content/resources/{kind}/{kind}.json exactly.
-    public const float DecorationWoodRegenPerTick = 0.5f;
-    public const float DecorationGroundCoverRegenPerTick = 1f;
+    private const float DecorationWoodRegenPerTick = 0.5f;
+    private const float DecorationGroundCoverRegenPerTick = 1f;
 
     // Felling a standing forest tree leaves a stump (still has some wood left to gather, but
     // never regrows - a stump doesn't put out new branches); felling a bush just leaves an
     // ordinary small wood pile, the same kind a cleared fruit tree leaves.
-    public const float FellTreeStumpYield = 60f;
-    public const float FellBushWoodYield = 30f;
+    private const float FellTreeStumpYield = 60f;
+    private const float FellBushWoodYield = 30f;
 
     // Mirrors Content/resources/{kind}/{kind}.json's collisionRadius exactly - see
     // ResourceDefinition.CollisionRadius's own doc comment for why this is a deliberately
     // separate axis from the billboard sprite's height.
-    public const float FruitTreeCollisionRadius = 0.35f;
-    public const float BushCollisionRadius = 0.3f;
-    public const float ForestTreeCollisionRadius = 0.4f;
-    public const float RockPileCollisionRadius = 0.3f;
-    public const float RockClusterCollisionRadius = 0.45f;
-    public const float RockBoulderCollisionRadius = 0.6f;
+    private const float FruitTreeCollisionRadius = 0.35f;
+    private const float BushCollisionRadius = 0.3f;
+    private const float ForestTreeCollisionRadius = 0.4f;
+    private const float RockPileCollisionRadius = 0.3f;
+    private const float RockClusterCollisionRadius = 0.45f;
+    private const float RockBoulderCollisionRadius = 0.6f;
 
     // Carry capacity (see CarryCapacity.BaseWeightFor) ramps up with age - most command tests
     // don't care about age at all, so they add people old enough to already be at the full
@@ -127,7 +127,7 @@ public static class TestCatalogs
 
     private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
 
-    public static ResourceCatalog CreateResourceCatalog() => new(new[]
+    private static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
         new ResourceDefinition(Apple, "Apple", Foraging, AppleItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield, CollisionRadius: FruitTreeCollisionRadius),
         new ResourceDefinition(Pear, "Pear", Foraging, PearItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield, CollisionRadius: FruitTreeCollisionRadius),
