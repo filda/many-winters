@@ -164,7 +164,7 @@ public sealed class TerrainRenderer
         return Mathf.Lerp(h0, h1, tz);
     }
 
-// Bilinear height sample at any local (x, z) from the real elevation data alone, clamped
+    // Bilinear height sample at any local (x, z) from the real elevation data alone, clamped
     // to the grid's edge beyond its bounds - no bump noise. Water (WaterVertex) is the only
     // other caller: a river surface is naturally smoother than the ground around it in
     // reality, not textured with the same small-scale variation, so it tracks the DEM's own
