@@ -420,7 +420,7 @@ public class WorldStateTests
     public void AdvanceReassignsAGatherTaskOnceItsTargetResourceStopsBeingWorthGathering()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         var primary = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
         var backup = world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
@@ -571,7 +571,7 @@ public class WorldStateTests
         // Depleted-but-alive nodes regenerate eventually, but standing next to one waiting is
         // not the plan - with a fuller one of the same kind nearby, that's where to go.
         var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         var primary = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
         var backup = world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
@@ -1567,5 +1567,132 @@ public class WorldStateTests
         world.Advance(1);
 
         Assert.Same(task, person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AGathererGivesUpOnANodeTheyCouldNotTakeAnythingFrom()
+    {
+        // The tree is full, but so is the backpack, and the person isn't hungry - nothing they
+        // could do there, so the order is dropped rather than walked to and stood at.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        FillTheBackpackWithWood(world, person);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), amount: 100f);
+        person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance));
+
+        world.Advance(1);
+
+        Assert.IsNotType<GatherTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotSendAnIdlePersonWithNoRoomLeftToAResourceTheyOnlyKnowHowToCarryFrom()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        FillTheBackpackWithWood(world, person);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceStillSendsAHungryPersonWithAFullBackpackToFoodTheyCanEatOnTheSpot()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 60f;
+        FillTheBackpackWithWood(world, person);
+        var foodNode = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(foodNode.Id, task.Target.Id);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotSendAHungryPersonWithAFullBackpackWhoCannotEatToFoodTheyCouldNotTake()
+    {
+        // Without knowing how to eat, the only thing to do with an apple is pocket it - and
+        // there's no room, so the tree is as useless to them as one that isn't there.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 60f;
+        FillTheBackpackWithWood(world, person);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void UrgentHungerSendsAPersonForFoodEvenWhileTheirIdleGraceIsStillRunning()
+    {
+        // The grace is renewed every tick while a person stays selected (see Main's per-tick
+        // GrantIdleGraceCommand), so if it held against hunger too, a selected person would
+        // starve standing still under the player's gaze.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 60f;
+        world.Execute(new GrantIdleGraceCommand(person, 100));
+        var foodNode = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(foodNode.Id, task.Target.Id);
+    }
+
+    [Fact]
+    public void TheIdleGraceStillHoldsForAPersonWhoIsHungryButNotYetUrgentlySo()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = world.Configuration.Rules.HungerSeekFoodThreshold - 2f;
+        world.Execute(new GrantIdleGraceCommand(person, 100));
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.Null(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AForagerWhoKnowsHowToEatDoesNotStarveAmongGrassNextToAFruitTree()
+    {
+        // The original failure: knowing foraging means picking grass too, so the backpack fills
+        // with it within a few ticks; then hunger sends the person to the tree, where nothing
+        // more fits - and, before eating on the spot existed, they stood there gathering
+        // nothing until they died on tick 100.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        world.SpawnResourceNode(TestCatalogs.Grass, new Position(0, 0), 1000f);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 0), 1000f);
+
+        world.Advance(300);
+
+        Assert.True(person.IsAlive);
+        Assert.True(person.Inventory.Get(TestCatalogs.GrassItem) > 0);
+    }
+
+    private static void FillTheBackpackWithWood(WorldState world, Person person)
+    {
+        var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
     }
 }

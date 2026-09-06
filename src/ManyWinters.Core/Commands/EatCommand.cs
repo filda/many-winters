@@ -27,45 +27,59 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
 
     public void Execute(WorldState world)
     {
-        if (!Person.IsAlive || Person.Needs.Hunger <= 0f)
+        var eaten = Eat(world, Person, FoodItem, Person.Inventory.Get(FoodItem));
+        if (eaten > 0)
         {
-            return;
+            Person.Inventory.Remove(FoodItem, eaten);
+        }
+    }
+
+    // The act of eating itself, apart from where the food comes from: EatCommand feeds from
+    // the inventory, GatherCommand straight from the source being picked ("into the mouth"),
+    // and both have to gate, satisfy and train identically. Eats just enough of the
+    // `availableUnits` on offer to reach zero hunger (or all of them if that isn't enough) and
+    // returns how many, leaving the caller to take exactly that many from wherever they were.
+    public static int Eat(WorldState world, Person person, ItemKindId food, int availableUnits)
+    {
+        if (!person.IsAlive || person.Needs.Hunger <= 0f)
+        {
+            return 0;
         }
 
         // Find, not Get - a caller with no "eating" skill registered at all (a minimal test
         // world, say) just means this can never succeed, not a crash.
         if (world.Configuration.SkillCatalog.Find(Skill) is not { } skillDefinition
-            || !Person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
+            || !person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
         {
-            return;
+            return 0;
         }
 
-        var restoredPerUnit = world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(FoodItem);
+        var restoredPerUnit = world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(food);
         if (restoredPerUnit <= 0f)
         {
-            return;
+            return 0;
         }
 
-        if (Person.KnownTechniques.Contains(skillDefinition.EfficientTechnique))
+        if (person.KnownTechniques.Contains(skillDefinition.EfficientTechnique))
         {
             restoredPerUnit *= EfficientHungerRestoredMultiplier;
         }
 
-        var available = Person.Inventory.Get(FoodItem);
-        var unitsNeeded = (int)MathF.Ceiling(Person.Needs.Hunger / restoredPerUnit);
-        var unitsEaten = Math.Min(available, unitsNeeded);
+        var unitsNeeded = (int)MathF.Ceiling(person.Needs.Hunger / restoredPerUnit);
+        var unitsEaten = Math.Min(availableUnits, unitsNeeded);
         if (unitsEaten <= 0)
         {
-            return;
+            return 0;
         }
 
-        Person.Inventory.Remove(FoodItem, unitsEaten);
-        Person.Needs.Hunger = Math.Max(0f, Person.Needs.Hunger - (unitsEaten * restoredPerUnit));
+        person.Needs.Hunger = Math.Max(0f, person.Needs.Hunger - (unitsEaten * restoredPerUnit));
 
-        Person.Skills.Increase(Skill, SkillGainPerMeal);
-        if (Person.Skills.Get(Skill) >= DiscoveryThreshold)
+        person.Skills.Increase(Skill, SkillGainPerMeal);
+        if (person.Skills.Get(Skill) >= DiscoveryThreshold)
         {
-            Person.KnownTechniques.Add(skillDefinition.EfficientTechnique);
+            person.KnownTechniques.Add(skillDefinition.EfficientTechnique);
         }
+
+        return unitsEaten;
     }
 }

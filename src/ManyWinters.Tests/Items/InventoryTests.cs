@@ -177,4 +177,46 @@ public class InventoryTests
         Assert.Equal(0, added);
         Assert.Empty(inventory.Counts);
     }
+
+    [Fact]
+    public void HasRoomForIsTrueWhileAtLeastOneUnitStillFits()
+    {
+        var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
+        var inventory = new Inventory();
+        inventory.Add(Stone, 24);
+
+        Assert.True(inventory.HasRoomFor(Stone, catalog, maxWeight: 50f));
+    }
+
+    [Fact]
+    public void HasRoomForIsFalseOnceNotEvenOneUnitFits()
+    {
+        // 49 of 50 kilos used: a whole unit weighs 2, so the last kilo of headroom is not room
+        // for anything - the same rounding-down AddUpToCapacity does.
+        var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
+        var inventory = new Inventory();
+        inventory.Add(Stone, 24);
+
+        Assert.False(inventory.HasRoomFor(Stone, catalog, maxWeight: 49f));
+    }
+
+    [Fact]
+    public void HasRoomForIsFalseWhenTheInventoryIsAlreadyFullOfSomethingElse()
+    {
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 1f), Weighing(Stone, "Stone", 2f));
+        var inventory = new Inventory();
+        inventory.Add(Wood, 50);
+
+        Assert.False(inventory.HasRoomFor(Stone, catalog, maxWeight: 50f));
+    }
+
+    [Fact]
+    public void HasRoomForIsAlwaysTrueForAZeroWeightItem()
+    {
+        var catalog = CatalogOf(Weighing(Feather, "Feather", 0f));
+        var inventory = new Inventory();
+        inventory.Add(Feather, 1000);
+
+        Assert.True(inventory.HasRoomFor(Feather, catalog, maxWeight: 0f));
+    }
 }

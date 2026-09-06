@@ -39,20 +39,29 @@ public sealed class Inventory
     // "take only what fits" rather than all-or-nothing.
     public int AddUpToCapacity(ItemKindId kind, int amount, ItemCatalog catalog, float maxWeight)
     {
-        var unitWeight = catalog.WeightFor(kind);
-        var toAdd = amount;
-        if (unitWeight > 0f)
-        {
-            var remainingCapacity = maxWeight - TotalWeight(catalog);
-            var fits = Math.Max(0, (int)(remainingCapacity / unitWeight));
-            toAdd = Math.Min(amount, fits);
-        }
-
+        var toAdd = Math.Min(amount, UnitsThatFit(kind, catalog, maxWeight));
         if (toAdd > 0)
         {
             Add(kind, toAdd);
         }
 
         return toAdd;
+    }
+
+    // Whether even a single unit of `kind` would still go in - what decides if walking to a
+    // source of it is worth anyone's time at all (see WorldState.CanTakeAnythingFrom), asked
+    // before setting off rather than found out by gathering nothing on arrival.
+    public bool HasRoomFor(ItemKindId kind, ItemCatalog catalog, float maxWeight) => UnitsThatFit(kind, catalog, maxWeight) > 0;
+
+    private int UnitsThatFit(ItemKindId kind, ItemCatalog catalog, float maxWeight)
+    {
+        var unitWeight = catalog.WeightFor(kind);
+        if (unitWeight <= 0f)
+        {
+            return int.MaxValue;
+        }
+
+        var remainingCapacity = maxWeight - TotalWeight(catalog);
+        return Math.Max(0, (int)(remainingCapacity / unitWeight));
     }
 }

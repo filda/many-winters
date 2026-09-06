@@ -67,7 +67,7 @@ public static class TestCatalogs
     private static readonly ItemKindId PearItem = new("pear");
     private static readonly ItemKindId MushroomItem = new("mushroom");
     private static readonly ItemKindId PotatoItem = new("potato");
-    private static readonly ItemKindId GrassItem = new("grass");
+    public static readonly ItemKindId GrassItem = new("grass");
     private static readonly ItemKindId StoneItem = new("stone");
     private static readonly ItemKindId Basket = new("basket");
     private static readonly ItemKindId Bag = new("bag");

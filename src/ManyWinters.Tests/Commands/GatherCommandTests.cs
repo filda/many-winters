@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -184,12 +185,12 @@ public class GatherCommandTests
 
         for (var i = 0; i < 4; i++)
         {
-            world.Execute(new GatherCommand(person, node));
+            GatherAndUnload(world, person, node);
         }
 
         Assert.DoesNotContain(TestCatalogs.EfficientForaging, person.KnownTechniques);
 
-        world.Execute(new GatherCommand(person, node));
+        GatherAndUnload(world, person, node);
 
         Assert.Equal(5f, person.Skills.Get(TestCatalogs.Foraging));
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
@@ -252,11 +253,20 @@ public class GatherCommandTests
 
         for (var i = 0; i < 5; i++)
         {
-            world.Execute(new GatherCommand(person, node));
+            GatherAndUnload(world, person, node);
         }
 
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
         Assert.DoesNotContain(TestCatalogs.EfficientMushroomForaging, person.KnownTechniques);
+    }
+
+    // Five trips' worth of apples don't fit in one backpack, and a trip that brings nothing
+    // back teaches nothing (see GatheringIntoAFullBackpackTakesNothingAndEarnsNoPractice) - so
+    // the harvest is set down between trips, the way it would be at camp.
+    private static void GatherAndUnload(WorldState world, Person person, ResourceNode node)
+    {
+        world.Execute(new GatherCommand(person, node));
+        person.Inventory.Remove(TestCatalogs.AppleItem, person.Inventory.Get(TestCatalogs.AppleItem));
     }
 
     [Fact]
@@ -381,5 +391,134 @@ public class GatherCommandTests
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AHungryPickerWhoKnowsHowToEatEatsFromTheHarvestFirstAndPocketsTheRest()
+    {
+        // Twenty apples come off the tree; five go straight into the mouth (hunger 5, one hunger
+        // per apple), the other fifteen into the backpack - and the tree is down by all twenty.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 5f;
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(0f, person.Needs.Hunger);
+        Assert.Equal(15, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(80f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void EatingFromTheHarvestTrainsEatingAsWellAsTheGatheringSkill()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 5f;
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(1f, person.Skills.Get(TestCatalogs.Foraging));
+        Assert.Equal(1f, person.Skills.Get(EatCommand.Skill));
+    }
+
+    [Fact]
+    public void AHungryPickerWithAFullBackpackStillGetsFedAtAFoodSource()
+    {
+        // The backpack is full of wood, so nothing can be pocketed - but a hungry person who
+        // knows how to eat still eats on the spot, and only what was eaten comes off the tree.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 8f;
+        FillTheBackpackWithWood(world, person);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(0f, person.Needs.Hunger);
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(92f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void AHungryPickerWhoNeverLearnedToEatPocketsTheWholeHarvestInstead()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 5f;
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(5f, person.Needs.Hunger);
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(80f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void APickerWhoIsNotHungryPocketsTheWholeHarvest()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(0f, person.Skills.Get(EatCommand.Skill));
+    }
+
+    [Fact]
+    public void GrassIsNeverEatenOnTheSpotHoweverHungryThePickerIs()
+    {
+        // Grass restores nothing, so "eating as you go" doesn't apply - it all goes into the
+        // backpack and the hunger stays exactly where it was.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 60f;
+        var node = world.SpawnResourceNode(TestCatalogs.Grass, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(60f, person.Needs.Hunger);
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.GrassItem));
+        Assert.Equal(80f, node.RemainingAmount);
+    }
+
+    [Fact]
+    public void GatheringIntoAFullBackpackTakesNothingAndEarnsNoPractice()
+    {
+        // Coming away with nothing is not gathering: the node is untouched and the skill stays
+        // where it was, so a full backpack cannot grind out the efficient technique.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        FillTheBackpackWithWood(world, person);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(100f, node.RemainingAmount);
+        Assert.Equal(0f, person.Skills.Get(TestCatalogs.Foraging));
+    }
+
+    private static void FillTheBackpackWithWood(WorldState world, Person person)
+    {
+        var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
     }
 }

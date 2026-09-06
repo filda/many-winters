@@ -43,10 +43,22 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
 
         if (resource.YieldsItem is { } item)
         {
-            // Only what actually fits in the inventory comes off the node - a full backpack
-            // leaves the rest standing to gather later, rather than the excess vanishing.
-            var added = Person.Inventory.AddUpToCapacity(item, (int)potentialConsumed, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
-            Node.RemainingAmount -= added;
+            // A hungry picker eats as they go ("straight into the mouth") before pocketing
+            // anything - the one way someone whose backpack is already full of something else
+            // still gets fed at a food source. Only what actually got eaten or fits in the
+            // inventory comes off the node - a full backpack leaves the rest standing to
+            // gather later, rather than the excess vanishing.
+            var eaten = EatCommand.Eat(world, Person, item, (int)potentialConsumed);
+            var added = Person.Inventory.AddUpToCapacity(item, (int)potentialConsumed - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
+            var taken = eaten + added;
+            // Coming away from a node with nothing is not gathering - it earns no practice, so
+            // a full backpack can't grind a technique out of thin air.
+            if (taken <= 0)
+            {
+                return;
+            }
+
+            Node.RemainingAmount -= taken;
         }
         else
         {

@@ -159,8 +159,11 @@ public sealed class WorldState(WorldConfiguration configuration)
                 // it would replace any other task - this only ever revisits its own two
                 // autonomous choices (idle/gather), never a player-issued one.
                 // IdleGraceUntilTick (see GrantIdleGraceCommand) can buy a few extra ticks of
-                // standing still first.
-                if (currentTick >= person.IdleGraceUntilTick && ShouldReconsiderIdleTask(person))
+                // standing still first - but never at the cost of starving: the grace is
+                // renewed every tick for as long as a person stays selected, so a hungry one
+                // left standing under the player's gaze would otherwise never set off for food.
+                var idleGraceHolds = currentTick < person.IdleGraceUntilTick && !NeedsToSeekFoodUrgently(person);
+                if (!idleGraceHolds && ShouldReconsiderIdleTask(person))
                 {
                     var decidedTask = DecideIdleTask(person);
                     // Keep the SAME IdleTask instance while the decision is still "just
@@ -238,7 +241,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     // Only ever revisits the two autonomous choices (idle/gather) - a player-issued task
     // (MoveTask from a direct MoveCommand, say) is left alone; IdleTask always gets a second
     // look (something better might now apply); GatherTask normally only when its own target
-    // has stopped being worth working (dead, or drained until it regenerates), rather than
+    // has stopped being worth working (dead, drained until it regenerates, or nothing this
+    // person could take from it any more - see IsWorthGathering), rather than
     // every tick - that would otherwise re-plan (and so re-approach) the same resource
     // continuously - *except* when hunger has become an emergency (see NeedsToSeekFoodUrgently):
     // a person who set off gathering wood far from camp, then ran out of food along the way,
@@ -248,17 +252,36 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         null => true,
         IdleTask => true,
-        GatherTask gather => !IsWorthGathering(gather.Target) || NeedsToSeekFoodUrgently(person),
+        GatherTask gather => !IsWorthGathering(person, gather.Target) || NeedsToSeekFoodUrgently(person),
         _ => false,
     };
 
     private bool NeedsToSeekFoodUrgently(Person person) =>
-        Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating
-        && person.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold
-        && person.KnownTechniques.Contains(eating.BaseTechnique)
+        person.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold
+        && KnowsHowToEat(person)
         && !HasEdibleFood(person);
 
-    private static bool IsWorthGathering(ResourceNode node) => node is { IsAlive: true, RemainingAmount: > 0f };
+    private bool KnowsHowToEat(Person person) =>
+        Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating && person.KnownTechniques.Contains(eating.BaseTechnique);
+
+    private bool IsWorthGathering(Person person, ResourceNode node) =>
+        node is { IsAlive: true, RemainingAmount: > 0f } && CanTakeAnythingFrom(person, Configuration.ResourceCatalog.Get(node.Kind));
+
+    // Whether a gather at this resource would come away with anything at all, mirroring what
+    // GatherCommand can actually do with the harvest: eat it on the spot (a hungry person who
+    // knows how, at a food source) or pocket it (room in the backpack for at least one unit).
+    // A person with a backpack full of grass standing at a pear tree they don't know how to eat
+    // from would otherwise gather nothing there, tick after tick, until they starved.
+    private bool CanTakeAnythingFrom(Person person, ResourceDefinition definition)
+    {
+        if (definition.YieldsItem is not { } item)
+        {
+            return true;
+        }
+
+        var canEatOnTheSpot = person.Needs.Hunger > 0f && KnowsHowToEat(person) && IsFoodResource(definition);
+        return canEatOnTheSpot || person.Inventory.HasRoomFor(item, Configuration.ItemCatalog, MaxCarryWeightFor(person));
+    }
 
     // "Idle" now means "put whatever skill this person already has to use, or go find food if
     // hungry and empty-handed" (todo: "Pokud už má osoba v idle nějaký skill, tak by ho měl
@@ -274,7 +297,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         {
             // Being edible alone isn't enough - a resource this person never learned to gather
             // (foraging, say) is exactly as unreachable to them as one that doesn't exist.
-            var foodNode = FindNearestGatherableResourceNode(person.Position, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
+            var foodNode = FindNearestGatherableResourceNode(person, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
             if (foodNode is not null)
             {
                 return new GatherTask(foodNode, reachDistance);
@@ -287,7 +310,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         // BaseTechnique (see its own doc comment) - not against KnownTechniques directly,
         // since that set holds arbitrary techniques (eating/teaching included) rather than
         // being keyed by skill.
-        var node = FindNearestGatherableResourceNode(person.Position, definition => IsKnownSkill(person, definition.Skill));
+        var node = FindNearestGatherableResourceNode(person, definition => IsKnownSkill(person, definition.Skill));
         if (node is not null)
         {
             return new GatherTask(node, reachDistance);
@@ -311,19 +334,20 @@ public sealed class WorldState(WorldConfiguration configuration)
     // Depleted-but-alive nodes (RemainingAmount 0, still regenerating) are skipped rather than
     // sent to and stood next to - with thousands of decoration-turned-resource nodes usually
     // nearby (see MapLoader.ScatterDecorations), a fuller one of the same kind is normally
-    // right there too.
-    private ResourceNode? FindNearestGatherableResourceNode(Position from, Func<ResourceDefinition, bool> matches)
+    // right there too. So is anything this particular person couldn't take from anyway (see
+    // CanTakeAnythingFrom) - nobody walks to a source only to stand there gathering nothing.
+    private ResourceNode? FindNearestGatherableResourceNode(Person person, Func<ResourceDefinition, bool> matches)
     {
         ResourceNode? nearest = null;
         var nearestDistance = double.MaxValue;
         foreach (var node in _resourceNodes)
         {
-            if (node is not { IsAlive: true, RemainingAmount: > 0f } || !matches(Configuration.ResourceCatalog.Get(node.Kind)))
+            if (!IsWorthGathering(person, node) || !matches(Configuration.ResourceCatalog.Get(node.Kind)))
             {
                 continue;
             }
 
-            var distance = Distance(from, node.Position);
+            var distance = Distance(person.Position, node.Position);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
