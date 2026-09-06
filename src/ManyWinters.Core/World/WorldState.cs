@@ -1,7 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
-using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;

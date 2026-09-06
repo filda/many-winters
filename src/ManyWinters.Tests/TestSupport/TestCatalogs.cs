@@ -73,7 +73,7 @@ public static class TestCatalogs
 
     public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
-    public const float WarmClothingInsulation = 1f;
+    private const float WarmClothingInsulation = 1f;
     private const int WarmClothingInputAmount = 10;
     private const float FoodHungerRestoredPerUnit = 1f;
     private const float ItemWeight = 1f;
