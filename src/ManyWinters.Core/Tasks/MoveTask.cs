@@ -3,18 +3,11 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Tasks;
 
-public sealed class MoveTask : PersonTask
+public sealed class MoveTask(Position destination, float speedPerTick) : PersonTask
 {
-    private readonly float _speedPerTick;
     private bool _arrived;
 
-    public MoveTask(Position destination, float speedPerTick)
-    {
-        Destination = destination;
-        _speedPerTick = speedPerTick;
-    }
-
-    public Position Destination { get; }
+    public Position Destination { get; } = destination;
 
     public override bool IsComplete => _arrived;
 
@@ -29,14 +22,14 @@ public sealed class MoveTask : PersonTask
         var dy = Destination.Y - person.Position.Y;
         var distance = Math.Sqrt((dx * dx) + (dy * dy));
 
-        if (distance <= _speedPerTick)
+        if (distance <= speedPerTick)
         {
             person.Position = Destination;
             _arrived = true;
             return;
         }
 
-        var ratio = _speedPerTick / distance;
+        var ratio = speedPerTick / distance;
         person.Position = new Position(person.Position.X + (dx * ratio), person.Position.Y + (dy * ratio));
     }
 }

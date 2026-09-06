@@ -3,7 +3,7 @@ using ManyWinters.Core.Continuity;
 
 namespace ManyWinters.Godot;
 
-public partial class GraveView : Area3D
+public partial class GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick) : Area3D
 {
     public const float Size = 0.8f;
     private const float ShadowDiameter = 0.9f;
@@ -14,27 +14,15 @@ public partial class GraveView : Area3D
     private static readonly Color MarkedColor = new(0.7f, 0.7f, 0.75f);
     private static readonly Color UnmarkedColor = new(0.4f, 0.3f, 0.2f);
 
-    private readonly GraveId _graveId;
-    private readonly bool _isMarked;
-    private readonly Action<GraveId> _onSelected;
-    private readonly InputEventEventHandler _onMissedClick;
     private Sprite3D _sprite = null!;
     private string _texturePath = null!;
-
-    public GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected, InputEventEventHandler onMissedClick)
-    {
-        _graveId = graveId;
-        _isMarked = isMarked;
-        _onSelected = onSelected;
-        _onMissedClick = onMissedClick;
-    }
 
     public override void _Ready()
     {
         InputRayPickable = true;
 
-        _texturePath = _isMarked ? MarkedTexturePath : UnmarkedTexturePath;
-        var fallbackColor = _isMarked ? MarkedColor : UnmarkedColor;
+        _texturePath = isMarked ? MarkedTexturePath : UnmarkedTexturePath;
+        var fallbackColor = isMarked ? MarkedColor : UnmarkedColor;
 
         var groundShadow = GroundShadow.Create(ShadowDiameter);
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
@@ -69,7 +57,7 @@ public partial class GraveView : Area3D
         // same spot would have done.
         if (!TryClickAt(camera3D, position) && !HoverRescue.TryClickElsewhere(this, camera3D, position, MouseButton.Left))
         {
-            _onMissedClick(camera, @event, position, normal, shapeIdx);
+            onMissedClick(camera, @event, position, normal, shapeIdx);
         }
     }
 
@@ -80,7 +68,7 @@ public partial class GraveView : Area3D
             return false;
         }
 
-        _onSelected(_graveId);
+        onSelected(graveId);
         return true;
     }
 }

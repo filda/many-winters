@@ -10,7 +10,7 @@ namespace ManyWinters.Core.Tasks;
 // the Person, not the world. Never completes on its own - WorldState.Advance re-evaluates
 // every tick whether this is still the right thing to be doing (target still alive and not
 // depleted), same as it does for IdleTask.
-public sealed class GatherTask : PersonTask
+public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosition) : PersonTask
 {
     private const float SpeedPerTick = 0.3f;
 
@@ -23,15 +23,9 @@ public sealed class GatherTask : PersonTask
     private Position? _approachPosition;
     private MoveTask? _move;
 
-    public GatherTask(ResourceNodeId targetNodeId, Position targetPosition)
-    {
-        TargetNodeId = targetNodeId;
-        TargetPosition = targetPosition;
-    }
+    public ResourceNodeId TargetNodeId { get; } = targetNodeId;
 
-    public ResourceNodeId TargetNodeId { get; }
-
-    public Position TargetPosition { get; }
+    public Position TargetPosition { get; } = targetPosition;
 
     public override bool IsComplete => false;
 

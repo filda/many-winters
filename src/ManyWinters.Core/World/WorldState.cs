@@ -9,7 +9,7 @@ using ManyWinters.Core.Time;
 
 namespace ManyWinters.Core.World;
 
-public sealed class WorldState
+public sealed class WorldState(WorldConfiguration configuration)
 {
     public const long TicksPerYear = TicksPerSeason * SeasonsPerYear;
     public const float MaxInteractionDistance = 2f;
@@ -31,31 +31,21 @@ public sealed class WorldState
     private int _nextBuildingId = 1;
     private int _nextGraveId = 1;
 
-    public WorldState(WorldConfiguration configuration)
-    {
-        ResourceCatalog = configuration.ResourceCatalog;
-        SkillCatalog = configuration.SkillCatalog;
-        RecipeCatalog = configuration.RecipeCatalog;
-        BuildingCatalog = configuration.BuildingCatalog;
-        ItemCatalog = configuration.ItemCatalog;
-        SeasonParameters = configuration.SeasonParameters;
-    }
-
     public SimulationClock Clock { get; } = new();
 
     public ExplorationState Exploration { get; } = new();
 
-    public ResourceCatalog ResourceCatalog { get; }
+    public ResourceCatalog ResourceCatalog { get; } = configuration.ResourceCatalog;
 
-    public SkillCatalog SkillCatalog { get; }
+    public SkillCatalog SkillCatalog { get; } = configuration.SkillCatalog;
 
-    public RecipeCatalog RecipeCatalog { get; }
+    public RecipeCatalog RecipeCatalog { get; } = configuration.RecipeCatalog;
 
-    public BuildingCatalog BuildingCatalog { get; }
+    public BuildingCatalog BuildingCatalog { get; } = configuration.BuildingCatalog;
 
-    public ItemCatalog ItemCatalog { get; }
+    public ItemCatalog ItemCatalog { get; } = configuration.ItemCatalog;
 
-    public SeasonParameters SeasonParameters { get; }
+    public SeasonParameters SeasonParameters { get; } = configuration.SeasonParameters;
 
     public IReadOnlyList<Person> People => _people;
 

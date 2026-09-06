@@ -5,7 +5,7 @@ namespace ManyWinters.Godot;
 // Self-contained window chrome: drag the title bar to move it, click the fold button to
 // collapse the body away and leave just the title bar. Callers add their own content to
 // Body; this class only owns the frame around it.
-public partial class FloatingPanel : PanelContainer
+public partial class FloatingPanel(string title) : PanelContainer
 {
     private const float TitleBarHeight = 28f;
 
@@ -19,14 +19,8 @@ public partial class FloatingPanel : PanelContainer
     private bool _collapsed;
     private bool _dragging;
     private Vector2 _dragOffset;
-    private readonly string _title;
 
     public VBoxContainer Body { get; private set; } = null!;
-
-    public FloatingPanel(string title)
-    {
-        _title = title;
-    }
 
     public override void _Ready()
     {
@@ -45,7 +39,7 @@ public partial class FloatingPanel : PanelContainer
 
         var titleLabel = new Label
         {
-            Text = _title,
+            Text = title,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         titleBar.AddChild(titleLabel);
