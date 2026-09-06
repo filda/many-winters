@@ -25,8 +25,6 @@ public sealed class WorldPresenter
     // single biggest chunk of the game's startup time. Kept here until its own cell is explored
     // (see RefreshExploration), then created for real exactly like any other node.
     private readonly Dictionary<ResourceNodeId, ResourceNode> _pendingResourceNodes = new();
-    private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
-    private readonly Dictionary<GraveId, GraveView> _graveViews = new();
 
     public WorldPresenter(
         Node3D container,
@@ -35,14 +33,14 @@ public sealed class WorldPresenter
         Action<ResourceNodeId> onResourceNodeSelected,
         Action<GraveId> onGraveSelected,
         CollisionObject3D.InputEventEventHandler onMissedClick,
-        Func<float, float, float>? sampleHeight = null)
+        Func<float, float, float> sampleHeight)
     {
         _container = container;
         _onPersonClicked = onPersonClicked;
         _onResourceNodeSelected = onResourceNodeSelected;
         _onGraveSelected = onGraveSelected;
         _onMissedClick = onMissedClick;
-        _sampleHeight = sampleHeight ?? ((x, z) => 0f);
+        _sampleHeight = sampleHeight;
         _resourceCatalog = world.ResourceCatalog;
         _exploration = world.Exploration;
 
@@ -201,7 +199,6 @@ public sealed class WorldPresenter
             Position = ToVector3(building.Position, BuildingView.Size / 2f),
         };
         _container.AddChild(view);
-        _buildingViews[building.Id] = view;
     }
 
     private void CreateGraveView(Grave grave)
@@ -211,7 +208,6 @@ public sealed class WorldPresenter
             Position = ToVector3(grave.Position, GraveView.Size / 2f),
         };
         _container.AddChild(view);
-        _graveViews[grave.Id] = view;
     }
 
     // Position is double (real-world meters, see docs/terrain-and-world-scale-architecture.md);
