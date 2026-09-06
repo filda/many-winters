@@ -14,6 +14,12 @@ public partial class StatusBar : PanelContainer
     private const float BarHeight = 48f;
     private const float NotificationSeconds = 4f;
 
+    // Engine.GetFramesPerSecond only changes once a second itself, so re-reading it a few
+    // times a second catches every new value without rewriting the label on every frame.
+    // The render monitors do change every frame, but at this cadence they still show what
+    // the current view costs without turning the label into a flicker of digits.
+    private const double PerformanceRefreshSeconds = 0.25;
+
     private const string HelpText =
         "WASD/arrows: pan camera. Q/E or right-drag: rotate. R/F or mouse wheel: zoom. " +
         "Page Up/Page Down or right-drag: tilt. T: toggle ortho/perspective.\n\n" +
@@ -23,7 +29,9 @@ public partial class StatusBar : PanelContainer
         "person).";
 
     private Label _notificationLabel = null!;
+    private Label _performanceLabel = null!;
     private Label _tickLabel = null!;
+    private double _sincePerformanceRefresh;
     private global::Godot.Timer _notificationTimer = null!;
 
     public override void _Ready()
@@ -51,6 +59,15 @@ public partial class StatusBar : PanelContainer
         };
         row.AddChild(_notificationLabel);
 
+        // Rendering cost is what the reveal-map toggle and the decoration-scale scene are
+        // most likely to run into, so the frame rate sits permanently next to the tick
+        // rather than behind a debug key - together with how many objects and draw calls
+        // the frame took, which is what says whether a low number is the scene's size or
+        // something else entirely.
+        _performanceLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
+        row.AddChild(_performanceLabel);
+        row.AddChild(new VSeparator());
+
         _tickLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
         row.AddChild(_tickLabel);
 
@@ -61,6 +78,22 @@ public partial class StatusBar : PanelContainer
         _notificationTimer = new global::Godot.Timer { WaitTime = NotificationSeconds, OneShot = true };
         _notificationTimer.Timeout += () => _notificationLabel.Text = string.Empty;
         AddChild(_notificationTimer);
+    }
+
+    public override void _Process(double delta)
+    {
+        _sincePerformanceRefresh += delta;
+        if (_sincePerformanceRefresh < PerformanceRefreshSeconds)
+        {
+            return;
+        }
+
+        _sincePerformanceRefresh = 0;
+        // Objects: instances the renderer actually drew this frame, after frustum culling
+        // - so the count reflects what the camera can see, not what exists in the scene.
+        var objects = Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame);
+        var drawCalls = Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame);
+        _performanceLabel.Text = $"FPS: {Engine.GetFramesPerSecond():0}  Objects: {objects:0}  Draw calls: {drawCalls:0}";
     }
 
     // Transient feedback ("select a person first", "too far away", ...) - separate from
