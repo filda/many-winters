@@ -208,8 +208,8 @@ public sealed class FogOfWarRenderer
             }
         }
 
-        var unexploredBlurred = BoxBlur(unexploredSharp, size);
-        var rememberedBlurred = BoxBlur(rememberedSharp, size);
+        var unexploredBlurred = BoxBlur.Blur(unexploredSharp, BlurRadiusTexels);
+        var rememberedBlurred = BoxBlur.Blur(rememberedSharp, BlurRadiusTexels);
 
         var exploredMask = new bool[size, size];
         for (var ty = 0; ty < size; ty++)
@@ -235,46 +235,5 @@ public sealed class FogOfWarRenderer
 
         _explorationTexture.Update(image);
         _distanceTexture.Update(distanceImage);
-    }
-
-    // Separable box blur (horizontal pass, then vertical) - simple and, at
-    // ExplorationTextureResolution^2 texels and a small fixed radius, cheap enough to redo
-    // every tick alongside the rest of this method. Samples past the texture's own edge clamp
-    // to the nearest real one rather than wrapping, matching the sampler's own repeat_disable.
-    private static float[,] BoxBlur(float[,] source, int size)
-    {
-        var horizontal = new float[size, size];
-        for (var y = 0; y < size; y++)
-        {
-            for (var x = 0; x < size; x++)
-            {
-                var sum = 0f;
-                for (var dx = -BlurRadiusTexels; dx <= BlurRadiusTexels; dx++)
-                {
-                    var sx = Math.Clamp(x + dx, 0, size - 1);
-                    sum += source[y, sx];
-                }
-
-                horizontal[y, x] = sum / ((2 * BlurRadiusTexels) + 1);
-            }
-        }
-
-        var result = new float[size, size];
-        for (var y = 0; y < size; y++)
-        {
-            for (var x = 0; x < size; x++)
-            {
-                var sum = 0f;
-                for (var dy = -BlurRadiusTexels; dy <= BlurRadiusTexels; dy++)
-                {
-                    var sy = Math.Clamp(y + dy, 0, size - 1);
-                    sum += horizontal[sy, x];
-                }
-
-                result[y, x] = sum / ((2 * BlurRadiusTexels) + 1);
-            }
-        }
-
-        return result;
     }
 }

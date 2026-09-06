@@ -210,7 +210,7 @@ public partial class PersonView : Area3D
         MouseExited += OnMouseExited;
     }
 
-    private static Color ModulateFor(Color desired) => new(
+    internal static Color ModulateFor(Color desired) => new(
         desired.R / NeutralRecolourableBase.R,
         desired.G / NeutralRecolourableBase.G,
         desired.B / NeutralRecolourableBase.B);

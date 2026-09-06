@@ -32,7 +32,7 @@ public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : 
         AddChild(BillboardSprite.Create(TexturePathFor(kind), Size, fallbackColor));
     }
 
-    private static string TexturePathFor(BuildingKindId kind)
+    internal static string TexturePathFor(BuildingKindId kind)
         => $"res://Content/buildings/{kind.Value}/{kind.Value}.png";
 
     private static Color ColorFor(BuildingKindId kind)

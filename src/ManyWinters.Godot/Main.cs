@@ -1090,14 +1090,14 @@ public partial class Main : Node3D
             $"Inventory: {inventory}";
     }
 
-    private static string TaskText(Person person) => person.Tasks.Current switch
+    internal static string TaskText(Person person) => person.Tasks.Current switch
     {
         MoveTask move => $"Walking to {move.Destination}",
         GatherTask gather => $"Gathering {gather.Target.Kind}",
         _ => "Idle",
     };
 
-    private static string GraveText(Grave grave)
+    internal static string GraveText(Grave grave)
     {
         if (!grave.IsMarked)
         {
@@ -1121,7 +1121,7 @@ public partial class Main : Node3D
             $"Known techniques: {techniques}";
     }
 
-    private static string ParentsText(string? motherName, string? fatherName)
+    internal static string ParentsText(string? motherName, string? fatherName)
     {
         if (motherName is null && fatherName is null)
         {

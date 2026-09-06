@@ -302,7 +302,7 @@ public partial class ResourceNodeView : Area3D
     // The true silhouette of a split tree is the union of its trunk's and canopy's own
     // visible extents - equivalent to what a single combined image's extent already was,
     // since the two are an exact partition of it (see split_trunk_canopy).
-    private static SpriteVisibleExtent.Extent CombineExtents(SpriteVisibleExtent.Extent a, SpriteVisibleExtent.Extent b)
+    internal static SpriteVisibleExtent.Extent CombineExtents(SpriteVisibleExtent.Extent a, SpriteVisibleExtent.Extent b)
     {
         var minX = Math.Min(a.CenterXOffset - (a.Width / 2f), b.CenterXOffset - (b.Width / 2f));
         var maxX = Math.Max(a.CenterXOffset + (a.Width / 2f), b.CenterXOffset + (b.Width / 2f));
@@ -390,13 +390,13 @@ public partial class ResourceNodeView : Area3D
 
     private string BranchesTexturePathFor() => VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
 
-    private static string InsertBeforeExtension(string path, string suffix)
+    internal static string InsertBeforeExtension(string path, string suffix)
     {
         var dot = path.LastIndexOf('.');
         return path[..dot] + suffix + path[dot..];
     }
 
-    private static string VariantSuffixed(string path, int variant) => variant == 0 ? path : InsertBeforeExtension(path, $"_v{variant}");
+    internal static string VariantSuffixed(string path, int variant) => variant == 0 ? path : InsertBeforeExtension(path, $"_v{variant}");
 
     // How many hand-authored trunk/canopy shape variants this kind actually has on disk,
     // starting from 1 (the original, unsuffixed asset - always assumed present once
