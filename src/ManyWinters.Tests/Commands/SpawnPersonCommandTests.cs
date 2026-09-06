@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Commands;
 
@@ -8,7 +9,7 @@ public class SpawnPersonCommandTests
     [Fact]
     public void ExecuteAddsAPersonAtTheGivenPosition()
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
 
         world.Execute(new SpawnPersonCommand("Ava", new Position(3, 4)));
 
@@ -20,7 +21,7 @@ public class SpawnPersonCommandTests
     [Fact]
     public void ExecuteWithAnInitialAgeBackdatesTheBirthTick()
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(1000);
 
         world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), InitialAgeTicks: 300));
@@ -32,7 +33,7 @@ public class SpawnPersonCommandTests
     [Fact]
     public void ExecuteWithoutAnInitialAgeUsesTheCurrentTickAsTheBirthTick()
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(1000);
 
         world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0)));
@@ -44,7 +45,7 @@ public class SpawnPersonCommandTests
     [Fact]
     public void ExecutingTwiceAddsTwoDistinctPeople()
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
 
         world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0)));
         world.Execute(new SpawnPersonCommand("Bran", new Position(1, 1)));

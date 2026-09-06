@@ -74,7 +74,7 @@ dotnet run --project src/ManyWinters.Tools/SimulationRunner
 dotnet test
 ```
 
-Every run of the tool starts a fresh, empty world — nothing persists between separate invocations unless you explicitly `save`/`load` it. Chain as many commands as you want into a single invocation, unquoted:
+Every run of the tool starts a fresh, empty world — nothing persists between separate invocations unless you explicitly `save`/`load` it. The world runs on the same content the game ships with, loaded from `src/ManyWinters.Godot/Content` relative to the working directory (so run it from the repository root, or point it elsewhere with `--content <dir>` as the first argument). Chain as many commands as you want into a single invocation, unquoted:
 
 ```powershell
 dotnet run --project src/ManyWinters.Tools/SimulationRunner -- generate create 100 simulate 1 print population

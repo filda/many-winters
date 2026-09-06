@@ -10,7 +10,17 @@ public sealed class SimulationScript
         "generate", "create", "simulate", "print", "save", "load",
     };
 
-    public WorldState World { get; private set; } = new();
+    // Every world this script ever holds - the one it starts with, a `generate`d one, a `load`ed
+    // one - runs on the same catalogs, the way the Godot game does with its Content folder.
+    private readonly WorldConfiguration _configuration;
+
+    public SimulationScript(WorldConfiguration configuration)
+    {
+        _configuration = configuration;
+        World = new WorldState(configuration);
+    }
+
+    public WorldState World { get; private set; }
 
     // Re-chunks unquoted shell argv (e.g. "create 2 simulate 100") back into individual commands by splitting at each verb.
     public static IReadOnlyList<string> SplitIntoCommands(IReadOnlyList<string> tokens)
@@ -60,7 +70,7 @@ public sealed class SimulationScript
         switch (parts[0].ToLowerInvariant())
         {
             case "generate":
-                World = new WorldState();
+                World = new WorldState(_configuration);
                 output.Add("Generated a new world.");
                 break;
 
@@ -107,7 +117,7 @@ public sealed class SimulationScript
                 break;
 
             case "load" when parts.Length > 1:
-                World = SaveGameService.Load(parts[1]);
+                World = SaveGameService.Load(parts[1], _configuration);
                 output.Add($"Loaded from {parts[1]}. Tick {World.Clock.CurrentTick}, {World.People.Count} people.");
                 break;
 

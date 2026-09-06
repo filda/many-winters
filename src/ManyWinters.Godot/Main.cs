@@ -101,14 +101,7 @@ public partial class Main : Node3D
 
     public override void _Ready()
     {
-        const string contentRoot = "res://Content";
-        var configuration = new WorldConfiguration(
-            ResourceCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/resources")),
-            SkillCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/skills")),
-            RecipeCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/recipes")),
-            BuildingCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/buildings")),
-            ItemCatalog.LoadFromJson(ContentFiles.ReadJsonTree($"{contentRoot}/items")),
-            SeasonParameters.Default);
+        var configuration = WorldConfiguration.LoadFromJson(catalog => ContentFiles.ReadJsonTree($"res://Content/{catalog}"));
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
         _campCenter = map.CampCenter;

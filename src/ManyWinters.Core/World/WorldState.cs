@@ -31,11 +31,6 @@ public sealed class WorldState
     private int _nextBuildingId = 1;
     private int _nextGraveId = 1;
 
-    public WorldState()
-        : this(WorldConfiguration.Empty)
-    {
-    }
-
     public WorldState(WorldConfiguration configuration)
     {
         ResourceCatalog = configuration.ResourceCatalog;

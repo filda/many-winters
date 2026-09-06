@@ -13,13 +13,10 @@ public class GatherCommandTests
         // (a berry patch grazed on the spot, a spring drunk from) is the one case where the
         // harvest relieves hunger directly rather than going into the backpack first.
         var grazing = new ResourceKindId("grazing");
-        var configuration = new WorldConfiguration(
-            new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
-            TestCatalogs.CreateSkillCatalog(),
-            TestCatalogs.CreateRecipeCatalog(),
-            TestCatalogs.CreateBuildingCatalog(),
-            TestCatalogs.CreateItemCatalog(),
-            SeasonParameters.Default);
+        var configuration = TestCatalogs.CreateConfiguration() with
+        {
+            ResourceCatalog = new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
+        };
         var world = new WorldState(configuration);
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -37,13 +34,10 @@ public class GatherCommandTests
     public void GatheringAResourceThatYieldsNoItemNeverDrivesHungerBelowZero()
     {
         var grazing = new ResourceKindId("grazing");
-        var configuration = new WorldConfiguration(
-            new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
-            TestCatalogs.CreateSkillCatalog(),
-            TestCatalogs.CreateRecipeCatalog(),
-            TestCatalogs.CreateBuildingCatalog(),
-            TestCatalogs.CreateItemCatalog(),
-            SeasonParameters.Default);
+        var configuration = TestCatalogs.CreateConfiguration() with
+        {
+            ResourceCatalog = new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
+        };
         var world = new WorldState(configuration);
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);

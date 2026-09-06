@@ -147,7 +147,7 @@ public static class TestCatalogs
         new ResourceDefinition(FallenLog, "Fallen Log", Woodcutting, WoodItem),
     });
 
-    public static SkillCatalog CreateSkillCatalog() => new(new[]
+    private static SkillCatalog CreateSkillCatalog() => new(new[]
     {
         new SkillDefinition(Foraging, "Foraging", BasicForaging, EfficientForaging),
         new SkillDefinition(MushroomForaging, "Mushroom Foraging", BasicMushroomForaging, EfficientMushroomForaging),
@@ -159,7 +159,7 @@ public static class TestCatalogs
         new SkillDefinition(Teaching, "Teaching", BasicTeaching, EfficientTeaching),
     });
 
-    public static RecipeCatalog CreateRecipeCatalog() => new(new[]
+    private static RecipeCatalog CreateRecipeCatalog() => new(new[]
     {
         new RecipeDefinition(Axe, WoodItem, AxeInputAmount),
         new RecipeDefinition(WarmClothing, WoodItem, WarmClothingInputAmount),
@@ -167,12 +167,12 @@ public static class TestCatalogs
         new RecipeDefinition(Bag, GrassItem, BagInputAmount),
     });
 
-    public static BuildingCatalog CreateBuildingCatalog() => new(new[]
+    private static BuildingCatalog CreateBuildingCatalog() => new(new[]
     {
         new BuildingDefinition(StorageHut, "Storage Hut", WoodItem, StorageHutInputAmount),
     });
 
-    public static ItemCatalog CreateItemCatalog() => new(new[]
+    private static ItemCatalog CreateItemCatalog() => new(new[]
     {
         new ItemDefinition(WarmClothing, "Warm Clothing", WarmClothingInsulation, WarmClothingWeight),
         new ItemDefinition(WoodItem, "Wood", Weight: ItemWeight),

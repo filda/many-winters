@@ -46,15 +46,12 @@ public class FellCommandTests
         // A definition that names a leftover kind but no amount would otherwise drop an empty
         // node on the spot - a nothing to walk to and gather nothing from.
         var hollow = new ResourceKindId("hollow_tree");
-        var configuration = new WorldConfiguration(
-            new ResourceCatalog([
+        var configuration = TestCatalogs.CreateConfiguration() with
+        {
+            ResourceCatalog = new ResourceCatalog([
                 new ResourceDefinition(hollow, "Hollow Tree", TestCatalogs.Foraging, CanFell: true, FellLeavesKind: TestCatalogs.Wood, FellLeavesAmount: 0f),
             ]),
-            TestCatalogs.CreateSkillCatalog(),
-            TestCatalogs.CreateRecipeCatalog(),
-            TestCatalogs.CreateBuildingCatalog(),
-            TestCatalogs.CreateItemCatalog(),
-            SeasonParameters.Default);
+        };
         var world = new WorldState(configuration);
         var person = world.AddPerson("Ava", new Position(3, 4));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -225,7 +222,7 @@ public class FellCommandTests
     [Fact]
     public void FellingAResourceWithNoFellLeavesKindLeavesNothingBehind()
     {
-        var world = new WorldState(WorldConfiguration.Empty with
+        var world = new WorldState(new WorldConfiguration
         {
             ResourceCatalog = new ResourceCatalog(new[]
             {

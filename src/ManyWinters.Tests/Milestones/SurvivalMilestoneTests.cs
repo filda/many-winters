@@ -64,7 +64,7 @@ public class SurvivalMilestoneTests
     [InlineData(20)]
     public void PeopleStarveWithoutAnyGathering(int populationSize)
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
         var people = new List<Person>();
         for (var i = 0; i < populationSize; i++)
         {

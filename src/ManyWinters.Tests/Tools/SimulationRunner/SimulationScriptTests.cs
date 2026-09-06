@@ -1,3 +1,4 @@
+using ManyWinters.Tests.TestSupport;
 using ManyWinters.Tools.SimulationRunner;
 
 namespace ManyWinters.Tests.Tools.SimulationRunner;
@@ -51,7 +52,7 @@ public class SimulationScriptTests
     [Fact]
     public void CreateTwoViaUnquotedArgvActuallyCreatesTwoPeople()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(SimulationScript.SplitIntoCommands(["create", "2"]));
 
@@ -62,7 +63,7 @@ public class SimulationScriptTests
     [Fact]
     public void StartsWithAFreshEmptyWorld()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         Assert.Empty(script.World.People);
         Assert.Equal(0, script.World.Clock.CurrentTick);
@@ -71,7 +72,7 @@ public class SimulationScriptTests
     [Fact]
     public void CreateAddsPeopleAndReportsPopulation()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["create 3"]);
 
@@ -82,7 +83,7 @@ public class SimulationScriptTests
     [Fact]
     public void CreateWithoutAValidCountReportsUsageAndAddsNoOne()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["create banana"]);
 
@@ -93,7 +94,7 @@ public class SimulationScriptTests
     [Fact]
     public void SimulateAdvancesTheClock()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["simulate 5"]);
 
@@ -104,7 +105,7 @@ public class SimulationScriptTests
     [Fact]
     public void CreateWithoutACountArgumentReportsUsage()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["create"]);
 
@@ -115,7 +116,7 @@ public class SimulationScriptTests
     [Fact]
     public void SimulateWithoutAValidTickCountReportsUsage()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["simulate banana"]);
 
@@ -126,7 +127,7 @@ public class SimulationScriptTests
     [Fact]
     public void SimulateWithoutATickCountArgumentReportsUsage()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["simulate"]);
 
@@ -137,7 +138,7 @@ public class SimulationScriptTests
     [Fact]
     public void BlankCommandProducesNoOutput()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["   "]);
 
@@ -147,7 +148,7 @@ public class SimulationScriptTests
     [Fact]
     public void GenerateReplacesTheCurrentWorld()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
         script.Run(["create 2", "simulate 5"]);
 
         var output = script.Run(["generate"]);
@@ -160,7 +161,7 @@ public class SimulationScriptTests
     [Fact]
     public void PrintPopulationListsEveryPerson()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
         script.Run(["create 2"]);
 
         var output = script.Run(["print population"]);
@@ -173,7 +174,7 @@ public class SimulationScriptTests
     [Fact]
     public void SimulatingLongEnoughStarvesPeopleToDeath()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
         script.Run(["create 1", "simulate 100"]);
 
         var output = script.Run(["print population"]);
@@ -185,7 +186,7 @@ public class SimulationScriptTests
     [Fact]
     public void PrintPopulationMarksOnlyDeadPeopleAndLeavesLivingLinesUnsuffixed()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
         script.Run(["create 1"]);
         script.Run(["simulate 60"]);
         script.Run(["create 1"]);
@@ -202,7 +203,7 @@ public class SimulationScriptTests
     [Fact]
     public void UnknownCommandIsReportedAndDoesNotThrow()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["fly to the moon"]);
 
@@ -212,7 +213,7 @@ public class SimulationScriptTests
     [Fact]
     public void PrintWithoutPopulationArgumentIsUnknownCommand()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["print"]);
 
@@ -222,7 +223,7 @@ public class SimulationScriptTests
     [Fact]
     public void SaveWithoutAPathIsUnknownCommand()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["save"]);
 
@@ -232,7 +233,7 @@ public class SimulationScriptTests
     [Fact]
     public void LoadWithoutAPathIsUnknownCommand()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
 
         var output = script.Run(["load"]);
 
@@ -242,7 +243,7 @@ public class SimulationScriptTests
     [Fact]
     public void SaveThenLoadRoundTripsThroughCommands()
     {
-        var script = new SimulationScript();
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
         script.Run(["create 2", "simulate 7"]);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-scripttest-{Guid.NewGuid():N}.json");
@@ -251,7 +252,7 @@ public class SimulationScriptTests
             var saveOutput = script.Run([$"save {path}"]);
             Assert.Contains($"Saved to {path}.", saveOutput);
 
-            var freshScript = new SimulationScript();
+            var freshScript = new SimulationScript(TestCatalogs.CreateConfiguration());
             var loadOutput = freshScript.Run([$"load {path}"]);
 
             Assert.Equal(7, freshScript.World.Clock.CurrentTick);

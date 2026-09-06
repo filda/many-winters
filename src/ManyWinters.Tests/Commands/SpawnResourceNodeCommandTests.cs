@@ -9,7 +9,7 @@ public class SpawnResourceNodeCommandTests
     [Fact]
     public void ExecuteAddsAResourceNodeWithTheGivenKindPositionAndAmount()
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
 
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(3, 4), 50f));
 
@@ -22,7 +22,7 @@ public class SpawnResourceNodeCommandTests
     [Fact]
     public void ExecutingTwiceAddsTwoDistinctNodes()
     {
-        var world = new WorldState();
+        var world = TestCatalogs.CreateWorld();
 
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(0, 0), 10f));
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(1, 1), 10f));

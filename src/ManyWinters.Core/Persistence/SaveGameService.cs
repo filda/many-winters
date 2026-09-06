@@ -90,9 +90,9 @@ public static class SaveGameService
             exploredCells);
     }
 
-    private static WorldState FromSaveData(SaveData data, WorldConfiguration? configuration = null)
+    private static WorldState FromSaveData(SaveData data, WorldConfiguration configuration)
     {
-        var world = new WorldState(configuration ?? WorldConfiguration.Empty);
+        var world = new WorldState(configuration);
         world.Clock.Advance(data.Tick);
 
         foreach (var personData in data.People)
@@ -199,7 +199,9 @@ public static class SaveGameService
         File.WriteAllText(path, json);
     }
 
-    public static WorldState Load(string path, WorldConfiguration? configuration = null)
+    // A save carries no catalogs of its own (see SaveData) - the configuration is what
+    // turns the restored ids back into something the world can act on.
+    public static WorldState Load(string path, WorldConfiguration configuration)
     {
         var json = File.ReadAllText(path);
         var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
