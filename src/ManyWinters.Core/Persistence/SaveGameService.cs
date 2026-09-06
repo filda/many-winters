@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 13;
+    private const int CurrentVersion = 14;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -18,25 +18,8 @@ public static class SaveGameService
 
     private static SaveData ToSaveData(WorldState world)
     {
-        var people = world.People
-            .Select(person => new PersonSaveData(
-                person.Id.Value,
-                person.Name,
-                person.Position.X,
-                person.Position.Y,
-                person.IsAlive,
-                person.Needs.Hunger,
-                person.Needs.Fatigue,
-                person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
-                person.KnownTechniques.ToList(),
-                person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
-                person.BirthTick,
-                person.DeathTick,
-                person.CauseOfDeath,
-                person.IsBuried,
-                person.MotherId?.Value,
-                person.FatherId?.Value))
-            .ToList();
+        var people = world.People.Select(ToPersonSaveData).ToList();
+        var forebears = world.Forebears.Select(ToPersonSaveData).ToList();
 
         var resourceNodes = world.ResourceNodes
             .Select(node => new ResourceNodeSaveData(
@@ -81,6 +64,7 @@ public static class SaveGameService
             world.Clock.CurrentTick,
             world.NextPersonId.Value,
             people,
+            forebears,
             world.NextResourceNodeId.Value,
             resourceNodes,
             world.NextBuildingId.Value,
@@ -90,44 +74,41 @@ public static class SaveGameService
             exploredCells);
     }
 
+    private static PersonSaveData ToPersonSaveData(Person person) => new(
+        person.Id.Value,
+        person.Name,
+        person.Position.X,
+        person.Position.Y,
+        person.IsAlive,
+        person.Needs.Hunger,
+        person.Needs.Fatigue,
+        person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
+        person.KnownTechniques.ToList(),
+        person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
+        person.BirthTick,
+        person.DeathTick,
+        person.CauseOfDeath,
+        person.IsBuried,
+        person.Mother.Id.Value,
+        person.Father.Id.Value);
+
     private static WorldState FromSaveData(SaveData data, WorldConfiguration configuration)
     {
         var world = new WorldState(configuration);
         world.Clock.Advance(data.Tick);
 
+        // A person is built around its parents (see Person.Mother), so they have to be back
+        // before the child is. Forebears first (nobody's child but Unknown's), then people in
+        // save order: a parent always has a lower id than its child and was saved before it.
+        var peopleById = new Dictionary<int, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
+        foreach (var forebearData in data.Forebears)
+        {
+            world.RestoreForebear(RestorePerson(forebearData, peopleById));
+        }
+
         foreach (var personData in data.People)
         {
-            var person = new Person
-            {
-                Id = new PersonId(personData.Id),
-                Name = personData.Name,
-                Position = new Position(personData.PositionX, personData.PositionY),
-                IsAlive = personData.IsAlive,
-                BirthTick = personData.BirthTick,
-                DeathTick = personData.DeathTick,
-                CauseOfDeath = personData.CauseOfDeath,
-                IsBuried = personData.IsBuried,
-                MotherId = personData.MotherId is { } motherId ? new PersonId(motherId) : null,
-                FatherId = personData.FatherId is { } fatherId ? new PersonId(fatherId) : null,
-            };
-            person.Needs.Hunger = personData.Hunger;
-            person.Needs.Fatigue = personData.Fatigue;
-            foreach (var skillData in personData.Skills)
-            {
-                person.Skills.Increase(skillData.Type, skillData.Level);
-            }
-
-            foreach (var technique in personData.KnownTechniques)
-            {
-                person.KnownTechniques.Add(technique);
-            }
-
-            foreach (var stack in personData.Inventory)
-            {
-                person.Inventory.Add(stack.Kind, stack.Count);
-            }
-
-            world.RestorePerson(person);
+            world.RestorePerson(RestorePerson(personData, peopleById));
         }
 
         world.SetNextPersonId(data.NextPersonId);
@@ -192,6 +173,47 @@ public static class SaveGameService
 
         return world;
     }
+
+    private static Person RestorePerson(PersonSaveData personData, Dictionary<int, Person> peopleById)
+    {
+        var person = new Person
+        {
+            Id = new PersonId(personData.Id),
+            Name = personData.Name,
+            Position = new Position(personData.PositionX, personData.PositionY),
+            IsAlive = personData.IsAlive,
+            BirthTick = personData.BirthTick,
+            DeathTick = personData.DeathTick,
+            CauseOfDeath = personData.CauseOfDeath,
+            IsBuried = personData.IsBuried,
+            Mother = ParentById(personData.MotherId, peopleById),
+            Father = ParentById(personData.FatherId, peopleById),
+        };
+        person.Needs.Hunger = personData.Hunger;
+        person.Needs.Fatigue = personData.Fatigue;
+        foreach (var skillData in personData.Skills)
+        {
+            person.Skills.Increase(skillData.Type, skillData.Level);
+        }
+
+        foreach (var technique in personData.KnownTechniques)
+        {
+            person.KnownTechniques.Add(technique);
+        }
+
+        foreach (var stack in personData.Inventory)
+        {
+            person.Inventory.Add(stack.Kind, stack.Count);
+        }
+
+        peopleById[personData.Id] = person;
+        return person;
+    }
+
+    private static Person ParentById(int id, Dictionary<int, Person> peopleById) =>
+        peopleById.TryGetValue(id, out var parent)
+            ? parent
+            : throw new InvalidDataException($"Save refers to person {id} as a parent before (or without) saving that person.");
 
     public static void Save(WorldState world, string path)
     {

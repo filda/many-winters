@@ -7,7 +7,7 @@ namespace ManyWinters.Tests.Tasks;
 public class MoveTaskTests
 {
     private static Person NewPerson(Position position) =>
-        new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position };
+        new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown };
 
     [Fact]
     public void DestinationExposesTheGivenDestination()

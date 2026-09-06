@@ -11,6 +11,7 @@ public sealed record SaveData(
     long Tick,
     int NextPersonId,
     IReadOnlyList<PersonSaveData> People,
+    IReadOnlyList<PersonSaveData> Forebears,
     int NextResourceNodeId,
     IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
     int NextBuildingId,
@@ -34,8 +35,10 @@ public sealed record PersonSaveData(
     long? DeathTick,
     DeathCause? CauseOfDeath,
     bool IsBuried,
-    int? MotherId,
-    int? FatherId);
+    // 0 is Person.Unknown - the only id a Person can carry without being in People or
+    // Forebears (see Person.Unknown).
+    int MotherId,
+    int FatherId);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 

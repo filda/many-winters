@@ -1,4 +1,5 @@
 using ManyWinters.Core.Maps;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -27,14 +28,16 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultPopulatesTheWorldWithFifteenPeopleAsANamedList()
+    public void LoadDefaultPopulatesTheWorldWithFifteenPeopleParentsBeforeChildren()
     {
         var map = LoadDefault();
 
+        // PersonNames.Pool order, except that a parent is always spawned before their child
+        // (Sela and Bran before Ava, Liska before Mira, ...) - see MapLoader.SpawnStartingCrowd.
         var expectedNames = new[]
         {
-            "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
-            "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
+            "Sela", "Bran", "Ava", "Tora", "Kael", "Liska", "Mira", "Ivy",
+            "Bodin", "Doran", "Faro", "Rask", "Yara", "Corin", "Vessa",
         };
 
         Assert.Equal(15, map.World.People.Count);
@@ -79,9 +82,15 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
+        var names = new[]
+        {
+            "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
+            "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
+        };
         var expectedAges = new long[] { 2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5 };
+        var byName = map.World.People.ToDictionary(p => p.Name);
 
-        Assert.Equal(expectedAges, map.World.People.Select(p => map.World.AgeInYears(p)));
+        Assert.Equal(expectedAges, names.Select(name => map.World.AgeInYears(byName[name])));
     }
 
     [Fact]
@@ -90,33 +99,75 @@ public class MapLoaderTests
         var map = LoadDefault();
         var byName = map.World.People.ToDictionary(p => p.Name);
 
-        Assert.Equal(byName["Sela"].Id, byName["Ava"].MotherId);
-        Assert.Equal(byName["Bran"].Id, byName["Ava"].FatherId);
-        Assert.Equal(byName["Sela"].Id, byName["Faro"].MotherId);
-        Assert.Equal(byName["Bran"].Id, byName["Faro"].FatherId);
+        Assert.Same(byName["Sela"], byName["Ava"].Mother);
+        Assert.Same(byName["Bran"], byName["Ava"].Father);
+        Assert.Same(byName["Sela"], byName["Faro"].Mother);
+        Assert.Same(byName["Bran"], byName["Faro"].Father);
 
-        Assert.Equal(byName["Tora"].Id, byName["Mira"].MotherId);
-        Assert.Equal(byName["Liska"].Id, byName["Mira"].FatherId);
-        Assert.Equal(byName["Tora"].Id, byName["Vessa"].MotherId);
-        Assert.Equal(byName["Liska"].Id, byName["Vessa"].FatherId);
+        Assert.Same(byName["Tora"], byName["Mira"].Mother);
+        Assert.Same(byName["Liska"], byName["Mira"].Father);
+        Assert.Same(byName["Tora"], byName["Vessa"].Mother);
+        Assert.Same(byName["Liska"], byName["Vessa"].Father);
 
-        Assert.Equal(byName["Ivy"].Id, byName["Doran"].MotherId);
-        Assert.Equal(byName["Bodin"].Id, byName["Doran"].FatherId);
-        Assert.Equal(byName["Ivy"].Id, byName["Corin"].MotherId);
-        Assert.Equal(byName["Bodin"].Id, byName["Corin"].FatherId);
+        Assert.Same(byName["Ivy"], byName["Doran"].Mother);
+        Assert.Same(byName["Bodin"], byName["Doran"].Father);
+        Assert.Same(byName["Ivy"], byName["Corin"].Mother);
+        Assert.Same(byName["Bodin"], byName["Corin"].Father);
     }
 
     [Fact]
-    public void LoadDefaultLeavesSomeStartingPeopleWithNoRecordedParents()
+    public void LoadDefaultGivesStartingPeopleWithoutRecordedParentsDeadForebearsInsteadOfUnknown()
     {
         var map = LoadDefault();
         var byName = map.World.People.ToDictionary(p => p.Name);
 
-        foreach (var name in new[] { "Kael", "Rask", "Yara" })
+        foreach (var name in new[] { "Kael", "Rask", "Yara", "Sela", "Bran" })
         {
-            Assert.Null(byName[name].MotherId);
-            Assert.Null(byName[name].FatherId);
+            foreach (var parent in new[] { byName[name].Mother, byName[name].Father })
+            {
+                Assert.Contains(parent, map.World.Forebears);
+                Assert.DoesNotContain(parent, map.World.People);
+                Assert.False(parent.IsAlive);
+                Assert.True(parent.IsBuried);
+                Assert.Equal(DeathCause.OldAge, parent.CauseOfDeath);
+                Assert.Same(Person.Unknown, parent.Mother);
+                Assert.Same(Person.Unknown, parent.Father);
+            }
         }
+    }
+
+    [Fact]
+    public void LoadDefaultGivesEveryForebearADistinctNameFromADifferentPoolThanTheLivingCrowd()
+    {
+        var map = LoadDefault();
+
+        var forebearNames = map.World.Forebears.Select(f => f.Name).ToList();
+        Assert.Equal(18, forebearNames.Count);
+        Assert.Equal(forebearNames.Count, forebearNames.Distinct().Count());
+        Assert.Empty(forebearNames.Intersect(map.World.People.Select(p => p.Name)));
+    }
+
+    [Fact]
+    public void LoadDefaultForebearsDiedOfOldAgeBeforeTheStoryBegan()
+    {
+        var map = LoadDefault();
+        var rules = map.World.Configuration.Rules;
+
+        Assert.All(map.World.Forebears, forebear =>
+        {
+            Assert.Equal(-rules.TicksPerYear, forebear.DeathTick);
+            Assert.Equal(rules.MaxLifespanYears, map.World.AgeInYearsAt(forebear, forebear.DeathTick!.Value));
+        });
+    }
+
+    [Fact]
+    public void LoadDefaultGivesForebearsAndPeopleIdsFromOneSequenceWithoutCollisions()
+    {
+        var map = LoadDefault();
+
+        var ids = map.World.People.Concat(map.World.Forebears).Select(p => p.Id).ToList();
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+        Assert.DoesNotContain(Person.Unknown.Id, ids);
     }
 
     [Fact]
@@ -214,11 +265,15 @@ public class MapLoaderTests
             (8.587093795870151, 249.816741228071),
         };
 
-        Assert.Equal(expected.Length, map.World.People.Count);
+        // In PersonNames.Pool order - positions are drawn per name before anyone is spawned,
+        // so who stands where doesn't shift with the parents-first spawn order.
+        var byName = map.World.People.ToDictionary(p => p.Name);
+        Assert.Equal(expected.Length, byName.Count);
         for (var i = 0; i < expected.Length; i++)
         {
-            Assert.Equal(expected[i].Item1, map.World.People[i].Position.X, 6);
-            Assert.Equal(expected[i].Item2, map.World.People[i].Position.Y, 6);
+            var position = byName[PersonNames.Pool[i]].Position;
+            Assert.Equal(expected[i].Item1, position.X, 6);
+            Assert.Equal(expected[i].Item2, position.Y, 6);
         }
     }
 

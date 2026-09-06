@@ -10,4 +10,13 @@ public static class PersonNames
         "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
         "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
     ];
+
+    // Names for the starting crowd's dead parents (see MapLoader and WorldState.Forebears) -
+    // deliberately disjoint from Pool, so "child of Orla and Hesk" on a grave can never be
+    // mistaken for a couple still walking around camp.
+    public static readonly string[] Forebears =
+    [
+        "Orla", "Hesk", "Maren", "Tovin", "Enna", "Garrod", "Wyn", "Brannoc", "Ilse",
+        "Rurik", "Saoirse", "Kellan", "Nessa", "Aldric", "Freya", "Osric", "Tamsin", "Wulf",
+    ];
 }

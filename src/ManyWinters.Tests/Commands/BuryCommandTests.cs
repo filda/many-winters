@@ -57,7 +57,7 @@ public class BuryCommandTests
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
         var mother = world.SpawnPerson("Sela", new Position(0, 0));
         var father = world.SpawnPerson("Doran", new Position(0, 0));
-        var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), mother: mother, father: father);
         deceased.IsAlive = false;
         deceased.CauseOfDeath = DeathCause.OldAge;
 
@@ -70,8 +70,10 @@ public class BuryCommandTests
     }
 
     [Fact]
-    public void BuryingWithTheTechniqueLeavesParentNamesNullWhenNoneAreRecorded()
+    public void BuryingWithTheTechniqueNamesUnrememberedParentsAsUnknown()
     {
+        // No null to check: a person nobody remembers the parents of has Person.Unknown for
+        // both (see Person.Mother), and that is what the grave records.
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
@@ -82,28 +84,24 @@ public class BuryCommandTests
 
         var grave = Assert.Single(world.Graves);
         Assert.Null(grave.CauseOfDeath);
-        Assert.Null(grave.MotherName);
-        Assert.Null(grave.FatherName);
+        Assert.Equal(Person.Unknown.Name, grave.MotherName);
+        Assert.Equal(Person.Unknown.Name, grave.FatherName);
     }
 
     [Fact]
-    public void BuryingWithTheTechniqueLeavesParentNamesNullWhenTheRecordedParentIdDoesNotExist()
+    public void BuryingWithTheTechniqueNamesAForebearParentWhoWasNeverInTheWorldsPeople()
     {
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        var deceased = world.SpawnPerson(
-            "Ava",
-            new Position(1, 1),
-            motherId: new PersonId(999),
-            fatherId: new PersonId(998));
+        var forebear = world.SpawnForebear("Orla");
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), mother: forebear);
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson, deceased));
 
         var grave = Assert.Single(world.Graves);
-        Assert.Null(grave.MotherName);
-        Assert.Null(grave.FatherName);
+        Assert.Equal("Orla", grave.MotherName);
     }
 
     [Fact]
@@ -114,7 +112,7 @@ public class BuryCommandTests
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
         var mother = world.SpawnPerson("Sela", new Position(0, 0));
         mother.IsAlive = false;
-        var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id);
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), mother: mother);
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson, deceased));
@@ -130,7 +128,7 @@ public class BuryCommandTests
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         var mother = world.SpawnPerson("Sela", new Position(0, 0));
         var father = world.SpawnPerson("Doran", new Position(0, 0));
-        var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), mother: mother, father: father);
         deceased.IsAlive = false;
         deceased.CauseOfDeath = DeathCause.Hunger;
 

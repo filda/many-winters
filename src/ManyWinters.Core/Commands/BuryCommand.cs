@@ -28,8 +28,6 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
 
         var deathTick = Deceased.DeathTick ?? world.Clock.CurrentTick;
         var ageAtDeath = (int)world.AgeInYearsAt(Deceased, deathTick);
-        var mother = Deceased.MotherId is { } motherId ? world.People.FirstOrDefault(p => p.Id == motherId) : null;
-        var father = Deceased.FatherId is { } fatherId ? world.People.FirstOrDefault(p => p.Id == fatherId) : null;
 
         world.AddGrave(new Grave
         {
@@ -39,8 +37,8 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
             Name = isMarked ? Deceased.Name : null,
             AgeAtDeath = isMarked ? ageAtDeath : null,
             CauseOfDeath = isMarked ? Deceased.CauseOfDeath : null,
-            MotherName = isMarked ? mother?.Name : null,
-            FatherName = isMarked ? father?.Name : null,
+            MotherName = isMarked ? Deceased.Mother.Name : null,
+            FatherName = isMarked ? Deceased.Father.Name : null,
             KnownTechniques = isMarked ? Deceased.KnownTechniques.ToList() : [],
         });
 

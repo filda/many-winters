@@ -125,17 +125,7 @@ public static class MapLoader
     {
         var world = new WorldState(configuration);
 
-        var rng = new Random(CrowdPlacementSeed);
-        var placedPositions = new List<Position>();
-        for (var i = 0; i < 15; i++)
-        {
-            var position = NextCrowdPosition(rng, placedPositions);
-            placedPositions.Add(position);
-            var initialAgeTicks = StartingAgesInWinters[i] * configuration.Rules.TicksPerYear;
-            var motherId = StartingMotherIndex[i] is { } motherIndex ? new PersonId(motherIndex + 1) : (PersonId?)null;
-            var fatherId = StartingFatherIndex[i] is { } fatherIndex ? new PersonId(fatherIndex + 1) : (PersonId?)null;
-            world.Execute(new SpawnPersonCommand(PersonNames.Pool[i], position, initialAgeTicks, motherId, fatherId));
-        }
+        SpawnStartingCrowd(world);
 
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("apple"), Offset(-6f, 5f), 200f));
         world.Execute(new SpawnResourceNodeCommand(new ResourceKindId("pear"), Offset(0f, -5f), 200f));
@@ -148,6 +138,74 @@ public static class MapLoader
         ScatterDecorations(world);
 
         return new LoadedMap(world, CampCenter);
+    }
+
+    // Parents before children: a Person is built around its Mother and Father (see
+    // Person.Mother), so a child whose parent sits later in the arrays above has to wait for
+    // that parent to exist first - hence the recursion, rather than one pass in array order.
+    // Positions are still drawn in array order first, so who stands where doesn't depend on
+    // who happens to be whose parent. A starting person with no parent recorded gets a
+    // forebear instead (see SpawnForebear) - never Person.Unknown directly, so every grave in
+    // camp can name real parents.
+    private static void SpawnStartingCrowd(WorldState world)
+    {
+        var rules = world.Configuration.Rules;
+        var rng = new Random(CrowdPlacementSeed);
+        var positions = new List<Position>();
+        for (var i = 0; i < StartingAgesInWinters.Length; i++)
+        {
+            positions.Add(NextCrowdPosition(rng, positions));
+        }
+
+        var spawned = new Dictionary<int, Person>();
+        var nextForebearName = 0;
+
+        Person SpawnForebear()
+        {
+            // Died the winter before the story began, after a full life - old enough to have
+            // raised anyone in the starting crowd, gone for long enough that nobody expects to
+            // find them lying around camp.
+            var deathTick = -rules.TicksPerYear;
+            var forebear = new Person
+            {
+                Id = world.NextPersonId,
+                Name = PersonNames.Forebears[nextForebearName++],
+                BirthTick = deathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
+                IsAlive = false,
+                DeathTick = deathTick,
+                CauseOfDeath = DeathCause.OldAge,
+                IsBuried = true,
+                Mother = Person.Unknown,
+                Father = Person.Unknown,
+            };
+
+            world.AddForebear(forebear);
+            return forebear;
+        }
+
+        Person SpawnStarting(int index)
+        {
+            if (spawned.TryGetValue(index, out var alreadySpawned))
+            {
+                return alreadySpawned;
+            }
+
+            var mother = StartingMotherIndex[index] is { } motherIndex ? SpawnStarting(motherIndex) : SpawnForebear();
+            var father = StartingFatherIndex[index] is { } fatherIndex ? SpawnStarting(fatherIndex) : SpawnForebear();
+            var initialAgeTicks = StartingAgesInWinters[index] * rules.TicksPerYear;
+            world.Execute(new SpawnPersonCommand(PersonNames.Pool[index], positions[index], mother, father, initialAgeTicks));
+
+            // The command doesn't hand the person back (commands are plain data - see
+            // ICommand); the one it just added is the newest in People.
+            var person = world.People[^1];
+            spawned[index] = person;
+            return person;
+        }
+
+        for (var i = 0; i < StartingAgesInWinters.Length; i++)
+        {
+            SpawnStarting(i);
+        }
     }
 
     private static Position Offset(double x, double y) => new(CampCenter.X + x, CampCenter.Y + y);

@@ -88,7 +88,7 @@ public class SaveGameServiceTests
         var world = TestCatalogs.CreateWorld();
         var mother = world.SpawnPerson("Sela", new Position(0, 0));
         var father = world.SpawnPerson("Bran", new Position(0, 0));
-        var child = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        var child = world.SpawnPerson("Ava", new Position(1, 1), mother: mother, father: father);
         child.IsAlive = false;
         child.DeathTick = 10;
         child.CauseOfDeath = DeathCause.Hunger;
@@ -103,11 +103,41 @@ public class SaveGameServiceTests
             var restoredFather = restored.People.Single(p => p.Name == "Bran");
             var restoredChild = restored.People.Single(p => p.Name == "Ava");
 
-            Assert.Equal(restoredMother.Id, restoredChild.MotherId);
-            Assert.Equal(restoredFather.Id, restoredChild.FatherId);
+            Assert.Same(restoredMother, restoredChild.Mother);
+            Assert.Same(restoredFather, restoredChild.Father);
             Assert.Equal(DeathCause.Hunger, restoredChild.CauseOfDeath);
-            Assert.Null(restoredMother.MotherId);
-            Assert.Null(restoredMother.FatherId);
+            Assert.Same(Person.Unknown, restoredMother.Mother);
+            Assert.Same(Person.Unknown, restoredMother.Father);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void RoundTripPreservesForebearsAndTheChildrenWhoPointAtThem()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var forebear = world.SpawnForebear("Orla");
+        var child = world.SpawnPerson("Ava", new Position(1, 1), mother: forebear);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var restoredForebear = Assert.Single(restored.Forebears);
+            var restoredChild = Assert.Single(restored.People);
+            Assert.Equal(forebear.Id, restoredForebear.Id);
+            Assert.Equal("Orla", restoredForebear.Name);
+            Assert.False(restoredForebear.IsAlive);
+            Assert.Equal(forebear.DeathTick, restoredForebear.DeathTick);
+            Assert.Same(restoredForebear, restoredChild.Mother);
+            Assert.Same(Person.Unknown, restoredChild.Father);
+            Assert.Equal(child.Id, restoredChild.Id);
+            Assert.Equal(world.NextPersonId, restored.NextPersonId);
         }
         finally
         {

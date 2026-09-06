@@ -14,6 +14,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     private const float MinCondition = 0f;
 
     private readonly List<Person> _people = new();
+    private readonly List<Person> _forebears = new();
     private readonly List<ResourceNode> _resourceNodes = new();
     private readonly List<Building> _buildings = new();
     private readonly List<Grave> _graves = new();
@@ -31,6 +32,12 @@ public sealed class WorldState(WorldConfiguration configuration)
     public WorldConfiguration Configuration { get; } = configuration;
 
     public IReadOnlyList<Person> People => _people;
+
+    // People who died before the story began and only exist to be somebody's mother or father
+    // (see Person.Mother) - full Person objects with names and ids from the same sequence as
+    // everyone else, so a grave's "child of X" and a save file can refer to them like anyone,
+    // but never in People: nothing simulates, draws, counts or clicks them.
+    public IReadOnlyList<Person> Forebears => _forebears;
 
     public IReadOnlyList<ResourceNode> ResourceNodes => _resourceNodes;
 
@@ -70,6 +77,20 @@ public sealed class WorldState(WorldConfiguration configuration)
         _people.Add(person);
         PersonAdded?.Invoke(person);
         RefreshExploration();
+    }
+
+    // No PersonAdded, no exploration refresh - a forebear isn't on the map (see Forebears), so
+    // the presentation layer must never hear about one. Being dead is what makes it a forebear
+    // rather than a person; a living one would be a person hidden from the simulation.
+    public void AddForebear(Person forebear)
+    {
+        if (forebear.IsAlive)
+        {
+            throw new ArgumentException("A forebear died before the story began - a living person belongs in People.", nameof(forebear));
+        }
+
+        ClaimId(forebear.Id.Value, ref _nextPersonId, nameof(forebear));
+        _forebears.Add(forebear);
     }
 
     public void AddResourceNode(ResourceNode node)
@@ -577,6 +598,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));
 
     internal void RestorePerson(Person person) => _people.Add(person);
+
+    internal void RestoreForebear(Person forebear) => _forebears.Add(forebear);
 
     internal void SetNextPersonId(int value) => _nextPersonId = value;
 

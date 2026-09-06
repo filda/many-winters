@@ -16,8 +16,8 @@ public static class WorldStateSpawnExtensions
         string name,
         Position position,
         long initialAgeTicks = 0,
-        PersonId? motherId = null,
-        PersonId? fatherId = null)
+        Person? mother = null,
+        Person? father = null)
     {
         var person = new Person
         {
@@ -25,12 +25,32 @@ public static class WorldStateSpawnExtensions
             Name = name,
             Position = position,
             BirthTick = world.Clock.CurrentTick - initialAgeTicks,
-            MotherId = motherId,
-            FatherId = fatherId,
+            Mother = mother ?? Person.Unknown,
+            Father = father ?? Person.Unknown,
         };
 
         world.AddPerson(person);
         return person;
+    }
+
+    // A dead-before-the-story parent (see WorldState.Forebears) - born and dead before tick 0.
+    public static Person SpawnForebear(this WorldState world, string name)
+    {
+        var forebear = new Person
+        {
+            Id = world.NextPersonId,
+            Name = name,
+            BirthTick = -2000,
+            IsAlive = false,
+            DeathTick = -1000,
+            CauseOfDeath = DeathCause.OldAge,
+            IsBuried = true,
+            Mother = Person.Unknown,
+            Father = Person.Unknown,
+        };
+
+        world.AddForebear(forebear);
+        return forebear;
     }
 
     public static ResourceNode SpawnResourceNode(this WorldState world, ResourceKindId kind, Position position, float amount)

@@ -12,7 +12,7 @@ public class GatherTaskTests
     private static readonly float Reach = SimulationRules.Default.MaxInteractionDistance;
 
     private static Person NewPerson(Position position) =>
-        new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position };
+        new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown };
 
     private static ResourceNode NewTargetNode() =>
         new() { Id = new ResourceNodeId(1), Kind = new ResourceKindId("apple"), Position = Target };
