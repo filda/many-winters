@@ -31,6 +31,17 @@ public static class SpritePixelHit
     // hover flickering on and off. No other view animates its sprite's position like this.
     public static bool IsOpaqueAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null)
     {
+        // What the player can see through, they can click and hover through: a canopy
+        // ghosted by Main's occlusion fade counts as fully transparent here no matter what
+        // its texture says, so the click falls through (via HoverRescue) to whatever is
+        // visibly behind it - a mushroom, another person, or the ground. A tree's trunk is
+        // never faded (BillboardSprite.IsExcludedFromOcclusionFade), so it stays as solid to
+        // clicks as it looks.
+        if (BillboardSprite.IsOcclusionFaded(sprite))
+        {
+            return false;
+        }
+
         if (!TryGetUv(camera, rayHitPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition, out var uv))
         {
             return false;

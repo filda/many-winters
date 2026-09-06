@@ -28,9 +28,36 @@ public static class BillboardSprite
     // "every billboard eligible for occlusion fade".
     private static readonly HashSet<Sprite3D> _excludedFromOcclusionFade = new();
 
+    // Which billboards Main's occlusion fade is currently ghosting (drawn at
+    // PresentationSettings.OcclusionFadedAlpha because they stand between the camera and the
+    // selection). Kept here, not read back off each sprite's live Modulate alpha, for two
+    // reasons: SpritePixelHit has to know it - what the player can see through, they can
+    // click and hover through too, or a ghosted canopy keeps swallowing every click on the
+    // mushroom plainly visible behind it - and Modulate itself is unreliable as a record:
+    // ResourceNodeView/PersonView's hover tint rewrites it (alpha back to 1) on every
+    // hover-state change, with Main only re-applying the fade once per frame, so between the
+    // two a faded sprite briefly reads as solid.
+    private static readonly HashSet<Sprite3D> _occlusionFaded = new();
+
     public static IReadOnlyCollection<Sprite3D> LiveSprites => _liveSprites;
 
+    public static IReadOnlyCollection<Sprite3D> OcclusionFadedSprites => _occlusionFaded;
+
     public static bool IsExcludedFromOcclusionFade(Sprite3D sprite) => _excludedFromOcclusionFade.Contains(sprite);
+
+    public static bool IsOcclusionFaded(Sprite3D sprite) => _occlusionFaded.Contains(sprite);
+
+    public static void SetOcclusionFaded(Sprite3D sprite, bool faded)
+    {
+        if (faded)
+        {
+            _occlusionFaded.Add(sprite);
+        }
+        else
+        {
+            _occlusionFaded.Remove(sprite);
+        }
+    }
 
     // Creates a billboarded sprite whose on-screen height matches worldHeight. When the
     // texture is missing the sprite falls back to a flat quad tinted with fallbackColor, so
@@ -97,6 +124,7 @@ public static class BillboardSprite
         {
             _liveSprites.Remove(sprite);
             _excludedFromOcclusionFade.Remove(sprite);
+            _occlusionFaded.Remove(sprite);
         };
 
         return sprite;

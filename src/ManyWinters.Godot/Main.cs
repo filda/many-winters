@@ -44,7 +44,6 @@ public partial class Main : Node3D
 
     // Faded in/out every frame in UpdateOcclusionFade depending on whether each one
     // currently sits between the camera and the selection.
-    private readonly HashSet<Sprite3D> _fadedSprites = new();
 
     // A person walking to a resource node they were told to gather from, rather than one
     // already in range when the order was given. Resolved once they arrive (see
@@ -225,18 +224,20 @@ public partial class Main : Node3D
         // whatever's currently occluding - easy to hit for a big nearby canopy that already
         // fills much of the screen (docs/Screenshot 2026-09-01 223350.png). Cheap either
         // way - the occluding set is a handful of sprites, never the whole scene.
+        // The faded set lives in BillboardSprite, not here, because picking has to consult
+        // it too (see BillboardSprite.OcclusionFadedSprites' doc comment) - this is still
+        // the only place that decides what goes in and out of it.
         foreach (var sprite in occluding)
         {
-            _fadedSprites.Add(sprite);
+            BillboardSprite.SetOcclusionFaded(sprite, true);
             SetSpriteAlpha(sprite, _presentation.OcclusionFadedAlpha);
         }
 
-        _fadedSprites.RemoveWhere(sprite =>
+        // Materialized first: un-fading mutates the very set being walked.
+        var noLongerOccluding = BillboardSprite.OcclusionFadedSprites.Where(sprite => !occluding.Contains(sprite)).ToList();
+        foreach (var sprite in noLongerOccluding)
         {
-            if (occluding.Contains(sprite))
-            {
-                return false;
-            }
+            BillboardSprite.SetOcclusionFaded(sprite, false);
 
             // A faded sprite's owning view can be freed out from under this tracking set
             // between frames (e.g. a corpse mid-fade gets buried and its PersonView -
@@ -249,9 +250,7 @@ public partial class Main : Node3D
             {
                 SetSpriteAlpha(sprite, 1f);
             }
-
-            return true;
-        });
+        }
     }
 
     // Iterates BillboardSprite.LiveSprites (every billboard that currently exists, self
