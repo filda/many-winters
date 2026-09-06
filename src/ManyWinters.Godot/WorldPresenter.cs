@@ -9,7 +9,7 @@ namespace ManyWinters.Godot;
 public sealed class WorldPresenter
 {
     private readonly Node3D _container;
-    private readonly Action<PersonId, MouseButton> _onPersonClicked;
+    private readonly Action<Person, MouseButton> _onPersonClicked;
     private readonly Action<ResourceNodeId> _onResourceNodeSelected;
     private readonly Action<GraveId> _onGraveSelected;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
@@ -29,7 +29,7 @@ public sealed class WorldPresenter
     public WorldPresenter(
         Node3D container,
         WorldState world,
-        Action<PersonId, MouseButton> onPersonClicked,
+        Action<Person, MouseButton> onPersonClicked,
         Action<ResourceNodeId> onResourceNodeSelected,
         Action<GraveId> onGraveSelected,
         CollisionObject3D.InputEventEventHandler onMissedClick,
@@ -126,7 +126,7 @@ public sealed class WorldPresenter
 
     private void CreatePersonView(Person person)
     {
-        var view = new PersonView(person.Id, _onPersonClicked, _onMissedClick)
+        var view = new PersonView(person, _onPersonClicked, _onMissedClick)
         {
             Name = person.Name,
             Position = ToVector3(person.Position, PersonView.Height / 2f),

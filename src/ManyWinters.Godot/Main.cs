@@ -35,7 +35,10 @@ public partial class Main : Node3D
     private VBoxContainer _contextualActions = null!;
     private StatusBar _statusBar = null!;
     private TextureRect _selectionMarkerOverlay = null!;
-    private PersonId? _selectedPersonId;
+    // The selection is the Person itself, not an id - every command and every label wants the
+    // object, and the views hand it over on click (see PersonView), so there's never a lookup
+    // between "clicked" and "acted on".
+    private Person? _selectedPerson;
     private GraveId? _selectedGraveId;
     private double _tickAccumulator;
 
@@ -98,7 +101,7 @@ public partial class Main : Node3D
         }
 
         _tickAccumulator -= _pacing.TickIntervalSeconds;
-        if (FindSelectedPerson() is { } selectedPerson)
+        if (_selectedPerson is { } selectedPerson)
         {
             _world.Execute(new GrantIdleGraceCommand(selectedPerson, _pacing.SelectedPersonIdleGraceTicks));
         }
@@ -154,17 +157,17 @@ public partial class Main : Node3D
         // see PresentationSettings.PersonClickScreenRadius's own doc comment.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
             && GetViewport().GuiGetHoveredControl() is null
-            && FindNearestPersonOnScreen(mouseButton.Position) is { } personId)
+            && FindNearestPersonOnScreen(mouseButton.Position) is { } person)
         {
-            OnPersonClicked(personId, MouseButton.Left);
+            OnPersonClicked(person, MouseButton.Left);
             GetViewport().SetInputAsHandled();
         }
     }
 
-    private PersonId? FindNearestPersonOnScreen(Vector2 screenPosition)
+    private Person? FindNearestPersonOnScreen(Vector2 screenPosition)
     {
         var camera = _cameraRig.Camera;
-        PersonId? nearest = null;
+        Person? nearest = null;
         var nearestDistance = float.MaxValue;
 
         foreach (var person in _world.People)
@@ -179,7 +182,7 @@ public partial class Main : Node3D
             if (distance <= _presentation.PersonClickScreenRadius && distance < nearestDistance)
             {
                 nearestDistance = distance;
-                nearest = person.Id;
+                nearest = person;
             }
         }
 
@@ -262,10 +265,10 @@ public partial class Main : Node3D
 
         Vector3 targetPosition;
         Node? selectedPersonNode = null;
-        if (_selectedPersonId is { } personId && _presenter.GetPersonGlobalPosition(personId) is { } personPosition)
+        if (_selectedPerson is { } person && _presenter.GetPersonGlobalPosition(person.Id) is { } personPosition)
         {
             targetPosition = personPosition;
-            selectedPersonNode = _presenter.GetPersonNode(personId);
+            selectedPersonNode = _presenter.GetPersonNode(person.Id);
         }
         else
         {
@@ -340,9 +343,9 @@ public partial class Main : Node3D
     // anchors a plain Control on top of that one projected point.
     private void UpdateSelectionMarkerOverlay()
     {
-        if (_selectedPersonId is not { } personId
-            || _presenter.GetPersonGlobalPosition(personId) is not { } personPosition
-            || _presenter.GetPersonHeadHeightOffset(personId) is not { } headHeightOffset)
+        if (_selectedPerson is not { } person
+            || _presenter.GetPersonGlobalPosition(person.Id) is not { } personPosition
+            || _presenter.GetPersonHeadHeightOffset(person.Id) is not { } headHeightOffset)
         {
             _selectionMarkerOverlay.Visible = false;
             return;
@@ -535,7 +538,7 @@ public partial class Main : Node3D
 
     private void OnCraftButtonPressed()
     {
-        if (FindSelectedPerson() is not { } person)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
@@ -547,7 +550,7 @@ public partial class Main : Node3D
 
     private void OnCraftClothingButtonPressed()
     {
-        if (FindSelectedPerson() is not { } person)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
@@ -559,7 +562,7 @@ public partial class Main : Node3D
 
     private void OnCraftBasketButtonPressed()
     {
-        if (FindSelectedPerson() is not { } person)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
@@ -571,7 +574,7 @@ public partial class Main : Node3D
 
     private void OnCraftBagButtonPressed()
     {
-        if (FindSelectedPerson() is not { } person)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then craft.");
             return;
@@ -583,15 +586,9 @@ public partial class Main : Node3D
 
     private void OnBuildButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then build.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -603,15 +600,9 @@ public partial class Main : Node3D
 
     private void OnRepairButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then repair.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -635,15 +626,9 @@ public partial class Main : Node3D
 
     private void OnDepositButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then deposit.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -677,15 +662,9 @@ public partial class Main : Node3D
     {
         const int withdrawAmount = 20;
 
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then withdraw.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -717,15 +696,9 @@ public partial class Main : Node3D
 
     private void OnFellButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then fell.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -750,15 +723,9 @@ public partial class Main : Node3D
 
     private void OnBuryButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then bury.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -793,15 +760,9 @@ public partial class Main : Node3D
 
     private void OnLootButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then loot.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -836,15 +797,9 @@ public partial class Main : Node3D
     // kind that isn't food, so this is safe to call across the whole inventory.
     private void OnEatButtonPressed()
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then eat.");
-            return;
-        }
-
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
-        if (person is null)
-        {
             return;
         }
 
@@ -931,15 +886,15 @@ public partial class Main : Node3D
         return new Position(near.X + ((GD.Randf() - 0.5f) * spread), near.Y + ((GD.Randf() - 0.5f) * spread));
     }
 
-    private void OnPersonClicked(PersonId id, MouseButton button)
+    private void OnPersonClicked(Person person, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
-            TeachFromSelectedPersonTo(id);
+            TeachFromSelectedPersonTo(person);
             return;
         }
 
-        _selectedPersonId = id;
+        _selectedPerson = person;
         _selectedGraveId = null;
         _contextualActions.Visible = true;
         RefreshInfoLabel();
@@ -948,21 +903,14 @@ public partial class Main : Node3D
     private void OnGraveSelected(GraveId id)
     {
         _selectedGraveId = id;
-        _selectedPersonId = null;
+        _selectedPerson = null;
         _contextualActions.Visible = false;
         RefreshInfoLabel();
     }
 
-    private void TeachFromSelectedPersonTo(PersonId studentId)
+    private void TeachFromSelectedPersonTo(Person student)
     {
-        if (_selectedPersonId is not { } teacherId || teacherId == studentId)
-        {
-            return;
-        }
-
-        var teacher = _world.People.FirstOrDefault(p => p.Id == teacherId);
-        var student = _world.People.FirstOrDefault(p => p.Id == studentId);
-        if (teacher is null || student is null)
+        if (_selectedPerson is not { } teacher || teacher == student)
         {
             return;
         }
@@ -981,15 +929,14 @@ public partial class Main : Node3D
 
     private void OnResourceNodeSelected(ResourceNodeId id)
     {
-        if (_selectedPersonId is not { } personId)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then click a resource node to gather.");
             return;
         }
 
-        var person = _world.People.FirstOrDefault(p => p.Id == personId);
         var node = _world.ResourceNodes.FirstOrDefault(n => n.Id == id);
-        if (person is null || node is null)
+        if (node is null)
         {
             return;
         }
@@ -1074,7 +1021,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (FindSelectedPerson() is not { } person)
+        if (_selectedPerson is not { } person)
         {
             _statusBar.Notify("Select a person first, then click the ground to walk there.");
             return;
@@ -1083,12 +1030,6 @@ public partial class Main : Node3D
         _world.Execute(new MoveCommand(person, new Position(position.X, position.Z)));
         RefreshInfoLabel();
     }
-
-    // The selection itself stays an id (that's what the views report clicks with - see
-    // WorldPresenter), but every command wants the person, so this is the one place that
-    // translates between the two.
-    private Person? FindSelectedPerson() =>
-        _selectedPersonId is { } id ? _world.People.FirstOrDefault(p => p.Id == id) : null;
 
     private void RefreshInfoLabel()
     {
@@ -1099,8 +1040,7 @@ public partial class Main : Node3D
             return;
         }
 
-        var person = FindSelectedPerson();
-        if (person is null)
+        if (_selectedPerson is not { } person)
         {
             _infoLabel.Text = "No selection.";
             return;

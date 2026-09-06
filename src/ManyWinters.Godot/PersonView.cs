@@ -1,5 +1,5 @@
 using Godot;
-using ManyWinters.Core.World;
+using ManyWinters.Core.Population;
 
 namespace ManyWinters.Godot;
 
@@ -98,8 +98,8 @@ public partial class PersonView : Area3D
     // asked for.
     private static readonly Color NeutralRecolourableBase = new(0.82f, 0.80f, 0.78f);
 
-    private readonly PersonId _personId;
-    private readonly Action<PersonId, MouseButton> _onClicked;
+    private readonly Person _person;
+    private readonly Action<Person, MouseButton> _onClicked;
     private readonly InputEventEventHandler _onMissedClick;
     private readonly string _aliveTexturePath;
     private readonly string _deadTexturePath;
@@ -126,15 +126,15 @@ public partial class PersonView : Area3D
     private bool _isAlive = true;
     private string _currentBodyTexturePath = null!;
 
-    public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+    public PersonView(Person person, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
     {
-        _personId = personId;
+        _person = person;
         _onClicked = onClicked;
         _onMissedClick = onMissedClick;
         // Body gender is its own independent seeded pick (distinct salt, see _Ready for the
         // rest) - deliberately not derived from the same draw as hairstyle/clothing below,
         // so gender doesn't end up correlated with them.
-        var isMale = EntityVisualVariation.IndexFor(_personId.Value, salt: 4, 2) == 0;
+        var isMale = EntityVisualVariation.IndexFor(_person.Id.Value, salt: 4, 2) == 0;
         _aliveTexturePath = isMale ? BodyMaleTexturePath : BodyFemaleTexturePath;
         _deadTexturePath = isMale ? BodyMaleDeadTexturePath : BodyFemaleDeadTexturePath;
     }
@@ -143,7 +143,7 @@ public partial class PersonView : Area3D
     {
         InputRayPickable = true;
 
-        var scale = EntityVisualVariation.Scale(_personId.Value, MinScale, MaxScale);
+        var scale = EntityVisualVariation.Scale(_person.Id.Value, MinScale, MaxScale);
         Scale = Vector3.One * scale;
         // WorldPresenter positioned this node's own origin at groundHeight + Height/2,
         // assuming Scale stayed 1 - the sprite (centered, spanning local Y from -Height/2
@@ -155,9 +155,9 @@ public partial class PersonView : Area3D
         // Position by the same amount the scale just displaced the ground-contact point
         // cancels it back out, regardless of which way it went.
         Position += new Vector3(0f, (Height / 2f) * (scale - 1f), 0f);
-        _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_personId.Value, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
-        _bobAmplitude = EntityVisualVariation.RangeFor(_personId.Value, salt: 2, MinBobAmplitude, MaxBobAmplitude);
-        _rockAmplitude = EntityVisualVariation.RangeFor(_personId.Value, salt: 3, MinRockAmplitude, MaxRockAmplitude);
+        _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_person.Id.Value, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
+        _bobAmplitude = EntityVisualVariation.RangeFor(_person.Id.Value, salt: 2, MinBobAmplitude, MaxBobAmplitude);
+        _rockAmplitude = EntityVisualVariation.RangeFor(_person.Id.Value, salt: 3, MinRockAmplitude, MaxRockAmplitude);
         _targetPosition = Position;
 
         var groundShadow = GroundShadow.Create(ShadowDiameter);
@@ -179,19 +179,19 @@ public partial class PersonView : Area3D
         // overlay: an overlay sharing the body's exact position/depth needs ordinary alpha
         // blending to composite on top cleanly, OpaquePrepass has no defined draw order
         // between two billboards at the same depth.
-        var clothingIndex = EntityVisualVariation.IndexFor(_personId.Value, salt: 5, ClothingTexturePaths.Length);
+        var clothingIndex = EntityVisualVariation.IndexFor(_person.Id.Value, salt: 5, ClothingTexturePaths.Length);
         _clothingAliveTexturePath = ClothingTexturePaths[clothingIndex];
         _clothingDeadTexturePath = ClothingDeadTexturePaths[clothingIndex];
-        _clothingColor = ClothingColorOptions[EntityVisualVariation.IndexFor(_personId.Value, salt: 6, ClothingColorOptions.Length)];
+        _clothingColor = ClothingColorOptions[EntityVisualVariation.IndexFor(_person.Id.Value, salt: 6, ClothingColorOptions.Length)];
         _clothingSprite = BillboardSprite.Create(_clothingAliveTexturePath, Height, _clothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
         _clothingSprite.Modulate = ModulateFor(_clothingColor);
         _normalClothingModulate = _clothingSprite.Modulate;
         AddChild(_clothingSprite);
 
-        var hairIndex = EntityVisualVariation.IndexFor(_personId.Value, salt: 7, HairTexturePaths.Length);
+        var hairIndex = EntityVisualVariation.IndexFor(_person.Id.Value, salt: 7, HairTexturePaths.Length);
         _hairAliveTexturePath = HairTexturePaths[hairIndex];
         _hairDeadTexturePath = HairDeadTexturePaths[hairIndex];
-        _hairColor = HairColorOptions[EntityVisualVariation.IndexFor(_personId.Value, salt: 8, HairColorOptions.Length)];
+        _hairColor = HairColorOptions[EntityVisualVariation.IndexFor(_person.Id.Value, salt: 8, HairColorOptions.Length)];
         _hairSprite = BillboardSprite.Create(_hairAliveTexturePath, Height, _hairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
         _hairSprite.Modulate = ModulateFor(_hairColor);
         _normalHairModulate = _hairSprite.Modulate;
@@ -405,7 +405,7 @@ public partial class PersonView : Area3D
             return false;
         }
 
-        _onClicked(_personId, button);
+        _onClicked(_person, button);
         return true;
     }
 }
