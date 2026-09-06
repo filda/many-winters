@@ -210,12 +210,12 @@ public partial class ResourceNodeView : Area3D
         var extent = SpriteVisibleExtent.Compute(_spriteTexturePath, Size);
         if (_trunk is not null)
         {
-            extent = CombineExtents(extent, SpriteVisibleExtent.Compute(_trunkTexturePath!, Size));
+            extent = SpriteExtents.Combine(extent, SpriteVisibleExtent.Compute(_trunkTexturePath!, Size));
         }
 
         if (_branches is not null)
         {
-            extent = CombineExtents(extent, SpriteVisibleExtent.Compute(_branchesTexturePath!, Size));
+            extent = SpriteExtents.Combine(extent, SpriteVisibleExtent.Compute(_branchesTexturePath!, Size));
         }
         // The extent is computed from the unflipped texture - a mirrored sprite's visible
         // content sits the same distance from center but on the opposite side.
@@ -302,15 +302,6 @@ public partial class ResourceNodeView : Area3D
     // The true silhouette of a split tree is the union of its trunk's and canopy's own
     // visible extents - equivalent to what a single combined image's extent already was,
     // since the two are an exact partition of it (see split_trunk_canopy).
-    internal static SpriteVisibleExtent.Extent CombineExtents(SpriteVisibleExtent.Extent a, SpriteVisibleExtent.Extent b)
-    {
-        var minX = Math.Min(a.CenterXOffset - (a.Width / 2f), b.CenterXOffset - (b.Width / 2f));
-        var maxX = Math.Max(a.CenterXOffset + (a.Width / 2f), b.CenterXOffset + (b.Width / 2f));
-        var minY = Math.Min(a.CenterYOffset - (a.Height / 2f), b.CenterYOffset - (b.Height / 2f));
-        var maxY = Math.Max(a.CenterYOffset + (a.Height / 2f), b.CenterYOffset + (b.Height / 2f));
-        return new SpriteVisibleExtent.Extent(maxX - minX, maxY - minY, (minX + maxX) / 2f, (minY + maxY) / 2f);
-    }
-
     private void OnMouseExited() => SetHovered(false);
 
     // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
@@ -367,7 +358,7 @@ public partial class ResourceNodeView : Area3D
     // Fruit spots are authored per canopy variant (art/generate_sprites.py's
     // _APPLE_FRUIT_SPOT_VARIANTS/_PEAR_FRUIT_SPOT_VARIANTS) so they land inside whichever
     // canopy shape this node actually drew, not always the original's.
-    private string FruitOverlayTexturePath() => VariantSuffixed($"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png", _variantIndex);
+    private string FruitOverlayTexturePath() => TexturePaths.VariantSuffixed($"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png", _variantIndex);
 
     // Split filenames sit alongside whichever image BaseTexturePathFor already uses as the
     // whole tree - {kind}_tree_trunk.png for a kind with its own dedicated standing-tree
@@ -376,9 +367,9 @@ public partial class ResourceNodeView : Area3D
     // there would double up the "_tree" and never match the actual asset on disk. A shape
     // variant beyond the first (_variantIndex > 0) adds one more suffix on top, e.g.
     // apple_tree_trunk_v1.png.
-    private string TrunkTexturePathFor() => VariantSuffixed(InsertBeforeExtension(TexturePathFor(), "_trunk"), _variantIndex);
+    private string TrunkTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_trunk"), _variantIndex);
 
-    private string CanopyTexturePathFor() => VariantSuffixed(InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
+    private string CanopyTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
 
     // Shared, kind-independent asset (art/generate_sprites.py's _generic_tree_branch_layer)
     // - not derived from this kind's own texture path at all, unlike trunk/canopy. Its
@@ -388,15 +379,7 @@ public partial class ResourceNodeView : Area3D
     // near-duplicate copy.
     private const string SharedBranchesBasePath = "res://Content/branches/tree_branches.png";
 
-    private string BranchesTexturePathFor() => VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
-
-    internal static string InsertBeforeExtension(string path, string suffix)
-    {
-        var dot = path.LastIndexOf('.');
-        return path[..dot] + suffix + path[dot..];
-    }
-
-    internal static string VariantSuffixed(string path, int variant) => variant == 0 ? path : InsertBeforeExtension(path, $"_v{variant}");
+    private string BranchesTexturePathFor() => TexturePaths.VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
 
     // How many hand-authored trunk/canopy shape variants this kind actually has on disk,
     // starting from 1 (the original, unsuffixed asset - always assumed present once
@@ -415,8 +398,8 @@ public partial class ResourceNodeView : Area3D
         var count = 1;
         for (var variant = 1; variant < MaxTreeVariantProbe; variant++)
         {
-            var trunkPath = VariantSuffixed(InsertBeforeExtension(basePath, "_trunk"), variant);
-            var canopyPath = VariantSuffixed(InsertBeforeExtension(basePath, "_canopy"), variant);
+            var trunkPath = TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(basePath, "_trunk"), variant);
+            var canopyPath = TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(basePath, "_canopy"), variant);
             if (!ResourceLoader.Exists(trunkPath) || !ResourceLoader.Exists(canopyPath))
             {
                 break;
@@ -466,7 +449,7 @@ public partial class ResourceNodeView : Area3D
         var count = 1;
         for (var variant = 1; variant < MaxTreeVariantProbe; variant++)
         {
-            if (!ResourceLoader.Exists(VariantSuffixed(SharedBranchesBasePath, variant)))
+            if (!ResourceLoader.Exists(TexturePaths.VariantSuffixed(SharedBranchesBasePath, variant)))
             {
                 break;
             }
@@ -516,8 +499,8 @@ public partial class ResourceNodeView : Area3D
         }
 
         var basePath = BaseTexturePathFor(kind);
-        var exists = ResourceLoader.Exists(InsertBeforeExtension(basePath, "_trunk"))
-            && ResourceLoader.Exists(InsertBeforeExtension(basePath, "_canopy"));
+        var exists = ResourceLoader.Exists(TexturePaths.InsertBeforeExtension(basePath, "_trunk"))
+            && ResourceLoader.Exists(TexturePaths.InsertBeforeExtension(basePath, "_canopy"));
         HasTrunkCanopySplitCache[kind] = exists;
         return exists;
     }

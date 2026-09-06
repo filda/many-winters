@@ -16,7 +16,7 @@ public class SpriteGeometryTests
         var trunk = Extent(width: 1f, height: 2f, centerX: 0f, centerY: 1f);
         var canopy = Extent(width: 4f, height: 3f, centerX: 0f, centerY: 3.5f);
 
-        var combined = ResourceNodeView.CombineExtents(trunk, canopy);
+        var combined = SpriteExtents.Combine(trunk, canopy);
 
         Assert.Equal(4f, combined.Width, 5);
         Assert.Equal(5f, combined.Height, 5);
@@ -32,7 +32,7 @@ public class SpriteGeometryTests
         var left = Extent(width: 2f, height: 1f, centerX: -3f, centerY: 0f);
         var right = Extent(width: 2f, height: 1f, centerX: 3f, centerY: 0f);
 
-        var combined = ResourceNodeView.CombineExtents(left, right);
+        var combined = SpriteExtents.Combine(left, right);
 
         Assert.Equal(8f, combined.Width, 5);
         Assert.Equal(0f, combined.CenterXOffset, 5);
@@ -43,7 +43,7 @@ public class SpriteGeometryTests
     {
         var only = Extent(width: 2f, height: 3f, centerX: 0.5f, centerY: -1f);
 
-        var combined = ResourceNodeView.CombineExtents(only, only);
+        var combined = SpriteExtents.Combine(only, only);
 
         Assert.Equal(only, combined);
     }
@@ -55,8 +55,8 @@ public class SpriteGeometryTests
         var canopy = Extent(width: 4f, height: 3f, centerX: -0.1f, centerY: 3.5f);
 
         Assert.Equal(
-            ResourceNodeView.CombineExtents(trunk, canopy),
-            ResourceNodeView.CombineExtents(canopy, trunk));
+            SpriteExtents.Combine(trunk, canopy),
+            SpriteExtents.Combine(canopy, trunk));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class SpriteGeometryTests
         // white - no tint at all.
         var neutral = new Color(0.82f, 0.80f, 0.78f);
 
-        var modulate = PersonView.ModulateFor(neutral);
+        var modulate = SpriteTint.ModulateFor(neutral);
 
         Assert.Equal(1f, modulate.R, 5);
         Assert.Equal(1f, modulate.G, 5);
@@ -78,7 +78,7 @@ public class SpriteGeometryTests
     [Fact]
     public void ModulateScalesEachChannelByItsOwnShareOfTheBase()
     {
-        var modulate = PersonView.ModulateFor(new Color(0.41f, 0.40f, 0.39f));
+        var modulate = SpriteTint.ModulateFor(new Color(0.41f, 0.40f, 0.39f));
 
         // Exactly half of the base on every channel, so exactly half the modulate.
         Assert.Equal(0.5f, modulate.R, 5);

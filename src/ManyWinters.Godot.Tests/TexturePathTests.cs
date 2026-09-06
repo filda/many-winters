@@ -13,7 +13,7 @@ public class TexturePathTests
         // exist, and a missing texture surfaces as a blank sprite rather than an error.
         Assert.Equal(
             "res://Content/resources/apple/apple_tree_trunk_v1.png",
-            ResourceNodeView.VariantSuffixed("res://Content/resources/apple/apple_tree_trunk.png", 1));
+            TexturePaths.VariantSuffixed("res://Content/resources/apple/apple_tree_trunk.png", 1));
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public class TexturePathTests
         // was never drawn.
         const string path = "res://Content/resources/apple/apple_tree_trunk.png";
 
-        Assert.Equal(path, ResourceNodeView.VariantSuffixed(path, 0));
+        Assert.Equal(path, TexturePaths.VariantSuffixed(path, 0));
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class TexturePathTests
     {
         Assert.Equal(
             "res://Content/a.b/apple_trunk.png",
-            ResourceNodeView.InsertBeforeExtension("res://Content/a.b/apple.png", "_trunk"));
+            TexturePaths.InsertBeforeExtension("res://Content/a.b/apple.png", "_trunk"));
     }
 
     [Fact]
@@ -39,9 +39,9 @@ public class TexturePathTests
     {
         // How a split tree's variant assets are actually named: base, then the layer, then the
         // variant.
-        var trunk = ResourceNodeView.InsertBeforeExtension("res://Content/resources/apple/apple_tree.png", "_trunk");
+        var trunk = TexturePaths.InsertBeforeExtension("res://Content/resources/apple/apple_tree.png", "_trunk");
 
-        Assert.Equal("res://Content/resources/apple/apple_tree_trunk_v2.png", ResourceNodeView.VariantSuffixed(trunk, 2));
+        Assert.Equal("res://Content/resources/apple/apple_tree_trunk_v2.png", TexturePaths.VariantSuffixed(trunk, 2));
     }
 
     [Fact]
@@ -49,6 +49,6 @@ public class TexturePathTests
     {
         Assert.Equal(
             "res://Content/buildings/storage_hut/storage_hut.png",
-            BuildingView.TexturePathFor(new BuildingKindId("storage_hut")));
+            TexturePaths.ForBuilding(new BuildingKindId("storage_hut")));
     }
 }

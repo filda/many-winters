@@ -36,7 +36,7 @@ public class InspectorTextTests
     [Fact]
     public void SomeoneWithNothingToDoIsIdle()
     {
-        Assert.Equal("Idle", Main.TaskText(NewPerson()));
+        Assert.Equal("Idle", InspectorText.ForTask(NewPerson()));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class InspectorTextTests
         var person = NewPerson();
         person.Tasks.Interrupt(new MoveTask(new Position(3, 4), speedPerTick: 0.5f));
 
-        Assert.StartsWith("Walking to", Main.TaskText(person), StringComparison.Ordinal);
+        Assert.StartsWith("Walking to", InspectorText.ForTask(person), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class InspectorTextTests
         var node = new ResourceNode { Kind = new ResourceKindId("apple"), Position = new Position(3, 4) };
         person.Tasks.Interrupt(new GatherTask(node, reachDistance: 2f));
 
-        Assert.Equal("Gathering apple", Main.TaskText(person));
+        Assert.Equal("Gathering apple", InspectorText.ForTask(person));
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class InspectorTextTests
     {
         // A burial done without the practiced technique preserves no identity (see Grave) - the
         // text must not leak the name it still happens to be carrying.
-        var text = Main.GraveText(NewGrave(isMarked: false));
+        var text = InspectorText.ForGrave(NewGrave(isMarked: false));
 
         Assert.Contains("Unmarked grave - no record survives.", text, StringComparison.Ordinal);
         Assert.DoesNotContain("Ava", text, StringComparison.Ordinal);
@@ -73,17 +73,42 @@ public class InspectorTextTests
     [Fact]
     public void AMarkedGraveNamesTheDeadTheirAgeCauseParentsAndKnowledge()
     {
-        var text = Main.GraveText(NewGrave());
+        var grave = NewGrave();
 
+        var text = InspectorText.ForGrave(grave);
+
+        Assert.StartsWith($"{grave.Id}\nPosition: {grave.Position}\n", text, StringComparison.Ordinal);
         Assert.Contains("Ava, died at age 7 winters of old age", text, StringComparison.Ordinal);
         Assert.Contains("Child of Orla and Hesk", text, StringComparison.Ordinal);
         Assert.Contains("Known techniques: basic_foraging", text, StringComparison.Ordinal);
     }
 
     [Fact]
+    public void AnUnmarkedGraveStillSaysWhichGraveAndWhere()
+    {
+        // All a passer-by can tell without a record: that someone lies here, and where.
+        var grave = NewGrave(isMarked: false);
+
+        var text = InspectorText.ForGrave(grave);
+
+        Assert.StartsWith($"{grave.Id}\nPosition: {grave.Position}\n", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SeveralRememberedTechniquesAreListedSeparately()
+    {
+        // One technique never exercises the separator - the run-together
+        // "basic_foragingbasic_woodcutting" only shows up once a grave holds two.
+        var text = InspectorText.ForGrave(NewGrave(techniques:
+            [new TechniqueId("basic_foraging"), new TechniqueId("basic_woodcutting")]));
+
+        Assert.Contains("Known techniques: basic_foraging, basic_woodcutting", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OneWinterIsSingular()
     {
-        Assert.Contains("died at age 1 winter of", Main.GraveText(NewGrave(ageAtDeath: 1)), StringComparison.Ordinal);
+        Assert.Contains("died at age 1 winter of", InspectorText.ForGrave(NewGrave(ageAtDeath: 1)), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -92,13 +117,13 @@ public class InspectorTextTests
     [InlineData(70)]
     public void EveryOtherAgeIsPlural(int age)
     {
-        Assert.Contains($"died at age {age} winters", Main.GraveText(NewGrave(ageAtDeath: age)), StringComparison.Ordinal);
+        Assert.Contains($"died at age {age} winters", InspectorText.ForGrave(NewGrave(ageAtDeath: age)), StringComparison.Ordinal);
     }
 
     [Fact]
     public void AnUnrecordedCauseOfDeathIsSimplyLeftUnsaid()
     {
-        var text = Main.GraveText(NewGrave(causeOfDeath: null));
+        var text = InspectorText.ForGrave(NewGrave(causeOfDeath: null));
 
         // The age line ends right after "winters" - no cause clause is appended. Checked that
         // way rather than by searching for " of ", which the parent line legitimately contains.
@@ -110,20 +135,20 @@ public class InspectorTextTests
     [Fact]
     public void HungerAndOldAgeReadDifferently()
     {
-        Assert.Contains("of hunger", Main.GraveText(NewGrave(causeOfDeath: DeathCause.Hunger)), StringComparison.Ordinal);
-        Assert.Contains("of old age", Main.GraveText(NewGrave(causeOfDeath: DeathCause.OldAge)), StringComparison.Ordinal);
+        Assert.Contains("of hunger", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.Hunger)), StringComparison.Ordinal);
+        Assert.Contains("of old age", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.OldAge)), StringComparison.Ordinal);
     }
 
     [Fact]
     public void AGraveWithNoKnowledgeSaysSoRatherThanTrailingOff()
     {
-        Assert.Contains("Known techniques: none", Main.GraveText(NewGrave(techniques: [])), StringComparison.Ordinal);
+        Assert.Contains("Known techniques: none", InspectorText.ForGrave(NewGrave(techniques: [])), StringComparison.Ordinal);
     }
 
     [Fact]
     public void SomeoneWhoseParentsAreBothUnknownGetsNoParentLineAtAll()
     {
-        Assert.Equal(string.Empty, Main.ParentsText(null, null));
+        Assert.Equal(string.Empty, InspectorText.ForParents(null, null));
     }
 
     [Theory]
@@ -132,6 +157,6 @@ public class InspectorTextTests
     [InlineData("Orla", "Hesk", "Child of Orla and Hesk\n")]
     public void OneRememberedParentIsNamedWithoutADanglingAnd(string? mother, string? father, string expected)
     {
-        Assert.Equal(expected, Main.ParentsText(mother, father));
+        Assert.Equal(expected, InspectorText.ForParents(mother, father));
     }
 }

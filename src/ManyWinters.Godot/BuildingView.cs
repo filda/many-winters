@@ -29,11 +29,8 @@ public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : 
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        AddChild(BillboardSprite.Create(TexturePathFor(kind), Size, fallbackColor));
+        AddChild(BillboardSprite.Create(TexturePaths.ForBuilding(kind), Size, fallbackColor));
     }
-
-    internal static string TexturePathFor(BuildingKindId kind)
-        => $"res://Content/buildings/{kind.Value}/{kind.Value}.png";
 
     private static Color ColorFor(BuildingKindId kind)
     {

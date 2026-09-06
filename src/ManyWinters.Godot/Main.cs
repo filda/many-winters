@@ -6,7 +6,6 @@ using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
-using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot;
@@ -1056,7 +1055,7 @@ public partial class Main : Node3D
     {
         if (_selectedGrave is { } grave)
         {
-            _infoLabel.Text = GraveText(grave);
+            _infoLabel.Text = InspectorText.ForGrave(grave);
             return;
         }
 
@@ -1082,54 +1081,12 @@ public partial class Main : Node3D
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
             $"Age: {AgeText(person)}\n" +
-            $"Task: {TaskText(person)}\n" +
+            $"Task: {InspectorText.ForTask(person)}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
             $"Carrying: {carriedWeight}/{maxCarryWeight}\n" +
             $"Inventory: {inventory}";
-    }
-
-    internal static string TaskText(Person person) => person.Tasks.Current switch
-    {
-        MoveTask move => $"Walking to {move.Destination}",
-        GatherTask gather => $"Gathering {gather.Target.Kind}",
-        _ => "Idle",
-    };
-
-    internal static string GraveText(Grave grave)
-    {
-        if (!grave.IsMarked)
-        {
-            return $"{grave.Id}\nPosition: {grave.Position}\nUnmarked grave - no record survives.";
-        }
-
-        var techniques = grave.KnownTechniques.Count > 0
-            ? string.Join(", ", grave.KnownTechniques)
-            : "none";
-        var causeText = grave.CauseOfDeath switch
-        {
-            DeathCause.Hunger => " of hunger",
-            DeathCause.OldAge => " of old age",
-            _ => string.Empty,
-        };
-        return
-            $"{grave.Id}\n" +
-            $"Position: {grave.Position}\n" +
-            $"{grave.Name}, died at age {grave.AgeAtDeath} winter{(grave.AgeAtDeath == 1 ? "" : "s")}{causeText}\n" +
-            $"{ParentsText(grave.MotherName, grave.FatherName)}" +
-            $"Known techniques: {techniques}";
-    }
-
-    internal static string ParentsText(string? motherName, string? fatherName)
-    {
-        if (motherName is null && fatherName is null)
-        {
-            return string.Empty;
-        }
-
-        var parents = string.Join(" and ", new[] { motherName, fatherName }.Where(name => name is not null));
-        return $"Child of {parents}\n";
     }
 
     private void RefreshBuildingsLabel()

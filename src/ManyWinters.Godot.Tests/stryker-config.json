@@ -1,0 +1,17 @@
+{
+  "stryker-config": {
+    "project": "ManyWinters.Godot.csproj",
+    "mutate": [
+      "**/InspectorText.cs",
+      "**/SpriteExtents.cs",
+      "**/SpriteTint.cs",
+      "**/TexturePaths.cs"
+    ],
+    "reporters": ["html", "progress"],
+    "thresholds": {
+      "high": 100,
+      "low": 100,
+      "break": 100
+    }
+  }
+}

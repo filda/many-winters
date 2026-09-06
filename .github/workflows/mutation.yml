@@ -52,9 +52,18 @@ jobs:
         working-directory: src/ManyWinters.Tests
         run: dotnet tool run dotnet-stryker --project ManyWinters.Tools.SimulationRunner.csproj
 
+      # Its own stryker-config.json, because only the presentation layer's extracted
+      # calculations are mutated - the rest of ManyWinters.Godot is engine wiring with no
+      # tests, which would drown the score in uncovered mutants.
+      - name: Run Stryker.NET (ManyWinters.Godot)
+        working-directory: src/ManyWinters.Godot.Tests
+        run: dotnet tool run dotnet-stryker
+
       - name: Upload mutation report
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: mutation-report
-          path: src/ManyWinters.Tests/StrykerOutput/**/reports/mutation-report.html
+          path: |
+            src/ManyWinters.Tests/StrykerOutput/**/reports/mutation-report.html
+            src/ManyWinters.Godot.Tests/StrykerOutput/**/reports/mutation-report.html

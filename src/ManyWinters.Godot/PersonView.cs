@@ -91,13 +91,6 @@ public partial class PersonView : Area3D
     // polish detail.
     private static readonly Color DeadTint = new(0.5f, 0.5f, 0.52f);
 
-    // generate_sprites.py's NEUTRAL_RECOLOURABLE - hair/clothing art is drawn in this light
-    // grey, not pure white, so a colour assigned straight to Modulate (a simple per-channel
-    // multiply) would render darker/muddier than intended. Dividing the desired colour by
-    // this base first compensates, so the final on-screen colour actually lands on what was
-    // asked for.
-    private static readonly Color NeutralRecolourableBase = new(0.82f, 0.80f, 0.78f);
-
     private readonly Person _person;
     private readonly Action<Person, MouseButton> _onClicked;
     private readonly InputEventEventHandler _onMissedClick;
@@ -184,7 +177,7 @@ public partial class PersonView : Area3D
         _clothingDeadTexturePath = ClothingDeadTexturePaths[clothingIndex];
         _clothingColor = ClothingColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 6, ClothingColorOptions.Length)];
         _clothingSprite = BillboardSprite.Create(_clothingAliveTexturePath, Height, _clothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
-        _clothingSprite.Modulate = ModulateFor(_clothingColor);
+        _clothingSprite.Modulate = SpriteTint.ModulateFor(_clothingColor);
         _normalClothingModulate = _clothingSprite.Modulate;
         AddChild(_clothingSprite);
 
@@ -193,7 +186,7 @@ public partial class PersonView : Area3D
         _hairDeadTexturePath = HairDeadTexturePaths[hairIndex];
         _hairColor = HairColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 8, HairColorOptions.Length)];
         _hairSprite = BillboardSprite.Create(_hairAliveTexturePath, Height, _hairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
-        _hairSprite.Modulate = ModulateFor(_hairColor);
+        _hairSprite.Modulate = SpriteTint.ModulateFor(_hairColor);
         _normalHairModulate = _hairSprite.Modulate;
         AddChild(_hairSprite);
 
@@ -209,11 +202,6 @@ public partial class PersonView : Area3D
         // here.
         MouseExited += OnMouseExited;
     }
-
-    internal static Color ModulateFor(Color desired) => new(
-        desired.R / NeutralRecolourableBase.R,
-        desired.G / NeutralRecolourableBase.G,
-        desired.B / NeutralRecolourableBase.B);
 
     private void SetHovered(bool hovered)
     {
@@ -305,8 +293,8 @@ public partial class PersonView : Area3D
         BillboardSprite.Apply(_hairSprite, isAlive ? _hairAliveTexturePath : _hairDeadTexturePath, Height, _hairColor);
 
         _normalModulate = isAlive ? Colors.White : DeadTint;
-        _normalClothingModulate = isAlive ? ModulateFor(_clothingColor) : DeadTint;
-        _normalHairModulate = isAlive ? ModulateFor(_hairColor) : DeadTint;
+        _normalClothingModulate = isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint;
+        _normalHairModulate = isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint;
 
         // Re-derives from the (now updated) normal colours rather than skipping this while
         // hovered - otherwise dying while already hovered would leave the old alive-hover

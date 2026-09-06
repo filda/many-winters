@@ -112,6 +112,11 @@ cd src/ManyWinters.Tests
 # ManyWinters.Tests references more than one project, so tell Stryker which one to mutate:
 dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj
 dotnet tool run dotnet-stryker --project ManyWinters.Tools.SimulationRunner.csproj
+
+# The presentation layer has its own test project, and its own config: only the extracted
+# calculations are mutated, since the rest of ManyWinters.Godot is untested engine wiring.
+cd ../ManyWinters.Godot.Tests
+dotnet tool run dotnet-stryker
 ```
 
 Configuration lives in `src/ManyWinters.Tests/stryker-config.json`. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
