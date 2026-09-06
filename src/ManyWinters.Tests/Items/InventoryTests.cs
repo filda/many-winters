@@ -1,4 +1,5 @@
 using ManyWinters.Core.Items;
+using ManyWinters.Core.Materials;
 
 namespace ManyWinters.Tests.Items;
 
@@ -7,6 +8,18 @@ public class InventoryTests
     private static readonly ItemKindId Wood = new("wood");
     private static readonly ItemKindId Feather = new("feather");
     private static readonly ItemKindId Stone = new("stone");
+
+    private static readonly MaterialId Stuff = new("stuff");
+    private static readonly FormId Lump = new("lump");
+
+    // These tests are about how an inventory adds weight up, not about where a unit weight
+    // comes from, so the one material here has density 1 and an item's volume reads directly as
+    // its weight.
+    private static ItemCatalog CatalogOf(params ItemDefinition[] items) =>
+        new(items, new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f)]));
+
+    private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
+        new(id, displayName, Stuff, Lump, weight);
 
     [Fact]
     public void GetReturnsZeroForAKindThatWasNeverAdded()
@@ -65,10 +78,9 @@ public class InventoryTests
     [Fact]
     public void TotalWeightSumsWeightAcrossEveryKindHeld()
     {
-        var catalog = new ItemCatalog([
-            new ItemDefinition(Wood, "Wood", Weight: 1f),
-            new ItemDefinition(Feather, "Feather", Weight: 0.1f),
-        ]);
+        var catalog = CatalogOf(
+            Weighing(Wood, "Wood", 1f),
+            Weighing(Feather, "Feather", 0.1f));
         var inventory = new Inventory();
         inventory.Add(Wood, 10);
         inventory.Add(Feather, 20);
@@ -79,7 +91,7 @@ public class InventoryTests
     [Fact]
     public void TotalWeightTreatsAKindWithNoDefinitionAsWeightless()
     {
-        var catalog = new ItemCatalog([]);
+        var catalog = CatalogOf();
         var inventory = new Inventory();
         inventory.Add(Wood, 10);
 
@@ -89,7 +101,7 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityAddsEverythingWhenItAllFits()
     {
-        var catalog = new ItemCatalog([new ItemDefinition(Wood, "Wood", Weight: 1f)]);
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 1f));
         var inventory = new Inventory();
 
         var added = inventory.AddUpToCapacity(Wood, 10, catalog, maxWeight: 50f);
@@ -101,7 +113,7 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityOnlyAddsWhatStillFitsWhenPartiallyFull()
     {
-        var catalog = new ItemCatalog([new ItemDefinition(Wood, "Wood", Weight: 1f)]);
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 1f));
         var inventory = new Inventory();
         inventory.Add(Wood, 45);
 
@@ -114,7 +126,7 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityAddsNothingWhenAlreadyFull()
     {
-        var catalog = new ItemCatalog([new ItemDefinition(Wood, "Wood", Weight: 1f)]);
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 1f));
         var inventory = new Inventory();
         inventory.Add(Wood, 50);
 
@@ -127,7 +139,7 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityIsUnlimitedForAZeroWeightItem()
     {
-        var catalog = new ItemCatalog([new ItemDefinition(Wood, "Wood", Weight: 0f)]);
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 0f));
         var inventory = new Inventory();
         inventory.Add(Wood, 1000);
 
@@ -142,7 +154,7 @@ public class InventoryTests
     {
         // Ten kilos of headroom is five stones, not twenty - what fits is the headroom divided
         // by the unit weight.
-        var catalog = new ItemCatalog([new ItemDefinition(Stone, "Stone", Weight: 2f)]);
+        var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
 
         var added = inventory.AddUpToCapacity(Stone, 20, catalog, maxWeight: 10f);
@@ -157,7 +169,7 @@ public class InventoryTests
         // A zero-count entry would show up in Counts as "carrying stone" - to anything walking
         // the inventory (the UI, HasEdibleFood) that's indistinguishable from actually having
         // some, so a refused add has to leave no trace at all.
-        var catalog = new ItemCatalog([new ItemDefinition(Stone, "Stone", Weight: 2f)]);
+        var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
 
         var added = inventory.AddUpToCapacity(Stone, 5, catalog, maxWeight: 0f);

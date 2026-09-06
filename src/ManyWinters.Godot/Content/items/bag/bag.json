@@ -1,1 +1,1 @@
-{ "id": "bag", "displayName": "Bag", "weight": 1, "carryCapacityBonus": 10 }
+{ "id": "bag", "displayName": "Bag", "material": "plant_fibre", "form": "vessel", "volume": 5, "carryCapacityBonus": 10 }

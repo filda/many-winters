@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.Serialization;
@@ -42,6 +43,26 @@ public class StringWrapperJsonConverterTests
         var restored = JsonSerializer.Deserialize<TechniqueId>(json);
 
         Assert.Equal(new TechniqueId("efficient_foraging"), restored);
+    }
+
+    [Fact]
+    public void MaterialIdRoundTripsThroughJson()
+    {
+        var json = JsonSerializer.Serialize(new MaterialId("plant_fibre"));
+
+        var restored = JsonSerializer.Deserialize<MaterialId>(json);
+
+        Assert.Equal(new MaterialId("plant_fibre"), restored);
+    }
+
+    [Fact]
+    public void FormIdRoundTripsThroughJson()
+    {
+        var json = JsonSerializer.Serialize(new FormId("vessel"));
+
+        var restored = JsonSerializer.Deserialize<FormId>(json);
+
+        Assert.Equal(new FormId("vessel"), restored);
     }
 
     [Fact]

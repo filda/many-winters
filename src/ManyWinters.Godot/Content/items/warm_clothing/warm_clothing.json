@@ -1,1 +1,1 @@
-{ "id": "warm_clothing", "displayName": "Warm Clothing", "insulation": 1, "weight": 3 }
+{ "id": "warm_clothing", "displayName": "Warm Clothing", "material": "hide", "form": "garment", "volume": 4 }

@@ -1,1 +1,1 @@
-{ "id": "grass", "displayName": "Grass", "weight": 1 }
+{ "id": "grass", "displayName": "Grass", "material": "plant_fibre", "form": "fibre", "volume": 5 }

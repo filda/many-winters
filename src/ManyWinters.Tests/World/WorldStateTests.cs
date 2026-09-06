@@ -3,6 +3,7 @@ using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
@@ -237,7 +238,9 @@ public class WorldStateTests
         var bag = new ItemKindId("bag");
         var world = new WorldState(new WorldConfiguration
         {
-            ItemCatalog = new ItemCatalog(new[] { new ItemDefinition(bag, "Bag", CarryCapacityBonus: 20f) }),
+            ItemCatalog = new ItemCatalog(
+                new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
+                new MaterialCatalog([])),
         });
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 1);
@@ -251,7 +254,9 @@ public class WorldStateTests
         var bag = new ItemKindId("bag");
         var world = new WorldState(new WorldConfiguration
         {
-            ItemCatalog = new ItemCatalog(new[] { new ItemDefinition(bag, "Bag", CarryCapacityBonus: 20f) }),
+            ItemCatalog = new ItemCatalog(
+                new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
+                new MaterialCatalog([])),
         });
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 3);

@@ -1,1 +1,1 @@
-{ "id": "stone", "displayName": "Stone", "weight": 2 }
+{ "id": "stone", "displayName": "Stone", "material": "stone", "form": "lump", "volume": 1 }

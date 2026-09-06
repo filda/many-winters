@@ -1,6 +1,7 @@
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.TestSupport;
@@ -71,23 +72,52 @@ public static class TestCatalogs
     private static readonly ItemKindId Basket = new("basket");
     private static readonly ItemKindId Bag = new("bag");
 
+    private static readonly MaterialId WoodMaterial = new("wood");
+    private static readonly MaterialId StoneMaterial = new("stone");
+    private static readonly MaterialId PlantFibreMaterial = new("plant_fibre");
+    private static readonly MaterialId HideMaterial = new("hide");
+    private static readonly MaterialId AppleMaterial = new("apple");
+    private static readonly MaterialId PearMaterial = new("pear");
+    private static readonly MaterialId PotatoMaterial = new("potato");
+    private static readonly MaterialId MushroomMaterial = new("mushroom");
+
+    private static readonly FormId Whole = new("whole");
+    private static readonly FormId Stick = new("stick");
+    private static readonly FormId Lump = new("lump");
+    private static readonly FormId Fibre = new("fibre");
+    private static readonly FormId Wedge = new("wedge");
+    private static readonly FormId Vessel = new("vessel");
+    private static readonly FormId Garment = new("garment");
+
     public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
-    private const float WarmClothingInsulation = 1f;
     private const int WarmClothingInputAmount = 10;
     private const float FoodHungerRestoredPerUnit = 1f;
-    private const float ItemWeight = 1f;
-    private const float StoneWeight = 2f;
-    private const float AxeWeight = 5f;
-    private const float WarmClothingWeight = 3f;
+
+    // Mirrors Content/materials/{id}/{id}.json. Weight is a material's density times an item's
+    // volume (ItemCatalog.WeightFor), so these two blocks together reproduce exactly the
+    // weights items used to state for themselves.
+    private const float WoodDensity = 0.5f;
+    private const float StoneDensity = 2f;
+    private const float PlantFibreDensity = 0.2f;
+    private const float HideDensity = 0.75f;
+    private const float FoodDensity = 1f;
+    private const float HideInsulation = 1f;
+
+    private const float FoodVolume = 1f;
+    private const float WoodVolume = 2f;
+    private const float StoneVolume = 1f;
+    private const float GrassVolume = 5f;
+    private const float AxeVolume = 2.5f;
+    private const float WarmClothingVolume = 4f;
 
     // Basket (wood, carried on the back) and bag (grass, lighter but holds less) - see
     // WorldState.MaxCarryWeightFor for how CarryCapacityBonus is applied.
     private const int BasketInputAmount = 8;
-    private const float BasketWeight = 2f;
+    private const float BasketVolume = 4f;
     private const float BasketCarryCapacityBonus = 20f;
     private const int BagInputAmount = 10;
-    private const float BagWeight = 1f;
+    private const float BagVolume = 5f;
     private const float BagCarryCapacityBonus = 10f;
     private const float GrassRegenPerTick = 1f;
 
@@ -172,29 +202,50 @@ public static class TestCatalogs
         new BuildingDefinition(StorageHut, "Storage Hut", WoodItem, StorageHutInputAmount),
     });
 
-    private static ItemCatalog CreateItemCatalog() => new(new[]
+    private static MaterialCatalog CreateMaterialCatalog() => new(new[]
     {
-        new ItemDefinition(WarmClothing, "Warm Clothing", WarmClothingInsulation, WarmClothingWeight),
-        new ItemDefinition(WoodItem, "Wood", Weight: ItemWeight),
-        new ItemDefinition(Axe, "Axe", Weight: AxeWeight),
-        new ItemDefinition(AppleItem, "Apple", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
-        new ItemDefinition(PearItem, "Pear", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
-        new ItemDefinition(MushroomItem, "Mushroom", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
-        new ItemDefinition(PotatoItem, "Potato", Weight: ItemWeight, HungerRestoredPerUnit: FoodHungerRestoredPerUnit),
-        new ItemDefinition(GrassItem, "Grass", Weight: ItemWeight),
-        new ItemDefinition(StoneItem, "Stone", Weight: StoneWeight),
-        new ItemDefinition(Basket, "Basket", Weight: BasketWeight, CarryCapacityBonus: BasketCarryCapacityBonus),
-        new ItemDefinition(Bag, "Bag", Weight: BagWeight, CarryCapacityBonus: BagCarryCapacityBonus),
+        new MaterialDefinition(WoodMaterial, "Wood", WoodDensity),
+        new MaterialDefinition(StoneMaterial, "Stone", StoneDensity),
+        new MaterialDefinition(PlantFibreMaterial, "Plant Fibre", PlantFibreDensity),
+        new MaterialDefinition(HideMaterial, "Hide", HideDensity, HideInsulation),
+        new MaterialDefinition(AppleMaterial, "Apple Flesh", FoodDensity),
+        new MaterialDefinition(PearMaterial, "Pear Flesh", FoodDensity),
+        new MaterialDefinition(PotatoMaterial, "Potato Flesh", FoodDensity),
+        new MaterialDefinition(MushroomMaterial, "Mushroom Flesh", FoodDensity),
     });
 
-    public static WorldConfiguration CreateConfiguration() => new(
-        CreateResourceCatalog(),
-        CreateSkillCatalog(),
-        CreateRecipeCatalog(),
-        CreateBuildingCatalog(),
-        CreateItemCatalog(),
-        SeasonParameters.Default,
-        SimulationRules.Default);
+    // The axe is stone and the warm clothing is hide, even though both are still crafted out of
+    // wood - the single-input recipes are placeholders that the crafting plan's verbs replace,
+    // and describing a hide garment as wooden to match one would have made wood itself warm.
+    private static ItemCatalog CreateItemCatalog(MaterialCatalog materials) => new(new[]
+    {
+        new ItemDefinition(WarmClothing, "Warm Clothing", HideMaterial, Garment, WarmClothingVolume),
+        new ItemDefinition(WoodItem, "Wood", WoodMaterial, Stick, WoodVolume),
+        new ItemDefinition(Axe, "Axe", StoneMaterial, Wedge, AxeVolume),
+        new ItemDefinition(AppleItem, "Apple", AppleMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
+        new ItemDefinition(PearItem, "Pear", PearMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
+        new ItemDefinition(MushroomItem, "Mushroom", MushroomMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
+        new ItemDefinition(PotatoItem, "Potato", PotatoMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
+        new ItemDefinition(GrassItem, "Grass", PlantFibreMaterial, Fibre, GrassVolume),
+        new ItemDefinition(StoneItem, "Stone", StoneMaterial, Lump, StoneVolume),
+        new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
+        new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),
+    }, materials);
+
+    public static WorldConfiguration CreateConfiguration()
+    {
+        var materials = CreateMaterialCatalog();
+
+        return new(
+            CreateResourceCatalog(),
+            CreateSkillCatalog(),
+            CreateRecipeCatalog(),
+            CreateBuildingCatalog(),
+            materials,
+            CreateItemCatalog(materials),
+            SeasonParameters.Default,
+            SimulationRules.Default);
+    }
 
     public static WorldState CreateWorld() => new(CreateConfiguration());
 }

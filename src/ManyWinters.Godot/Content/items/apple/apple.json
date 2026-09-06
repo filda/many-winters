@@ -1,1 +1,1 @@
-{ "id": "apple", "displayName": "Apple", "weight": 1, "hungerRestoredPerUnit": 1 }
+{ "id": "apple", "displayName": "Apple", "material": "apple", "form": "whole", "volume": 1, "hungerRestoredPerUnit": 1 }

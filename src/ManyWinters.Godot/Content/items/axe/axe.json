@@ -1,1 +1,1 @@
-{ "id": "axe", "displayName": "Axe", "weight": 5 }
+{ "id": "axe", "displayName": "Axe", "material": "stone", "form": "wedge", "volume": 2.5 }

@@ -1,1 +1,1 @@
-{ "id": "wood", "displayName": "Wood", "weight": 1 }
+{ "id": "wood", "displayName": "Wood", "material": "wood", "form": "stick", "volume": 2 }
