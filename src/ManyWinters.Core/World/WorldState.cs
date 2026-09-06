@@ -413,16 +413,11 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private static int CasualTeachingSeed(int teacherSeed, int studentSeed, string technique, long tick)
     {
-        var x = unchecked((uint)(teacherSeed * 73856093) ^ (uint)(studentSeed * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
-        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
-        x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
+        // One value out of the pair, the technique and the tick, spread apart by SeedHash so
+        // adjacent ids and consecutive ticks don't roll alike.
+        var mixed = unchecked((uint)(teacherSeed * 73856093) ^ (uint)(studentSeed * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
 
-        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
-        x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
-
-        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
-        x = (x >> 16) ^ x;
-        return unchecked((int)x);
+        return SeedHash.Avalanche(mixed);
     }
 
     // Not string.GetHashCode() - .NET randomizes that per process, which would make this roll

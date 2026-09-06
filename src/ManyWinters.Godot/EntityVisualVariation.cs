@@ -1,4 +1,5 @@
 using Godot;
+using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot;
 
@@ -44,12 +45,6 @@ public static class EntityVisualVariation
         return random.Next(count);
     }
 
-    private static int Avalanche(int seed, int salt)
-    {
-        var x = unchecked(((uint)seed * 0x9E3779B1u) + (uint)salt);
-        x = unchecked((x ^ (x >> 16)) * 0x45d9f3bu);
-        x = unchecked((x ^ (x >> 16)) * 0x45d9f3bu);
-        x ^= x >> 16;
-        return unchecked((int)x);
-    }
+    private static int Avalanche(int seed, int salt) =>
+        SeedHash.Avalanche(unchecked(((uint)seed * 0x9E3779B1u) + (uint)salt));
 }

@@ -72,22 +72,8 @@ public sealed class IdleTask : PersonTask
         return new Position(anchor.X + (distance * Math.Cos(angle)), anchor.Y + (distance * Math.Sin(angle)));
     }
 
-    // System.Random's legacy algorithm correlates badly on nearby small seeds - two people
-    // whose id seeds (see EntityId.SeedOf) happen to sit close together would have their
-    // first few draws land eerily close, reading as synchronized wandering rather than
-    // independent people. This avalanches the seed apart first (Thomas Wang's 32-bit integer
-    // hash) while staying deterministic per person.
-    private static int SeedFor(int personSeed)
-    {
-        var x = unchecked((uint)personSeed);
-        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
-        x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
-
-        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
-        x = unchecked(((x >> 16) ^ x) * 0x45d9f3b);
-
-        // Stryker disable once Bitwise: x is uint, so >> and >>> are the same operation
-        x = (x >> 16) ^ x;
-        return unchecked((int)x);
-    }
+    // Two people whose id seeds (see EntityId.SeedOf) happen to sit close together would
+    // otherwise have their first few draws land eerily close, reading as synchronized
+    // wandering rather than independent people - see SeedHash for why.
+    private static int SeedFor(int personSeed) => SeedHash.Avalanche(unchecked((uint)personSeed));
 }
