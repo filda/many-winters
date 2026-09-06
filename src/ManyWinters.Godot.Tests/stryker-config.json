@@ -3,6 +3,7 @@
     "project": "ManyWinters.Godot.csproj",
     "mutate": [
       "**/InspectorText.cs",
+      "**/RevealableExploration.cs",
       "**/SpriteExtents.cs",
       "**/SpriteTint.cs",
       "**/TexturePaths.cs"

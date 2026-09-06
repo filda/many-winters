@@ -68,7 +68,7 @@ public sealed class FogOfWarRenderer
     // has to safely cover the [-1, 1] clip-space range on both axes (2x2), never less.
     private const float OverlayQuadSize = 4f;
 
-    private readonly ExplorationState _exploration;
+    private readonly RevealableExploration _exploration;
     private readonly float _halfExtentMeters;
     private readonly ImageTexture _explorationTexture;
 
@@ -85,7 +85,7 @@ public sealed class FogOfWarRenderer
     private float[,] _distanceCells;
     private readonly float _metersPerTexel;
 
-    public FogOfWarRenderer(ExplorationState exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
+    public FogOfWarRenderer(RevealableExploration exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
     {
         _exploration = exploration;
         _halfExtentMeters = halfExtentMeters;

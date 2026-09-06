@@ -15,7 +15,7 @@ public sealed class WorldPresenter
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
-    private readonly ExplorationState _exploration;
+    private readonly RevealableExploration _exploration;
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
 
@@ -29,6 +29,7 @@ public sealed class WorldPresenter
     public WorldPresenter(
         Node3D container,
         WorldState world,
+        RevealableExploration exploration,
         Action<Person, MouseButton> onPersonClicked,
         Action<ResourceNode> onResourceNodeSelected,
         Action<Grave> onGraveSelected,
@@ -42,7 +43,7 @@ public sealed class WorldPresenter
         _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight;
         _resourceCatalog = world.Configuration.ResourceCatalog;
-        _exploration = world.Exploration;
+        _exploration = exploration;
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
@@ -156,11 +157,18 @@ public sealed class WorldPresenter
         _resourceNodeViews[node.Id] = view;
     }
 
-    // Called once per simulation tick (Main._Process's tick block) - cheap enough at that
-    // cadence (a HashSet lookup per pending/created node, not per frame) even at decoration
-    // scale. Two jobs: promote any still-pending node whose cell has now been explored to a
-    // real view, and keep every already-created view's "remembered" (explored, not currently
-    // visible) tint in sync as the group wanders in and out of sight of it.
+    // Called once per simulation tick (Main._Process's tick block), and again the moment the
+    // "Reveal Map" toggle flips - cheap enough at that cadence (a HashSet lookup per
+    // pending/created node, not per frame) even at decoration scale. Three jobs: promote any
+    // still-pending node whose cell has now been explored to a real view, keep every
+    // already-created view's "remembered" (explored, not currently visible) tint in sync as
+    // the group wanders in and out of sight of it, and send a view whose cell is *not*
+    // explored back to pending. That last one only ever happens when the "Reveal Map"
+    // toggle is switched off again (ExplorationState itself never un-explores a cell): the
+    // fog shaders assume nothing is instantiated under unexplored ground - the boundary is
+    // deliberately soft on the unexplored side, and pixels that reconstruct implausibly
+    // far are skipped - so a view left standing there showed through as a fogged silhouette
+    // instead of disappearing the way it never existed before the reveal.
     public void RefreshExploration()
     {
         if (_pendingResourceNodes.Count > 0)
@@ -185,10 +193,27 @@ public sealed class WorldPresenter
             }
         }
 
-        foreach (var view in _resourceNodeViews.Values)
+        List<ResourceNodeId>? backToPending = null;
+        foreach (var (id, view) in _resourceNodeViews)
         {
-            var cell = ExplorationState.CellFor(new Position(view.Position.X, view.Position.Z));
+            var cell = ExplorationState.CellFor(view.Node.Position);
+            if (!_exploration.IsExplored(cell))
+            {
+                (backToPending ??= new List<ResourceNodeId>()).Add(id);
+                continue;
+            }
+
             view.SetRemembered(!_exploration.IsVisible(cell));
+        }
+
+        if (backToPending is not null)
+        {
+            foreach (var id in backToPending)
+            {
+                var view = _resourceNodeViews[id];
+                _pendingResourceNodes[id] = view.Node;
+                RemoveResourceNodeView(id);
+            }
         }
     }
 

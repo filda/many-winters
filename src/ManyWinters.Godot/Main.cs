@@ -20,6 +20,7 @@ public partial class Main : Node3D
     private readonly PresentationSettings _presentation = PresentationSettings.Default;
 
     private WorldState _world = null!;
+    private RevealableExploration _exploration = null!;
     private WorldPresenter _presenter = null!;
     private FogOfWarRenderer _fogOfWar = null!;
     private GroundClouds _groundClouds = null!;
@@ -55,6 +56,7 @@ public partial class Main : Node3D
         var configuration = WorldConfiguration.LoadFromJson(catalog => ContentFiles.ReadJsonTree($"res://Content/{catalog}"));
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
+        _exploration = new RevealableExploration(_world.Exploration);
         _campCenter = map.CampCenter;
 
         GetViewport().PhysicsObjectPicking = true;
@@ -67,8 +69,8 @@ public partial class Main : Node3D
         CloudScatter.Scatter(this, _terrain.Half);
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
 
-        _presenter = new WorldPresenter(this, _world, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
-        _fogOfWar = new FogOfWarRenderer(_world.Exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
+        _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
+        _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
@@ -469,6 +471,13 @@ public partial class Main : Node3D
         spawnButton.Pressed += OnSpawnButtonPressed;
         panel.Body.AddChild(spawnButton);
 
+        // A development view, not a gameplay one (see RevealableExploration): the whole map
+        // as if fog of war did not exist. Sits with "Spawn Person" rather than in
+        // _contextualActions because it has nothing to do with whoever is selected.
+        var revealMapToggle = new CheckButton { Text = "Reveal Map" };
+        revealMapToggle.Toggled += OnRevealMapToggled;
+        panel.Body.AddChild(revealMapToggle);
+
         _contextualActions = new VBoxContainer { Visible = false };
         panel.Body.AddChild(_contextualActions);
 
@@ -533,6 +542,16 @@ public partial class Main : Node3D
         _statusBar.AddThemeStyleboxOverride("panel", PanelBackground());
         canvas.AddChild(_statusBar);
         _statusBar.SetTick(0, _world.CurrentSeason);
+    }
+
+    // Refreshes right away rather than waiting for the next tick: the tick interval is long
+    // enough that a toggle which only took effect a moment later would read as broken.
+    private void OnRevealMapToggled(bool toggledOn)
+    {
+        _exploration.RevealAll = toggledOn;
+        _presenter.RefreshExploration();
+        _fogOfWar.Refresh();
+        _groundClouds.Refresh();
     }
 
     private void OnSpawnButtonPressed()

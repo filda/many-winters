@@ -64,6 +64,10 @@ public partial class ResourceNodeView : Area3D
 
     private readonly ResourceNode _node;
     private readonly ResourceKindId _kind;
+
+    // For WorldPresenter, which needs the node back when a view has to return to pending
+    // (see WorldPresenter.RefreshExploration).
+    public ResourceNode Node => _node;
     private readonly bool _canFell;
     private readonly Action<ResourceNode> _onSelected;
     private readonly InputEventEventHandler _onMissedClick;
