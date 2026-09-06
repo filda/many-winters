@@ -16,17 +16,17 @@ public sealed record BuryCommand(PersonId BuryingPersonId, PersonId DeceasedPers
         var deceased = world.People.FirstOrDefault(p => p.Id == DeceasedPersonId && !p.IsAlive && !p.IsBuried);
         if (buryingPerson is null
             || deceased is null
-            || WorldState.Distance(buryingPerson.Position, deceased.Position) > WorldState.MaxInteractionDistance)
+            || !world.IsWithinReach(buryingPerson.Position, deceased.Position))
         {
             return;
         }
 
-        var skillDefinition = world.SkillCatalog.Get(BurialSkill);
+        var skillDefinition = world.Configuration.SkillCatalog.Get(BurialSkill);
         var technique = skillDefinition.EfficientTechnique;
         var isMarked = buryingPerson.KnownTechniques.Contains(technique);
 
         var deathTick = deceased.DeathTick ?? world.Clock.CurrentTick;
-        var ageAtDeath = (int)((deathTick - deceased.BirthTick) / WorldState.TicksPerYear);
+        var ageAtDeath = (int)world.AgeInYearsAt(deceased, deathTick);
         var mother = deceased.MotherId is { } motherId ? world.People.FirstOrDefault(p => p.Id == motherId) : null;
         var father = deceased.FatherId is { } fatherId ? world.People.FirstOrDefault(p => p.Id == fatherId) : null;
 

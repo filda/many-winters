@@ -123,7 +123,7 @@ public static class TestCatalogs
     // Carry capacity (see CarryCapacity.BaseWeightFor) ramps up with age - most command tests
     // don't care about age at all, so they add people old enough to already be at the full
     // adult baseline rather than a newborn's reduced one.
-    public const long AdultAgeTicks = WorldState.TicksPerYear * 4;
+    public static readonly long AdultAgeTicks = SimulationRules.Default.TicksPerYear * 4;
 
     private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
 
@@ -193,7 +193,8 @@ public static class TestCatalogs
         CreateRecipeCatalog(),
         CreateBuildingCatalog(),
         CreateItemCatalog(),
-        SeasonParameters.Default);
+        SeasonParameters.Default,
+        SimulationRules.Default);
 
     public static WorldState CreateWorld() => new(CreateConfiguration());
 }

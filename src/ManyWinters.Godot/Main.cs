@@ -19,8 +19,8 @@ public partial class Main : Node3D
     // mid-attention - only once selection moves on does this window actually run out.
     private const long SelectedPersonIdleGraceTicks = 5;
 
-    // Comfortably inside WorldState.MaxInteractionDistance (2f), but far enough out that a
-    // person's own sprite doesn't overlap the resource node's.
+    // Comfortably inside SimulationRules.MaxInteractionDistance (2f by default), but far enough
+    // out that a person's own sprite doesn't overlap the resource node's.
     private const float ApproachDistance = 1.2f;
 
     // Godot's UI default (16) reads oversized for a dense debug/dev panel crammed with
@@ -664,7 +664,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, nearestBuilding.Position))
         {
             _statusBar.Notify("The nearest building is too far away.");
             return;
@@ -696,7 +696,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, nearestBuilding.Position))
         {
             _statusBar.Notify("The nearest building is too far away.");
             return;
@@ -738,7 +738,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, nearestBuilding.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, nearestBuilding.Position))
         {
             _statusBar.Notify("The nearest building is too far away.");
             return;
@@ -778,13 +778,13 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, node.Position))
         {
             _statusBar.Notify("The nearest tree is too far away.");
             return;
         }
 
-        TeachBaseTechniqueIfNeeded(personId, _world.ResourceCatalog.Get(node.Kind).Skill);
+        TeachBaseTechniqueIfNeeded(personId, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
         _world.Execute(new FellCommand(personId, node.Id));
         _presenter.RemoveResourceNodeView(node.Id);
         RefreshInfoLabel();
@@ -821,7 +821,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, deceased.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, deceased.Position))
         {
             _statusBar.Notify("The nearest deceased person is too far away.");
             return;
@@ -862,7 +862,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, deceased.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, deceased.Position))
         {
             _statusBar.Notify("The nearest belongings are too far away.");
             return;
@@ -909,7 +909,7 @@ public partial class Main : Node3D
 
     private ResourceNode? FindNearestFellableResourceNode(Position position) =>
         _world.ResourceNodes
-            .Where(n => n.IsAlive && _world.ResourceCatalog.Get(n.Kind).CanFell)
+            .Where(n => n.IsAlive && _world.Configuration.ResourceCatalog.Get(n.Kind).CanFell)
             .OrderBy(n => WorldState.Distance(n.Position, position))
             .FirstOrDefault();
 
@@ -954,7 +954,7 @@ public partial class Main : Node3D
         // Kept within MaxInteractionDistance's worst-case diagonal (spread/2 * sqrt(2)) so a freshly
         // picked spot is never too far away to actually construct on, since ConstructCommand itself
         // now requires proximity.
-        const float spread = WorldState.MaxInteractionDistance;
+        var spread = _world.Configuration.Rules.MaxInteractionDistance;
         const int maxAttempts = 20;
 
         for (var attempt = 0; attempt < maxAttempts; attempt++)
@@ -1035,7 +1035,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+        if (!_world.IsWithinReach(person.Position, node.Position))
         {
             _pendingGathers[personId] = id;
             _world.Execute(new MoveCommand(personId, ApproachPosition(person.Position, node.Position, ApproachDistance)));
@@ -1068,7 +1068,7 @@ public partial class Main : Node3D
                 continue;
             }
 
-            if (WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+            if (!_world.IsWithinReach(person.Position, node.Position))
             {
                 continue;
             }
@@ -1083,7 +1083,7 @@ public partial class Main : Node3D
     // withered - see FellCommand, WorldState.Advance) means the thing itself is actually gone.
     private void GatherFrom(PersonId personId, ResourceNode node)
     {
-        TeachBaseTechniqueIfNeeded(personId, _world.ResourceCatalog.Get(node.Kind).Skill);
+        TeachBaseTechniqueIfNeeded(personId, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
         _world.Execute(new GatherCommand(personId, node.Id));
     }
 
@@ -1099,7 +1099,7 @@ public partial class Main : Node3D
             return;
         }
 
-        var baseTechnique = _world.SkillCatalog.Get(skill).BaseTechnique;
+        var baseTechnique = _world.Configuration.SkillCatalog.Get(skill).BaseTechnique;
         if (!person.KnownTechniques.Contains(baseTechnique))
         {
             _world.Execute(new GrantTechniqueCommand(personId, baseTechnique));
@@ -1175,7 +1175,7 @@ public partial class Main : Node3D
         var inventory = person.Inventory.Counts.Count > 0
             ? string.Join(", ", person.Inventory.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
             : "empty";
-        var carriedWeight = person.Inventory.TotalWeight(_world.ItemCatalog);
+        var carriedWeight = person.Inventory.TotalWeight(_world.Configuration.ItemCatalog);
         var maxCarryWeight = _world.MaxCarryWeightFor(person);
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +

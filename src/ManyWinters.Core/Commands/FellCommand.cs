@@ -11,13 +11,13 @@ public sealed record FellCommand(PersonId PersonId, ResourceNodeId ResourceNodeI
     {
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
         var node = world.ResourceNodes.FirstOrDefault(n => n.Id == ResourceNodeId && n.IsAlive);
-        if (person is null || node is null || WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+        if (person is null || node is null || !world.IsWithinReach(person.Position, node.Position))
         {
             return;
         }
 
-        var resource = world.ResourceCatalog.Get(node.Kind);
-        var skillDefinition = world.SkillCatalog.Get(resource.Skill);
+        var resource = world.Configuration.ResourceCatalog.Get(node.Kind);
+        var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
         if (!resource.CanFell || !person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
         {
             return;

@@ -5,18 +5,23 @@ using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.World;
 
+// Everything a WorldState is built from but never changes while it runs: the content catalogs
+// (what exists), the calendar-to-climate mapping, and the simulation's tuning numbers (Rules).
+// A save file stores none of this - it's handed back in on load.
 public sealed record WorldConfiguration(
     ResourceCatalog ResourceCatalog,
     SkillCatalog SkillCatalog,
     RecipeCatalog RecipeCatalog,
     BuildingCatalog BuildingCatalog,
     ItemCatalog ItemCatalog,
-    SeasonParameters SeasonParameters)
+    SeasonParameters SeasonParameters,
+    SimulationRules Rules)
 {
-    // Nothing defined at all, on the default calendar - what `new WorldConfiguration { X = ... }`
-    // starts from when a caller only cares about one or two of the catalogs.
+    // Nothing defined at all, on the default calendar and rules - what
+    // `new WorldConfiguration { X = ... }` starts from when a caller only cares about one or two
+    // of the catalogs.
     public WorldConfiguration()
-        : this(new([]), new([]), new([]), new([]), new([]), SeasonParameters.Default)
+        : this(new([]), new([]), new([]), new([]), new([]), SeasonParameters.Default, SimulationRules.Default)
     {
     }
 
@@ -35,5 +40,6 @@ public sealed record WorldConfiguration(
         RecipeCatalog.LoadFromJson(readCatalog("recipes")),
         BuildingCatalog.LoadFromJson(readCatalog("buildings")),
         ItemCatalog.LoadFromJson(readCatalog("items")),
-        SeasonParameters.Default);
+        SeasonParameters.Default,
+        SimulationRules.Default);
 }

@@ -36,16 +36,16 @@ public sealed record TeachCommand(PersonId TeacherId, PersonId StudentId, Techni
         if (teacher is null
             || student is null
             || !teacher.KnownTechniques.Contains(Technique)
-            || world.SkillCatalog.Find(TeachingSkill) is not { } teachingDefinition
+            || world.Configuration.SkillCatalog.Find(TeachingSkill) is not { } teachingDefinition
             || !teacher.KnownTechniques.Contains(teachingDefinition.BaseTechnique))
         {
             return;
         }
 
-        var range = teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
-            ? WorldState.MaxInteractionDistance * EfficientTeachingRangeMultiplier
-            : WorldState.MaxInteractionDistance;
-        if (WorldState.Distance(teacher.Position, student.Position) > range)
+        var rangeMultiplier = teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
+            ? EfficientTeachingRangeMultiplier
+            : 1f;
+        if (!world.IsWithinReach(teacher.Position, student.Position, rangeMultiplier))
         {
             return;
         }

@@ -131,7 +131,7 @@ public static class MapLoader
         {
             var position = NextCrowdPosition(rng, placedPositions);
             placedPositions.Add(position);
-            var initialAgeTicks = StartingAgesInWinters[i] * WorldState.TicksPerYear;
+            var initialAgeTicks = StartingAgesInWinters[i] * configuration.Rules.TicksPerYear;
             var motherId = StartingMotherIndex[i] is { } motherIndex ? new PersonId(motherIndex + 1) : (PersonId?)null;
             var fatherId = StartingFatherIndex[i] is { } fatherIndex ? new PersonId(fatherIndex + 1) : (PersonId?)null;
             world.Execute(new SpawnPersonCommand(PersonNames.Pool[i], position, initialAgeTicks, motherId, fatherId));

@@ -16,7 +16,7 @@ public class BuryCommandTests
         var deceased = world.AddPerson("Ava", new Position(1, 1));
         deceased.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         deceased.IsAlive = false;
-        deceased.DeathTick = WorldState.TicksPerYear * 3;
+        deceased.DeathTick = world.Configuration.Rules.TicksPerYear * 3;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
 
@@ -38,7 +38,7 @@ public class BuryCommandTests
         var deceased = world.AddPerson("Ava", new Position(1, 1));
         deceased.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         deceased.IsAlive = false;
-        deceased.DeathTick = WorldState.TicksPerYear * 3;
+        deceased.DeathTick = world.Configuration.Rules.TicksPerYear * 3;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
 
@@ -148,7 +148,7 @@ public class BuryCommandTests
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        world.Clock.Advance(WorldState.TicksPerYear * 2);
+        world.Clock.Advance(world.Configuration.Rules.TicksPerYear * 2);
         var deceased = world.AddPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
@@ -257,7 +257,7 @@ public class BuryCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(WorldState.MaxInteractionDistance, 0));
+        var deceased = world.AddPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -270,7 +270,7 @@ public class BuryCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(WorldState.MaxInteractionDistance + 1, 0));
+        var deceased = world.AddPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));

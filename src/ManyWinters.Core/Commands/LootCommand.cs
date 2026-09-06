@@ -10,7 +10,7 @@ public sealed record LootCommand(PersonId LootingPersonId, PersonId DeceasedPers
         var deceased = world.People.FirstOrDefault(p => p.Id == DeceasedPersonId && !p.IsAlive);
         if (lootingPerson is null
             || deceased is null
-            || WorldState.Distance(lootingPerson.Position, deceased.Position) > WorldState.MaxInteractionDistance)
+            || !world.IsWithinReach(lootingPerson.Position, deceased.Position))
         {
             return;
         }
@@ -21,7 +21,7 @@ public sealed record LootCommand(PersonId LootingPersonId, PersonId DeceasedPers
         // basket) partway through should raise the room left for whatever's looted next.
         foreach (var (item, count) in deceased.Inventory.Counts.ToList())
         {
-            var taken = lootingPerson.Inventory.AddUpToCapacity(item, count, world.ItemCatalog, world.MaxCarryWeightFor(lootingPerson));
+            var taken = lootingPerson.Inventory.AddUpToCapacity(item, count, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(lootingPerson));
             // Stryker disable once Equality: removing zero units leaves the count exactly as it
             // was, so skipping the call and making it are indistinguishable
             if (taken > 0)

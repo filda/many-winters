@@ -11,16 +11,8 @@ namespace ManyWinters.Core.World;
 
 public sealed class WorldState(WorldConfiguration configuration)
 {
-    public const long TicksPerYear = TicksPerSeason * SeasonsPerYear;
-    public const float MaxInteractionDistance = 2f;
-
-    private const long TicksPerSeason = 75;
-    private const long SeasonsPerYear = 4;
-    private const float HungerPerTick = 1f;
-    private const float MaxHunger = 100f;
-    private const float ConditionDecayPerTick = 0.05f;
+    // A floor, not a tuning knob - a building can't be in negative repair.
     private const float MinCondition = 0f;
-    private const long MaxLifespanYears = 10;
 
     private readonly List<Person> _people = new();
     private readonly List<ResourceNode> _resourceNodes = new();
@@ -35,17 +27,9 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public ExplorationState Exploration { get; } = new();
 
-    public ResourceCatalog ResourceCatalog { get; } = configuration.ResourceCatalog;
-
-    public SkillCatalog SkillCatalog { get; } = configuration.SkillCatalog;
-
-    public RecipeCatalog RecipeCatalog { get; } = configuration.RecipeCatalog;
-
-    public BuildingCatalog BuildingCatalog { get; } = configuration.BuildingCatalog;
-
-    public ItemCatalog ItemCatalog { get; } = configuration.ItemCatalog;
-
-    public SeasonParameters SeasonParameters { get; } = configuration.SeasonParameters;
+    // What this world was built from and runs on (catalogs, calendar, tuning numbers) - fixed
+    // for the world's lifetime, unlike everything else here. Not part of a save file.
+    public WorldConfiguration Configuration { get; } = configuration;
 
     public IReadOnlyList<Person> People => _people;
 
@@ -63,7 +47,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public int NextGraveId => _nextGraveId;
 
-    public Season CurrentSeason => SeasonAt(Clock.CurrentTick);
+    public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
     public event Action<Person>? PersonAdded;
 
@@ -163,9 +147,18 @@ public sealed class WorldState(WorldConfiguration configuration)
         return Math.Sqrt((dx * dx) + (dy * dy));
     }
 
-    public long AgeInYears(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerYear;
+    // The one proximity test every "act on that thing" command shares (gather, fell, bury,
+    // deposit, ...) - exactly at the limit still counts as within reach. `rangeMultiplier`
+    // is for the rare case of a wider-than-normal reach (TeachCommand's efficient teacher).
+    public bool IsWithinReach(Position a, Position b, float rangeMultiplier = 1f) =>
+        Distance(a, b) <= Configuration.Rules.MaxInteractionDistance * rangeMultiplier;
 
-    public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / TicksPerSeason;
+    public long AgeInYears(Person person) => AgeInYearsAt(person, Clock.CurrentTick);
+
+    // Age as of some other moment than now - a death tick, say (see BuryCommand).
+    public long AgeInYearsAt(Person person, long tick) => (tick - person.BirthTick) / Configuration.Rules.TicksPerYear;
+
+    public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / Configuration.Rules.TicksPerSeason;
 
     // How much this specific person can carry right now - varies by age (see CarryCapacity)
     // plus whatever gear (a basket, a bag, ...) they currently have on them (same "presence,
@@ -173,22 +166,27 @@ public sealed class WorldState(WorldConfiguration configuration)
     // bonus of carrying one).
     public float MaxCarryWeightFor(Person person)
     {
-        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), MaxLifespanYears);
-        var gearBonus = person.Inventory.Counts.Keys.Sum(ItemCatalog.CarryCapacityBonusFor);
+        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), Configuration.Rules.MaxLifespanYears);
+        var gearBonus = person.Inventory.Counts.Keys.Sum(Configuration.ItemCatalog.CarryCapacityBonusFor);
         return baseWeight + gearBonus;
     }
 
     public void Advance(long ticks)
     {
+        var rules = Configuration.Rules;
+        var seasonParameters = Configuration.SeasonParameters;
+        var itemCatalog = Configuration.ItemCatalog;
+        var resourceCatalog = Configuration.ResourceCatalog;
+
         var startTick = Clock.CurrentTick;
         Clock.Advance(ticks);
 
         for (var i = 0L; i < ticks; i++)
         {
             var currentTick = startTick + i + 1;
-            var climate = SeasonParameters.ClimateFor(SeasonAt(startTick + i));
-            var baseHungerMultiplier = SeasonParameters.HungerMultiplierFor(climate);
-            var regenMultiplier = SeasonParameters.RegenMultiplierFor(climate);
+            var climate = seasonParameters.ClimateFor(rules.SeasonAt(startTick + i));
+            var baseHungerMultiplier = seasonParameters.HungerMultiplierFor(climate);
+            var regenMultiplier = seasonParameters.RegenMultiplierFor(climate);
 
             foreach (var person in _people)
             {
@@ -230,14 +228,13 @@ public sealed class WorldState(WorldConfiguration configuration)
                     new GatherCommand(person.Id, activeGather.TargetNodeId).Execute(this);
                 }
 
-                var insulation = person.Inventory.Counts.Keys.Sum(kind => ItemCatalog.InsulationFor(kind));
+                var insulation = person.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
                 var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
-                person.Needs.Hunger = Math.Min(person.Needs.Hunger + (HungerPerTick * hungerMultiplier), MaxHunger);
+                person.Needs.Hunger = Math.Min(person.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), rules.MaxHunger);
                 TryAutoEat(person);
 
-                var age = (currentTick - person.BirthTick) / TicksPerYear;
-                var diedOfOldAge = age >= MaxLifespanYears;
-                if (person.Needs.Hunger >= MaxHunger || diedOfOldAge)
+                var diedOfOldAge = AgeInYearsAt(person, currentTick) >= rules.MaxLifespanYears;
+                if (person.Needs.Hunger >= rules.MaxHunger || diedOfOldAge)
                 {
                     person.IsAlive = false;
                     person.DeathTick = currentTick;
@@ -256,7 +253,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                     continue;
                 }
 
-                var definition = ResourceCatalog.Get(node.Kind);
+                var definition = resourceCatalog.Get(node.Kind);
                 if (definition.IsInhospitable(climate))
                 {
                     node.ColdStress += 1f;
@@ -279,7 +276,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
         foreach (var building in _buildings)
         {
-            building.Condition = Math.Max(MinCondition, building.Condition - (ConditionDecayPerTick * ticks));
+            building.Condition = Math.Max(MinCondition, building.Condition - (rules.ConditionDecayPerTick * ticks));
         }
     }
 
@@ -301,8 +298,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     };
 
     private bool NeedsToSeekFoodUrgently(Person person) =>
-        SkillCatalog.Find(EatCommand.Skill) is { } eating
-        && person.Needs.Hunger >= HungerSeekFoodThreshold
+        Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating
+        && person.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold
         && person.KnownTechniques.Contains(eating.BaseTechnique)
         && !HasEdibleFood(person);
 
@@ -315,18 +312,10 @@ public sealed class WorldState(WorldConfiguration configuration)
     // "Idle" now means "put whatever skill this person already has to use, or go find food if
     // hungry and empty-handed" (todo: "Pokud už má osoba v idle nějaký skill, tak by ho měl
     // použít") - plain wandering (IdleTask) is only the fallback once neither applies. Hunger
-    // takes priority over an already-known skill: a hungry woodcutter with no food on hand
-    // goes looking for something to eat before going back to chopping wood.
-    private const float HungerSeekFoodThreshold = 50f;
-
-    // Nobody autonomously treks halfway across a real ~1km terrain patch (see
-    // MapLoader.ScatterDecorations) for one distant resource - a search this wide only ever
-    // matters in a sparse/test world; the real game's decoration density means a genuinely
-    // reachable match is normally well within it anyway.
-    private const float IdleSearchRadius = 60f;
-
+    // takes priority over an already-known skill (see SimulationRules.HungerSeekFoodThreshold).
     private PersonTask DecideIdleTask(Person person)
     {
+        var reachDistance = Configuration.Rules.MaxInteractionDistance;
         // Knowing how to eat is what makes seeking food worth prioritizing over whatever else
         // this person knows - without it, gathering more food wouldn't help them anyway (see
         // EatCommand's own gate), so this falls through to the general search below.
@@ -337,7 +326,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             var foodNode = FindNearestGatherableResourceNode(person.Position, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
             if (foodNode is not null)
             {
-                return new GatherTask(foodNode.Id, foodNode.Position);
+                return new GatherTask(foodNode.Id, foodNode.Position, reachDistance);
             }
         }
 
@@ -350,7 +339,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         var node = FindNearestGatherableResourceNode(person.Position, definition => IsKnownSkill(person, definition.Skill));
         if (node is not null)
         {
-            return new GatherTask(node.Id, node.Position);
+            return new GatherTask(node.Id, node.Position, reachDistance);
         }
 
         return new IdleTask();
@@ -358,15 +347,15 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private bool IsKnownSkill(Person person, SkillTypeId skill)
     {
-        var definition = SkillCatalog.Find(skill);
+        var definition = Configuration.SkillCatalog.Find(skill);
         return definition is not null && person.KnownTechniques.Contains(definition.BaseTechnique);
     }
 
     private bool IsFoodResource(ResourceDefinition definition) =>
-        definition.YieldsItem is { } item && ItemCatalog.HungerRestoredPerUnitFor(item) > 0f;
+        definition.YieldsItem is { } item && Configuration.ItemCatalog.HungerRestoredPerUnitFor(item) > 0f;
 
     private bool HasEdibleFood(Person person) =>
-        person.Inventory.Counts.Any(kv => kv.Value > 0 && ItemCatalog.HungerRestoredPerUnitFor(kv.Key) > 0f);
+        person.Inventory.Counts.Any(kv => kv.Value > 0 && Configuration.ItemCatalog.HungerRestoredPerUnitFor(kv.Key) > 0f);
 
     // Depleted-but-alive nodes (RemainingAmount 0, still regenerating) are skipped rather than
     // sent to and stood next to - with thousands of decoration-turned-resource nodes usually
@@ -378,7 +367,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         var nearestDistance = double.MaxValue;
         foreach (var node in _resourceNodes)
         {
-            if (node is not { IsAlive: true, RemainingAmount: > 0f } || !matches(ResourceCatalog.Get(node.Kind)))
+            if (node is not { IsAlive: true, RemainingAmount: > 0f } || !matches(Configuration.ResourceCatalog.Get(node.Kind)))
             {
                 continue;
             }
@@ -391,46 +380,33 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
         }
 
-        return nearestDistance <= IdleSearchRadius ? nearest : null;
+        return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
     }
-
-    // A lesson someone actually sat down to give (TeachFromSelectedPersonTo's right-click, a
-    // deliberate full transfer) is a different thing from picking something up just from being
-    // around someone - "tichá pošta": only ever the base technique, never the harder-earned
-    // efficient one riding on top of it, and even that isn't guaranteed on any given tick
-    // (rolled fresh each tick, not a permanent per-pair verdict - once someone picks something
-    // up they can just as easily become a further relay for it, so a low per-tick chance,
-    // not a one-time coin flip, is what actually keeps the spread gradual and partial).
-    private const float CasualTeachingChancePerTick = 0.05f;
-
-    // Eating (and teaching itself, the one thing every other casual lesson depends on - see
-    // AutoTeachNearbyPeople) are different from a specialised craft skill: everyone's watched
-    // someone else eat and copy it comes far more naturally than picking up woodcutting from
-    // proximity alone, and the whole casual-teaching chain can't even start in a population
-    // until at least one person knows how to teach at all. A much higher chance for these two
-    // specifically keeps that bootstrap from being the bottleneck it would otherwise be.
-    private const float CasualTeachingChancePerTickForCriticalSkills = 0.3f;
 
     // "Later they teach each other" - once at least one person knows something (and knows how
     // to teach - see TeachCommand), anyone else nearby who doesn't know it yet may pick some of
-    // it up automatically, no player action needed. Every alive pair is checked every tick -
-    // with the population sizes this game actually has (tens, not thousands, of people), an
-    // O(n^2) pass here is negligible next to the resource-node work Advance already does
-    // elsewhere.
+    // it up automatically, no player action needed ("tichá pošta" - see
+    // SimulationRules.CasualTeachingChancePerTick for why it's a per-tick roll). Every alive
+    // pair is checked every tick - with the population sizes this game actually has (tens, not
+    // thousands, of people), an O(n^2) pass here is negligible next to the resource-node work
+    // Advance already does elsewhere.
     private void AutoTeachNearbyPeople(long currentTick)
     {
+        var skillCatalog = Configuration.SkillCatalog;
+        var rules = Configuration.Rules;
+
         // Find, not Get - a catalog that never registered "teaching" (most unit tests, a
         // deliberately minimal world) just means nobody could possibly teach anyone anything,
         // not a crash.
-        if (SkillCatalog.Find(TeachCommand.TeachingSkill) is not { } teachingDefinition)
+        if (skillCatalog.Find(TeachCommand.TeachingSkill) is not { } teachingDefinition)
         {
             return;
         }
 
         var teachingBaseTechnique = teachingDefinition.BaseTechnique;
-        var efficientTechniques = SkillCatalog.Definitions.Select(d => d.EfficientTechnique).ToHashSet();
+        var efficientTechniques = skillCatalog.Definitions.Select(d => d.EfficientTechnique).ToHashSet();
         var criticalTechniques = new HashSet<TechniqueId> { teachingBaseTechnique };
-        if (SkillCatalog.Find(EatCommand.Skill) is { } eatingDefinition)
+        if (skillCatalog.Find(EatCommand.Skill) is { } eatingDefinition)
         {
             criticalTechniques.Add(eatingDefinition.BaseTechnique);
         }
@@ -452,7 +428,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                 TechniqueId? teachableTechnique = null;
                 foreach (var technique in teacher.KnownTechniques)
                 {
-                    var chance = criticalTechniques.Contains(technique) ? CasualTeachingChancePerTickForCriticalSkills : CasualTeachingChancePerTick;
+                    var chance = criticalTechniques.Contains(technique) ? rules.CasualTeachingChancePerTickForCriticalSkills : rules.CasualTeachingChancePerTick;
                     if (student.KnownTechniques.Contains(technique)
                         || efficientTechniques.Contains(technique)
                         || !PassesCasualTeachingRoll(teacher.Id, student.Id, technique, currentTick, chance))
@@ -527,30 +503,18 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // A person's own footprint half-width for collision purposes - deliberately smaller than
-    // PersonView's rendered sprite, this only needs to keep people from visibly overlapping,
-    // not match their exact silhouette.
-    private const float PersonCollisionRadius = 0.35f;
-
-    // Caps how far a single tick's worth of untangling can shove someone, regardless of how
-    // many things they happen to be overlapping at once (a person standing in a dense thicket
-    // could otherwise be touching several trees' trunks simultaneously, and summing every one
-    // of those separations unclamped could shove them noticeably farther in one tick than
-    // their own MoveTask/IdleTask step - reading as the person's walk order having been
-    // silently hijacked toward some unrelated direction rather than a gentle nudge out of the
-    // way). Same order of magnitude as MoveCommand's own walking speed, so being untangled
-    // never outpaces an intentional step; a person still deeply stuck simply takes a couple of
-    // extra ticks to fully clear, spread out rather than dumped in one lurch.
-    private const float MaxCollisionPushPerTick = 1f;
-
     // MoveTask/IdleTask only ever aim at a destination, with no awareness of who/what else is
     // already there, so this untangles whatever overlap that produced after the fact, every
     // tick - same O(n^2)-over-people precedent as AutoTeachNearbyPeople. Every separation this
     // tick is computed against positions as they stood at the start of it (not updated
-    // mid-pass) and summed into one push per person, only applied - clamped - at the end, so
-    // the order overlaps happen to be discovered in can't itself bias the result.
+    // mid-pass) and summed into one push per person, only applied - clamped (see
+    // SimulationRules.MaxCollisionPushPerTick) - at the end, so the order overlaps happen to be
+    // discovered in can't itself bias the result.
     private void ResolveCollisions()
     {
+        var personCollisionRadius = Configuration.Rules.PersonCollisionRadius;
+        var maxPushPerTick = Configuration.Rules.MaxCollisionPushPerTick;
+        var resourceCatalog = Configuration.ResourceCatalog;
         var pushes = new (double X, double Y)[_people.Count];
 
         for (var i = 0; i < _people.Count; i++)
@@ -564,7 +528,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             for (var j = i + 1; j < _people.Count; j++)
             {
                 var b = _people[j];
-                if (!b.IsAlive || !TrySeparation(a.Position, b.Position, PersonCollisionRadius * 2f, out var pushX, out var pushY))
+                if (!b.IsAlive || !TrySeparation(a.Position, b.Position, personCollisionRadius * 2f, out var pushX, out var pushY))
                 {
                     continue;
                 }
@@ -585,10 +549,10 @@ public sealed class WorldState(WorldConfiguration configuration)
             var (pushX, pushY) = pushes[i];
             foreach (var node in _resourceNodes)
             {
-                var collisionRadius = ResourceCatalog.Get(node.Kind).CollisionRadius;
+                var collisionRadius = resourceCatalog.Get(node.Kind).CollisionRadius;
                 if (!node.IsAlive
                     || collisionRadius <= 0f
-                    || !TrySeparation(person.Position, node.Position, PersonCollisionRadius + collisionRadius, out var nodePushX, out var nodePushY))
+                    || !TrySeparation(person.Position, node.Position, personCollisionRadius + collisionRadius, out var nodePushX, out var nodePushY))
                 {
                     continue;
                 }
@@ -597,11 +561,11 @@ public sealed class WorldState(WorldConfiguration configuration)
                 pushY += nodePushY;
             }
 
-            ApplyClampedPush(person, pushX, pushY);
+            ApplyClampedPush(person, pushX, pushY, maxPushPerTick);
         }
     }
 
-    private static void ApplyClampedPush(Person person, double pushX, double pushY)
+    private static void ApplyClampedPush(Person person, double pushX, double pushY, float maxPushPerTick)
     {
         var magnitude = Math.Sqrt((pushX * pushX) + (pushY * pushY));
         if (magnitude <= 0.0)
@@ -609,9 +573,9 @@ public sealed class WorldState(WorldConfiguration configuration)
             return;
         }
 
-        if (magnitude > MaxCollisionPushPerTick)
+        if (magnitude > maxPushPerTick)
         {
-            var scale = MaxCollisionPushPerTick / magnitude;
+            var scale = maxPushPerTick / magnitude;
             pushX *= scale;
             pushY *= scale;
         }
@@ -647,8 +611,6 @@ public sealed class WorldState(WorldConfiguration configuration)
         pushY = dy / distance * overlap;
         return true;
     }
-
-    private static Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 
     private void RefreshExploration() =>
         Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));

@@ -13,7 +13,7 @@ public sealed record CraftCommand(PersonId PersonId, ItemKindId Output) : IComma
             return;
         }
 
-        var recipe = world.RecipeCatalog.Get(Output);
+        var recipe = world.Configuration.RecipeCatalog.Get(Output);
         if (!person.Inventory.Remove(recipe.InputItem, recipe.InputAmount))
         {
             return;

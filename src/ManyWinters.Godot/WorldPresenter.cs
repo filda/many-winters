@@ -41,7 +41,7 @@ public sealed class WorldPresenter
         _onGraveSelected = onGraveSelected;
         _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight;
-        _resourceCatalog = world.ResourceCatalog;
+        _resourceCatalog = world.Configuration.ResourceCatalog;
         _exploration = world.Exploration;
 
         world.PersonAdded += CreatePersonView;

@@ -10,7 +10,7 @@ public sealed record WithdrawCommand(PersonId PersonId, BuildingId BuildingId, I
     {
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
         var building = world.Buildings.FirstOrDefault(b => b.Id == BuildingId);
-        if (person is null || building is null || WorldState.Distance(person.Position, building.Position) > WorldState.MaxInteractionDistance)
+        if (person is null || building is null || !world.IsWithinReach(person.Position, building.Position))
         {
             return;
         }
@@ -24,7 +24,7 @@ public sealed record WithdrawCommand(PersonId PersonId, BuildingId BuildingId, I
         // WorldState.MaxCarryWeightFor's own doc comment), withdrawing goes into the person's
         // limited inventory - whatever doesn't fit goes right back into the building rather
         // than being destroyed.
-        var added = person.Inventory.AddUpToCapacity(Item, Amount, world.ItemCatalog, world.MaxCarryWeightFor(person));
+        var added = person.Inventory.AddUpToCapacity(Item, Amount, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
         if (added < Amount)
         {
             building.Inventory.Add(Item, Amount - added);

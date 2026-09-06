@@ -15,12 +15,12 @@ public sealed record RepairCommand(PersonId PersonId, BuildingId BuildingId) : I
         if (person is null
             || building is null
             || building.Condition >= MaxCondition
-            || WorldState.Distance(person.Position, building.Position) > WorldState.MaxInteractionDistance)
+            || !world.IsWithinReach(person.Position, building.Position))
         {
             return;
         }
 
-        var definition = world.BuildingCatalog.Get(building.Kind);
+        var definition = world.Configuration.BuildingCatalog.Get(building.Kind);
         var repairCost = Math.Max(1, definition.RequiredAmount / 4);
         if (!person.Inventory.Remove(definition.RequiredItem, repairCost))
         {

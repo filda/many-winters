@@ -83,7 +83,7 @@ public class TeachCommandTests
         var teacher = world.AddPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(WorldState.MaxInteractionDistance, 0));
+        var student = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -97,7 +97,7 @@ public class TeachCommandTests
         var teacher = world.AddPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(WorldState.MaxInteractionDistance + 1, 0));
+        var student = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -112,7 +112,7 @@ public class TeachCommandTests
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(WorldState.MaxInteractionDistance + 1, 0));
+        var student = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 

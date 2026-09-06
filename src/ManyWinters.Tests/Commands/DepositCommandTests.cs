@@ -56,7 +56,7 @@ public class DepositCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance, 0));
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
@@ -69,7 +69,7 @@ public class DepositCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance + 1, 0));
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 

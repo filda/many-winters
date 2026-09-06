@@ -185,7 +185,7 @@ public class FellCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance, 0), 100);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -197,7 +197,7 @@ public class FellCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance + 1, 0), 100);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 

@@ -18,6 +18,17 @@ public class WorldConfigurationTests
         Assert.Throws<KeyNotFoundException>(() => configuration.BuildingCatalog.Get(new BuildingKindId("storage_hut")));
         Assert.Throws<KeyNotFoundException>(() => configuration.ItemCatalog.Get(new ItemKindId("axe")));
         Assert.Same(SeasonParameters.Default, configuration.SeasonParameters);
+        Assert.Same(SimulationRules.Default, configuration.Rules);
+    }
+
+    [Fact]
+    public void OneRuleCanBeOverriddenWithoutRestatingTheOthers()
+    {
+        var configuration = new WorldConfiguration { Rules = new SimulationRules { MaxLifespanYears = 1 } };
+
+        Assert.Equal(1, configuration.Rules.MaxLifespanYears);
+        Assert.Equal(SimulationRules.Default.TicksPerSeason, configuration.Rules.TicksPerSeason);
+        Assert.Equal(SimulationRules.Default.MaxInteractionDistance, configuration.Rules.MaxInteractionDistance);
     }
 
     [Fact]
@@ -45,6 +56,7 @@ public class WorldConfigurationTests
         Assert.Equal(20, configuration.BuildingCatalog.Get(new BuildingKindId("storage_hut")).RequiredAmount);
         Assert.Equal(5f, configuration.ItemCatalog.Get(new ItemKindId("axe")).Weight);
         Assert.Same(SeasonParameters.Default, configuration.SeasonParameters);
+        Assert.Same(SimulationRules.Default, configuration.Rules);
     }
 
     [Fact]

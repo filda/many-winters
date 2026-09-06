@@ -14,14 +14,14 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
         // Stryker disable once Equality: RemainingAmount never goes negative, and consuming zero is already a no-op below, so > 0 and >= 0 are indistinguishable here
         var node = world.ResourceNodes.FirstOrDefault(n => n.Id == ResourceNodeId && n.IsAlive && n.RemainingAmount > 0);
-        if (person is null || node is null || WorldState.Distance(person.Position, node.Position) > WorldState.MaxInteractionDistance)
+        if (person is null || node is null || !world.IsWithinReach(person.Position, node.Position))
         {
             return;
         }
 
-        var resource = world.ResourceCatalog.Get(node.Kind);
+        var resource = world.Configuration.ResourceCatalog.Get(node.Kind);
         var skill = resource.Skill;
-        var skillDefinition = world.SkillCatalog.Get(skill);
+        var skillDefinition = world.Configuration.SkillCatalog.Get(skill);
         // Never self-taught, unlike the efficient technique below - has to come from the
         // player or another person first (see SkillDefinition.BaseTechnique's own doc comment).
         if (!person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
@@ -37,7 +37,7 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
             harvestAmount += skillDefinition.ToolHarvestBonus;
         }
 
-        var climate = world.SeasonParameters.ClimateFor(world.CurrentSeason);
+        var climate = world.Configuration.SeasonParameters.ClimateFor(world.CurrentSeason);
         harvestAmount *= resource.YieldMultiplierFor(climate);
 
         var potentialConsumed = Math.Min(node.RemainingAmount, harvestAmount);
@@ -46,7 +46,7 @@ public sealed record GatherCommand(PersonId PersonId, ResourceNodeId ResourceNod
         {
             // Only what actually fits in the inventory comes off the node - a full backpack
             // leaves the rest standing to gather later, rather than the excess vanishing.
-            var added = person.Inventory.AddUpToCapacity(item, (int)potentialConsumed, world.ItemCatalog, world.MaxCarryWeightFor(person));
+            var added = person.Inventory.AddUpToCapacity(item, (int)potentialConsumed, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
             node.RemainingAmount -= added;
         }
         else

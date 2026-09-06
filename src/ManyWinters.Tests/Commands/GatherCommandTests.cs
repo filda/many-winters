@@ -154,7 +154,7 @@ public class GatherCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance, 0), 100);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance, 0), 100);
 
         world.Execute(new GatherCommand(person.Id, node.Id));
 
@@ -166,7 +166,7 @@ public class GatherCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(WorldState.MaxInteractionDistance + 1, 0), 100);
+        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
 
         world.Execute(new GatherCommand(person.Id, node.Id));
 

@@ -152,7 +152,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
 
-        world.Advance(WorldState.TicksPerYear);
+        world.Advance(world.Configuration.Rules.TicksPerYear);
 
         Assert.Equal(1, world.AgeInYears(person));
     }
@@ -193,10 +193,10 @@ public class WorldStateTests
     public void AgeInYearsAccountsForThePersonsBirthTickNotJustElapsedWorldTime()
     {
         var world = TestCatalogs.CreateWorld();
-        world.Advance(WorldState.TicksPerYear);
+        world.Advance(world.Configuration.Rules.TicksPerYear);
         var person = world.AddPerson("Ava", new Position(0, 0));
 
-        world.Advance(WorldState.TicksPerYear);
+        world.Advance(world.Configuration.Rules.TicksPerYear);
 
         Assert.Equal(1, world.AgeInYears(person));
     }
@@ -542,7 +542,7 @@ public class WorldStateTests
         // simply isn't there to look up, which is a reason to re-plan rather than to crash.
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
-        person.Tasks.Interrupt(new GatherTask(new ResourceNodeId(404), new Position(5, 0)));
+        person.Tasks.Interrupt(new GatherTask(new ResourceNodeId(404), new Position(5, 0), world.Configuration.Rules.MaxInteractionDistance));
 
         world.Advance(1);
 
@@ -908,15 +908,23 @@ public class WorldStateTests
         Assert.True(person.IsAlive);
     }
 
+    // A short life on a short calendar (SimulationRules) - old age arrives after a handful of
+    // ticks instead of the shipped 3000, so these tests don't have to simulate a whole decade.
+    private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2, MaxLifespanYears = 3 };
+
+    private static WorldState CreateWorld(SimulationRules rules) =>
+        new(TestCatalogs.CreateConfiguration() with { Rules = rules });
+
     [Fact]
     public void AdvanceKillsAPersonWhoReachesTheMaximumLifespanEvenWhenNeverHungry()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = CreateWorld(ShortLifeRules);
         var person = world.AddPerson("Ava", new Position(0, 0));
+        var lifespanTicks = ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears;
 
-        // MaxLifespanYears is 10; feed the person back to zero after every tick so only
-        // old age - never hunger - can be responsible for their death.
-        for (var tick = 0; tick < (WorldState.TicksPerYear * 10) - 1; tick++)
+        // Feed the person back to zero after every tick so only old age - never hunger - can
+        // be responsible for their death.
+        for (var tick = 0; tick < lifespanTicks - 1; tick++)
         {
             world.Advance(1);
             person.Needs.Hunger = 0;
@@ -927,7 +935,23 @@ public class WorldStateTests
         world.Advance(1);
 
         Assert.False(person.IsAlive);
-        Assert.Equal(WorldState.TicksPerYear * 10, person.DeathTick);
+        Assert.Equal(lifespanTicks, person.DeathTick);
+    }
+
+    [Fact]
+    public void AdvanceUsesTheShippedLifespanWhenNoRulesAreOverridden()
+    {
+        // Pins the default calendar: 4 seasons of 75 ticks, 10 years - a person born at tick 0
+        // is still alive on tick 2999 and dead on tick 3000.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Clock.Advance(2999);
+        world.Advance(1);
+
+        Assert.False(person.IsAlive);
+        Assert.Equal(3000, person.DeathTick);
+        Assert.Equal(DeathCause.OldAge, person.CauseOfDeath);
     }
 
     [Fact]
@@ -944,10 +968,10 @@ public class WorldStateTests
     [Fact]
     public void AdvanceRecordsOldAgeAsTheCauseOfDeathWhenTheMaximumLifespanIsReached()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = CreateWorld(ShortLifeRules);
         var person = world.AddPerson("Ava", new Position(0, 0));
 
-        for (var tick = 0; tick < (WorldState.TicksPerYear * 10) - 1; tick++)
+        for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears) - 1; tick++)
         {
             world.Advance(1);
             person.Needs.Hunger = 0;
@@ -961,19 +985,102 @@ public class WorldStateTests
     [Fact]
     public void AdvancePrioritizesOldAgeAsTheCauseOfDeathWhenBothConditionsAreMetSimultaneously()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = CreateWorld(ShortLifeRules);
         var person = world.AddPerson("Ava", new Position(0, 0));
 
-        for (var tick = 0; tick < (WorldState.TicksPerYear * 10) - 1; tick++)
+        for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears) - 1; tick++)
         {
             world.Advance(1);
             person.Needs.Hunger = 0;
         }
 
-        person.Needs.Hunger = 99;
+        person.Needs.Hunger = ShortLifeRules.MaxHunger - 1;
         world.Advance(1);
 
         Assert.Equal(DeathCause.OldAge, person.CauseOfDeath);
+    }
+
+    [Fact]
+    public void AdvanceRaisesHungerByTheConfiguredAmountPerTickAndCapsItAtTheConfiguredMaximum()
+    {
+        var world = CreateWorld(new SimulationRules { HungerPerTick = 30f, MaxHunger = 70f });
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        world.Advance(2);
+        Assert.Equal(60f, person.Needs.Hunger);
+        Assert.True(person.IsAlive);
+
+        world.Advance(1);
+        Assert.Equal(70f, person.Needs.Hunger);
+        Assert.False(person.IsAlive);
+        Assert.Equal(DeathCause.Hunger, person.CauseOfDeath);
+    }
+
+    [Fact]
+    public void AdvanceDecaysBuildingConditionByTheConfiguredRate()
+    {
+        var world = CreateWorld(new SimulationRules { ConditionDecayPerTick = 10f });
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        world.Advance(3);
+
+        Assert.Equal(70f, building.Condition);
+    }
+
+    [Fact]
+    public void CurrentSeasonFollowsTheConfiguredSeasonLength()
+    {
+        var world = CreateWorld(new SimulationRules { TicksPerSeason = 2 });
+
+        world.Advance(2);
+        Assert.Equal(Season.Summer, world.CurrentSeason);
+
+        world.Advance(6);
+        Assert.Equal(Season.Spring, world.CurrentSeason);
+    }
+
+    [Fact]
+    public void IsWithinReachAcceptsExactlyTheConfiguredDistanceAndRejectsAnythingFurther()
+    {
+        var world = CreateWorld(new SimulationRules { MaxInteractionDistance = 3f });
+
+        Assert.True(world.IsWithinReach(new Position(0, 0), new Position(3, 0)));
+        Assert.False(world.IsWithinReach(new Position(0, 0), new Position(3.01, 0)));
+    }
+
+    [Fact]
+    public void IsWithinReachScalesByTheGivenMultiplier()
+    {
+        var world = CreateWorld(new SimulationRules { MaxInteractionDistance = 3f });
+
+        Assert.True(world.IsWithinReach(new Position(0, 0), new Position(6, 0), rangeMultiplier: 2f));
+        Assert.False(world.IsWithinReach(new Position(0, 0), new Position(6.01, 0), rangeMultiplier: 2f));
+    }
+
+    [Fact]
+    public void AgeInYearsAtMeasuresAgainstTheGivenTickOnTheConfiguredCalendar()
+    {
+        var world = CreateWorld(new SimulationRules { TicksPerSeason = 5 });
+        world.Clock.Advance(20);
+        var person = world.AddPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(0, world.AgeInYearsAt(person, 39));
+        Assert.Equal(1, world.AgeInYearsAt(person, 40));
+        Assert.Equal(3, world.AgeInYearsAt(person, 85));
+    }
+
+    [Fact]
+    public void AutonomousGatherTasksCarryTheWorldsReachDistance()
+    {
+        var world = CreateWorld(new SimulationRules { MaxInteractionDistance = 0.75f });
+        var person = world.AddPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        world.AddResourceNode(TestCatalogs.Apple, new Position(10, 0), 100);
+
+        world.Advance(1);
+
+        var gather = Assert.IsType<GatherTask>(person.Tasks.Current);
+        Assert.Equal(0.75f, gather.ReachDistance);
     }
 
     [Fact]

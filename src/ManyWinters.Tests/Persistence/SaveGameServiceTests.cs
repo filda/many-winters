@@ -276,19 +276,7 @@ public class SaveGameServiceTests
             var configuration = TestCatalogs.CreateConfiguration();
             var restored = SaveGameService.Load(path, configuration);
 
-            var definition = restored.ResourceCatalog.Get(TestCatalogs.Apple);
-            Assert.Equal("Apple", definition.DisplayName);
-
-            var recipe = restored.RecipeCatalog.Get(TestCatalogs.Axe);
-            Assert.Equal(TestCatalogs.WoodItem, recipe.InputItem);
-
-            var buildingDefinition = restored.BuildingCatalog.Get(TestCatalogs.StorageHut);
-            Assert.Equal(TestCatalogs.WoodItem, buildingDefinition.RequiredItem);
-
-            var itemDefinition = restored.ItemCatalog.Get(TestCatalogs.WarmClothing);
-            Assert.Equal(TestCatalogs.WarmClothingInsulation, itemDefinition.Insulation);
-
-            Assert.Same(configuration.SeasonParameters, restored.SeasonParameters);
+            Assert.Same(configuration, restored.Configuration);
         }
         finally
         {

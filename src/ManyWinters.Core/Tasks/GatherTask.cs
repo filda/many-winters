@@ -10,15 +10,20 @@ namespace ManyWinters.Core.Tasks;
 // the Person, not the world. Never completes on its own - WorldState.Advance re-evaluates
 // every tick whether this is still the right thing to be doing (target still alive and not
 // depleted), same as it does for IdleTask.
-public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosition) : PersonTask
+//
+// `reachDistance` is the world's SimulationRules.MaxInteractionDistance, handed in by whoever
+// creates the task (DecideIdleTask) - Advance itself never sees the world, so it can't look
+// the rule up.
+public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosition, float reachDistance) : PersonTask
 {
     private const float SpeedPerTick = 0.3f;
 
     // Short of the resource's own position, not standing exactly on it - same standoff Main.cs
     // uses for a player-directed gather-walk (ApproachPosition), so an autonomous approach
     // reads the same as a manually clicked one instead of the person visually overlapping the
-    // sprite.
-    private const float ApproachDistance = 1.2f;
+    // sprite. As a fraction of reach rather than an absolute: a world with a shorter reach
+    // still has its people stop inside it, not at a standoff point they can't gather from.
+    private const float ApproachFractionOfReach = 0.6f;
 
     private Position? _approachPosition;
     private MoveTask? _move;
@@ -27,11 +32,13 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
 
     public Position TargetPosition { get; } = targetPosition;
 
+    public float ReachDistance { get; } = reachDistance;
+
     public override bool IsComplete => false;
 
     public override void Advance(Person person)
     {
-        if (WorldState.Distance(person.Position, TargetPosition) <= WorldState.MaxInteractionDistance)
+        if (WorldState.Distance(person.Position, TargetPosition) <= ReachDistance)
         {
             _move = null;
             return;
@@ -42,10 +49,10 @@ public sealed class GatherTask(ResourceNodeId targetNodeId, Position targetPosit
         // doesn't need a WorldState-aware constructor.
         //
         // The walk always ends at the reach check above, never at the standoff point itself:
-        // ApproachDistance is shorter than MaxInteractionDistance, so a person is already close
-        // enough to gather before the leg would finish. The leg is therefore only ever cleared
-        // by that check, on the tick it stops the walk.
-        _approachPosition ??= ApproachPosition(person.Position, TargetPosition, ApproachDistance);
+        // the standoff is shorter than ReachDistance, so a person is already close enough to
+        // gather before the leg would finish. The leg is therefore only ever cleared by that
+        // check, on the tick it stops the walk.
+        _approachPosition ??= ApproachPosition(person.Position, TargetPosition, ReachDistance * ApproachFractionOfReach);
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);
         _move.Advance(person);
     }

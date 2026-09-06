@@ -86,7 +86,7 @@ public class RepairCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance, 0));
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -100,7 +100,7 @@ public class RepairCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance + 1, 0));
+        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));

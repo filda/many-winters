@@ -8,10 +8,13 @@ public class GatherTaskTests
 {
     private static readonly Position Target = new(10, 10);
 
+    // The shipped reach - what DecideIdleTask hands in from SimulationRules.
+    private static readonly float Reach = SimulationRules.Default.MaxInteractionDistance;
+
     private static Person NewPerson(Position position) =>
         new() { Id = new PersonId(1), Name = "Ava", BirthTick = 0, Position = position };
 
-    private static GatherTask NewTask() => new(new ResourceNodeId(1), Target);
+    private static GatherTask NewTask(float? reach = null) => new(new ResourceNodeId(1), Target, reach ?? Reach);
 
     [Fact]
     public void IsNeverComplete()
@@ -35,6 +38,7 @@ public class GatherTaskTests
 
         Assert.Equal(new ResourceNodeId(1), task.TargetNodeId);
         Assert.Equal(Target, task.TargetPosition);
+        Assert.Equal(Reach, task.ReachDistance);
     }
 
     [Fact]
@@ -49,7 +53,7 @@ public class GatherTaskTests
         }
 
         Assert.True(
-            WorldState.Distance(person.Position, Target) <= WorldState.MaxInteractionDistance,
+            WorldState.Distance(person.Position, Target) <= Reach,
             $"Ended up {WorldState.Distance(person.Position, Target)} away, out of gathering reach.");
     }
 
@@ -67,8 +71,28 @@ public class GatherTaskTests
         // A person who walks all the way onto the sprite overlaps it visually; gathering only
         // ever needed them to be within reach, so the walk ends the moment they are.
         Assert.True(
-            WorldState.Distance(person.Position, Target) > WorldState.MaxInteractionDistance - 0.5,
+            WorldState.Distance(person.Position, Target) > Reach - 0.5,
             $"Walked closer than needed - ended up {WorldState.Distance(person.Position, Target)} away.");
+    }
+
+    [Fact]
+    public void AShorterReachStillEndsTheWalkInsideIt()
+    {
+        // The standoff scales with the reach it was handed rather than being a fixed 1.2 - a
+        // world whose people have to get closer to gather doesn't leave them stranded at a
+        // standoff point they can't gather from.
+        const float shortReach = 0.5f;
+        var person = NewPerson(new Position(30, 10));
+        var task = NewTask(shortReach);
+
+        for (var i = 0; i < 200; i++)
+        {
+            task.Advance(person);
+        }
+
+        var distance = WorldState.Distance(person.Position, Target);
+        Assert.True(distance <= shortReach, $"Ended up {distance} away, outside the short reach.");
+        Assert.True(distance > 0.1, $"Walked all the way onto the resource ({distance} away).");
     }
 
     [Fact]
@@ -89,9 +113,9 @@ public class GatherTaskTests
     [Fact]
     public void StaysPutWhenItStartsExactlyAtTheEdgeOfReach()
     {
-        // Exactly MaxInteractionDistance away is within reach, not one step short of it -
+        // Exactly the reach distance away is within reach, not one step short of it -
         // gathering works from here, so there's nothing left to walk.
-        var start = new Position(Target.X + WorldState.MaxInteractionDistance, Target.Y);
+        var start = new Position(Target.X + Reach, Target.Y);
         var person = NewPerson(start);
         var task = NewTask();
 

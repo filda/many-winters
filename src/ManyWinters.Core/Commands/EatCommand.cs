@@ -34,13 +34,13 @@ public sealed record EatCommand(PersonId PersonId, ItemKindId FoodItem) : IComma
 
         // Find, not Get - a caller with no "eating" skill registered at all (a minimal test
         // world, say) just means this can never succeed, not a crash.
-        if (world.SkillCatalog.Find(Skill) is not { } skillDefinition
+        if (world.Configuration.SkillCatalog.Find(Skill) is not { } skillDefinition
             || !person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
         {
             return;
         }
 
-        var restoredPerUnit = world.ItemCatalog.HungerRestoredPerUnitFor(FoodItem);
+        var restoredPerUnit = world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(FoodItem);
         if (restoredPerUnit <= 0f)
         {
             return;

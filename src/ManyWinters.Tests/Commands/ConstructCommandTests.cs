@@ -68,7 +68,7 @@ public class ConstructCommandTests
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance, 0)));
+        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0)));
 
         Assert.Single(world.Buildings);
     }
@@ -80,7 +80,7 @@ public class ConstructCommandTests
         var person = world.AddPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
-        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(WorldState.MaxInteractionDistance + 1, 0)));
+        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0)));
 
         Assert.Empty(world.Buildings);
         Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));

@@ -8,12 +8,12 @@ public sealed record ConstructCommand(PersonId PersonId, BuildingKindId Kind, Po
     public void Execute(WorldState world)
     {
         var person = world.People.FirstOrDefault(p => p.Id == PersonId && p.IsAlive);
-        if (person is null || WorldState.Distance(person.Position, Position) > WorldState.MaxInteractionDistance)
+        if (person is null || !world.IsWithinReach(person.Position, Position))
         {
             return;
         }
 
-        var definition = world.BuildingCatalog.Get(Kind);
+        var definition = world.Configuration.BuildingCatalog.Get(Kind);
         if (!person.Inventory.Remove(definition.RequiredItem, definition.RequiredAmount))
         {
             return;
