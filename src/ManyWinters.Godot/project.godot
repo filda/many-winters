@@ -17,6 +17,11 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="ManyWinters Godot"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "C#")
+; Engraved title page (art/generate_splash.py) shown instead of the Godot logo for the
+; whole synchronous world build in Main._Ready. Background matches default_clear_color
+; below so the letterboxed margins and the first rendered frame share one colour.
+boot_splash/bg_color=Color(0.32, 0.29, 0.26, 1)
+boot_splash/image="res://Content/splash/title_page.png"
 
 [dotnet]
 
