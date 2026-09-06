@@ -208,6 +208,8 @@ public class Noise2DTests
     {
         var noise = new Noise2D(Seed);
 
+        // Spelling out 0.5 is the whole assertion: that it really is the default.
+        // ReSharper disable once RedundantArgumentDefaultValue
         Assert.Equal(noise.Fbm(31.5, -12.25, 4, 0.01, 0.5), noise.Fbm(31.5, -12.25, 4, 0.01), 12);
     }
 

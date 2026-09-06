@@ -669,7 +669,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         var dead = world.AddPerson("Ava", new Position(0, 0));
         dead.IsAlive = false;
-        var living = world.AddPerson("Bran", new Position(0, 0));
+        world.AddPerson("Bran", new Position(0, 0));
 
         world.Advance(1);
 

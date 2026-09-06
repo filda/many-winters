@@ -27,15 +27,15 @@ public sealed class Person
 
     public PersonId? FatherId { get; init; }
 
-    public Needs Needs { get; init; } = new();
+    public Needs Needs { get; } = new();
 
-    public Skills Skills { get; init; } = new();
+    public Skills Skills { get; } = new();
 
-    public HashSet<TechniqueId> KnownTechniques { get; init; } = new();
+    public HashSet<TechniqueId> KnownTechniques { get; } = new();
 
-    public Inventory Inventory { get; init; } = new();
+    public Inventory Inventory { get; } = new();
 
-    public PersonTaskQueue Tasks { get; init; } = new();
+    public PersonTaskQueue Tasks { get; } = new();
 
     // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't drop this
     // person into an IdleTask even with an empty queue - lets the presentation layer (the

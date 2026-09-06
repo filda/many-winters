@@ -8,6 +8,12 @@
         "dotnet-stryker"
       ],
       "rollForward": false
+    },
+    "jetbrains.resharper.globaltools": {
+      "version": "2026.2.1",
+      "commands": [
+        "jb"
+      ]
     }
   }
 }

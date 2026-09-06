@@ -66,7 +66,7 @@ public partial class ResourceNodeView : Area3D
     private readonly ResourceKindId _kind;
     private readonly bool _canFell;
     private readonly Action<ResourceNodeId> _onSelected;
-    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
+    private readonly InputEventEventHandler _onMissedClick;
     private readonly Color _baseColor;
     private int _variantIndex;
     private int _branchVariantIndex;
@@ -86,7 +86,7 @@ public partial class ResourceNodeView : Area3D
     private bool _isHovered;
     private bool _isRemembered;
 
-    public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick)
+    public ResourceNodeView(ResourceNodeId nodeId, ResourceKindId kind, bool canFell, Action<ResourceNodeId> onSelected, InputEventEventHandler onMissedClick)
     {
         _nodeId = nodeId;
         _kind = kind;

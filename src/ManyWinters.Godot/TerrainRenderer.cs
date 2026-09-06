@@ -58,7 +58,10 @@ public sealed class TerrainRenderer
         double CenterLongitude,
         WaterwayPolyline[] Polylines);
 
-    private sealed record WaterwayPolyline(string Name, string Waterway, float WidthMeters, float[][] Points);
+    // The JSON carries name/waterway-type per polyline too; only the geometry is read here.
+    // Instantiated by JsonSerializer via WaterwaysData.Polylines, which InspectCode doesn't see.
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed record WaterwayPolyline(float WidthMeters, float[][] Points);
 
     // Even a sprite has "mass" as far as placement goes - a minimum gap so two decorations
     // never land exactly (or near-exactly) on top of each other, which reads as a rendering

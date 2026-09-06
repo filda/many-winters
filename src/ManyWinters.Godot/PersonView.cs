@@ -100,7 +100,7 @@ public partial class PersonView : Area3D
 
     private readonly PersonId _personId;
     private readonly Action<PersonId, MouseButton> _onClicked;
-    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
+    private readonly InputEventEventHandler _onMissedClick;
     private readonly string _aliveTexturePath;
     private readonly string _deadTexturePath;
     private string _clothingAliveTexturePath = null!;
@@ -126,7 +126,7 @@ public partial class PersonView : Area3D
     private bool _isAlive = true;
     private string _currentBodyTexturePath = null!;
 
-    public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked, CollisionObject3D.InputEventEventHandler onMissedClick)
+    public PersonView(PersonId personId, Action<PersonId, MouseButton> onClicked, InputEventEventHandler onMissedClick)
     {
         _personId = personId;
         _onClicked = onClicked;

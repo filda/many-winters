@@ -6,11 +6,11 @@ public sealed class ResourceNode
 
     public required ResourceKindId Kind { get; init; }
 
-    public Position Position { get; set; }
+    public Position Position { get; init; }
 
     public float RemainingAmount { get; set; }
 
-    public float MaxAmount { get; set; }
+    public float MaxAmount { get; init; }
 
     public bool IsAlive { get; set; } = true;
 

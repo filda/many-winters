@@ -18,6 +18,48 @@ dotnet_diagnostic.CA1711.severity = none
 # that merely holds node references for scene composition would be misleading, not a real fix.
 dotnet_diagnostic.CA1001.severity = none
 
+# ReSharper InspectCode (CI runs `jb inspectcode --swea --severity=WARNING`, see ci.yml and
+# README.md "Inspections"). Roslyn's analyzers only ever see one project at a time, so a public
+# member nothing outside its type reads, a collection only ever written to, or a class never
+# instantiated all pass it silently - these solution-wide inspections are what catch them.
+# They ship as mere suggestions, which the CI gate ignores, so they are raised to warnings.
+resharper_unused_member_global_highlighting = warning
+resharper_unused_member_local_highlighting = warning
+resharper_unused_type_global_highlighting = warning
+resharper_unused_type_local_highlighting = warning
+resharper_class_never_instantiated_global_highlighting = warning
+resharper_class_never_instantiated_local_highlighting = warning
+resharper_member_can_be_private_global_highlighting = warning
+resharper_member_can_be_private_local_highlighting = warning
+resharper_collection_never_queried_global_highlighting = warning
+resharper_collection_never_queried_local_highlighting = warning
+resharper_collection_never_updated_global_highlighting = warning
+resharper_collection_never_updated_local_highlighting = warning
+resharper_not_accessed_field_global_highlighting = warning
+resharper_not_accessed_field_local_highlighting = warning
+resharper_not_accessed_positional_property_global_highlighting = warning
+resharper_not_accessed_positional_property_local_highlighting = warning
+resharper_unused_auto_property_accessor_global_highlighting = warning
+resharper_unused_auto_property_accessor_local_highlighting = warning
+resharper_auto_property_can_be_made_get_only_global_highlighting = warning
+resharper_auto_property_can_be_made_get_only_local_highlighting = warning
+resharper_property_can_be_made_init_only_global_highlighting = warning
+resharper_property_can_be_made_init_only_local_highlighting = warning
+resharper_unused_parameter_global_highlighting = warning
+resharper_unused_parameter_local_highlighting = warning
+resharper_unused_method_return_value_global_highlighting = warning
+resharper_unused_method_return_value_local_highlighting = warning
+
+# Private static readonly fields deliberately come in two flavours here - PascalCase for
+# constant-like values (LowColor, MaskFlagModulate), _camelCase for mutable caches and
+# registries (_imageCache, _liveSprites) - and a naming rule can only express one of them.
+resharper_inconsistent_naming_highlighting = none
+
+[src/ManyWinters.Tests/**.cs]
+# Assert.* is annotated as a contract check, so a lambda that only asserts on its parameter
+# trips this - which in a test is the entire point of the parameter.
+resharper_parameter_only_used_for_precondition_check_local_highlighting = none
+
 [*.{csproj,sln}]
 indent_size = 2
 

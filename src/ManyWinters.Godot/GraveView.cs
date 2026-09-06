@@ -17,11 +17,11 @@ public partial class GraveView : Area3D
     private readonly GraveId _graveId;
     private readonly bool _isMarked;
     private readonly Action<GraveId> _onSelected;
-    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
+    private readonly InputEventEventHandler _onMissedClick;
     private Sprite3D _sprite = null!;
     private string _texturePath = null!;
 
-    public GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick)
+    public GraveView(GraveId graveId, bool isMarked, Action<GraveId> onSelected, InputEventEventHandler onMissedClick)
     {
         _graveId = graveId;
         _isMarked = isMarked;

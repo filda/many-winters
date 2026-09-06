@@ -26,6 +26,23 @@ jobs:
       - name: Build (analyzers run as part of build)
         run: dotnet build ManyWinters.sln --no-restore --configuration Release
 
+      # Solution-wide inspections Roslyn's per-project analyzers cannot do: a public member
+      # nothing outside its type reads, a collection only ever written to, a class never
+      # instantiated. Which inspections count is decided in .editorconfig (the resharper_*
+      # keys); anything at warning or above fails the job. The tool itself never fails on
+      # findings, hence the count check. See README.md ("Inspections") for running it locally.
+      - name: InspectCode (solution-wide dead-code checks)
+        run: |
+          dotnet tool restore
+          dotnet jb inspectcode ManyWinters.sln --swea --no-build --severity=WARNING \
+            --properties:Configuration=Release -f=Xml -o=inspectcode.xml
+          count=$(grep -c '<Issue ' inspectcode.xml || true)
+          if [ "$count" != "0" ]; then
+            cat inspectcode.xml
+            echo "InspectCode reported $count issue(s)"
+            exit 1
+          fi
+
       - name: Test
         run: dotnet test ManyWinters.sln --no-build --configuration Release --verbosity normal
 

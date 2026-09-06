@@ -53,7 +53,7 @@ public static class CloudScatter
     // pipeline for both - differing only in Modulate and which camera's cull mask
     // includes them - makes that mismatch structurally impossible: there's no second
     // implementation of "face the camera" left to disagree with the first.
-    private static readonly Color MaskFlagModulate = new(12f, 0f, 12f, 1f);
+    private static readonly Color MaskFlagModulate = new(12f, 0f, 12f);
 
     public static void Scatter(Node3D parent, float halfExtentMeters)
     {

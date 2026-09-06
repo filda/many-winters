@@ -132,6 +132,20 @@ Configuration lives in `src/ManyWinters.Tests/stryker-config.json`. The break th
 
 This is slow enough that it isn't part of the main `ci.yml` gate; it runs daily and on manual dispatch via `.github/workflows/mutation.yml`.
 
+## Inspections
+
+Roslyn analyzers run as part of every build (`Directory.Build.props`), but they only ever see one project at a time, so a public member nothing outside its type reads, a collection only ever written to, or a class nothing instantiates all pass them silently. [ReSharper InspectCode](https://www.jetbrains.com/help/resharper/InspectCode.html) — free, pinned as a local tool alongside Stryker — does solution-wide analysis and is what catches those. CI runs it after the build and fails on anything at warning severity or above.
+
+```powershell
+dotnet tool restore
+dotnet build ManyWinters.sln
+dotnet jb inspectcode ManyWinters.sln --swea --no-build --severity=WARNING -f=Text -o=-
+```
+
+Which inspections count is decided in `.editorconfig`: the dead-code family (`resharper_unused_member_global_highlighting` and friends) is raised to `warning` there, since it ships as mere suggestions; style suggestions stay below the gate. A genuine false positive — a Godot `[Export]` setter the engine writes, a JSON record the serializer instantiates — is silenced inline with `// ReSharper disable once <InspectionId>` and a comment saying why, never by lowering the inspection for everyone.
+
+If the tool aborts with "MSBuild process was started ... but the IDE failed to connect to it" on Windows, it picked up a Visual Studio Build Tools MSBuild; point it at the SDK's instead, e.g. `--toolset-path="C:\Program Files\dotnet\sdk\8.0.424\MSBuild.dll"`.
+
 ## Development notes
 
 - Keep simulation logic out of `ManyWinters.Godot` — the presentation layer only reads simulation state and sends commands (see the plan's "Commands Instead of Direct Manipulation" section). Never mutate simulation state directly from UI code.

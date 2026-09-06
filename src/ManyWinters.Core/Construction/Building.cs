@@ -9,9 +9,9 @@ public sealed class Building
 
     public required BuildingKindId Kind { get; init; }
 
-    public Position Position { get; set; }
+    public Position Position { get; init; }
 
     public float Condition { get; set; } = 100f;
 
-    public Inventory Inventory { get; init; } = new();
+    public Inventory Inventory { get; } = new();
 }
