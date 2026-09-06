@@ -61,7 +61,7 @@ Not "all of Europe" — a real but small area:
 ## Decided since this document was written
 
 - **Camera projection: perspective.** Deliberately left open here to be settled by experimentation once real terrain existed (`TerrainSandbox.cs`) rather than decided up front. Both were implemented and compared directly against the real elevation patch (toggle key `T`); perspective — ordinary 3D foreshortening — was kept as the default. Orthographic stays available (in both `TerrainSandbox.cs` and the live game) for future comparison.
-- **Movement.** `PersonTaskQueue`/`MoveTask`/`MoveCommand` drive `Person.Position` over real ticks in `ManyWinters.Core` (see the README's Step 2 entry).
+- **Movement.** `PersonTaskQueue`/`MoveTask`/`MoveCommand` drive `Person.Position` over real ticks in `ManyWinters.Core` (see the Step 2 entry in `status.md`).
 - **Terrain wired into the live game.** `Main.tscn` now renders the same real elevation/water/decoration `TerrainRenderer` builds for `TerrainSandbox.tscn` (both share that class, plus `FreeCameraRig` for camera controls), replacing the old flat 20×20 test plane. `MapLoader.LoadDefault`'s camp was relocated onto dry ground away from the real waterway. `WorldPresenter` samples real terrain height when placing every entity, via a height-sampling delegate passed in from `Main.cs` — Core itself still has no height concept (see section 4).
 
 ## Still out of scope here (tracked separately)

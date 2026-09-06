@@ -30,7 +30,7 @@ jobs:
       # nothing outside its type reads, a collection only ever written to, a class never
       # instantiated. Which inspections count is decided in .editorconfig (the resharper_*
       # keys); anything at warning or above fails the job. The tool itself never fails on
-      # findings, hence the count check. See README.md ("Inspections") for running it locally.
+      # findings, hence the count check. See docs/development.md ("Inspections") for running it locally.
       - name: InspectCode (solution-wide dead-code checks)
         run: |
           dotnet tool restore
