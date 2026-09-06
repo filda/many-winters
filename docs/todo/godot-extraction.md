@@ -19,17 +19,22 @@ Probed with a scratch xunit project referencing `ManyWinters.Godot`:
   `ResourceLoader.Exists` or `ContentFiles` underneath. Two candidates were dropped from group
   A for exactly this.
 
-So the route is extraction, which this repo has already taken five times: `CloudSpotScatter`,
-`GroundCloudCoverage`, `ExplorationState`, `Noise2D` and `GridDistanceField` are 465 lines of
+So the route is extraction, which this repo has now taken six times: `CloudSpotScatter`,
+`GroundCloudCoverage`, `ExplorationState`, `Noise2D`, `GridDistanceField` and `BoxBlur` are all
 presentation logic living in Core with full mutation coverage and no test doubles.
 
 **Where extracted code goes.** Core must never reference Godot (roadmap step 1), so anything
 whose signature mentions `Color`, `Vector3` or an `Extent` stays in the Godot project and is
 tested from `ManyWinters.Godot.Tests`. Only genuinely engine-free logic moves to Core.
 
-Roughly 465 lines of the Godot layer's 3209 are pure calculation, concentrated in
-`TerrainRenderer` (82), `ResourceNodeView` (65), `FreeCameraRig` (38), `PersonView` (37) and
-`SpritePixelHit` (19).
+What is left worth pulling out sits mostly in `Main`, `TerrainRenderer`, `ResourceNodeView`,
+`FreeCameraRig`, `PersonView`, `WorldPresenter`, `FogOfWarRenderer` and `SpritePixelHit` - the
+named items below, rather than a line count that would be wrong again after the next extraction.
+
+**Going forward this backlog should not need to grow.** `docs/conventions.md` now asks for
+calculation to be written apart from the code the framework calls in the first place, so new
+work lands testable instead of arriving here. What is listed below is the code that predates
+that.
 
 ---
 
@@ -37,7 +42,7 @@ Roughly 465 lines of the Godot layer's 3209 are pure calculation, concentrated i
 
 Each moved into a file of its own rather than being made `internal` where it sat: the Stryker
 config below mutates by file, and a small purpose-named file is also the honest home for a
-calculation that a 580-line view class was only borrowing.
+calculation that a large view class was only borrowing.
 
 | Was | Now |
 | --- | --- |
@@ -77,7 +82,7 @@ Extract as:
 A wrong axis or sign here shows up as hover that intermittently misses, which is miserable to
 diagnose from the symptom.
 
-**`FogOfWarRenderer`**, three pieces beside the blur:
+**`FogOfWarRenderer`**, three pieces left now that the blur has gone:
 
 - building the sharp masks (the texel loop producing two `float[,]` plus the `bool[,]`),
 - `DistanceToExploredMeters` — world to texel index to array lookup times metres-per-texel,
