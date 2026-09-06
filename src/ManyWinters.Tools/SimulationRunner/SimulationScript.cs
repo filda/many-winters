@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Persistence;
 using ManyWinters.Core.World;
 
@@ -83,7 +84,7 @@ public sealed class SimulationScript
 
                 for (var i = 0; i < createCount; i++)
                 {
-                    World.AddPerson($"Person {World.People.Count + 1}", new Position(0, 0));
+                    World.Execute(new SpawnPersonCommand($"Person {World.People.Count + 1}", new Position(0, 0)));
                 }
 
                 output.Add($"Created {createCount} people. Population is now {World.People.Count}.");

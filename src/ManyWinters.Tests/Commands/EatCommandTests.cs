@@ -10,7 +10,7 @@ public class EatCommandTests
     public void EatingRelievesHungerAndConsumesOnlyAsMuchAsWasNeeded()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 15;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
@@ -25,7 +25,7 @@ public class EatCommandTests
     public void EatingNeverReducesHungerBelowZero()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 5;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
@@ -40,7 +40,7 @@ public class EatCommandTests
     public void EatingOnlyConsumesWhatIsAvailableWhenThereIsNotEnoughToFullySatisfyHunger()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.AppleItem, 10);
@@ -55,7 +55,7 @@ public class EatCommandTests
     public void EatingWithNoHungerDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 0;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
 
@@ -68,7 +68,7 @@ public class EatCommandTests
     public void EatingWithoutHavingLearnedHowToEatDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
 
@@ -82,7 +82,7 @@ public class EatCommandTests
     public void KnowingEfficientEatingRestoresMoreHungerPerUnitEaten()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.EfficientEating);
         person.Needs.Hunger = 100;
@@ -100,7 +100,7 @@ public class EatCommandTests
     public void EatingWithNoneOfThatFoodInInventoryDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 50;
 
         world.Execute(new EatCommand(person.Id, TestCatalogs.AppleItem));
@@ -112,7 +112,7 @@ public class EatCommandTests
     public void EatingAnItemThatIsNotFoodDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
 
@@ -126,7 +126,7 @@ public class EatCommandTests
     public void EatingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);

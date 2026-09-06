@@ -10,10 +10,10 @@ public class LootCommandTests
     public void LootingTransfersTheWholeInventoryToTheLootingPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var looter = world.AddPerson("Bran", new Position(0, 0));
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new LootCommand(looter.Id, deceased.Id));
 
@@ -25,10 +25,10 @@ public class LootCommandTests
     public void LootingWorksForAnyLivingPersonNotJustARelative()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var bystander = world.AddPerson("Bystander", new Position(0, 0));
+        var bystander = world.SpawnPerson("Bystander", new Position(0, 0));
 
         world.Execute(new LootCommand(bystander.Id, deceased.Id));
 
@@ -39,10 +39,10 @@ public class LootCommandTests
     public void LootingRequiresTheLootingPersonToBeAlive()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var otherDeceased = world.AddPerson("Bran", new Position(0, 0));
+        var otherDeceased = world.SpawnPerson("Bran", new Position(0, 0));
         otherDeceased.IsAlive = false;
 
         world.Execute(new LootCommand(otherDeceased.Id, deceased.Id));
@@ -54,9 +54,9 @@ public class LootCommandTests
     public void LootingRequiresTheDeceasedToActuallyBeDead()
     {
         var world = TestCatalogs.CreateWorld();
-        var stillAlive = world.AddPerson("Ava", new Position(0, 0));
+        var stillAlive = world.SpawnPerson("Ava", new Position(0, 0));
         stillAlive.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var looter = world.AddPerson("Bran", new Position(0, 0));
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new LootCommand(looter.Id, stillAlive.Id));
 
@@ -68,10 +68,10 @@ public class LootCommandTests
     public void LootingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var looter = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
+        var looter = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
 
         world.Execute(new LootCommand(looter.Id, deceased.Id));
 
@@ -82,10 +82,10 @@ public class LootCommandTests
     public void LootingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var looter = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var looter = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new LootCommand(looter.Id, deceased.Id));
 
@@ -97,7 +97,7 @@ public class LootCommandTests
     public void LootingWithUnknownPersonIdsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
 
@@ -111,11 +111,11 @@ public class LootCommandTests
     public void LootingStillWorksAfterTheDeceasedHasAlreadyBeenBuried()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.IsBuried = true;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var looter = world.AddPerson("Bran", new Position(0, 0));
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new LootCommand(looter.Id, deceased.Id));
 
@@ -126,10 +126,10 @@ public class LootCommandTests
     public void LootingOnlyTakesWhatStillFitsInTheLootersInventoryAndLeavesTheRestOnTheCorpse()
     {
         var world = TestCatalogs.CreateWorld();
-        var deceased = world.AddPerson("Ava", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
         deceased.IsAlive = false;
         deceased.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var looter = world.AddPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var looter = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         looter.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(looter) - 5);
 
         world.Execute(new LootCommand(looter.Id, deceased.Id));

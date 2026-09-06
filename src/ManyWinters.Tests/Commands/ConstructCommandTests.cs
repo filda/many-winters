@@ -10,7 +10,7 @@ public class ConstructCommandTests
     public void ConstructingConsumesTheRequiredItemsAndAddsTheBuilding()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
         world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(1, 1)));
@@ -22,10 +22,24 @@ public class ConstructCommandTests
     }
 
     [Fact]
+    public void ConstructingStartsTheBuildingAtFullConditionWithAnEmptyInventory()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+
+        world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
+
+        var building = Assert.Single(world.Buildings);
+        Assert.Equal(100f, building.Condition);
+        Assert.Empty(building.Inventory.Counts);
+    }
+
+    [Fact]
     public void ConstructingLeavesLeftoverInputItemsInInventory()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount + 3);
 
         world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
@@ -38,7 +52,7 @@ public class ConstructCommandTests
     public void ConstructingWithoutEnoughInputItemsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount - 1);
 
         world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(0, 0)));
@@ -51,7 +65,7 @@ public class ConstructCommandTests
     public void ConstructingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
@@ -65,7 +79,7 @@ public class ConstructCommandTests
     public void ConstructingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
         world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0)));
@@ -77,7 +91,7 @@ public class ConstructCommandTests
     public void ConstructingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
 
         world.Execute(new ConstructCommand(person.Id, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0)));

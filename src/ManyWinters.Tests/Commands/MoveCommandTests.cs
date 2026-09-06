@@ -11,7 +11,7 @@ public class MoveCommandTests
     public void SetsTheSelectedPersonsCurrentTaskToAMoveTaskTowardTheDestination()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Execute(new MoveCommand(person.Id, new Position(5, 5)));
 
@@ -23,7 +23,7 @@ public class MoveCommandTests
     public void InterruptsWhateverThePersonWasPreviouslyDoing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         var previousTask = new IdleTask();
         person.Tasks.Interrupt(previousTask);
 
@@ -37,7 +37,7 @@ public class MoveCommandTests
     public void RequiresTheMovingPersonToBeAlive()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
 
         world.Execute(new MoveCommand(person.Id, new Position(5, 5)));

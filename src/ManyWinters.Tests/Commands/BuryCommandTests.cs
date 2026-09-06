@@ -12,8 +12,8 @@ public class BuryCommandTests
     public void BuryingWithoutTheTechniqueProducesAnAnonymousGrave()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         deceased.IsAlive = false;
         deceased.DeathTick = world.Configuration.Rules.TicksPerYear * 3;
@@ -33,9 +33,9 @@ public class BuryCommandTests
     public void BuryingWithTheTechniqueProducesAFullyRecordedGrave()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         deceased.IsAlive = false;
         deceased.DeathTick = world.Configuration.Rules.TicksPerYear * 3;
@@ -53,11 +53,11 @@ public class BuryCommandTests
     public void BuryingWithTheTechniqueRecordsCauseOfDeathAndParentNames()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        var mother = world.AddPerson("Sela", new Position(0, 0));
-        var father = world.AddPerson("Doran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        var mother = world.SpawnPerson("Sela", new Position(0, 0));
+        var father = world.SpawnPerson("Doran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
         deceased.IsAlive = false;
         deceased.CauseOfDeath = DeathCause.OldAge;
 
@@ -73,9 +73,9 @@ public class BuryCommandTests
     public void BuryingWithTheTechniqueLeavesParentNamesNullWhenNoneAreRecorded()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -90,9 +90,9 @@ public class BuryCommandTests
     public void BuryingWithTheTechniqueLeavesParentNamesNullWhenTheRecordedParentIdDoesNotExist()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        var deceased = world.AddPerson(
+        var deceased = world.SpawnPerson(
             "Ava",
             new Position(1, 1),
             motherId: new PersonId(999),
@@ -110,11 +110,11 @@ public class BuryCommandTests
     public void BuryingWithTheTechniqueFindsAParentsNameEvenWhenThatParentIsAlsoDeadButUnburied()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
-        var mother = world.AddPerson("Sela", new Position(0, 0));
+        var mother = world.SpawnPerson("Sela", new Position(0, 0));
         mother.IsAlive = false;
-        var deceased = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id);
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id);
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -127,10 +127,10 @@ public class BuryCommandTests
     public void BuryingWithoutTheTechniqueLeavesCauseOfDeathAndParentNamesNullEvenWhenRecorded()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var mother = world.AddPerson("Sela", new Position(0, 0));
-        var father = world.AddPerson("Doran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var mother = world.SpawnPerson("Sela", new Position(0, 0));
+        var father = world.SpawnPerson("Doran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
         deceased.IsAlive = false;
         deceased.CauseOfDeath = DeathCause.Hunger;
 
@@ -146,10 +146,10 @@ public class BuryCommandTests
     public void BuryingWithAMissingDeathTickFallsBackToTheCurrentTickForAgeCalculation()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
         world.Clock.Advance(world.Configuration.Rules.TicksPerYear * 2);
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -162,8 +162,8 @@ public class BuryCommandTests
     public void BuryingRaisesGraveAddedAndTracksItInGraves()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
         Grave? raised = null;
         world.GraveAdded += g => raised = g;
@@ -178,8 +178,8 @@ public class BuryCommandTests
     public void BuryingIncreasesTheBurialSkill()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -191,18 +191,18 @@ public class BuryCommandTests
     public void FiveBurialsDiscoverEfficientBurial()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
 
         for (var i = 0; i < 4; i++)
         {
-            var deceased = world.AddPerson($"Deceased{i}", new Position(1, 1));
+            var deceased = world.SpawnPerson($"Deceased{i}", new Position(1, 1));
             deceased.IsAlive = false;
             world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
         }
 
         Assert.DoesNotContain(TestCatalogs.EfficientBurial, buryingPerson.KnownTechniques);
 
-        var fifthDeceased = world.AddPerson("Deceased4", new Position(1, 1));
+        var fifthDeceased = world.SpawnPerson("Deceased4", new Position(1, 1));
         fifthDeceased.IsAlive = false;
         world.Execute(new BuryCommand(buryingPerson.Id, fifthDeceased.Id));
 
@@ -214,9 +214,9 @@ public class BuryCommandTests
     public void BuryingRequiresTheBuryingPersonToBeAlive()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.IsAlive = false;
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -229,8 +229,8 @@ public class BuryCommandTests
     public void BuryingRequiresTheDeceasedToActuallyBeDead()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var stillAlive = world.AddPerson("Ava", new Position(1, 1));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var stillAlive = world.SpawnPerson("Ava", new Position(1, 1));
 
         world.Execute(new BuryCommand(buryingPerson.Id, stillAlive.Id));
 
@@ -241,8 +241,8 @@ public class BuryCommandTests
     public void BuryingAnAlreadyBuriedPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
 
@@ -256,8 +256,8 @@ public class BuryCommandTests
     public void BuryingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -269,8 +269,8 @@ public class BuryCommandTests
     public void BuryingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(buryingPerson.Id, deceased.Id));
@@ -283,8 +283,8 @@ public class BuryCommandTests
     public void BuryingWithUnknownPersonIdsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var buryingPerson = world.AddPerson("Bran", new Position(0, 0));
-        var deceased = world.AddPerson("Ava", new Position(1, 1));
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
         deceased.IsAlive = false;
 
         world.Execute(new BuryCommand(new PersonId(999), deceased.Id));

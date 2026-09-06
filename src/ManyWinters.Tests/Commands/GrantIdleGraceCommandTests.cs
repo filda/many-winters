@@ -10,7 +10,7 @@ public class GrantIdleGraceCommandTests
     public void GrantingGraceSetsTheTickBeforeWhichThePersonWontBeMadeToWander()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Execute(new GrantIdleGraceCommand(person.Id, 5));
 
@@ -21,7 +21,7 @@ public class GrantIdleGraceCommandTests
     public void GrantingGraceAgainLaterMovesTheDeadlineForwardFromTheCurrentTick()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Advance(10);
 
         world.Execute(new GrantIdleGraceCommand(person.Id, 5));
@@ -33,7 +33,7 @@ public class GrantIdleGraceCommandTests
     public void GrantingGraceToADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
 
         world.Execute(new GrantIdleGraceCommand(person.Id, 5));

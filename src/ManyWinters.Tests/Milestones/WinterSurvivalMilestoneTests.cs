@@ -18,10 +18,10 @@ public class WinterSurvivalMilestoneTests
     public void PeopleWhoStopGatheringRightAsWinterBeginsStarveDuringIt()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 1_000_000f);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 1_000_000f);
 
         for (var tick = 0; tick < WinterStartTick; tick++)
         {

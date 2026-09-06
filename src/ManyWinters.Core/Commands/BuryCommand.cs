@@ -1,3 +1,4 @@
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.World;
 
@@ -30,15 +31,18 @@ public sealed record BuryCommand(PersonId BuryingPersonId, PersonId DeceasedPers
         var mother = deceased.MotherId is { } motherId ? world.People.FirstOrDefault(p => p.Id == motherId) : null;
         var father = deceased.FatherId is { } fatherId ? world.People.FirstOrDefault(p => p.Id == fatherId) : null;
 
-        world.AddGrave(
-            deceased.Position,
-            isMarked,
-            name: isMarked ? deceased.Name : null,
-            ageAtDeath: isMarked ? ageAtDeath : null,
-            causeOfDeath: isMarked ? deceased.CauseOfDeath : null,
-            motherName: isMarked ? mother?.Name : null,
-            fatherName: isMarked ? father?.Name : null,
-            knownTechniques: isMarked ? deceased.KnownTechniques.ToList() : []);
+        world.AddGrave(new Grave
+        {
+            Id = world.NextGraveId,
+            Position = deceased.Position,
+            IsMarked = isMarked,
+            Name = isMarked ? deceased.Name : null,
+            AgeAtDeath = isMarked ? ageAtDeath : null,
+            CauseOfDeath = isMarked ? deceased.CauseOfDeath : null,
+            MotherName = isMarked ? mother?.Name : null,
+            FatherName = isMarked ? father?.Name : null,
+            KnownTechniques = isMarked ? deceased.KnownTechniques.ToList() : [],
+        });
 
         deceased.IsBuried = true;
 

@@ -20,6 +20,18 @@ public class SpawnResourceNodeCommandTests
     }
 
     [Fact]
+    public void ExecuteSpawnsTheNodeFullWithMaxAmountEqualToTheGivenAmount()
+    {
+        var world = TestCatalogs.CreateWorld();
+
+        world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(0, 0), 40f));
+
+        var node = Assert.Single(world.ResourceNodes);
+        Assert.Equal(40f, node.MaxAmount);
+        Assert.Equal(node.MaxAmount, node.RemainingAmount);
+    }
+
+    [Fact]
     public void ExecutingTwiceAddsTwoDistinctNodes()
     {
         var world = TestCatalogs.CreateWorld();

@@ -11,12 +11,12 @@ public class FellCommandTests
     public void ADeadPersonFellsNothingEvenWithSomebodyElseStandingRightThere()
     {
         var world = TestCatalogs.CreateWorld();
-        var living = world.AddPerson("Ava", new Position(3, 4));
+        var living = world.SpawnPerson("Ava", new Position(3, 4));
         living.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var deceased = world.AddPerson("Bran", new Position(3, 4));
+        var deceased = world.SpawnPerson("Bran", new Position(3, 4));
         deceased.KnownTechniques.Add(TestCatalogs.BasicForaging);
         deceased.IsAlive = false;
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
 
         world.Execute(new FellCommand(deceased.Id, node.Id));
 
@@ -28,10 +28,10 @@ public class FellCommandTests
     public void FellingAnAlreadyFelledNodeLeavesTheOnesStillStandingAlone()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(3, 4));
+        var person = world.SpawnPerson("Ava", new Position(3, 4));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var felled = world.AddResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
-        var standing = world.AddResourceNode(TestCatalogs.Pear, new Position(3, 4), 100);
+        var felled = world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
+        var standing = world.SpawnResourceNode(TestCatalogs.Pear, new Position(3, 4), 100);
         felled.IsAlive = false;
 
         world.Execute(new FellCommand(person.Id, felled.Id));
@@ -53,9 +53,9 @@ public class FellCommandTests
             ]),
         };
         var world = new WorldState(configuration);
-        var person = world.AddPerson("Ava", new Position(3, 4));
+        var person = world.SpawnPerson("Ava", new Position(3, 4));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(hollow, new Position(3, 4), 100);
+        var node = world.SpawnResourceNode(hollow, new Position(3, 4), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -67,9 +67,9 @@ public class FellCommandTests
     public void FellingATreeKillsItAndLeavesAWoodNodeInItsPlace()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(3, 4));
+        var person = world.SpawnPerson("Ava", new Position(3, 4));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -87,10 +87,10 @@ public class FellCommandTests
     public void TheWoodLeftBehindByFellingCanBeGatheredLikeAnyOtherNode()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         world.Execute(new FellCommand(person.Id, node.Id));
         var leftover = Assert.Single(world.ResourceNodes, n => n.Id != node.Id);
 
@@ -104,9 +104,9 @@ public class FellCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(5);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -117,9 +117,9 @@ public class FellCommandTests
     public void FellingDoesNotRequireAnyRemainingAmount()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -130,8 +130,8 @@ public class FellCommandTests
     public void FellingANonFellableResourceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        var node = world.AddResourceNode(TestCatalogs.Mushroom, new Position(0, 0), 100);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var node = world.SpawnResourceNode(TestCatalogs.Mushroom, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -143,8 +143,8 @@ public class FellCommandTests
     public void FellingAnAlreadyDeadNodeDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         node.IsAlive = false;
 
         world.Execute(new FellCommand(person.Id, node.Id));
@@ -156,8 +156,8 @@ public class FellCommandTests
     public void FellingWithoutHavingLearnedTheSkillDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -169,9 +169,9 @@ public class FellCommandTests
     public void FellingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -183,9 +183,9 @@ public class FellCommandTests
     public void FellingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance, 0), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -196,8 +196,8 @@ public class FellCommandTests
     public void FellingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 
@@ -209,8 +209,8 @@ public class FellCommandTests
     public void FellingWithAnUnknownPersonOrNodeDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(new PersonId(999), node.Id));
         world.Execute(new FellCommand(person.Id, new ResourceNodeId(999)));
@@ -233,9 +233,9 @@ public class FellCommandTests
                 new SkillDefinition(TestCatalogs.Foraging, "Foraging", TestCatalogs.BasicForaging, TestCatalogs.EfficientForaging),
             }),
         });
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         world.Execute(new FellCommand(person.Id, node.Id));
 

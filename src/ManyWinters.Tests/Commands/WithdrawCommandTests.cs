@@ -13,8 +13,8 @@ public class WithdrawCommandTests
         // Nothing goes back when it all fit, so the building's store has to end up genuinely
         // empty - a zero-count entry reads as "there's wood in here" to anything listing it.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 5);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 5));
@@ -27,8 +27,8 @@ public class WithdrawCommandTests
     public void WithdrawingMovesItemsFromBuildingToPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
@@ -41,8 +41,8 @@ public class WithdrawCommandTests
     public void WithdrawingWithoutEnoughItemsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 5);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
@@ -55,9 +55,9 @@ public class WithdrawCommandTests
     public void WithdrawingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.IsAlive = false;
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
@@ -70,8 +70,8 @@ public class WithdrawCommandTests
     public void WithdrawingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
@@ -83,8 +83,8 @@ public class WithdrawCommandTests
     public void WithdrawingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
@@ -97,7 +97,7 @@ public class WithdrawCommandTests
     public void WithdrawingFromAnUnknownBuildingDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 
         world.Execute(new WithdrawCommand(person.Id, new BuildingId(999), TestCatalogs.WoodItem, 15));
 
@@ -108,7 +108,7 @@ public class WithdrawCommandTests
     public void WithdrawingByAnUnknownPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(new PersonId(999), building.Id, TestCatalogs.WoodItem, 15));
@@ -120,9 +120,9 @@ public class WithdrawCommandTests
     public void WithdrawingOnlyTakesWhatStillFitsInThePersonsInventoryAndLeavesTheRestInTheBuilding()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person) - 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));

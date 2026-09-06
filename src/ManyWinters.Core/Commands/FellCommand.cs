@@ -29,7 +29,7 @@ public sealed record FellCommand(PersonId PersonId, ResourceNodeId ResourceNodeI
 
         if (resource.FellLeavesKind is { } leftoverKind && resource.FellLeavesAmount > 0)
         {
-            world.AddResourceNode(leftoverKind, node.Position, resource.FellLeavesAmount);
+            new SpawnResourceNodeCommand(leftoverKind, node.Position, resource.FellLeavesAmount).Execute(world);
         }
     }
 }

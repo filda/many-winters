@@ -38,13 +38,16 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public IReadOnlyList<Grave> Graves => _graves;
 
-    public int NextPersonId => _nextPersonId;
+    // The id the next Add* call expects on the object it's handed - ids are the world's to
+    // hand out (sequential, never reused), not the caller's to invent, so a caller builds
+    // its object around this and Add* refuses anything else (see AddPerson).
+    public PersonId NextPersonId => new(_nextPersonId);
 
-    public int NextResourceNodeId => _nextResourceNodeId;
+    public ResourceNodeId NextResourceNodeId => new(_nextResourceNodeId);
 
-    public int NextBuildingId => _nextBuildingId;
+    public BuildingId NextBuildingId => new(_nextBuildingId);
 
-    public int NextGraveId => _nextGraveId;
+    public GraveId NextGraveId => new(_nextGraveId);
 
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
@@ -56,85 +59,48 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public event Action<Grave>? GraveAdded;
 
-    public Person AddPerson(
-        string name,
-        Position position,
-        long initialAgeTicks = 0,
-        PersonId? motherId = null,
-        PersonId? fatherId = null)
+    // Add* take a finished object rather than building one - what a person/node/building/grave
+    // is made of is the caller's business (SpawnPersonCommand, BuryCommand, ...), the world's
+    // is only to keep the list, hand out the id and tell the presentation layer. The id has to
+    // be exactly NextPersonId: anything else means the caller either invented one or built the
+    // object before something else got added in between, and both would corrupt the sequence.
+    public void AddPerson(Person person)
     {
-        var person = new Person
-        {
-            Id = new PersonId(_nextPersonId++),
-            Name = name,
-            Position = position,
-            BirthTick = Clock.CurrentTick - initialAgeTicks,
-            MotherId = motherId,
-            FatherId = fatherId,
-        };
-
+        ClaimId(person.Id.Value, ref _nextPersonId, nameof(person));
         _people.Add(person);
         PersonAdded?.Invoke(person);
         RefreshExploration();
-        return person;
     }
 
-    public ResourceNode AddResourceNode(ResourceKindId kind, Position position, float amount)
+    public void AddResourceNode(ResourceNode node)
     {
-        var node = new ResourceNode
-        {
-            Id = new ResourceNodeId(_nextResourceNodeId++),
-            Kind = kind,
-            Position = position,
-            RemainingAmount = amount,
-            MaxAmount = amount,
-        };
-
+        ClaimId(node.Id.Value, ref _nextResourceNodeId, nameof(node));
         _resourceNodes.Add(node);
         ResourceNodeAdded?.Invoke(node);
-        return node;
     }
 
-    public Building AddBuilding(BuildingKindId kind, Position position)
+    public void AddBuilding(Building building)
     {
-        var building = new Building
-        {
-            Id = new BuildingId(_nextBuildingId++),
-            Kind = kind,
-            Position = position,
-        };
-
+        ClaimId(building.Id.Value, ref _nextBuildingId, nameof(building));
         _buildings.Add(building);
         BuildingAdded?.Invoke(building);
-        return building;
     }
 
-    public Grave AddGrave(
-        Position position,
-        bool isMarked,
-        string? name,
-        int? ageAtDeath,
-        DeathCause? causeOfDeath,
-        string? motherName,
-        string? fatherName,
-        IReadOnlyList<TechniqueId> knownTechniques)
+    public void AddGrave(Grave grave)
     {
-        var grave = new Grave
-        {
-            Id = new GraveId(_nextGraveId++),
-            Position = position,
-            IsMarked = isMarked,
-            Name = name,
-            AgeAtDeath = ageAtDeath,
-            CauseOfDeath = causeOfDeath,
-            MotherName = motherName,
-            FatherName = fatherName,
-            KnownTechniques = knownTechniques,
-        };
-
+        ClaimId(grave.Id.Value, ref _nextGraveId, nameof(grave));
         _graves.Add(grave);
         GraveAdded?.Invoke(grave);
-        return grave;
+    }
+
+    private static void ClaimId(int id, ref int nextId, string parameterName)
+    {
+        if (id != nextId)
+        {
+            throw new ArgumentException($"Expected id {nextId} (the world's next one), got {id}.", parameterName);
+        }
+
+        nextId++;
     }
 
     public void Execute(ICommand command) => command.Execute(this);

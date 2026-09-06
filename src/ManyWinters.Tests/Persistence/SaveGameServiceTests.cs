@@ -12,20 +12,20 @@ public class SaveGameServiceTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(42);
-        var ava = world.AddPerson("Ava", new Position(1.5f, 2.5f));
+        var ava = world.SpawnPerson("Ava", new Position(1.5f, 2.5f));
         ava.Needs.Hunger = 30;
         ava.Needs.Fatigue = 10;
         ava.Skills.Increase(TestCatalogs.Foraging, 3.5f);
         ava.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         ava.Inventory.Add(TestCatalogs.WoodItem, 7);
-        var bran = world.AddPerson("Bran", new Position(-3f, 0f));
+        var bran = world.SpawnPerson("Bran", new Position(-3f, 0f));
         bran.IsAlive = false;
         bran.Needs.Hunger = 100;
         bran.DeathTick = 42;
         bran.IsBuried = true;
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
         node.RemainingAmount = 10f;
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
         building.Condition = 63f;
         building.Inventory.Add(TestCatalogs.WoodItem, 12);
 
@@ -86,9 +86,9 @@ public class SaveGameServiceTests
     public void RoundTripPreservesFamilyTiesAndCauseOfDeath()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = world.AddPerson("Sela", new Position(0, 0));
-        var father = world.AddPerson("Bran", new Position(0, 0));
-        var child = world.AddPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
+        var mother = world.SpawnPerson("Sela", new Position(0, 0));
+        var father = world.SpawnPerson("Bran", new Position(0, 0));
+        var child = world.SpawnPerson("Ava", new Position(1, 1), motherId: mother.Id, fatherId: father.Id);
         child.IsAlive = false;
         child.DeathTick = 10;
         child.CauseOfDeath = DeathCause.Hunger;
@@ -119,7 +119,7 @@ public class SaveGameServiceTests
     public void RoundTripPreservesGraves()
     {
         var world = TestCatalogs.CreateWorld();
-        var markedGrave = world.AddGrave(
+        var markedGrave = world.SpawnGrave(
             new Position(1f, 2f),
             isMarked: true,
             name: "Ava",
@@ -128,7 +128,7 @@ public class SaveGameServiceTests
             motherName: "Sela",
             fatherName: "Bran",
             knownTechniques: [TestCatalogs.EfficientForaging]);
-        var anonymousGrave = world.AddGrave(
+        var anonymousGrave = world.SpawnGrave(
             new Position(3f, 4f),
             isMarked: false,
             name: null,
@@ -175,8 +175,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesGraveIdSequenceWithoutCollisions()
     {
         var world = TestCatalogs.CreateWorld();
-        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
-        world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        world.SpawnGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        world.SpawnGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -184,7 +184,7 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
 
-            var newGrave = restored.AddGrave(new Position(2, 2), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+            var newGrave = restored.SpawnGrave(new Position(2, 2), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
 
             Assert.DoesNotContain(restored.Graves, g => g != newGrave && g.Id == newGrave.Id);
         }
@@ -198,8 +198,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesIdSequenceWithoutCollisions()
     {
         var world = TestCatalogs.CreateWorld();
-        world.AddPerson("Ava", new Position(0, 0));
-        world.AddPerson("Bran", new Position(0, 0));
+        world.SpawnPerson("Ava", new Position(0, 0));
+        world.SpawnPerson("Bran", new Position(0, 0));
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -207,7 +207,7 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
 
-            var newPerson = restored.AddPerson("Cora", new Position(0, 0));
+            var newPerson = restored.SpawnPerson("Cora", new Position(0, 0));
 
             Assert.DoesNotContain(restored.People, p => p != newPerson && p.Id == newPerson.Id);
         }
@@ -221,8 +221,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesResourceNodeIdSequenceWithoutCollisions()
     {
         var world = TestCatalogs.CreateWorld();
-        world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 10);
-        world.AddResourceNode(TestCatalogs.Apple, new Position(1, 1), 10);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 10);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(1, 1), 10);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -230,7 +230,7 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
 
-            var newNode = restored.AddResourceNode(TestCatalogs.Apple, new Position(2, 2), 10);
+            var newNode = restored.SpawnResourceNode(TestCatalogs.Apple, new Position(2, 2), 10);
 
             Assert.DoesNotContain(restored.ResourceNodes, n => n != newNode && n.Id == newNode.Id);
         }
@@ -244,8 +244,8 @@ public class SaveGameServiceTests
     public void RestoredWorldContinuesBuildingIdSequenceWithoutCollisions()
     {
         var world = TestCatalogs.CreateWorld();
-        world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        world.AddBuilding(TestCatalogs.StorageHut, new Position(1, 1));
+        world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        world.SpawnBuilding(TestCatalogs.StorageHut, new Position(1, 1));
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -253,7 +253,7 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
 
-            var newBuilding = restored.AddBuilding(TestCatalogs.StorageHut, new Position(2, 2));
+            var newBuilding = restored.SpawnBuilding(TestCatalogs.StorageHut, new Position(2, 2));
 
             Assert.DoesNotContain(restored.Buildings, b => b != newBuilding && b.Id == newBuilding.Id);
         }
@@ -267,7 +267,7 @@ public class SaveGameServiceTests
     public void LoadWithConfigurationProvidedWiresItIntoTheRestoredWorld()
     {
         var world = TestCatalogs.CreateWorld();
-        world.AddPerson("Ava", new Position(0, 0));
+        world.SpawnPerson("Ava", new Position(0, 0));
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try

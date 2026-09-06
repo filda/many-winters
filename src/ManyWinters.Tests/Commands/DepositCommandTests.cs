@@ -11,9 +11,9 @@ public class DepositCommandTests
     public void DepositingMovesItemsFromPersonToBuilding()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
@@ -25,9 +25,9 @@ public class DepositCommandTests
     public void DepositingWithoutEnoughItemsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
@@ -39,10 +39,10 @@ public class DepositCommandTests
     public void DepositingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
@@ -54,9 +54,9 @@ public class DepositCommandTests
     public void DepositingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
@@ -67,9 +67,9 @@ public class DepositCommandTests
     public void DepositingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new DepositCommand(person.Id, building.Id, TestCatalogs.WoodItem, 15));
 
@@ -81,7 +81,7 @@ public class DepositCommandTests
     public void DepositingIntoAnUnknownBuildingDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new DepositCommand(person.Id, new BuildingId(999), TestCatalogs.WoodItem, 15));
@@ -93,7 +93,7 @@ public class DepositCommandTests
     public void DepositingByAnUnknownPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Execute(new DepositCommand(new PersonId(999), building.Id, TestCatalogs.WoodItem, 15));
 

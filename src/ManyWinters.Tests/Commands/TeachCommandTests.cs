@@ -10,10 +10,10 @@ public class TeachCommandTests
     public void TeachingATechniqueTheTeacherKnowsGivesItToTheStudent()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -24,9 +24,9 @@ public class TeachCommandTests
     public void TeachingATechniqueTheTeacherDoesNotKnowDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
-        var student = world.AddPerson("Bran", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -37,9 +37,9 @@ public class TeachCommandTests
     public void TeacherNotKnowingHowToTeachDoesNothingEvenIfTheyKnowTheTechnique()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -50,11 +50,11 @@ public class TeachCommandTests
     public void ADeadTeacherCannotTeach()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
         teacher.IsAlive = false;
-        var student = world.AddPerson("Bran", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -65,10 +65,10 @@ public class TeachCommandTests
     public void ADeadStudentCannotLearn()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(0, 0));
         student.IsAlive = false;
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
@@ -80,10 +80,10 @@ public class TeachCommandTests
     public void TeachingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
+        var student = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -94,10 +94,10 @@ public class TeachCommandTests
     public void TeachingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var student = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -108,11 +108,11 @@ public class TeachCommandTests
     public void KnowingEfficientTeachingReachesFurther()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var student = world.SpawnPerson("Bran", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
 
         world.Execute(new TeachCommand(teacher.Id, student.Id, TestCatalogs.EfficientForaging));
 
@@ -123,10 +123,10 @@ public class TeachCommandTests
     public void TeachingWithAnUnknownTeacherOrStudentDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
-        var student = world.AddPerson("Bran", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Execute(new TeachCommand(new PersonId(999), student.Id, TestCatalogs.EfficientForaging));
         world.Execute(new TeachCommand(teacher.Id, new PersonId(999), TestCatalogs.EfficientForaging));

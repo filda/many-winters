@@ -46,39 +46,50 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void AddPersonAssignsSequentialUniqueIds()
+    public void NextPersonIdStartsAtOneAndAdvancesWithEveryAddedPerson()
     {
         var world = TestCatalogs.CreateWorld();
+        Assert.Equal(new PersonId(1), world.NextPersonId);
 
-        var first = world.AddPerson("Ava", new Position(0, 0));
-        var second = world.AddPerson("Bran", new Position(1, 1));
+        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0 });
+        Assert.Equal(new PersonId(2), world.NextPersonId);
 
-        Assert.NotEqual(first.Id, second.Id);
-        Assert.Equal(1, first.Id.Value);
-        Assert.Equal(2, second.Id.Value);
-    }
-
-    [Fact]
-    public void AddPersonWithAnInitialAgeBackdatesTheBirthTick()
-    {
-        var world = TestCatalogs.CreateWorld();
-        world.Clock.Advance(1000);
-
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: 300);
-
-        Assert.Equal(700, person.BirthTick);
-        Assert.Equal(1, world.AgeInYears(person));
+        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Bran", BirthTick = 0 });
+        Assert.Equal(new PersonId(3), world.NextPersonId);
     }
 
     [Fact]
     public void AddPersonTracksThemInPeople()
     {
         var world = TestCatalogs.CreateWorld();
+        var ava = new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0 };
 
-        world.AddPerson("Ava", new Position(0, 0));
-        world.AddPerson("Bran", new Position(1, 1));
+        world.AddPerson(ava);
 
-        Assert.Equal(2, world.People.Count);
+        Assert.Same(ava, Assert.Single(world.People));
+    }
+
+    [Fact]
+    public void AddPersonRejectsAnIdThatIsNotTheWorldsNextOne()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var stale = new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0 };
+        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Bran", BirthTick = 0 });
+
+        Assert.Throws<ArgumentException>(() => world.AddPerson(stale));
+
+        Assert.DoesNotContain(stale, world.People);
+        Assert.Equal(new PersonId(2), world.NextPersonId);
+    }
+
+    [Fact]
+    public void AddPersonRefreshesExplorationAroundThem()
+    {
+        var world = TestCatalogs.CreateWorld();
+
+        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0, Position = new Position(0, 0) });
+
+        Assert.NotEmpty(world.Exploration.Explored);
     }
 
     [Fact]
@@ -104,7 +115,7 @@ public class WorldStateTests
     public void AdvanceIncreasesHungerForEveryPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(3);
 
@@ -116,7 +127,7 @@ public class WorldStateTests
     public void AdvanceClampsHungerAtItsMaximum()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(1000);
 
@@ -127,7 +138,7 @@ public class WorldStateTests
     public void AdvanceKillsAPersonWhoseHungerReachesTheMaximum()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(99);
         Assert.True(person.IsAlive);
@@ -141,7 +152,7 @@ public class WorldStateTests
     public void AgeInYearsIsZeroForANewbornPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         Assert.Equal(0, world.AgeInYears(person));
     }
@@ -150,7 +161,7 @@ public class WorldStateTests
     public void AgeInYearsIncreasesAfterAFullYearPasses()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(world.Configuration.Rules.TicksPerYear);
 
@@ -161,7 +172,7 @@ public class WorldStateTests
     public void AgeInSeasonsIsZeroForANewbornPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         Assert.Equal(0, world.AgeInSeasons(person));
     }
@@ -170,7 +181,7 @@ public class WorldStateTests
     public void AgeInSeasonsIncreasesAfterASeasonPasses()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(75);
 
@@ -182,7 +193,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(75);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(75);
 
@@ -194,7 +205,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(world.Configuration.Rules.TicksPerYear);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(world.Configuration.Rules.TicksPerYear);
 
@@ -205,7 +216,7 @@ public class WorldStateTests
     public void MaxCarryWeightForAnAdultWithNoGearIsTheAdultBaseline()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 
         Assert.Equal(CarryCapacity.AdultBaseWeight, world.MaxCarryWeightFor(person));
     }
@@ -218,7 +229,7 @@ public class WorldStateTests
         {
             ItemCatalog = new ItemCatalog(new[] { new ItemDefinition(bag, "Bag", CarryCapacityBonus: 20f) }),
         });
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 1);
 
         Assert.Equal(CarryCapacity.AdultBaseWeight + 20f, world.MaxCarryWeightFor(person));
@@ -232,7 +243,7 @@ public class WorldStateTests
         {
             ItemCatalog = new ItemCatalog(new[] { new ItemDefinition(bag, "Bag", CarryCapacityBonus: 20f) }),
         });
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 3);
 
         Assert.Equal(CarryCapacity.AdultBaseWeight + 20f, world.MaxCarryWeightFor(person));
@@ -242,7 +253,7 @@ public class WorldStateTests
     public void AdvanceGivesAPersonWithNoOrdersAnIdleTaskInsteadOfLeavingThemFrozen()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         var start = person.Position;
 
         world.Advance(20);
@@ -255,7 +266,7 @@ public class WorldStateTests
     public void AdvanceDoesNotReplaceAnAlreadyInProgressTaskWithIdle()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person.Id, new Position(100, 0)));
 
         world.Advance(1);
@@ -267,7 +278,7 @@ public class WorldStateTests
     public void AdvanceDoesNotStartIdleWanderingWhileAGracePeriodIsStillRunning()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new GrantIdleGraceCommand(person.Id, 5));
         var start = person.Position;
 
@@ -281,7 +292,7 @@ public class WorldStateTests
     public void AdvanceStartsIdleWanderingAsSoonAsTheGracePeriodRunsOut()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new GrantIdleGraceCommand(person.Id, 5));
 
         world.Advance(5);
@@ -293,9 +304,9 @@ public class WorldStateTests
     public void AdvanceHasAnIdlePersonWithAKnownSkillAutonomouslyGatherFromAMatchingResource()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
 
         world.Advance(1);
 
@@ -308,9 +319,9 @@ public class WorldStateTests
     public void AdvanceHasAnIdlePersonWalkTowardAKnownSkillsResourceBeforeGatheringOnceInRange()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        world.AddResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
 
         // First tick only assigns the GatherTask (same one-tick lag as IdleTask itself - see
         // AdvanceGivesAPersonWithNoOrdersAnIdleTaskInsteadOfLeavingThemFrozen); it needs a
@@ -326,11 +337,11 @@ public class WorldStateTests
     public void AdvanceHasAHungryPersonWithNoFoodAutonomouslySeekTheNearestFoodResourceWhenIdle()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.Needs.Hunger = 60f;
-        var foodNode = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 100f);
+        var foodNode = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100f);
 
         world.Advance(1);
 
@@ -342,13 +353,13 @@ public class WorldStateTests
     public void AdvanceHasSeekingFoodWhenHungryTakePriorityOverAnAlreadyKnownSkill()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.Needs.Hunger = 60f;
-        world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
-        var foodNode = world.AddResourceNode(TestCatalogs.Apple, new Position(5, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var foodNode = world.SpawnResourceNode(TestCatalogs.Apple, new Position(5, 0), 100f);
 
         world.Advance(1);
 
@@ -360,7 +371,7 @@ public class WorldStateTests
     public void AdvanceEatsFromInventoryWhenHungryEvenWhileOnAPlayerIssuedTask()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 30f;
         person.Inventory.Add(TestCatalogs.AppleItem, 50);
@@ -377,9 +388,9 @@ public class WorldStateTests
     public void AdvanceDoesNotSendAnIdlePersonBeyondIdleSearchRadiusForAKnownSkillsResource()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        world.AddResourceNode(TestCatalogs.Wood, new Position(1000, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(1000, 0), 100f);
 
         world.Advance(1);
 
@@ -390,10 +401,10 @@ public class WorldStateTests
     public void AdvanceReassignsAGatherTaskOnceItsTargetResourceStopsBeingWorthGathering()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        var primary = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
-        var backup = world.AddResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
+        var primary = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var backup = world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
 
         world.Advance(1);
         Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
@@ -409,19 +420,19 @@ public class WorldStateTests
     public void AdvanceRedirectsAGatherTaskToSeekFoodOnceHungerBecomesUrgentPartwayThroughAFarErrand()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         // Far enough that Ava is still walking there, not yet gathering, when hunger hits.
-        var farWood = world.AddResourceNode(TestCatalogs.Wood, new Position(50, 0), 100f);
+        var farWood = world.SpawnResourceNode(TestCatalogs.Wood, new Position(50, 0), 100f);
 
         world.Advance(1);
         Assert.Equal(farWood.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
 
         // A closer food source only becomes relevant once hunger turns urgent - otherwise
         // she'd have gone for it from the very start instead of the (nearer, at the time) wood.
-        var nearbyFood = world.AddResourceNode(TestCatalogs.Apple, new Position(1, 0), 100f);
+        var nearbyFood = world.SpawnResourceNode(TestCatalogs.Apple, new Position(1, 0), 100f);
         person.Needs.Hunger = 90f;
         world.Advance(1);
 
@@ -435,13 +446,13 @@ public class WorldStateTests
         // Idle is the one autonomous choice that always gets a second look - something better
         // might now apply that didn't when they started wandering.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
 
         world.Advance(1);
         Assert.IsType<IdleTask>(person.Tasks.Current);
 
-        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(3, 0), 100f);
+        var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(3, 0), 100f);
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
@@ -454,7 +465,7 @@ public class WorldStateTests
     public void AdvanceSendsAPersonLookingForFoodTheMomentHungerReachesTheThresholdNotOnlyPastIt(float hunger, bool expectFood)
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
@@ -462,8 +473,8 @@ public class WorldStateTests
 
         // Wood is much the nearer of the two, so it wins on distance alone right up until
         // hunger turns urgent and food starts being sought ahead of everything else.
-        var wood = world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
-        var food = world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+        var wood = world.SpawnResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        var food = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
 
         world.Advance(1);
 
@@ -477,15 +488,15 @@ public class WorldStateTests
         // Hunger only redirects someone who has nothing to eat on them - a woodcutter with
         // apples in their pack has no reason to break off and go pick more.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Needs.Hunger = 60f;
         person.Inventory.Add(TestCatalogs.AppleItem, 5);
 
-        var wood = world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
-        world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+        var wood = world.SpawnResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
 
         world.Advance(1);
 
@@ -497,15 +508,15 @@ public class WorldStateTests
     public void AdvanceStillSendsAHungryPersonForFoodWhenAllTheyAreCarryingIsInedible()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Needs.Hunger = 60f;
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
 
-        world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
-        var food = world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        var food = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
 
         world.Advance(1);
 
@@ -519,15 +530,15 @@ public class WorldStateTests
         // A kind whose count has fallen to zero is still a key in the inventory; counting it
         // would leave a starving person convinced they have an apple left.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Needs.Hunger = 60f;
         person.Inventory.Add(TestCatalogs.AppleItem, 0);
 
-        world.AddResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
-        var food = world.AddResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
+        var food = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
 
         world.Advance(1);
 
@@ -541,7 +552,7 @@ public class WorldStateTests
         // A save loaded against changed content, or a stale order - either way the target
         // simply isn't there to look up, which is a reason to re-plan rather than to crash.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Tasks.Interrupt(new GatherTask(new ResourceNodeId(404), new Position(5, 0), world.Configuration.Rules.MaxInteractionDistance));
 
         world.Advance(1);
@@ -555,10 +566,10 @@ public class WorldStateTests
         // Depleted-but-alive nodes regenerate eventually, but standing next to one waiting is
         // not the plan - with a fuller one of the same kind nearby, that's where to go.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        var primary = world.AddResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
-        var backup = world.AddResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
+        var primary = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 100f);
+        var backup = world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
 
         world.Advance(1);
         Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).TargetNodeId);
@@ -581,9 +592,9 @@ public class WorldStateTests
             ResourceCatalog = new ResourceCatalog([new ResourceDefinition(unknownSkillResource, "Moon Rock", new SkillTypeId("moon_mining"))]),
         };
         var world = new WorldState(configuration);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicMining);
-        world.AddResourceNode(unknownSkillResource, new Position(1, 0), 100f);
+        world.SpawnResourceNode(unknownSkillResource, new Position(1, 0), 100f);
 
         world.Advance(1);
 
@@ -596,10 +607,10 @@ public class WorldStateTests
         // Nothing about a tie makes the later node the better pick, and picking one of them
         // consistently is what keeps a world reproducible from the same starting state.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        var first = world.AddResourceNode(TestCatalogs.Wood, new Position(5, 0), 100f);
-        world.AddResourceNode(TestCatalogs.Wood, new Position(-5, 0), 100f);
+        var first = world.SpawnResourceNode(TestCatalogs.Wood, new Position(5, 0), 100f);
+        world.SpawnResourceNode(TestCatalogs.Wood, new Position(-5, 0), 100f);
 
         world.Advance(1);
 
@@ -611,9 +622,9 @@ public class WorldStateTests
     public void AdvanceStillSendsAnIdlePersonToAResourceSittingExactlyAtTheIdleSearchRadius()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-        var node = world.AddResourceNode(TestCatalogs.Wood, new Position(60, 0), 100f);
+        var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(60, 0), 100f);
 
         world.Advance(1);
 
@@ -625,7 +636,7 @@ public class WorldStateTests
     public void AdvanceLeavesADeadResourceNodeAloneInsteadOfRegrowingIt()
     {
         var world = TestCatalogs.CreateWorld();
-        var node = world.AddResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
+        var node = world.SpawnResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
         node.RemainingAmount = 10f;
         node.IsAlive = false;
 
@@ -639,8 +650,8 @@ public class WorldStateTests
     public void AdvancePushesTwoOverlappingPeopleApart()
     {
         var world = TestCatalogs.CreateWorld();
-        var a = world.AddPerson("Ava", new Position(0, 0));
-        var b = world.AddPerson("Bran", new Position(0, 0));
+        var a = world.SpawnPerson("Ava", new Position(0, 0));
+        var b = world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Advance(1);
 
@@ -651,8 +662,8 @@ public class WorldStateTests
     public void AdvanceLeavesTwoAlreadyFarApartPeopleExactlyWhereTheyWere()
     {
         var world = TestCatalogs.CreateWorld();
-        var a = world.AddPerson("Ava", new Position(0, 0));
-        var b = world.AddPerson("Bran", new Position(10, 0));
+        var a = world.SpawnPerson("Ava", new Position(0, 0));
+        var b = world.SpawnPerson("Bran", new Position(10, 0));
 
         world.Advance(1);
 
@@ -664,9 +675,9 @@ public class WorldStateTests
     public void AdvanceDoesNotPushADeadPersonAwayFromALivingOne()
     {
         var world = TestCatalogs.CreateWorld();
-        var dead = world.AddPerson("Ava", new Position(0, 0));
+        var dead = world.SpawnPerson("Ava", new Position(0, 0));
         dead.IsAlive = false;
-        world.AddPerson("Bran", new Position(0, 0));
+        world.SpawnPerson("Bran", new Position(0, 0));
 
         world.Advance(1);
 
@@ -677,8 +688,8 @@ public class WorldStateTests
     public void AdvancePushesAPersonOutOfATreesTrunk()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        world.AddResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100f);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        world.SpawnResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100f);
 
         world.Advance(1);
 
@@ -689,8 +700,8 @@ public class WorldStateTests
     public void AdvanceDoesNotPushAPersonAwayFromAWalkThroughResourceLikeGrass()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
-        world.AddResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        world.SpawnResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
 
         world.Advance(1);
 
@@ -705,10 +716,10 @@ public class WorldStateTests
         // farther in a single tick than their own walk speed - reading as their move order
         // having been hijacked toward some unrelated direction rather than a gentle nudge.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         for (var i = 0; i < 8; i++)
         {
-            world.AddResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100f);
+            world.SpawnResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100f);
         }
 
         world.Advance(1);
@@ -723,12 +734,12 @@ public class WorldStateTests
         // what decides how solid it is; a boulder should shove someone out farther than a
         // loose pile of rocks with the same starting overlap.
         var pileWorld = TestCatalogs.CreateWorld();
-        var personNearPile = pileWorld.AddPerson("Ava", new Position(0, 0));
-        pileWorld.AddResourceNode(TestCatalogs.RockPile, new Position(0, 0), 100f);
+        var personNearPile = pileWorld.SpawnPerson("Ava", new Position(0, 0));
+        pileWorld.SpawnResourceNode(TestCatalogs.RockPile, new Position(0, 0), 100f);
 
         var boulderWorld = TestCatalogs.CreateWorld();
-        var personNearBoulder = boulderWorld.AddPerson("Ava", new Position(0, 0));
-        boulderWorld.AddResourceNode(TestCatalogs.RockBoulder, new Position(0, 0), 100f);
+        var personNearBoulder = boulderWorld.SpawnPerson("Ava", new Position(0, 0));
+        boulderWorld.SpawnResourceNode(TestCatalogs.RockBoulder, new Position(0, 0), 100f);
 
         pileWorld.Advance(1);
         boulderWorld.Advance(1);
@@ -752,11 +763,11 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         for (var i = 0; i < peopleBefore; i++)
         {
-            world.AddPerson($"Bystander {i}", new Position(500, 500));
+            world.SpawnPerson($"Bystander {i}", new Position(500, 500));
         }
 
-        var teacher = world.AddPerson("Ava", new Position(0, 0));
-        var student = world.AddPerson("Bran", new Position(1, 0));
+        var teacher = world.SpawnPerson("Ava", new Position(0, 0));
+        var student = world.SpawnPerson("Bran", new Position(1, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
 
@@ -789,7 +800,7 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleSpreadsEatingFasterThanASpecialisedSkill()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        var teacher = world.SpawnPerson("Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicEating);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -797,7 +808,7 @@ public class WorldStateTests
         var students = new List<Person>();
         for (var i = 0; i < 30; i++)
         {
-            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+            students.Add(world.SpawnPerson($"Student{i}", new Position(0, 0)));
         }
 
         world.Advance(1);
@@ -811,14 +822,14 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleSpreadsGraduallyNotInstantlyToEveryNearbyStudentAtOnce()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        var teacher = world.SpawnPerson("Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
 
         var students = new List<Person>();
         for (var i = 0; i < 20; i++)
         {
-            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+            students.Add(world.SpawnPerson($"Student{i}", new Position(0, 0)));
         }
 
         world.Advance(1);
@@ -831,7 +842,7 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleNeverSpreadsTheEfficientTechniqueOnlyTheBaseOne()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        var teacher = world.SpawnPerson("Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
         teacher.KnownTechniques.Add(TestCatalogs.EfficientForaging);
@@ -839,7 +850,7 @@ public class WorldStateTests
         var students = new List<Person>();
         for (var i = 0; i < 20; i++)
         {
-            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+            students.Add(world.SpawnPerson($"Student{i}", new Position(0, 0)));
         }
 
         world.Advance(20);
@@ -851,14 +862,14 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleSpreadsToMoreStudentsGivenMoreTime()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.AddPerson("Teacher", new Position(0, 0));
+        var teacher = world.SpawnPerson("Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
 
         var students = new List<Person>();
         for (var i = 0; i < 20; i++)
         {
-            students.Add(world.AddPerson($"Student{i}", new Position(0, 0)));
+            students.Add(world.SpawnPerson($"Student{i}", new Position(0, 0)));
         }
 
         world.Advance(1);
@@ -874,7 +885,7 @@ public class WorldStateTests
     public void AdvanceAssignsTheExactCurrentTickWhenDeathOccursMidwayThroughAMultiTickAdvance()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 98;
 
         world.Advance(3);
@@ -886,7 +897,7 @@ public class WorldStateTests
     public void AdvanceDoesNotKeepUpdatingDeathTickForAnAlreadyDeadPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(100);
         Assert.Equal(100, person.DeathTick);
@@ -901,7 +912,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(2900);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(1);
 
@@ -919,7 +930,7 @@ public class WorldStateTests
     public void AdvanceKillsAPersonWhoReachesTheMaximumLifespanEvenWhenNeverHungry()
     {
         var world = CreateWorld(ShortLifeRules);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         var lifespanTicks = ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears;
 
         // Feed the person back to zero after every tick so only old age - never hunger - can
@@ -944,7 +955,7 @@ public class WorldStateTests
         // Pins the default calendar: 4 seasons of 75 ticks, 10 years - a person born at tick 0
         // is still alive on tick 2999 and dead on tick 3000.
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Clock.Advance(2999);
         world.Advance(1);
@@ -958,7 +969,7 @@ public class WorldStateTests
     public void AdvanceRecordsHungerAsTheCauseOfDeathWhenHungerReachesMaximum()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(100);
 
@@ -969,7 +980,7 @@ public class WorldStateTests
     public void AdvanceRecordsOldAgeAsTheCauseOfDeathWhenTheMaximumLifespanIsReached()
     {
         var world = CreateWorld(ShortLifeRules);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears) - 1; tick++)
         {
@@ -986,7 +997,7 @@ public class WorldStateTests
     public void AdvancePrioritizesOldAgeAsTheCauseOfDeathWhenBothConditionsAreMetSimultaneously()
     {
         var world = CreateWorld(ShortLifeRules);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears) - 1; tick++)
         {
@@ -1004,7 +1015,7 @@ public class WorldStateTests
     public void AdvanceRaisesHungerByTheConfiguredAmountPerTickAndCapsItAtTheConfiguredMaximum()
     {
         var world = CreateWorld(new SimulationRules { HungerPerTick = 30f, MaxHunger = 70f });
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(2);
         Assert.Equal(60f, person.Needs.Hunger);
@@ -1020,7 +1031,7 @@ public class WorldStateTests
     public void AdvanceDecaysBuildingConditionByTheConfiguredRate()
     {
         var world = CreateWorld(new SimulationRules { ConditionDecayPerTick = 10f });
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Advance(3);
 
@@ -1062,7 +1073,7 @@ public class WorldStateTests
     {
         var world = CreateWorld(new SimulationRules { TicksPerSeason = 5 });
         world.Clock.Advance(20);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         Assert.Equal(0, world.AgeInYearsAt(person, 39));
         Assert.Equal(1, world.AgeInYearsAt(person, 40));
@@ -1073,9 +1084,9 @@ public class WorldStateTests
     public void AutonomousGatherTasksCarryTheWorldsReachDistance()
     {
         var world = CreateWorld(new SimulationRules { MaxInteractionDistance = 0.75f });
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        world.AddResourceNode(TestCatalogs.Apple, new Position(10, 0), 100);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(10, 0), 100);
 
         world.Advance(1);
 
@@ -1087,10 +1098,10 @@ public class WorldStateTests
     public void AdvanceLeavesADeceasedPersonsInventoryUntouchedRatherThanTransferringItAutomatically()
     {
         var world = TestCatalogs.CreateWorld();
-        var parent = world.AddPerson("Ava", new Position(0, 0));
+        var parent = world.SpawnPerson("Ava", new Position(0, 0));
         parent.Needs.Hunger = 99;
         parent.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var child = world.AddPerson("Bran", new Position(0, 0), motherId: parent.Id);
+        var child = world.SpawnPerson("Bran", new Position(0, 0), motherId: parent.Id);
 
         world.Advance(1);
 
@@ -1100,55 +1111,40 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void AddPersonAssignsMotherAndFatherIdsWhenProvided()
+    public void NextGraveIdStartsAtOneAndAdvancesWithEveryAddedGrave()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = world.AddPerson("Sela", new Position(0, 0));
-        var father = world.AddPerson("Bran", new Position(0, 0));
+        Assert.Equal(new GraveId(1), world.NextGraveId);
 
-        var child = world.AddPerson("Ava", new Position(0, 0), motherId: mother.Id, fatherId: father.Id);
+        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false });
+        Assert.Equal(new GraveId(2), world.NextGraveId);
 
-        Assert.Equal(mother.Id, child.MotherId);
-        Assert.Equal(father.Id, child.FatherId);
-    }
-
-    [Fact]
-    public void AddPersonLeavesMotherAndFatherIdsNullByDefault()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        var person = world.AddPerson("Ava", new Position(0, 0));
-
-        Assert.Null(person.MotherId);
-        Assert.Null(person.FatherId);
-    }
-
-    [Fact]
-    public void AddGraveAssignsSequentialUniqueIds()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        var first = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
-        var second = world.AddGrave(new Position(1, 1), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
-
-        Assert.NotEqual(first.Id, second.Id);
-        Assert.Equal(1, first.Id.Value);
-        Assert.Equal(2, second.Id.Value);
+        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(1, 1), IsMarked = false });
+        Assert.Equal(new GraveId(3), world.NextGraveId);
     }
 
     [Fact]
     public void AddGraveTracksItInGraves()
     {
         var world = TestCatalogs.CreateWorld();
+        var grave = new Grave { Id = world.NextGraveId, Position = new Position(2, 3), IsMarked = true, Name = "Ava" };
 
-        var grave = world.AddGrave(new Position(2, 3), isMarked: true, name: "Ava", ageAtDeath: 5, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        world.AddGrave(grave);
 
-        var tracked = Assert.Single(world.Graves);
-        Assert.Same(grave, tracked);
-        Assert.Equal(new Position(2, 3), tracked.Position);
-        Assert.True(tracked.IsMarked);
-        Assert.Equal("Ava", tracked.Name);
-        Assert.Equal(5, tracked.AgeAtDeath);
+        Assert.Same(grave, Assert.Single(world.Graves));
+    }
+
+    [Fact]
+    public void AddGraveRejectsAnIdThatIsNotTheWorldsNextOne()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var stale = new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false };
+        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(1, 1), IsMarked = false });
+
+        Assert.Throws<ArgumentException>(() => world.AddGrave(stale));
+
+        Assert.DoesNotContain(stale, world.Graves);
+        Assert.Equal(new GraveId(2), world.NextGraveId);
     }
 
     [Fact]
@@ -1157,8 +1153,9 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Grave? raised = null;
         world.GraveAdded += g => raised = g;
+        var grave = new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false };
 
-        var grave = world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        world.AddGrave(grave);
 
         Assert.Same(grave, raised);
     }
@@ -1168,14 +1165,14 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddGrave(new Position(0, 0), isMarked: false, name: null, ageAtDeath: null, causeOfDeath: null, motherName: null, fatherName: null, knownTechniques: []);
+        world.AddGrave(new Grave { Id = world.NextGraveId, Position = new Position(0, 0), IsMarked = false });
     }
 
     [Fact]
     public void AdvanceMovesAPersonWithAnActiveMoveTaskTowardTheirDestination()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person.Id, new Position(10, 0)));
 
         world.Advance(3);
@@ -1187,7 +1184,7 @@ public class WorldStateTests
     public void AdvanceStopsMovingAPersonOnceTheyReachTheirDestination()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
 
         world.Advance(2);
@@ -1199,7 +1196,7 @@ public class WorldStateTests
     public void AdvanceLetsAPersonIdleWanderOnceTheyReachTheirDestinationInsteadOfFreezingThere()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person.Id, new Position(2, 0)));
 
         world.Advance(20);
@@ -1212,7 +1209,7 @@ public class WorldStateTests
     public void AdvanceStopsMovingAPersonOnceTheyDieFromHunger()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person.Id, new Position(1000, 0)));
 
         world.Advance(100);
@@ -1225,40 +1222,40 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void AddResourceNodeAssignsSequentialUniqueIds()
+    public void NextResourceNodeIdStartsAtOneAndAdvancesWithEveryAddedNode()
     {
         var world = TestCatalogs.CreateWorld();
+        Assert.Equal(new ResourceNodeId(1), world.NextResourceNodeId);
 
-        var first = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 50);
-        var second = world.AddResourceNode(TestCatalogs.Apple, new Position(1, 1), 50);
+        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple });
+        Assert.Equal(new ResourceNodeId(2), world.NextResourceNodeId);
 
-        Assert.NotEqual(first.Id, second.Id);
-        Assert.Equal(1, first.Id.Value);
-        Assert.Equal(2, second.Id.Value);
+        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple });
+        Assert.Equal(new ResourceNodeId(3), world.NextResourceNodeId);
     }
 
     [Fact]
     public void AddResourceNodeTracksItInResourceNodes()
     {
         var world = TestCatalogs.CreateWorld();
+        var node = new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple };
 
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(2, 3), 40);
+        world.AddResourceNode(node);
 
-        var tracked = Assert.Single(world.ResourceNodes);
-        Assert.Same(node, tracked);
-        Assert.Equal(TestCatalogs.Apple, tracked.Kind);
-        Assert.Equal(new Position(2, 3), tracked.Position);
-        Assert.Equal(40f, tracked.RemainingAmount);
+        Assert.Same(node, Assert.Single(world.ResourceNodes));
     }
 
     [Fact]
-    public void AddResourceNodeSetsMaxAmountToTheSpawnedAmount()
+    public void AddResourceNodeRejectsAnIdThatIsNotTheWorldsNextOne()
     {
         var world = TestCatalogs.CreateWorld();
+        var stale = new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple };
+        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Pear });
 
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 40);
+        Assert.Throws<ArgumentException>(() => world.AddResourceNode(stale));
 
-        Assert.Equal(40f, node.MaxAmount);
+        Assert.DoesNotContain(stale, world.ResourceNodes);
+        Assert.Equal(new ResourceNodeId(2), world.NextResourceNodeId);
     }
 
     [Fact]
@@ -1267,8 +1264,9 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Person? raised = null;
         world.PersonAdded += p => raised = p;
+        var person = new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0 };
 
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        world.AddPerson(person);
 
         Assert.Same(person, raised);
     }
@@ -1278,7 +1276,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson("Ava", new Position(0, 0));
+        world.AddPerson(new Person { Id = world.NextPersonId, Name = "Ava", BirthTick = 0 });
     }
 
     [Fact]
@@ -1287,8 +1285,9 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         ResourceNode? raised = null;
         world.ResourceNodeAdded += n => raised = n;
+        var node = new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple };
 
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(2, 3), 40);
+        world.AddResourceNode(node);
 
         Assert.Same(node, raised);
     }
@@ -1298,43 +1297,44 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddResourceNode(TestCatalogs.Apple, new Position(2, 3), 40);
+        world.AddResourceNode(new ResourceNode { Id = world.NextResourceNodeId, Kind = TestCatalogs.Apple });
     }
 
     [Fact]
-    public void AddBuildingAssignsSequentialUniqueIds()
+    public void NextBuildingIdStartsAtOneAndAdvancesWithEveryAddedBuilding()
     {
         var world = TestCatalogs.CreateWorld();
+        Assert.Equal(new BuildingId(1), world.NextBuildingId);
 
-        var first = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        var second = world.AddBuilding(TestCatalogs.StorageHut, new Position(1, 1));
+        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
+        Assert.Equal(new BuildingId(2), world.NextBuildingId);
 
-        Assert.NotEqual(first.Id, second.Id);
-        Assert.Equal(1, first.Id.Value);
-        Assert.Equal(2, second.Id.Value);
+        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
+        Assert.Equal(new BuildingId(3), world.NextBuildingId);
     }
 
     [Fact]
     public void AddBuildingTracksItInBuildings()
     {
         var world = TestCatalogs.CreateWorld();
+        var building = new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut };
 
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
+        world.AddBuilding(building);
 
-        var tracked = Assert.Single(world.Buildings);
-        Assert.Same(building, tracked);
-        Assert.Equal(TestCatalogs.StorageHut, tracked.Kind);
-        Assert.Equal(new Position(2, 3), tracked.Position);
+        Assert.Same(building, Assert.Single(world.Buildings));
     }
 
     [Fact]
-    public void AddBuildingStartsWithAnEmptyInventory()
+    public void AddBuildingRejectsAnIdThatIsNotTheWorldsNextOne()
     {
         var world = TestCatalogs.CreateWorld();
+        var stale = new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut };
+        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
 
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        Assert.Throws<ArgumentException>(() => world.AddBuilding(stale));
 
-        Assert.Empty(building.Inventory.Counts);
+        Assert.DoesNotContain(stale, world.Buildings);
+        Assert.Equal(new BuildingId(2), world.NextBuildingId);
     }
 
     [Fact]
@@ -1343,8 +1343,9 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Building? raised = null;
         world.BuildingAdded += b => raised = b;
+        var building = new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut };
 
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
+        world.AddBuilding(building);
 
         Assert.Same(building, raised);
     }
@@ -1354,24 +1355,14 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddBuilding(TestCatalogs.StorageHut, new Position(2, 3));
-    }
-
-    [Fact]
-    public void AddBuildingStartsAtFullCondition()
-    {
-        var world = TestCatalogs.CreateWorld();
-
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-
-        Assert.Equal(100f, building.Condition);
+        world.AddBuilding(new Building { Id = world.NextBuildingId, Kind = TestCatalogs.StorageHut });
     }
 
     [Fact]
     public void AdvanceDecaysBuildingCondition()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Advance(100);
 
@@ -1382,7 +1373,7 @@ public class WorldStateTests
     public void AdvanceNeverDecaysBuildingConditionBelowZero()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Advance(1_000_000);
 
@@ -1421,7 +1412,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(225);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(1);
 
@@ -1434,7 +1425,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(224);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         // Ticks 224 (Autumn) and 225 (Winter): 1 + 2 = 3 hunger, not a flat rate for both.
         world.Advance(2);
@@ -1446,7 +1437,7 @@ public class WorldStateTests
     public void AdvanceRegrowsADepletedResourceNodeTowardItsMaxAmount()
     {
         var world = TestCatalogs.CreateWorld();
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
         node.RemainingAmount = 50;
 
         world.Advance(10);
@@ -1458,7 +1449,7 @@ public class WorldStateTests
     public void AdvanceNeverRegrowsAResourceNodeAboveItsMaxAmount()
     {
         var world = TestCatalogs.CreateWorld();
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
         node.RemainingAmount = 199;
 
         world.Advance(10);
@@ -1471,7 +1462,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(225);
-        var node = world.AddResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
         node.RemainingAmount = 50;
 
         world.Advance(10);
@@ -1492,7 +1483,7 @@ public class WorldStateTests
             TicksToWither: 3f);
         var world = new WorldState(new WorldConfiguration { ResourceCatalog = new ResourceCatalog([definition]) });
         world.Advance(225);
-        var node = world.AddResourceNode(kind, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(kind, new Position(0, 0), 100);
 
         world.Advance(2);
 
@@ -1512,7 +1503,7 @@ public class WorldStateTests
             TicksToWither: 3f);
         var world = new WorldState(new WorldConfiguration { ResourceCatalog = new ResourceCatalog([definition]) });
         world.Advance(225);
-        var node = world.AddResourceNode(kind, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(kind, new Position(0, 0), 100);
 
         world.Advance(3);
 
@@ -1535,7 +1526,7 @@ public class WorldStateTests
             TicksToWither: 1000f);
         var world = new WorldState(new WorldConfiguration { ResourceCatalog = new ResourceCatalog([definition]) });
         world.Advance(225);
-        var node = world.AddResourceNode(kind, new Position(0, 0), 100);
+        var node = world.SpawnResourceNode(kind, new Position(0, 0), 100);
         world.Advance(2);
         Assert.Equal(2f, node.ColdStress);
 
@@ -1561,7 +1552,7 @@ public class WorldStateTests
             RegenPerTick: 5f,
             TicksToWither: 100f);
         var world = new WorldState(new WorldConfiguration { ResourceCatalog = new ResourceCatalog([definition]) });
-        var node = world.AddResourceNode(kind, new Position(0, 0), 200);
+        var node = world.SpawnResourceNode(kind, new Position(0, 0), 200);
         node.RemainingAmount = 50;
 
         // World starts in Spring (Mild) - inhospitable for this definition despite the
@@ -1577,7 +1568,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         world.Advance(225);
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WarmClothing, 1);
 
         world.Advance(1);
@@ -1590,7 +1581,7 @@ public class WorldStateTests
     public void AdvanceInsulationNeverReducesHungerRateBelowNormal()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WarmClothing, 1);
 
         world.Advance(1);

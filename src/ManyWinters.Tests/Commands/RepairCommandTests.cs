@@ -11,9 +11,9 @@ public class RepairCommandTests
     public void RepairingRestoresConditionAndConsumesAQuarterOfTheBuildCost()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -26,9 +26,9 @@ public class RepairCommandTests
     public void RepairingCapsConditionAtItsMaximum()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 90f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -40,9 +40,9 @@ public class RepairCommandTests
     public void RepairingAnAlreadyFullConditionBuildingDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
 
         world.Execute(new RepairCommand(person.Id, building.Id));
 
@@ -54,9 +54,9 @@ public class RepairCommandTests
     public void RepairingWithoutEnoughMaterialsDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 4);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -69,10 +69,10 @@ public class RepairCommandTests
     public void RepairingByADeadPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -84,9 +84,9 @@ public class RepairCommandTests
     public void RepairingAtExactlyTheMaxInteractionDistanceStillWorks()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -98,9 +98,9 @@ public class RepairCommandTests
     public void RepairingBeyondTheMaxInteractionDistanceDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(person.Id, building.Id));
@@ -113,7 +113,7 @@ public class RepairCommandTests
     public void RepairingAnUnknownBuildingDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = world.AddPerson("Ava", new Position(0, 0));
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
 
         world.Execute(new RepairCommand(person.Id, new BuildingId(999)));
@@ -125,7 +125,7 @@ public class RepairCommandTests
     public void RepairingByAnUnknownPersonDoesNothing()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = world.AddBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Condition = 50f;
 
         world.Execute(new RepairCommand(new PersonId(999), building.Id));

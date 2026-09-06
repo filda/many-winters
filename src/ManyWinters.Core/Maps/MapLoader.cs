@@ -165,7 +165,7 @@ public static class MapLoader
             for (var i = 0; i < count; i++)
             {
                 var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
-                world.AddResourceNode(kind, position, amount);
+                world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
             }
         }
 
@@ -175,7 +175,7 @@ public static class MapLoader
             {
                 var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
                 var kind = RockKinds[rng.Next(RockKinds.Length)];
-                world.AddResourceNode(kind, position, RockAmount);
+                world.Execute(new SpawnResourceNodeCommand(kind, position, RockAmount));
             }
         }
 
@@ -292,7 +292,7 @@ public static class MapLoader
 
             // Stryker restore Equality
 
-            world.AddResourceNode(kind, position, amount);
+            world.Execute(new SpawnResourceNodeCommand(kind, position, amount));
             MarkOccupied(occupied, position);
         }
     }

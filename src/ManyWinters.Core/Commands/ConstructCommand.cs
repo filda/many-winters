@@ -19,6 +19,11 @@ public sealed record ConstructCommand(PersonId PersonId, BuildingKindId Kind, Po
             return;
         }
 
-        world.AddBuilding(Kind, Position);
+        world.AddBuilding(new Building
+        {
+            Id = world.NextBuildingId,
+            Kind = Kind,
+            Position = Position,
+        });
     }
 }

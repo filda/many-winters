@@ -79,13 +79,13 @@ public static class SaveGameService
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
-            world.NextPersonId,
+            world.NextPersonId.Value,
             people,
-            world.NextResourceNodeId,
+            world.NextResourceNodeId.Value,
             resourceNodes,
-            world.NextBuildingId,
+            world.NextBuildingId.Value,
             buildings,
-            world.NextGraveId,
+            world.NextGraveId.Value,
             graves,
             exploredCells);
     }
