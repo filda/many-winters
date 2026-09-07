@@ -292,15 +292,10 @@ public partial class Main : Node3D
             targetPosition = _cameraRig.RigGlobalPosition;
         }
 
-        var cameraPosition = _cameraRig.CameraGlobalPosition;
-        var toTarget = targetPosition - cameraPosition;
-        var toTargetLength = toTarget.Length();
-        if (toTargetLength <= 0.001f)
+        if (SightLine.From(_cameraRig.CameraGlobalPosition, targetPosition) is not { } sightLine)
         {
             return result;
         }
-
-        var direction = toTarget / toTargetLength;
 
         foreach (var sprite in BillboardSprite.LiveSprites)
         {
@@ -317,25 +312,18 @@ public partial class Main : Node3D
                 continue;
             }
 
-            var toSprite = sprite.GlobalPosition - cameraPosition;
-            var along = toSprite.Dot(direction);
-            // Beyond the target (along >= toTargetLength, plus a little slack - see
-            // PresentationSettings.OcclusionDistanceTolerance) or behind the camera (along <= 0)
-            // isn't "in the way" of this particular line of sight - only strictly between the
-            // two counts.
-            if (along <= 0f || along >= toTargetLength + _presentation.OcclusionDistanceTolerance)
-            {
-                continue;
-            }
+            // How wide the sprite actually renders, scale included - the same one place that
+            // answers it for pixel-accurate picking (BillboardUv.RenderedSize), rather than
+            // assuming a square canvas at its authored size the way this used to.
+            var texture = sprite.Texture!;
+            var scale = sprite.GlobalTransform.Basis.Scale;
+            var renderedWidth = BillboardUv.RenderedSize(sprite.PixelSize, texture.GetWidth(), texture.GetHeight(), scale.X, scale.Y).X;
 
-            var closestPointOnLine = cameraPosition + (direction * along);
-            var perpendicularDistance = (sprite.GlobalPosition - closestPointOnLine).Length();
-            // Every billboard here is square (all art is authored on a square canvas), so its
-            // rendered world-space width equals PixelSize * pixel width - a wide tree needs a
-            // much bigger "in the way" radius than a thin grass blade, not the same flat
-            // distance regardless of how big it actually draws.
-            var spriteRadius = (sprite.PixelSize * sprite.Texture!.GetWidth()) / 2f;
-            if (perpendicularDistance < spriteRadius + _presentation.OcclusionMargin)
+            if (sightLine.IsBlockedBy(
+                    sprite.GlobalPosition,
+                    renderedWidth / 2f,
+                    _presentation.OcclusionMargin,
+                    _presentation.OcclusionDistanceTolerance))
             {
                 result.Add(sprite);
             }

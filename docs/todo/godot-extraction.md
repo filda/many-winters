@@ -17,11 +17,6 @@ under "Mutation testing" - why a tidy test input is the usual reason a mutant su
 
 ## Split a method into calculation plus an engine wrapper
 
-**`Main.ComputeOccludingSprites` / `UpdateOcclusionFade`** — deciding which sprites currently
-stand between the camera and the selection. It operates on `Sprite3D`, so what comes out is
-the test itself (a sprite's world rectangle against a screen point), leaving the iteration
-behind. This also owns one of the three sprite-size formulas below.
-
 **`PersonView`** — the position interpolation in `_Process`/`SetTargetPosition`, and the
 walk-cycle phase.
 
@@ -30,15 +25,13 @@ height sampler as a parameter.
 
 ## One concept, three formulas
 
-**"How big does this sprite render"** is answered in three places. `BillboardUv.RenderedSize`
-(pixel size times texture size times per-axis scale) is the tested one, but
-`Main.ComputeOccludingSprites` re-derives a radius from pixel size and width alone, ignoring
-scale and assuming every billboard is square, and `SpriteExtents.From` derives
-metres-per-pixel from a `worldHeight` instead of asking the sprite, also ignoring scale. So for
-any scaled or non-square sprite - which `ResourceNodeView` does produce, and hover scaling
-creates on any sprite - the occlusion radius and the click rectangle come out of different
-formulas. One owner would settle it, and it is a prerequisite for the two split items above
-that touch the same quantity.
+**"How big does this sprite render"** is answered in two places now that
+`Main.ComputeOccludingSprites` asks `BillboardUv.RenderedSize` like the picking does.
+`SpriteExtents.From` is the remaining odd one out: it derives metres-per-pixel from the
+`worldHeight` a sprite was created at rather than from the sprite itself, so it ignores node
+scale, and hover scaling puts every sprite briefly out of step with its own click rectangle.
+Settling it means giving `SpriteVisibleExtent` the live sprite instead of a height, which
+touches every caller - worth doing, but not free.
 
 ## Deliberately left alone
 
