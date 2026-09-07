@@ -50,7 +50,7 @@ public static class SpritePixelHit
             return false;
         }
 
-        if (!TryGetUv(camera, rayHitPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition, out var uv))
+        if (UvAt(camera, rayHitPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition) is not { } uv)
         {
             return false;
         }
@@ -67,77 +67,23 @@ public static class SpritePixelHit
         return image.GetPixel(pixelX, pixelY).A > 0.1f;
     }
 
-    private static bool TryGetUv(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, Vector3 spriteCenter, out Vector2 uv)
+    // Everything the engine has to be asked for, handed to BillboardUv for the geometry: the
+    // camera's backward axis and the pick ray it cast, plus the sprite's rendered half-extents
+    // (PixelSize alone is fixed at creation time and reflects neither the accumulated
+    // parent+self scale nor per-axis scaling, which ResourceNodeView does use - a tall-narrow
+    // tree scales width and height independently, so each axis reads its own).
+    private static Vector2? UvAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, Vector3 spriteCenter)
     {
-        uv = default;
-
-        var up = Vector3.Up;
-        // The direction the billboard's plane faces: the camera's backward axis (Basis.Z
-        // points from the scene toward the viewer) flattened to the horizontal - exactly
-        // the shader's normalize(cross(up, INV_VIEW_MATRIX[2])) right vector, transposed.
-        var cameraBackward = camera.GlobalTransform.Basis.Z;
-        var look = new Vector3(cameraBackward.X, 0f, cameraBackward.Z);
-        var horizontalLength = look.Length();
-        if (horizontalLength < 0.0001f)
-        {
-            // Camera looking straight down (or up) - a FixedY billboard has nothing left to
-            // yaw toward and renders edge-on/degenerate here. FreeCameraRig's own tilt clamp
-            // keeps normal play well clear of this.
-            return false;
-        }
-
-        look /= horizontalLength;
-        var right = up.Cross(look);
-
-        // The pick ray as Godot itself cast it, rebuilt back through the hit's screen point -
-        // right for both projections (see the class doc comment).
         var screenPosition = camera.UnprojectPosition(rayHitPosition);
-        var rayOrigin = camera.ProjectRayOrigin(screenPosition);
-        var rayDirection = camera.ProjectRayNormal(screenPosition);
-        var denominator = rayDirection.Dot(look);
-        if (Mathf.Abs(denominator) < 0.0001f)
-        {
-            return false;
-        }
-
-        var t = (spriteCenter - rayOrigin).Dot(look) / denominator;
-        var pointOnBillboardPlane = rayOrigin + (rayDirection * t);
-        var offset = pointOnBillboardPlane - spriteCenter;
-        var localRight = offset.Dot(right);
-        var localUp = offset.Dot(up);
-
-        // Accumulated parent+self scale (EntityVisualVariation, HoverHighlight, ...) - PixelSize
-        // alone is fixed at creation time and doesn't reflect either. Width and height read
-        // their own axis rather than sharing one - ResourceNodeView can give a resource
-        // independent width/height scaling (a tall-narrow vs. short-wide tree), so the two no
-        // longer necessarily match.
         var scale = sprite.GlobalTransform.Basis.Scale;
-        var halfWidth = (sprite.PixelSize * sprite.Texture.GetWidth() * scale.X) / 2f;
-        var halfHeight = (sprite.PixelSize * sprite.Texture.GetHeight() * scale.Y) / 2f;
-        if (halfWidth <= 0f || halfHeight <= 0f)
-        {
-            return false;
-        }
 
-        // Image V grows downward; the sprite's local "up" (positive localUp = higher on
-        // screen) is the opposite direction.
-        var u = 0.5f + (localRight / (halfWidth * 2f));
-        var v = 0.5f - (localUp / (halfHeight * 2f));
-        if (u is < 0f or > 1f || v is < 0f or > 1f)
-        {
-            return false;
-        }
-
-        // FlipH mirrors the rendered texture horizontally (ResourceNodeView's per-instance
-        // mirroring) without touching the node's actual transform, so this manual UV lookup
-        // has to mirror U itself too or it would sample the wrong side of an asymmetric
-        // silhouette - reading opaque where the flipped render is actually transparent.
-        if (sprite.FlipH)
-        {
-            u = 1f - u;
-        }
-
-        uv = new Vector2(u, v);
-        return true;
+        return BillboardUv.At(
+            camera.GlobalTransform.Basis.Z,
+            camera.ProjectRayOrigin(screenPosition),
+            camera.ProjectRayNormal(screenPosition),
+            spriteCenter,
+            (sprite.PixelSize * sprite.Texture.GetWidth() * scale.X) / 2f,
+            (sprite.PixelSize * sprite.Texture.GetHeight() * scale.Y) / 2f,
+            sprite.FlipH);
     }
 }

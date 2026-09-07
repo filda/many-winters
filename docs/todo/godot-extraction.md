@@ -56,6 +56,12 @@ calculation that a large view class was only borrowing.
 | `Main.GraveText` | `InspectorText.ForGrave` |
 | `Main.ParentsText` | `InspectorText.ForParents` |
 
+`SpritePixelHit.TryGetUv` came out too, as `BillboardUv.At` - a split rather than a move (the
+camera calls stay behind in a wrapper), so it is really a group B item done early. It was worth
+doing first: the billboard plane's basis and the ray/plane intersection are where a wrong sign
+or axis shows up as hover that intermittently misses, which is miserable to diagnose from the
+symptom alone.
+
 Everything but the blur stays in the Godot project - `Color`, `Extent` and `res://` paths
 cannot cross into Core - and is `internal`, reached through `InternalsVisibleTo`, so the
 public API did not widen.
@@ -67,20 +73,6 @@ Dropped from this group after checking what they actually call:
 - `WorldPresenter.ToVector3` — instance method depending on `_sampleHeight`; belongs in B.
 
 ## B. Split a method into calculation plus an engine wrapper
-
-**`SpritePixelHit.TryGetUv`** — the highest-value item in the layer. The camera calls
-(`UnprojectPosition`, `ProjectRayOrigin`, `ProjectRayNormal`) are native and must stay, but
-everything after them is pure geometry: the billboard basis (`look` from the horizontal
-component, `right = up × look`), the ray/plane intersection, and the offset-to-UV conversion.
-Extract as:
-
-```
-(Vector3 rayOrigin, Vector3 rayDirection, Vector3 cameraBackward,
- Vector3 spriteCenter, float width, float height) -> Vector2? uv
-```
-
-A wrong axis or sign here shows up as hover that intermittently misses, which is miserable to
-diagnose from the symptom.
 
 **`FogOfWarRenderer`**, three pieces left now that the blur has gone:
 
@@ -136,6 +128,14 @@ Testing whether the wiring itself is right (does the view add the right children
 signal connect) needs a Godot-hosted runner such as gdUnit4 or GoDotTest, with a Godot binary
 and a headless display in CI. Not worth it while the wiring is not producing bugs - and note
 that mocks would not have covered this either.
+
+## A lesson from testing the geometry
+
+Every ray in the first cut of `BillboardUvTests` ran perpendicular to the billboard's plane,
+which quietly hid four mutants: get the ray/plane crossing wrong and the point only moves
+along the plane's own normal, which the UV then ignores. A real pick ray is perpendicular only
+dead-centre on screen. **Oblique inputs are the ones that pin an intersection** - the tidy
+axis-aligned case is the one that proves least.
 
 ## Mutation testing
 

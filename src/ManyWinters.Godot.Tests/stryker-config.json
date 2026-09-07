@@ -2,6 +2,7 @@
   "stryker-config": {
     "project": "ManyWinters.Godot.csproj",
     "mutate": [
+      "**/BillboardUv.cs",
       "**/InspectorText.cs",
       "**/RevealableExploration.cs",
       "**/SpriteExtents.cs",

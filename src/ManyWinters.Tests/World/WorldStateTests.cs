@@ -1695,4 +1695,44 @@ public class WorldStateTests
         var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
         person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
     }
+
+    [Fact]
+    public void AResourceThatYieldsNoItemIsAlwaysWorthWalkingTo()
+    {
+        // Grazed on the spot rather than pocketed (see GatherCommand), so a full backpack is
+        // no reason to pass it by - there is nothing to put anywhere.
+        var grazing = new ResourceKindId("grazing");
+        var configuration = TestCatalogs.CreateConfiguration() with
+        {
+            ResourceCatalog = new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),
+        };
+        var world = new WorldState(configuration);
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person));
+        var node = world.SpawnResourceNode(grazing, new Position(10, 0), 100);
+
+        world.Advance(1);
+
+        Assert.Same(node, Assert.IsType<GatherTask>(person.Tasks.Current).Target);
+    }
+
+    [Fact]
+    public void AFullBackpackAndNoHungerMeansAFoodSourceHasNothingLeftToOffer()
+    {
+        // Eating on the spot is what makes a food source worth visiting with a full pack - and
+        // that only counts while there is actual hunger to spend it on. At zero hunger with
+        // nowhere to put the harvest, standing over it would be work with no outcome.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 0f;
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person));
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(10, 0), 100);
+
+        world.Advance(1);
+
+        Assert.IsNotType<GatherTask>(person.Tasks.Current);
+    }
 }

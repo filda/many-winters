@@ -27,11 +27,9 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
 
     public void Execute(WorldState world)
     {
-        var eaten = Eat(world, Person, FoodItem, Person.Inventory.Get(FoodItem));
-        if (eaten > 0)
-        {
-            Person.Inventory.Remove(FoodItem, eaten);
-        }
+        // Unguarded: removing zero units leaves the count exactly as it was, so there is
+        // nothing for an "did we actually eat" check to save.
+        Person.Inventory.Remove(FoodItem, Eat(world, Person, FoodItem, Person.Inventory.Get(FoodItem)));
     }
 
     // The act of eating itself, apart from where the food comes from: EatCommand feeds from
@@ -41,6 +39,7 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
     // returns how many, leaving the caller to take exactly that many from wherever they were.
     public static int Eat(WorldState world, Person person, ItemKindId food, int availableUnits)
     {
+        // Stryker disable once Equality: hunger is never negative, and at exactly zero the units-needed check below refuses just the same
         if (!person.IsAlive || person.Needs.Hunger <= 0f)
         {
             return 0;
@@ -55,6 +54,7 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
         }
 
         var restoredPerUnit = world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(food);
+        // Stryker disable once Equality: food that restores nothing yields a non-positive units-needed count, which the check below already refuses
         if (restoredPerUnit <= 0f)
         {
             return 0;
