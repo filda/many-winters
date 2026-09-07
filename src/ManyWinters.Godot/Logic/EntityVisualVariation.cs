@@ -1,12 +1,12 @@
 using Godot;
 using ManyWinters.Core.World;
 
-namespace ManyWinters.Godot.Sprites;
+namespace ManyWinters.Godot.Logic;
 
 // Deterministic per-instance variety: same seed (an entity's stable id, via EntityId.SeedOf)
 // always produces the same tint/scale, so repeated saves/reloads don't reshuffle how things
 // look, but instances of the same kind don't render as identical clones either.
-public static class EntityVisualVariation
+internal static class EntityVisualVariation
 {
     public static Color Tint(Color baseColor, int seed)
     {

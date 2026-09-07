@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot.Sprites;
+namespace ManyWinters.Godot.Logic;
 
 // Hover feedback via a size bump (+ a modest tint) on the sprite itself, not a second
 // scaled-up "rim" sprite behind it (see git history on the now-removed SpriteOutline) - a
@@ -12,7 +12,7 @@ namespace ManyWinters.Godot.Sprites;
 // any reasonable tint leaves it near-black (can't brighten what's already near zero by
 // scaling it), so a large fraction of every sprite's area barely changed regardless of
 // which color was picked. A size change has no such blind spot.
-public static class HoverHighlight
+internal static class HoverHighlight
 {
     public const float ScaleFactor = 1.1f;
     private static readonly Color TintColor = new(1f, 0.85f, 0.15f);

@@ -44,12 +44,6 @@ walk-cycle phase.
 **`WorldPresenter.ToVector3`** — trivial, but instance-bound: make it static and take the
 height sampler as a parameter.
 
-**`HoverHighlight` and `EntityVisualVariation`** — already engine-free (`Color` and `Mathf`
-only, plus Core's `SeedHash`), so these are not splits at all: they just need tests and a move
-into `Logic/`, which is what makes them mutated. They sit in `Sprites/` meanwhile because
-moving them without tests would drop that folder's score below its threshold. Cheapest two
-items on this list.
-
 ## Consolidate — these are duplications, not just untested code
 
 **Minimum spacing over a spatial hash exists three times.** `TerrainRenderer.CellFor` +
@@ -88,3 +82,8 @@ along the plane's own normal, which the UV then ignores. A real pick ray is perp
 dead-centre on screen. **Oblique, off-centre, asymmetric inputs are what pin a geometric
 calculation** - the tidy axis-aligned case is the one that proves least. The texel-to-world
 mapping above is the next place this will matter.
+
+The same trap caught `EntityVisualVariation.RangeFor` from a different direction: every test
+of it used a 0-to-1 range, where multiplying by the width, dividing by it, and using
+`max + min` instead all give the same answer. **A range of 0 to 1, a rate of 1, an axis-aligned
+ray - any input where the operation cancels out is an input that tests nothing.**
