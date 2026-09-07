@@ -15,5 +15,8 @@ in this project down with it.
 Watch for indirect reaches: a method can look perfectly pure and still call
 `ResourceLoader.Exists` underneath.
 
+What is tested from here lives in `src/ManyWinters.Godot/Logic/` - the presentation layer's
+engine-free logic, and the only folder the mutation config mutates.
+
 `docs/development.md`, "Testing the presentation layer", has the rest - what *is* safe, why
 mocking cannot get around this, and where an extracted calculation belongs.

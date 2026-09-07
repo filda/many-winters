@@ -1,4 +1,4 @@
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Logic;
 
 // Combining the visible extents of the layers a single entity is drawn from - see
 // SpriteVisibleExtent for what an extent is and why the nominal canvas won't do.

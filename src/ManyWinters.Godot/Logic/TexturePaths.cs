@@ -1,6 +1,6 @@
 using ManyWinters.Core.Construction;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Logic;
 
 // Building the res:// paths of content assets by name alone. Nothing here touches the
 // filesystem - deciding whether a path actually exists is ResourceLoader's job and belongs

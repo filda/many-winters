@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Core.Population;
+using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot;
 

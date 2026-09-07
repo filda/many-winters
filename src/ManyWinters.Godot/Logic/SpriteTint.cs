@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Logic;
 
 // Recolouring a sprite whose art is drawn in a neutral base tone rather than in the colour it
 // should end up. Sprite3D.Modulate multiplies, so asking for a colour directly would come out

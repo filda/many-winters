@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Logic;
 
 // Where a pick ray lands on a FixedY billboard, all the way from world metres through texture
 // UV to the pixel index finally sampled - the geometry half of SpritePixelHit, with nothing of

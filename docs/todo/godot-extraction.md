@@ -6,7 +6,7 @@ history is the record. Ordered by cost.
 The rules this works under are not repeated here: `docs/conventions.md` has the principle
 (calculation lives apart from the code the framework calls), and `docs/development.md`, under
 "Testing the presentation layer", has what the engine actually permits, where an extracted
-calculation belongs, and why the Godot mutation config lists files one by one.
+calculation belongs (`src/ManyWinters.Godot/Logic/`, which the mutation config globs).
 
 ---
 

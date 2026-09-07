@@ -3,6 +3,7 @@ using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
+using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 

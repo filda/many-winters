@@ -1,6 +1,6 @@
 using ManyWinters.Core.World;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Logic;
 
 // What the presentation layer asks about a cell's exploration state, with one override: the
 // inspector's "Reveal Map" toggle. Switched on, every cell reads as explored and in sight, so

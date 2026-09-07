@@ -7,6 +7,7 @@ using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
+using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot;
 

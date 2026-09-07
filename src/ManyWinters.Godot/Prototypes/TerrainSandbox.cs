@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Prototypes;
 
 // Visual/camera prototype sandbox (docs/terrain-and-world-scale-architecture.md, "first
 // implementable slice"). Deliberately not wired into Main.cs/WorldState - this only proves

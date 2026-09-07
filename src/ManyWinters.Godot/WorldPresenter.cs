@@ -3,6 +3,7 @@ using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
+using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot;
 

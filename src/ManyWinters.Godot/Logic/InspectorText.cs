@@ -2,7 +2,7 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Logic;
 
 // The inspector's own prose - the one place simulation state is rendered into English that a
 // player reads. Kept apart from the panel that shows it, so the wording stays a plain function
