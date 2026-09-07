@@ -17,9 +17,6 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="ManyWinters Godot"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.7", "C#")
-; Engraved title page (art/generate_splash.py) shown instead of the Godot logo for the
-; whole synchronous world build in Main._Ready. Background matches default_clear_color
-; below so the letterboxed margins and the first rendered frame share one colour.
 boot_splash/bg_color=Color(0.32, 0.29, 0.26, 1)
 boot_splash/image="res://Content/splash/title_page.png"
 
@@ -42,9 +39,4 @@ enabled=PackedStringArray("res://addons/beckett/plugin.cfg")
 
 [rendering]
 
-; Warm grey-brown instead of Godot's neutral grey default: the empty sky is the table the
-; chronicle's map lies on. It frames the parchment of the unknown fog tier (which fades into
-; this exact colour - FogOfWarRenderer passes it to the shader) and lets the cool grey clouds
-; read against it. A neutral grey void made the whole scene read as an unlit 3D scene; a
-; near-black sepia (0.17) was tried and was too heavy.
 environment/defaults/default_clear_color=Color(0.32, 0.29, 0.26, 1)
