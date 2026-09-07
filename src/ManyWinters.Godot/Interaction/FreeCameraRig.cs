@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Godot.Fog;
+using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Interaction;
 
@@ -140,21 +141,9 @@ public sealed class FreeCameraRig
             panDirection.X += 1;
         }
 
-        var targetPanVelocity = Vector3.Zero;
-        if (panDirection != Vector2.Zero)
-        {
-            var basis = _rig.Basis;
-            var forward = new Vector3(basis.Z.X, 0, basis.Z.Z).Normalized();
-            var right = new Vector3(basis.X.X, 0, basis.X.Z).Normalized();
-            var panSpeed = (_isOrthographic ? _orthographicSize : _zoomDistance) * PanSpeedPerZoomUnit;
-            targetPanVelocity = ((right * panDirection.X) + (forward * panDirection.Y)).Normalized() * panSpeed;
-        }
-
-        // Exponential ease toward the target velocity (zero when no key is held) instead of
-        // snapping straight to it, so starting and stopping both feel smooth rather than
-        // instant.
-        var panEase = 1f - MathF.Exp(-PanEaseRate * delta);
-        _panVelocity = _panVelocity.Lerp(targetPanVelocity, panEase);
+        var panSpeed = (_isOrthographic ? _orthographicSize : _zoomDistance) * PanSpeedPerZoomUnit;
+        var targetPanVelocity = CameraMotion.PanVelocity(_rig.Basis, panDirection, panSpeed);
+        _panVelocity = CameraMotion.Eased(_panVelocity, targetPanVelocity, PanEaseRate, delta);
         _rig.Position += _panVelocity * delta;
 
         // Every frame, not just while a pan key is actually held - the cheapest way to
@@ -195,15 +184,7 @@ public sealed class FreeCameraRig
 
         if (zoomDirection != 0f)
         {
-            var zoomFactor = MathF.Pow(ZoomRatePerSecond, zoomDirection * delta);
-            if (_isOrthographic)
-            {
-                _orthographicSize = Mathf.Clamp(_orthographicSize * zoomFactor, _minZoom, _maxZoom);
-            }
-            else
-            {
-                _zoomDistance = Mathf.Clamp(_zoomDistance * zoomFactor, _minZoom, _maxZoom);
-            }
+            Zoom(zoomDirection * delta);
         }
 
         var tiltDirection = 0f;
@@ -219,7 +200,7 @@ public sealed class FreeCameraRig
 
         if (tiltDirection != 0f)
         {
-            _tiltDegrees = Mathf.Clamp(_tiltDegrees + (tiltDirection * TiltSpeedDegreesPerSecond * delta), MinTiltDegrees, MaxTiltDegrees);
+            _tiltDegrees = CameraMotion.Tilted(_tiltDegrees, tiltDirection * TiltSpeedDegreesPerSecond * delta, MinTiltDegrees, MaxTiltDegrees);
         }
 
         // Unconditional, every frame - not just when zoom/tilt actually changed this frame.
@@ -249,8 +230,9 @@ public sealed class FreeCameraRig
                 break;
             case InputEventMouseMotion mouseMotion when _mouseRotating:
                 _rig.RotateY(-mouseMotion.Relative.X * MouseRotateRadiansPerPixel);
-                _tiltDegrees = Mathf.Clamp(
-                    _tiltDegrees - (mouseMotion.Relative.Y * MouseTiltDegreesPerPixel),
+                _tiltDegrees = CameraMotion.Tilted(
+                    _tiltDegrees,
+                    -mouseMotion.Relative.Y * MouseTiltDegreesPerPixel,
                     MinTiltDegrees,
                     MaxTiltDegrees);
                 UpdateCamera();
@@ -262,28 +244,27 @@ public sealed class FreeCameraRig
     // as opposed to HandleInput's held-key rate.
     private void HandleScrollZoom(float direction)
     {
-        var factor = MathF.Pow(ZoomRatePerSecond, direction * ScrollZoomNotchSeconds);
-        if (_isOrthographic)
-        {
-            _orthographicSize = Mathf.Clamp(_orthographicSize * factor, _minZoom, _maxZoom);
-        }
-        else
-        {
-            _zoomDistance = Mathf.Clamp(_zoomDistance * factor, _minZoom, _maxZoom);
-        }
-
+        Zoom(direction * ScrollZoomNotchSeconds);
         UpdateCamera();
     }
 
-    private Vector3 CameraDirection()
+    // Whichever projection is live is the one that zooms - the other keeps its own value, so
+    // toggling back mid-session lands where it was left rather than being dragged along.
+    private void Zoom(float signedSeconds)
     {
-        var tiltRadians = Mathf.DegToRad(_tiltDegrees);
-        return new Vector3(0, MathF.Sin(tiltRadians), MathF.Cos(tiltRadians));
+        if (_isOrthographic)
+        {
+            _orthographicSize = CameraMotion.Zoomed(_orthographicSize, signedSeconds, ZoomRatePerSecond, _minZoom, _maxZoom);
+        }
+        else
+        {
+            _zoomDistance = CameraMotion.Zoomed(_zoomDistance, signedSeconds, ZoomRatePerSecond, _minZoom, _maxZoom);
+        }
     }
 
     private void UpdateCamera()
     {
-        _camera.Position = CameraDirection() * _zoomDistance;
+        _camera.Position = CameraMotion.OffsetDirection(_tiltDegrees) * _zoomDistance;
         _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
         _camera.Size = _orthographicSize;
 
@@ -293,10 +274,10 @@ public sealed class FreeCameraRig
         // low tilt angle can still put the camera's own (X, Z) over a nearby bump the rig
         // isn't directly on top of.
         var globalPosition = _camera.GlobalPosition;
-        var minHeight = _sampleHeight(globalPosition.X, globalPosition.Z) + MinCameraGroundClearance;
-        if (globalPosition.Y < minHeight)
+        var cleared = CameraMotion.ClearedHeight(globalPosition.Y, _sampleHeight(globalPosition.X, globalPosition.Z), MinCameraGroundClearance);
+        if (cleared > globalPosition.Y)
         {
-            globalPosition.Y = minHeight;
+            globalPosition.Y = cleared;
             _camera.GlobalPosition = globalPosition;
             _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
         }

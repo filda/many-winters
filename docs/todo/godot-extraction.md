@@ -17,10 +17,6 @@ under "Mutation testing" - why a tidy test input is the usual reason a mutant su
 
 ## Split a method into calculation plus an engine wrapper
 
-**`FreeCameraRig`** — the zoom step (`Pow(rate, direction * notch)` then
-`Clamp(current * factor, min, max)`), `CameraDirection()` (tilt degrees to unit vector), and
-the ground-clearance clamp inside `UpdateCamera`.
-
 **`SpriteVisibleExtent.Compute`** — the engine reads `GetUsedRect` off the image, but turning
 used-rect plus canvas size plus `worldHeight` into an `Extent` is pure. It decides collision
 shape sizes and anchor points.
