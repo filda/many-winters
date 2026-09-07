@@ -84,7 +84,7 @@ public sealed class WorldPresenter
     {
         if (_personViews.TryGetValue(id, out var view))
         {
-            view.SetTargetPosition(ToVector3(position, PersonView.Height / 2f), overSeconds);
+            view.SetTargetPosition(WorldSpace.ToRender(position, PersonView.Height / 2f, _sampleHeight), overSeconds);
         }
     }
 
@@ -131,7 +131,7 @@ public sealed class WorldPresenter
         var view = new PersonView(person, _onPersonClicked, _onMissedClick)
         {
             Name = person.Name,
-            Position = ToVector3(person.Position, PersonView.Height / 2f),
+            Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
         };
         _container.AddChild(view);
         _personViews[person.Id] = view;
@@ -152,7 +152,7 @@ public sealed class WorldPresenter
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
         var view = new ResourceNodeView(node, canFell, _onResourceNodeSelected, _onMissedClick);
-        view.Position = ToVector3(node.Position, view.Size / 2f);
+        view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
         view.SetRemembered(!_exploration.IsVisible(ExplorationState.CellFor(node.Position)));
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
@@ -222,7 +222,7 @@ public sealed class WorldPresenter
     {
         var view = new BuildingView(building.Id, building.Kind)
         {
-            Position = ToVector3(building.Position, BuildingView.Size / 2f),
+            Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),
         };
         _container.AddChild(view);
     }
@@ -231,20 +231,8 @@ public sealed class WorldPresenter
     {
         var view = new GraveView(grave, _onGraveSelected, _onMissedClick)
         {
-            Position = ToVector3(grave.Position, GraveView.Size / 2f),
+            Position = WorldSpace.ToRender(grave.Position, GraveView.Size / 2f, _sampleHeight),
         };
         _container.AddChild(view);
-    }
-
-    // Position is double (real-world meters, see docs/terrain-and-world-scale-architecture.md);
-    // Godot's render space stays float. Safe as long as everything stays within one small local
-    // patch - true continent-scale coordinates would need a floating-origin conversion here instead.
-    // The ground itself is real terrain (or flat, if no height sampler was given), so the vertical
-    // offset is measured from the actual terrain height under (x, z), not from a flat y = 0.
-    private Vector3 ToVector3(Position position, float y)
-    {
-        var x = (float)position.X;
-        var z = (float)position.Y;
-        return new Vector3(x, _sampleHeight(x, z) + y, z);
     }
 }

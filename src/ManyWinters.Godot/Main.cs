@@ -1061,7 +1061,7 @@ public partial class Main : Node3D
             return;
         }
 
-        _world.Execute(new MoveCommand(person, new Position(groundPosition.X, groundPosition.Z)));
+        _world.Execute(new MoveCommand(person, WorldSpace.ToSimulation(groundPosition)));
         RefreshInfoLabel();
     }
 
