@@ -17,10 +17,6 @@ under "Mutation testing" - why a tidy test input is the usual reason a mutant su
 
 ## Split a method into calculation plus an engine wrapper
 
-**`SpriteVisibleExtent.Compute`** — the engine reads `GetUsedRect` off the image, but turning
-used-rect plus canvas size plus `worldHeight` into an `Extent` is pure. It decides collision
-shape sizes and anchor points.
-
 **`TerrainRenderer.SampleHeight` / `SampleRawHeight` / `FineVertexHeight` / `TerrainBump`** —
 bilinear sampling over a `float[]` plus `Noise2D` (already in Core). Needs a small `Heightmap`
 type extracted first; `TerrainRenderer` keeps the `res://` loading.
@@ -41,7 +37,7 @@ height sampler as a parameter.
 **"How big does this sprite render"** is answered in three places. `BillboardUv.RenderedSize`
 (pixel size times texture size times per-axis scale) is the tested one, but
 `Main.ComputeOccludingSprites` re-derives a radius from pixel size and width alone, ignoring
-scale and assuming every billboard is square, and `SpriteVisibleExtent.Compute` re-derives
+scale and assuming every billboard is square, and `SpriteExtents.From` derives
 metres-per-pixel from a `worldHeight` instead of asking the sprite, also ignoring scale. So for
 any scaled or non-square sprite - which `ResourceNodeView` does produce, and hover scaling
 creates on any sprite - the occlusion radius and the click rectangle come out of different

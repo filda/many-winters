@@ -1,12 +1,11 @@
 using Godot;
 using ManyWinters.Godot.Logic;
-using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Tests;
 
 public class SpriteGeometryTests
 {
-    private static SpriteVisibleExtent.Extent Extent(float width, float height, float centerX, float centerY) =>
+    private static SpriteExtents.Extent Extent(float width, float height, float centerX, float centerY) =>
         new(width, height, centerX, centerY);
 
     [Fact]
@@ -86,5 +85,99 @@ public class SpriteGeometryTests
         Assert.Equal(0.5f, modulate.R, 5);
         Assert.Equal(0.5f, modulate.G, 5);
         Assert.Equal(0.5f, modulate.B, 5);
+    }
+
+    // A 100x200 canvas standing 4m tall, so 2cm of world per pixel. The used rect is
+    // deliberately off-centre on both axes and not square: a swapped axis or a lost sign
+    // survives anything symmetric.
+    private static readonly Vector2 Canvas = new(100f, 200f);
+    private const float WorldHeight = 4f;
+
+    [Fact]
+    public void ContentFillingTheWholeCanvasIsTheFullWorldSizeAndSitsOnTheOrigin()
+    {
+        var extent = SpriteExtents.From(Vector2.Zero, Canvas, Canvas, WorldHeight);
+
+        Assert.Equal(2f, extent.Width, 5);
+        Assert.Equal(4f, extent.Height, 5);
+        Assert.Equal(0f, extent.CenterXOffset, 5);
+        Assert.Equal(0f, extent.CenterYOffset, 5);
+    }
+
+    [Fact]
+    public void ContentIsMeasuredInWorldMetresNotPixels()
+    {
+        // Half the canvas wide and a quarter of it tall, at 2cm per pixel.
+        var extent = SpriteExtents.From(Vector2.Zero, new Vector2(50f, 50f), Canvas, WorldHeight);
+
+        Assert.Equal(1f, extent.Width, 5);
+        Assert.Equal(1f, extent.Height, 5);
+    }
+
+    [Fact]
+    public void ContentToTheRightOfTheCanvasCentreOffsetsPositively()
+    {
+        // A 20px block whose centre sits 30px right of the canvas centre: +0.6m.
+        var extent = SpriteExtents.From(new Vector2(70f, 90f), new Vector2(20f, 20f), Canvas, WorldHeight);
+
+        Assert.Equal(0.6f, extent.CenterXOffset, 5);
+    }
+
+    [Fact]
+    public void ContentHighOnTheCanvasOffsetsUpwardBecauseImageRowsCountDownward()
+    {
+        // Rows 10..30 are near the *top* of the image, which is up in the world - the sign has
+        // to flip on this axis and not on the other.
+        var extent = SpriteExtents.From(new Vector2(40f, 10f), new Vector2(20f, 20f), Canvas, WorldHeight);
+
+        Assert.True(extent.CenterYOffset > 0f, "content near the top of the image sits above the origin");
+        Assert.Equal(1.6f, extent.CenterYOffset, 5);
+    }
+
+    [Fact]
+    public void ContentLowOnTheCanvasOffsetsDownward()
+    {
+        var extent = SpriteExtents.From(new Vector2(40f, 170f), new Vector2(20f, 20f), Canvas, WorldHeight);
+
+        Assert.Equal(-1.6f, extent.CenterYOffset, 5);
+    }
+
+    [Fact]
+    public void TheTwoAxesAreNotInterchangeable()
+    {
+        // Same rect, transposed. If width and height or the two offsets were ever swapped, one
+        // of these would come out as the other.
+        var wide = SpriteExtents.From(new Vector2(10f, 60f), new Vector2(80f, 20f), Canvas, WorldHeight);
+        var tall = SpriteExtents.From(new Vector2(60f, 10f), new Vector2(20f, 80f), Canvas, WorldHeight);
+
+        Assert.Equal(1.6f, wide.Width, 5);
+        Assert.Equal(0.4f, wide.Height, 5);
+        Assert.Equal(0.4f, tall.Width, 5);
+        Assert.Equal(1.6f, tall.Height, 5);
+    }
+
+    [Fact]
+    public void AShorterSpriteScalesEverythingWithIt()
+    {
+        // The same texture placed at half the world height is half the extent, offsets too -
+        // the whole thing hangs off worldHeight over the canvas height.
+        var full = SpriteExtents.From(new Vector2(70f, 10f), new Vector2(20f, 20f), Canvas, WorldHeight);
+        var half = SpriteExtents.From(new Vector2(70f, 10f), new Vector2(20f, 20f), Canvas, WorldHeight / 2f);
+
+        Assert.Equal(full.Width / 2f, half.Width, 5);
+        Assert.Equal(full.Height / 2f, half.Height, 5);
+        Assert.Equal(full.CenterXOffset / 2f, half.CenterXOffset, 5);
+        Assert.Equal(full.CenterYOffset / 2f, half.CenterYOffset, 5);
+    }
+
+    [Fact]
+    public void ANonSquareCanvasScalesBothAxesByTheSameFactor()
+    {
+        // The factor comes off the canvas *height* alone, so a wide canvas produces an extent
+        // wider than it is tall rather than squashing it back to square.
+        var extent = SpriteExtents.From(Vector2.Zero, new Vector2(100f, 200f), new Vector2(100f, 200f), 2f);
+
+        Assert.Equal(1f, extent.Width, 5);
+        Assert.Equal(2f, extent.Height, 5);
     }
 }
