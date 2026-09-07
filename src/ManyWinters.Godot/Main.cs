@@ -69,6 +69,7 @@ public partial class Main : Node3D
         GetViewport().PhysicsObjectPicking = true;
 
         SetUpLighting();
+        SetUpSky();
         SetUpTerrain();
         SetUpCamera();
         SetUpUi();
@@ -397,6 +398,11 @@ public partial class Main : Node3D
         {
             Rotation = new Vector3(Mathf.DegToRad(-45), Mathf.DegToRad(-45), 0),
         });
+    }
+
+    private void SetUpSky()
+    {
+        SkySetup.Create(this);
     }
 
     private void SetUpTerrain()

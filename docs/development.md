@@ -43,7 +43,7 @@ src/
 │   ├── Logic/                 #   engine-free, unit-tested logic — the only mutated folder
 │   ├── Views/                 #   one Node3D per simulation entity, plus WorldPresenter
 │   ├── Sprites/               #   billboards, hit testing, extents, tint, texture cache
-│   ├── Terrain/               #   heightmap mesh and waterways
+│   ├── Terrain/               #   the world's backdrop: heightmap mesh, waterways, sky
 │   ├── Fog/                   #   fog of war and the cloud banks over it
 │   ├── Interaction/           #   camera rig, ground picking, hover fallback
 │   ├── Ui/                    #   status bar and floating panels
@@ -174,7 +174,7 @@ Most of `ManyWinters.Godot` is engine wiring, but the calculations mixed into it
 
 Testing the *wiring* itself — does a view add the right children, does a signal connect — would need a Godot-hosted runner such as gdUnit4 or GoDotTest, with a Godot binary and a headless display in CI. Not set up, and not worth it while the wiring is not producing bugs.
 
-**Wiring that is deliberately left untested.** `TerrainSetup`, `CloudScatter.Scatter`, `BillboardSprite.Create`, `GroundShadow.Create`, `TextureCache`, `ContentFiles`, `CloudFogMask`, every `_Ready`/`_Process`/`_ExitTree`/`OnInputEvent`, the views' `IsStillUnderCursor` (which only asks the viewport where the cursor is and hands the answer to an already-tested pixel test), and the `On*ButtonPressed` handlers in `Main` carry no decision of their own — a test would assert that the implementation is the implementation. Every calculation worth splitting out of the presentation layer has been split out; the next one arrives with the code that needs it rather than off a backlog.
+**Wiring that is deliberately left untested.** `TerrainSetup`, `SkySetup`, `CloudScatter.Scatter`, `BillboardSprite.Create`, `GroundShadow.Create`, `TextureCache`, `ContentFiles`, `CloudFogMask`, every `_Ready`/`_Process`/`_ExitTree`/`OnInputEvent`, the views' `IsStillUnderCursor` (which only asks the viewport where the cursor is and hands the answer to an already-tested pixel test), and the `On*ButtonPressed` handlers in `Main` carry no decision of their own — a test would assert that the implementation is the implementation. Every calculation worth splitting out of the presentation layer has been split out; the next one arrives with the code that needs it rather than off a backlog.
 
 ## Mutation testing
 

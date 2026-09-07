@@ -121,9 +121,12 @@ public sealed class FogOfWarRenderer
         unknownMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         unknownMaterial.SetShaderParameter("fog_albedo", UnknownColor);
         unknownMaterial.SetShaderParameter("distance_texture", _distanceTexture);
-        // The sheet fades into whatever the empty sky renders as, so it dissolves rather
-        // than stopping at a visible seam - see the shader's own far_color comment.
-        unknownMaterial.SetShaderParameter("far_color", RenderingServer.GetDefaultClearColor());
+        // The sheet fades out into the skyline it meets, so it dissolves rather than stopping
+        // at a visible seam; see the shader's own far_color comment. That used to be the
+        // viewport's flat clear colour, back when the background was one flat colour
+        // everywhere - it now tracks the painted sky instead, minus most of its blue (see
+        // SkyPalette.FogFar: a sheet as blue as the air above it stops reading as ground).
+        unknownMaterial.SetShaderParameter("far_color", SkyPalette.FogFar);
         unknownMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         unknownMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
 
