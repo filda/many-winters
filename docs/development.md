@@ -42,7 +42,8 @@ src/
 ├── ManyWinters.Godot/         # Godot project: presentation, rendering, input, UI, audio
 ├── ManyWinters.Tools/
 │   └── SimulationRunner/      # Headless console runner (no Godot required)
-└── ManyWinters.Tests/         # Tests for ManyWinters.Core
+├── ManyWinters.Tests/         # Tests for ManyWinters.Core and the SimulationRunner
+└── ManyWinters.Godot.Tests/   # Tests for the presentation layer's own calculations
 ```
 
 `ManyWinters.Core` must never reference `ManyWinters.Godot`. The simulation must be runnable and testable headlessly, without the engine.
@@ -101,6 +102,23 @@ dotnet build src/ManyWinters.Godot
 
 `dotnet build` writes straight into the assembly Godot loads (`src/ManyWinters.Godot/.godot/mono/temp/bin/`), so no separate editor-side build step is needed.
 
+## Testing the presentation layer
+
+Most of `ManyWinters.Godot` is engine wiring, but the calculations mixed into it are ordinary functions worth pinning. `docs/conventions.md` asks for them to be written apart from the code the framework calls; this is what that means in practice here, and what the engine allows.
+
+**What runs outside the engine, verified rather than assumed:**
+
+- **Godot's math value types are plain managed structs** — `Vector2`, `Vector3`, `Basis`, `Transform3D`, `Color`, `Mathf`, including `Color.FromHsv`. A normal xunit project can reference `ManyWinters.Godot` and call any static method that only uses those.
+- **Anything `Node`- or `Resource`-derived aborts the whole test host.** `new Node3D()`, `Image`, `Texture2D`, `Camera3D`, `Sprite3D`, `SurfaceTool`, `ResourceLoader`, `Godot.FileAccess` — these enter a native runtime that is not initialised outside the editor. It is not a catchable exception: the process dies, so one such test takes every other test in that project down with it.
+- **Mocking cannot cross that line.** `new Mock<Node3D>()` fails with `AccessViolationException`, because a mock of a *class* is a generated subclass whose constructor still calls the real one. Godot node types are classes, not interfaces, so no mocking library helps. A self-defined interface seam works in principle, but for pure wiring it only ever asserts the mock's own script.
+- **Watch for *indirect* engine access.** A method can look perfectly pure and still reach the runtime underneath — `ResourceNodeView.BaseTexturePathFor` calls `HasTreeSprite`, which calls `ResourceLoader.Exists`; `BuildingView.ColorFor` loads a `.tres`. Check what a candidate actually calls before assuming it is extractable.
+
+**Where an extracted calculation goes.** The signature decides: anything mentioning `Color`, `Vector3` or a sprite extent stays in `ManyWinters.Godot` and is tested from `ManyWinters.Godot.Tests`, because Core must never reference Godot. Only genuinely engine-free logic moves to Core (`BoxBlur`, `CloudSpotScatter`, `GroundCloudCoverage`, `ExplorationState` and `GridDistanceField` all arrived that way). Either way it becomes an `internal` type reached through `InternalsVisibleTo`, so the public API does not widen, and it gets its own small purpose-named file rather than staying where it sat — the Godot mutation config below mutates by file.
+
+Testing the *wiring* itself — does a view add the right children, does a signal connect — would need a Godot-hosted runner such as gdUnit4 or GoDotTest, with a Godot binary and a headless display in CI. Not set up, and not worth it while the wiring is not producing bugs.
+
+`docs/todo/godot-extraction.md` lists what is still worth pulling out.
+
 ## Mutation testing
 
 [Stryker.NET](https://stryker-mutator.io/docs/stryker-net/introduction/) is set up as a pinned local .NET tool (`.config/dotnet-tools.json`). It checks that the test suite actually fails when the code is subtly broken, not just that it runs.
@@ -119,7 +137,7 @@ cd ../ManyWinters.Godot.Tests
 dotnet tool run dotnet-stryker
 ```
 
-Configuration lives in `src/ManyWinters.Tests/stryker-config.json`. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
+Configuration lives in `src/ManyWinters.Tests/stryker-config.json`, and `src/ManyWinters.Godot.Tests/stryker-config.json` for the presentation layer — that second one names the mutated files one by one instead of `**/*.cs`, since mutating the untested engine wiring around them would bury the score. **Anything newly extracted there has to be added to that `mutate` list**, or it is silently unmutated. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
 
 This is slow enough that it isn't part of the main `ci.yml` gate; it runs daily and on manual dispatch via `.github/workflows/mutation.yml`.
 
