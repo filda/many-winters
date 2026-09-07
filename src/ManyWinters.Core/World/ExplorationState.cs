@@ -1,6 +1,6 @@
 namespace ManyWinters.Core.World;
 
-// Fog of war (todo #13): tracks which of the world's coarse grid cells the group has ever seen
+// Fog of war: tracks which of the world's coarse grid cells the group has ever seen
 // ("explored" - stays true forever once set, so a resource once spotted isn't un-learned when
 // everyone wanders off) versus which are within someone's sight radius *right now*
 // ("visible" - recomputed fresh every tick from current positions, never persisted). A cell

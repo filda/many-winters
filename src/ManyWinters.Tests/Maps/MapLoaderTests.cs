@@ -223,7 +223,7 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Former terrain decoration (todo #7) - every kind that used to be a purely-visual
+        // Former terrain decoration - every kind that used to be a purely-visual
         // sprite must now be a real, individually-gatherable ResourceNode, in the thousands
         // (dense zone + wide pass + several groves), not just a handful.
         var decorationKinds = new[]

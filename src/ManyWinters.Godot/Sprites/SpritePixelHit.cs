@@ -42,7 +42,14 @@ public static class SpritePixelHit
     // Position by a few centimeters every frame (the bob), which otherwise sweeps the sampled
     // pixel back and forth across silhouette edges under an unmoving cursor and reads as
     // hover flickering on and off. No other view animates its sprite's position like this.
-    public static bool IsOpaqueAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null)
+    public static bool IsOpaqueAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null) =>
+        IsOpaqueAtScreen(camera, camera.UnprojectPosition(rayHitPosition), sprite, texturePath, spriteCenterOverride);
+
+    // The same test starting from where the cursor actually is on screen, for callers holding
+    // no ray hit at all: HoverArbiter.Revalidate asks "is the cursor still on you" once a
+    // frame without any picking event having happened (see its own doc comment), and a picking
+    // event is the only thing that ever hands out a ray hit position.
+    public static bool IsOpaqueAtScreen(Camera3D camera, Vector2 screenPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null)
     {
         // What the player can see through, they can click and hover through: a canopy
         // ghosted by Main's occlusion fade counts as fully transparent here no matter what
@@ -55,7 +62,7 @@ public static class SpritePixelHit
             return false;
         }
 
-        if (UvAt(camera, rayHitPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition) is not { } uv)
+        if (UvAt(camera, screenPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition) is not { } uv)
         {
             return false;
         }
@@ -76,9 +83,8 @@ public static class SpritePixelHit
     // (PixelSize alone is fixed at creation time and reflects neither the accumulated
     // parent+self scale nor per-axis scaling, which ResourceNodeView does use - a tall-narrow
     // tree scales width and height independently, so each axis reads its own).
-    private static Vector2? UvAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, Vector3 spriteCenter)
+    private static Vector2? UvAt(Camera3D camera, Vector2 screenPosition, Sprite3D sprite, Vector3 spriteCenter)
     {
-        var screenPosition = camera.UnprojectPosition(rayHitPosition);
         var texture = sprite.Texture;
         var scale = sprite.GlobalTransform.Basis.Scale;
         var size = BillboardUv.RenderedSize(sprite.PixelSize, texture.GetWidth(), texture.GetHeight(), scale.X, scale.Y);

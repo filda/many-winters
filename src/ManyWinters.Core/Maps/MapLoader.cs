@@ -44,8 +44,8 @@ public static class MapLoader
 
     // What used to be TerrainSetup.cs's purely-visual scattered decoration (background
     // conifer/deciduous trees, bushes, ground cover, rocks, stumps, fallen logs) is now real,
-    // clickable, gatherable ResourceNodes (todo #7: "všechny dekorace... mají časem být
-    // skutečné klikatelné ResourceNode") - so this is where they're spawned instead, using the
+    // clickable, gatherable ResourceNodes (the since-completed "všechny dekorace... mají časem
+    // být skutečné klikatelné ResourceNode" item) - so this is where they're spawned instead, using the
     // same counts/radii TerrainSetup used to keep the world looking as dense/varied as before.
     // Half the real terrain patch's extent (heightmap.json: gridSize=41, cellSizeMeters=25 ->
     // (41-1)*25/2 = 500) - hardcoded rather than read from the heightmap, since MapLoader
@@ -85,7 +85,8 @@ public static class MapLoader
     // across the whole terrain radius, that read as basically empty most places. A first
     // fix scattered a couple dozen hand-picked circular patches (a meadow disk here, a
     // rocky disk there) instead - visibly better, but still "randomly placed circles", not
-    // organic (todo #21's own follow-up). This instead samples two independent, coherent
+    // organic (the "vyšlapané cestičky" / reforestation item in docs/todo/todo.md is its own
+    // follow-up). This instead samples two independent, coherent
     // noise fields (see Noise2D) per candidate point across the whole open terrain: one
     // decides how likely anything grows there at all, so genuine soft-edged clearings and
     // barren stretches emerge instead of just "less of everything everywhere"; the other

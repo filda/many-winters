@@ -8,7 +8,11 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
     private const float BaseHarvestAmount = 20f;
     private const float EfficientHarvestAmount = 40f;
     private const float SkillGainPerGather = 1f;
-    private const float DiscoveryThreshold = 5f;
+    private const int PracticesBeforeDiscovery = 5;
+
+    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
+    // stated as the number of tries it stands for rather than as a level.
+    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     public void Execute(WorldState world)
     {
@@ -48,7 +52,11 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
             // still gets fed at a food source. Only what actually got eaten or fits in the
             // inventory comes off the node - a full backpack leaves the rest standing to
             // gather later, rather than the excess vanishing.
-            var eaten = EatCommand.Eat(world, Person, item, (int)potentialConsumed);
+            // Same "hungry enough to bother" test the autonomous pass uses (see
+            // WorldState.IsHungryEnoughToEat) - otherwise a picker standing at a food source
+            // eats one unit off it every tick, which is both an odd way to eat and a way to
+            // practice gathering and eating forever without moving.
+            var eaten = world.IsHungryEnoughToEat(Person) ? EatCommand.Eat(world, Person, item, (int)potentialConsumed) : 0;
             var added = Person.Inventory.AddUpToCapacity(item, (int)potentialConsumed - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
             var taken = eaten + added;
             // Coming away from a node with nothing is not gathering - it earns no practice, so

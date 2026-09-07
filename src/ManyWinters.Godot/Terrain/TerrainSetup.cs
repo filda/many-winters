@@ -7,7 +7,7 @@ namespace ManyWinters.Godot.Terrain;
 // decoration prop (background trees, bushes, ground cover, rocks, stumps, fallen logs) used
 // to be built here too, as purely-visual sprites with no gameplay identity; they're now real
 // ResourceNodes spawned by MapLoader.ScatterDecorations and rendered like any other resource
-// node via WorldPresenter's existing ResourceNodeAdded pipeline (todo #7), so this class no
+// node via WorldPresenter's existing ResourceNodeAdded pipeline, so this class no
 // longer needs to know about any of them (or about the camp's position).
 public static class TerrainSetup
 {

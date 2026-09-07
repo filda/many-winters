@@ -403,6 +403,31 @@ public class WorldStateTests
         Assert.True(person.Inventory.Get(TestCatalogs.AppleItem) < 50);
     }
 
+    [Theory]
+    // Exactly at the threshold counts as hungry enough - the meal that reaches it is the one
+    // that gets eaten, not the one after. One short of it is still not worth interrupting
+    // anything for.
+    [InlineData(24f, false)]
+    [InlineData(25f, true)]
+    public void AdvanceOnlyEatsFromInventoryOnceHungerHasActuallyBuiltUp(float hunger, bool expectAMeal)
+    {
+        // A person carrying food used to take one bite per tick, since hunger rises by one
+        // every tick and any hunger at all was reason enough to eat. That made every tick a
+        // meal, and so a practice of eating (docs/todo/todo.md).
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        // Advance adds a tick's worth of hunger before anyone eats, so this is set to land
+        // exactly on the tested value at the moment the decision is made.
+        person.Needs.Hunger = hunger - SimulationRules.Default.HungerPerTick;
+        person.Inventory.Add(TestCatalogs.AppleItem, 50);
+
+        world.Advance(1);
+
+        Assert.Equal(expectAMeal, person.Needs.Hunger == 0f);
+        Assert.Equal(expectAMeal, person.Skills.Get(EatCommand.Skill) > 0f);
+    }
+
     [Fact]
     public void AdvanceDoesNotSendAnIdlePersonBeyondIdleSearchRadiusForAKnownSkillsResource()
     {

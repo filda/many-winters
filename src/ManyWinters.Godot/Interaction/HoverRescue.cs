@@ -29,7 +29,10 @@ public static class HoverRescue
     // this is just a safety cap against an unexpected pathological stack, not a tuned budget.
     private const int MaxAttempts = 8;
 
-    public static void TryHoverElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition) =>
+    // Returns whether anything along the ray beyond the original miss turned out to be under
+    // the cursor for real (and has taken the highlight). False means there is nothing here at
+    // all - bare ground - which is the caller's cue to put out whatever was still lit.
+    public static bool TryHoverElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition) =>
         TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) => view switch
         {
             PersonView personView => personView.TryHoverAt(cam, pos),

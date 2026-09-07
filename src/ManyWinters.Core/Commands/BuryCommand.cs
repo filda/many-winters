@@ -8,7 +8,11 @@ namespace ManyWinters.Core.Commands;
 public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : ICommand
 {
     private const float SkillGainPerBurial = 1f;
-    private const float DiscoveryThreshold = 5f;
+    private const int PracticesBeforeDiscovery = 5;
+
+    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
+    // stated as the number of tries it stands for rather than as a level.
+    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     private static readonly SkillTypeId BurialSkill = new("burial");
 

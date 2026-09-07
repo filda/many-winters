@@ -192,7 +192,10 @@ public class EatCommandTests
             world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
         }
 
-        Assert.Equal(5f, person.Skills.Get(EatCommand.Skill));
+        // Five meals, but not five levels: practice has diminishing returns (see
+        // Skills.Increase), so the fifth meal leaves the skill just over 2.5 - where the
+        // threshold sits, being written as "five meals' worth".
+        Assert.Equal(2.553f, person.Skills.Get(EatCommand.Skill), 3);
         Assert.Contains(TestCatalogs.EfficientEating, person.KnownTechniques);
     }
 
@@ -208,7 +211,9 @@ public class EatCommandTests
             world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
         }
 
-        Assert.Equal(4f, person.Skills.Get(EatCommand.Skill));
+        // Four meals along the same curve - short of the fifth meal's 2.553, and so short of
+        // the threshold.
+        Assert.Equal(2.245f, person.Skills.Get(EatCommand.Skill), 3);
         Assert.DoesNotContain(TestCatalogs.EfficientEating, person.KnownTechniques);
     }
 

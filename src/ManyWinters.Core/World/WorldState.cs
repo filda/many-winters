@@ -108,6 +108,14 @@ public sealed class WorldState(WorldConfiguration configuration)
     public bool IsWithinReach(Position a, Position b, float rangeMultiplier = 1f) =>
         Distance(a, b) <= Configuration.Rules.MaxInteractionDistance * rangeMultiplier;
 
+    // Whether a person would sit down and eat right now if they had something on them. The one
+    // "hungry enough to bother" test, shared by the autonomous eating pass below and by
+    // GatherCommand's eating straight from the source, so a bite while picking and a bite from
+    // the pack happen at the same point rather than by two different rules. The player asking
+    // directly (Main's Eat button) is deliberately not routed through it - being told to eat is
+    // not the same as deciding to.
+    public bool IsHungryEnoughToEat(Person person) => person.Needs.Hunger >= Configuration.Rules.HungerEatThreshold;
+
     public long AgeInYears(Person person) => AgeInYearsAt(person, Clock.CurrentTick);
 
     // Age as of some other moment than now - a death tick, say (see BuryCommand).
@@ -279,7 +287,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             return true;
         }
 
-        var canEatOnTheSpot = person.Needs.Hunger > 0f && KnowsHowToEat(person) && IsFoodResource(definition);
+        var canEatOnTheSpot = IsHungryEnoughToEat(person) && KnowsHowToEat(person) && IsFoodResource(definition);
         return canEatOnTheSpot || person.Inventory.HasRoomFor(item, Configuration.ItemCatalog, MaxCarryWeightFor(person));
     }
 
@@ -464,6 +472,14 @@ public sealed class WorldState(WorldConfiguration configuration)
     // out of their own backpack.
     private void TryAutoEat(Person person)
     {
+        // A meal, not a nibble: nothing is touched until hunger has actually built up, and
+        // EatCommand then eats down to zero, so a person carrying food eats every so often
+        // instead of taking one bite per tick forever.
+        if (!IsHungryEnoughToEat(person))
+        {
+            return;
+        }
+
         foreach (var kind in person.Inventory.Counts.Keys.ToList())
         {
             // Stops walking the rest of the inventory once there's nothing left to satisfy.

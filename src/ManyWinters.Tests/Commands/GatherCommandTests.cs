@@ -192,7 +192,10 @@ public class GatherCommandTests
 
         GatherAndUnload(world, person, node);
 
-        Assert.Equal(5f, person.Skills.Get(TestCatalogs.Foraging));
+        // Five gathers, but not five levels: practice has diminishing returns (see
+        // Skills.Increase), so the fifth gather leaves the skill just over 2.5 - which is
+        // exactly where the discovery threshold sits, being written as "five tries' worth".
+        Assert.Equal(2.553f, person.Skills.Get(TestCatalogs.Foraging), 3);
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
     }
 
@@ -223,7 +226,9 @@ public class GatherCommandTests
         world.Execute(new GatherCommand(person, appleNode));
         world.Execute(new GatherCommand(person, pearNode));
 
-        Assert.Equal(2f, person.Skills.Get(TestCatalogs.Foraging));
+        // Both gathers train foraging, but the second one teaches half what the first did
+        // (1 + 1/2) - the same skill, further along its own curve, not a second fresh start.
+        Assert.Equal(1.5f, person.Skills.Get(TestCatalogs.Foraging));
     }
 
     [Fact]
@@ -259,6 +264,29 @@ public class GatherCommandTests
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
         Assert.DoesNotContain(TestCatalogs.EfficientMushroomForaging, person.KnownTechniques);
     }
+
+    [Fact]
+    public void ABarelyHungryPickerPocketsTheWholeHarvestRatherThanNibblingAtIt()
+    {
+        // Nobody eats a bite a minute. Below SimulationRules.HungerEatThreshold the harvest
+        // goes into the backpack untouched, so standing at a food source is no longer a way to
+        // eat - and to practice eating - on every single tick.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 5f;
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        world.Execute(new GatherCommand(person, node));
+
+        Assert.Equal(5f, person.Needs.Hunger);
+        Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
+        Assert.Equal(0f, person.Skills.Get(EatCommand.Skill));
+    }
+
+    private static WorldState CreateWorldWhereAnyHungerIsWorthEating() =>
+        new(TestCatalogs.CreateConfiguration() with { Rules = SimulationRules.Default with { HungerEatThreshold = 1f } });
 
     // Five trips' worth of apples don't fit in one backpack, and a trip that brings nothing
     // back teaches nothing (see GatheringIntoAFullBackpackTakesNothingAndEarnsNoPractice) - so
@@ -398,7 +426,11 @@ public class GatherCommandTests
     {
         // Twenty apples come off the tree; five go straight into the mouth (hunger 5, one hunger
         // per apple), the other fifteen into the backpack - and the tree is down by all twenty.
-        var world = TestCatalogs.CreateWorld();
+        // When somebody is hungry enough to eat at all is a separate rule with its own tests
+        // (see ABarelyHungryPickerPocketsTheWholeHarvestRatherThanNibblingAtIt); this one is
+        // about how a harvest is divided between mouth and backpack, so it puts that threshold
+        // out of the way instead of sizing the scenario around it.
+        var world = CreateWorldWhereAnyHungerIsWorthEating();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
@@ -415,7 +447,9 @@ public class GatherCommandTests
     [Fact]
     public void EatingFromTheHarvestTrainsEatingAsWellAsTheGatheringSkill()
     {
-        var world = TestCatalogs.CreateWorld();
+        // As above: eating on the spot is what's under test, not what makes someone hungry
+        // enough to do it.
+        var world = CreateWorldWhereAnyHungerIsWorthEating();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
@@ -433,7 +467,7 @@ public class GatherCommandTests
     {
         // The backpack is full of wood, so nothing can be pocketed - but a hungry person who
         // knows how to eat still eats on the spot, and only what was eaten comes off the tree.
-        var world = TestCatalogs.CreateWorld();
+        var world = CreateWorldWhereAnyHungerIsWorthEating();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);

@@ -21,7 +21,11 @@ public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Te
     public static readonly SkillTypeId TeachingSkill = new("teaching");
 
     private const float SkillGainPerLesson = 1f;
-    private const float DiscoveryThreshold = 5f;
+    private const int PracticesBeforeDiscovery = 5;
+
+    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
+    // stated as the number of tries it stands for rather than as a level.
+    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     // A teacher who's gotten good at teaching (efficient_teaching) can instruct someone a
     // little further off - reads as a lesson to a small nearby group, not a whisper that only

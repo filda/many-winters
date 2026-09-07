@@ -6,7 +6,7 @@ using ManyWinters.Godot.Interaction;
 
 namespace ManyWinters.Godot.Views;
 
-public partial class PersonView : Area3D
+public partial class PersonView : Area3D, IHoverable
 {
     public const float Height = 1.8f;
     private const float MinScale = 0.92f;
@@ -95,6 +95,7 @@ public partial class PersonView : Area3D
     private static readonly Color DeadTint = new(0.5f, 0.5f, 0.52f);
 
     private readonly Person _person;
+    private readonly HoverArbiter _hover;
     private readonly Action<Person, MouseButton> _onClicked;
     private readonly InputEventEventHandler _onMissedClick;
     private readonly string _aliveTexturePath;
@@ -122,9 +123,13 @@ public partial class PersonView : Area3D
     private bool _isAlive = true;
     private string _currentBodyTexturePath = null!;
 
-    public PersonView(Person person, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+    // Internal, like the HoverArbiter it takes: WorldPresenter is the only thing that ever
+    // builds a view, and the hover invariant it hands over is the presentation layer's own
+    // business (see AssemblyInfo).
+    internal PersonView(Person person, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
     {
         _person = person;
+        _hover = hover;
         _onClicked = onClicked;
         _onMissedClick = onMissedClick;
         // Body gender is its own independent seeded pick (distinct salt, see _Ready for the
@@ -198,15 +203,15 @@ public partial class PersonView : Area3D
         _currentBodyTexturePath = _aliveTexturePath;
         ApplyExtent(_currentBodyTexturePath);
 
+        // No MouseExited here: Godot only ever sends that to the one collider its own picking
+        // chose, which is exactly what used to leave sprites lit forever (see HoverArbiter).
+        // Losing hover is settled once a frame instead, by IsStillUnderCursor below.
         InputEvent += OnInputEvent;
-        // The broad-phase collision shape can only ever be a bounding box around the actual
-        // silhouette (see SpriteVisibleExtent) - MouseExited still means "no longer even
-        // close", but entering hover for real is decided pixel-by-pixel in OnInputEvent, not
-        // here.
-        MouseExited += OnMouseExited;
     }
 
-    private void SetHovered(bool hovered)
+    public override void _ExitTree() => _hover.Forget(this);
+
+    public void ShowHovered(bool hovered)
     {
         if (hovered == _isHovered)
         {
@@ -223,16 +228,27 @@ public partial class PersonView : Area3D
         _hairSprite.Scale = scale;
     }
 
-    private void OnMouseExited() => SetHovered(false);
-
     // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
     // entity's broad-phase box won the pick instead - see its own doc comment for why that's
     // not just a hypothetical.
     public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
     {
         var opaque = SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _currentBodyTexturePath, GlobalPosition);
-        SetHovered(opaque);
+        _hover.Set(this, opaque);
         return opaque;
+    }
+
+    // Asked once a frame while this view holds the highlight (HoverArbiter.Revalidate) - the
+    // same pixel test as above, but from wherever the cursor is right now rather than from a
+    // picking event, since the two everyday ways a highlight got stuck both consist of no
+    // picking event arriving at all. A cursor over any UI panel counts as off: physics picking
+    // never fires under a Control, so the sprite behind one would otherwise stay lit.
+    public bool IsStillUnderCursor()
+    {
+        var viewport = GetViewport();
+        return viewport.GuiGetHoveredControl() is null
+            && viewport.GetCamera3D() is { } camera
+            && SpritePixelHit.IsOpaqueAtScreen(camera, viewport.GetMousePosition(), _sprite, _currentBodyTexturePath, GlobalPosition);
     }
 
     // Only the simulation tick moves a person; this just plays that motion back smoothly
@@ -362,9 +378,11 @@ public partial class PersonView : Area3D
         switch (@event)
         {
             case InputEventMouseMotion:
-                if (!TryHoverAt(camera3D, position))
+                // Nothing opaque here and nothing behind it either means the cursor is over
+                // bare ground showing through, so whatever was lit has been left behind.
+                if (!TryHoverAt(camera3D, position) && !HoverRescue.TryHoverElsewhere(this, camera3D, position))
                 {
-                    HoverRescue.TryHoverElsewhere(this, camera3D, position);
+                    _hover.Clear();
                 }
 
                 break;

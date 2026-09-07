@@ -181,7 +181,7 @@ public static class SaveGameService
         person.Needs.Fatigue = personData.Fatigue;
         foreach (var skillData in personData.Skills)
         {
-            person.Skills.Increase(skillData.Type, skillData.Level);
+            person.Skills.Restore(skillData.Type, skillData.Level);
         }
 
         foreach (var technique in personData.KnownTechniques)

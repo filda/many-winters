@@ -17,10 +17,13 @@ public sealed class WorldPresenter
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
     private readonly RevealableExploration _exploration;
+    // One cursor, one highlighted thing - and the invariant lives here rather than in each
+    // view, which is what stopped highlights getting stuck on (see HoverArbiter).
+    private readonly HoverArbiter _hover = new();
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
 
-    // Fog of war (todo #13): a node outside anyone's ever-explored area gets no Godot view at
+    // Fog of war: a node outside anyone's ever-explored area gets no Godot view at
     // all yet, not just a hidden one - creating a ResourceNodeView for all ~17,000+ decoration-
     // turned-resource nodes at once (MapLoader.ScatterDecorations) up front was itself the
     // single biggest chunk of the game's startup time. Kept here until its own cell is explored
@@ -71,6 +74,11 @@ public sealed class WorldPresenter
             CreateGraveView(grave);
         }
     }
+
+    // Every rendered frame (Main._Process), not once per tick: whether the cursor is still on
+    // whatever is lit changes continuously, since both the camera and everyone in the world
+    // keep moving between ticks.
+    public void RevalidateHover() => _hover.Revalidate();
 
     public void SetPersonAlive(PersonId id, bool isAlive)
     {
@@ -128,7 +136,7 @@ public sealed class WorldPresenter
 
     private void CreatePersonView(Person person)
     {
-        var view = new PersonView(person, _onPersonClicked, _onMissedClick)
+        var view = new PersonView(person, _hover, _onPersonClicked, _onMissedClick)
         {
             Name = person.Name,
             Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
@@ -151,7 +159,7 @@ public sealed class WorldPresenter
     private void CreateResourceNodeViewNow(ResourceNode node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
-        var view = new ResourceNodeView(node, canFell, _onResourceNodeSelected, _onMissedClick);
+        var view = new ResourceNodeView(node, canFell, _hover, _onResourceNodeSelected, _onMissedClick);
         view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
         view.SetRemembered(!_exploration.IsVisible(ExplorationState.CellFor(node.Position)));
         _container.AddChild(view);

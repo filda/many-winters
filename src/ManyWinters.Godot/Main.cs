@@ -81,12 +81,30 @@ public partial class Main : Node3D
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
-        // A permanent build tag, not a one-off debug leftover - bump the string whenever
-        // this build meaningfully changes, so "am I actually running the build I think
-        // I'm running" (a repeated real source of confusion this session - the editor's
-        // own hot-reload, or forgetting to relaunch, can silently leave an old process
-        // running) is a one-line log check instead of a fresh round of guessing.
-        GD.Print("Build tag: cloud-mask-proxy-native-billboard-fix-08");
+        // A permanent build tag, answering "am I actually running the build I think I'm
+        // running" (a repeated real source of confusion - the editor's own hot-reload, or
+        // forgetting to relaunch, can silently leave an old process running) with a one-line
+        // log check. Derived from the assembly this code is executing out of rather than
+        // hand-written: a string that has to be bumped by hand is only ever as truthful as
+        // the last person who remembered to bump it, and this one had gone stale by dozens
+        // of builds.
+        GD.Print($"Build tag: {BuildTag.For(AssemblyBuildTimeUtc())}");
+    }
+
+    // When the running assembly was last written - the closest thing to a build stamp that
+    // needs no build-time code generation, and one that cannot drift out of date the way the
+    // hand-written tag it replaced did. Built from the directory rather than
+    // Assembly.Location, which is empty here: Godot loads the project assembly from a stream
+    // so the file can be overwritten while the editor still holds it. Null rather than a
+    // guess if there is no such file to stat, which BuildTag renders as an explicit
+    // "unknown" instead of a plausible-looking lie.
+    private static DateTimeOffset? AssemblyBuildTimeUtc()
+    {
+        var assemblyPath = Path.Combine(AppContext.BaseDirectory, $"{typeof(Main).Assembly.GetName().Name}.dll");
+
+        return File.Exists(assemblyPath)
+            ? new DateTimeOffset(File.GetLastWriteTimeUtc(assemblyPath), TimeSpan.Zero)
+            : null;
     }
 
     public override void _Process(double delta)
@@ -97,6 +115,9 @@ public partial class Main : Node3D
         // ticks, so what's currently standing in the way of the view changes continuously too.
         UpdateOcclusionFade();
         UpdateSelectionMarkerOverlay();
+        // Also every frame: taking hover is driven by mouse movement, but losing it isn't -
+        // a person can simply walk out from under a cursor that never moved (see HoverArbiter).
+        _presenter.RevalidateHover();
         // Also every frame, same reasoning - the mask camera has to track the main
         // camera's own continuous movement/zoom, not just once per simulation tick.
         _cloudFogMask.Update();

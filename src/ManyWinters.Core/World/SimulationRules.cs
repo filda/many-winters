@@ -24,6 +24,14 @@ public sealed record SimulationRules
 
     public long MaxLifespanYears { get; init; } = 10;
 
+    // Nobody eats a bite a minute. Below this a person leaves what they are carrying alone,
+    // and once they do eat they eat down to nothing (see EatCommand), so meals are occasional
+    // events rather than a continuous trickle - which is what a body actually does, and also
+    // what stops "stand next to food" from being a way to practice eating every single tick
+    // (docs/todo/todo.md). Deliberately well below HungerSeekFoodThreshold: someone with food
+    // on them eats long before hunger is bad enough to send anyone out looking for more.
+    public float HungerEatThreshold { get; init; } = 25f;
+
     // "Idle" means "put whatever skill this person already has to use, or go find food if
     // hungry and empty-handed" (see WorldState.DecideIdleTask) - this is where "hungry" starts.
     // Hunger takes priority over an already-known skill: a hungry woodcutter with no food on

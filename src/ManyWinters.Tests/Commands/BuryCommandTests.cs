@@ -204,7 +204,9 @@ public class BuryCommandTests
         fifthDeceased.IsAlive = false;
         world.Execute(new BuryCommand(buryingPerson, fifthDeceased));
 
-        Assert.Equal(5f, buryingPerson.Skills.Get(TestCatalogs.Burial));
+        // Five burials, not five levels - practice has diminishing returns (see
+        // Skills.Increase), and the threshold is written as five burials' worth of it.
+        Assert.Equal(2.553f, buryingPerson.Skills.Get(TestCatalogs.Burial), 3);
         Assert.Contains(TestCatalogs.EfficientBurial, buryingPerson.KnownTechniques);
     }
 

@@ -23,7 +23,11 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
     private const float EfficientHungerRestoredMultiplier = 1.2f;
 
     private const float SkillGainPerMeal = 1f;
-    private const float DiscoveryThreshold = 5f;
+    private const int PracticesBeforeDiscovery = 5;
+
+    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
+    // stated as the number of tries it stands for rather than as a level.
+    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     public void Execute(WorldState world)
     {

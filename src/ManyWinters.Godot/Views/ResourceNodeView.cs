@@ -6,7 +6,7 @@ using ManyWinters.Godot.Interaction;
 
 namespace ManyWinters.Godot.Views;
 
-public partial class ResourceNodeView : Area3D
+public partial class ResourceNodeView : Area3D, IHoverable
 {
     // Ordinary resources (berries, mushrooms, tubers...) read fine as a small icon sitting on
     // the ground. A fellable one is meant to be an actual tree standing in the world - a
@@ -57,7 +57,7 @@ public partial class ResourceNodeView : Area3D
     private const int BranchVariantSalt = 407;
     private const int BranchBrightnessSalt = 408;
 
-    // Fog of war's "remembered" tier (todo #13) - explored, but outside anyone's current sight
+    // Fog of war's "remembered" tier - explored, but outside anyone's current sight
     // (see ExplorationState) - reads as a sepia-ish memory of the place rather than what's
     // actually there right now, same spirit as docs/ZemanConceptArt.png's own "Remembered"
     // panel. Multiplied into each layer's own base modulate (see _baseModulate/_Ready), not a
@@ -72,6 +72,7 @@ public partial class ResourceNodeView : Area3D
     // (see WorldPresenter.RefreshExploration).
     public ResourceNode Node => _node;
     private readonly bool _canFell;
+    private readonly HoverArbiter _hover;
     private readonly Action<ResourceNode> _onSelected;
     private readonly InputEventEventHandler _onMissedClick;
     private readonly Color _baseColor;
@@ -93,11 +94,13 @@ public partial class ResourceNodeView : Area3D
     private bool _isHovered;
     private bool _isRemembered;
 
-    public ResourceNodeView(ResourceNode node, bool canFell, Action<ResourceNode> onSelected, InputEventEventHandler onMissedClick)
+    // Internal for the same reason as PersonView's own constructor - see there.
+    internal ResourceNodeView(ResourceNode node, bool canFell, HoverArbiter hover, Action<ResourceNode> onSelected, InputEventEventHandler onMissedClick)
     {
         _node = node;
         _kind = node.Kind;
         _canFell = canFell;
+        _hover = hover;
         _onSelected = onSelected;
         _onMissedClick = onMissedClick;
 
@@ -233,15 +236,15 @@ public partial class ResourceNodeView : Area3D
             Position = new Vector3(centerXOffset, extent.CenterYOffset, 0),
         });
 
+        // No MouseExited here: Godot only ever sends that to the one collider its own picking
+        // chose, which is exactly what used to leave sprites lit forever (see HoverArbiter).
+        // Losing hover is settled once a frame instead, by IsStillUnderCursor below.
         InputEvent += OnInputEvent;
-        // The broad-phase collision shape can only ever be a bounding box around the actual
-        // silhouette (see SpriteVisibleExtent) - MouseExited still means "no longer even
-        // close", but entering hover for real is decided pixel-by-pixel in OnInputEvent, not
-        // here.
-        MouseExited += OnMouseExited;
     }
 
-    private void SetHovered(bool hovered)
+    public override void _ExitTree() => _hover.Forget(this);
+
+    public void ShowHovered(bool hovered)
     {
         if (hovered == _isHovered)
         {
@@ -309,16 +312,27 @@ public partial class ResourceNodeView : Area3D
     // The true silhouette of a split tree is the union of its trunk's and canopy's own
     // visible extents - equivalent to what a single combined image's extent already was,
     // since the two are an exact partition of it (see split_trunk_canopy).
-    private void OnMouseExited() => SetHovered(false);
-
     // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
     // entity's broad-phase box won the pick instead - see its own doc comment for why that's
     // not just a hypothetical.
     public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
     {
         var opaque = IsOpaqueOnAnyLayer(camera, worldPosition);
-        SetHovered(opaque);
+        _hover.Set(this, opaque);
         return opaque;
+    }
+
+    // Asked once a frame while this view holds the highlight (HoverArbiter.Revalidate) - the
+    // same per-layer test as above, but from wherever the cursor is right now rather than from
+    // a picking event, since the everyday ways a highlight got stuck consist of no picking
+    // event arriving at all. A cursor over any UI panel counts as off: physics picking never
+    // fires under a Control, so the sprite behind one would otherwise stay lit.
+    public bool IsStillUnderCursor()
+    {
+        var viewport = GetViewport();
+        return viewport.GuiGetHoveredControl() is null
+            && viewport.GetCamera3D() is { } camera
+            && IsOpaqueOnAnyLayerAtScreen(camera, viewport.GetMousePosition());
     }
 
     public bool TryClickAt(Camera3D camera, Vector3 worldPosition)
@@ -337,9 +351,12 @@ public partial class ResourceNodeView : Area3D
     // exactly the same silhouette a single combined texture used to represent (branches
     // included - a click on a bare twig tip should still select the tree).
     private bool IsOpaqueOnAnyLayer(Camera3D camera, Vector3 worldPosition) =>
-        (_trunk is not null && SpritePixelHit.IsOpaqueAt(camera, worldPosition, _trunk, _trunkTexturePath!))
-        || (_branches is not null && SpritePixelHit.IsOpaqueAt(camera, worldPosition, _branches, _branchesTexturePath!))
-        || SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _spriteTexturePath);
+        IsOpaqueOnAnyLayerAtScreen(camera, camera.UnprojectPosition(worldPosition));
+
+    private bool IsOpaqueOnAnyLayerAtScreen(Camera3D camera, Vector2 screenPosition) =>
+        (_trunk is not null && SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, _trunk, _trunkTexturePath!))
+        || (_branches is not null && SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, _branches, _branchesTexturePath!))
+        || SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, _sprite, _spriteTexturePath);
 
     // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
     // fruit layer to show or hide.
@@ -543,9 +560,11 @@ public partial class ResourceNodeView : Area3D
         switch (@event)
         {
             case InputEventMouseMotion:
-                if (!TryHoverAt(camera3D, position))
+                // Nothing opaque here and nothing behind it either means the cursor is over
+                // bare ground showing through, so whatever was lit has been left behind.
+                if (!TryHoverAt(camera3D, position) && !HoverRescue.TryHoverElsewhere(this, camera3D, position))
                 {
-                    HoverRescue.TryHoverElsewhere(this, camera3D, position);
+                    _hover.Clear();
                 }
 
                 break;
