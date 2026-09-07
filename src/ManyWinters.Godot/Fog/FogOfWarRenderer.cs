@@ -45,7 +45,6 @@ public sealed class FogOfWarRenderer
     // cell removes that mismatch entirely: every texel's sampled cell is the same cell any
     // instantiated object in it belongs to, so there is no boundary for a single object's own
     // geometry to straddle.
-    private readonly int _explorationTextureResolution;
 
     // Widening the sharp boundary itself (lowering ExplorationTextureResolution) was tried
     // first to fix canopies getting sliced by a too-narrow transition - it did, but a soft
@@ -70,7 +69,7 @@ public sealed class FogOfWarRenderer
     private const float OverlayQuadSize = 4f;
 
     private readonly RevealableExploration _exploration;
-    private readonly float _halfExtentMeters;
+    private readonly TexelGrid _grid;
     private readonly ImageTexture _explorationTexture;
 
     // Metres from each texel to the nearest ever-explored cell (GridDistanceField), one float
@@ -84,19 +83,16 @@ public sealed class FogOfWarRenderer
     // The same field on the CPU side, kept from the last rebuild for GroundClouds to query
     // per candidate spot - one lookup into an already-computed grid, not a second transform.
     private float[,] _distanceCells;
-    private readonly float _metersPerTexel;
 
     public FogOfWarRenderer(RevealableExploration exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
     {
         _exploration = exploration;
-        _halfExtentMeters = halfExtentMeters;
-        _explorationTextureResolution = (int)MathF.Ceiling((2f * halfExtentMeters) / ExplorationState.CellSizeMeters);
-        _metersPerTexel = (2f * halfExtentMeters) / _explorationTextureResolution;
-        _distanceCells = new float[_explorationTextureResolution, _explorationTextureResolution];
+        _grid = TexelGrid.Covering(halfExtentMeters, ExplorationState.CellSizeMeters);
+        _distanceCells = new float[_grid.Size, _grid.Size];
 
-        var initialImage = Image.CreateEmpty(_explorationTextureResolution, _explorationTextureResolution, false, Image.Format.Rgba8);
+        var initialImage = Image.CreateEmpty(_grid.Size, _grid.Size, false, Image.Format.Rgba8);
         _explorationTexture = ImageTexture.CreateFromImage(initialImage);
-        var initialDistance = Image.CreateEmpty(_explorationTextureResolution, _explorationTextureResolution, false, Image.Format.Rf);
+        var initialDistance = Image.CreateEmpty(_grid.Size, _grid.Size, false, Image.Format.Rf);
         _distanceTexture = ImageTexture.CreateFromImage(initialDistance);
 
         // Two reconstruction-based ways to exempt CloudScatter's sprites from fog-of-war
@@ -172,13 +168,8 @@ public sealed class FogOfWarRenderer
 
     // Metres from a world position to the nearest ever-explored cell, as of the last
     // Refresh - the same mapping from world to texel RebuildExplorationTexture uses.
-    public float DistanceToExploredMeters(float worldX, float worldZ)
-    {
-        var size = _explorationTextureResolution;
-        var tx = Math.Clamp((int)MathF.Floor(((worldX / (2f * _halfExtentMeters)) + 0.5f) * size), 0, size - 1);
-        var ty = Math.Clamp((int)MathF.Floor(((worldZ / (2f * _halfExtentMeters)) + 0.5f) * size), 0, size - 1);
-        return _distanceCells[ty, tx] * _metersPerTexel;
-    }
+    public float DistanceToExploredMeters(float worldX, float worldZ) =>
+        _distanceCells[_grid.TexelAt(worldZ), _grid.TexelAt(worldX)] * _grid.MetresPerTexel;
 
     // One texel per (worldX, worldZ) sample across the whole map, in two layers:
     //   R/G: the *sharp* (exact, unblurred) state - R: 1 where that point's cell has never
@@ -192,36 +183,14 @@ public sealed class FogOfWarRenderer
     //   what confines that softness to the unexplored/not-visible side only.
     private void RebuildExplorationTexture()
     {
-        var size = _explorationTextureResolution;
-        var unexploredSharp = new float[size, size];
-        var rememberedSharp = new float[size, size];
-
-        for (var ty = 0; ty < size; ty++)
-        {
-            var worldZ = (((ty + 0.5f) / size) - 0.5f) * 2f * _halfExtentMeters;
-            for (var tx = 0; tx < size; tx++)
-            {
-                var worldX = (((tx + 0.5f) / size) - 0.5f) * 2f * _halfExtentMeters;
-                var cell = ExplorationState.CellFor(new Position(worldX, worldZ));
-                var explored = _exploration.IsExplored(cell);
-                unexploredSharp[ty, tx] = explored ? 0f : 1f;
-                rememberedSharp[ty, tx] = explored && !_exploration.IsVisible(cell) ? 1f : 0f;
-            }
-        }
-
+        var size = _grid.Size;
+        var masks = ExplorationMasks.Build(_exploration, _grid);
+        var unexploredSharp = masks.Unexplored;
+        var rememberedSharp = masks.Remembered;
         var unexploredBlurred = BoxBlur.Blur(unexploredSharp, BlurRadiusTexels);
         var rememberedBlurred = BoxBlur.Blur(rememberedSharp, BlurRadiusTexels);
 
-        var exploredMask = new bool[size, size];
-        for (var ty = 0; ty < size; ty++)
-        {
-            for (var tx = 0; tx < size; tx++)
-            {
-                exploredMask[ty, tx] = unexploredSharp[ty, tx] == 0f;
-            }
-        }
-
-        _distanceCells = GridDistanceField.DistanceToNearestTrue(exploredMask);
+        _distanceCells = GridDistanceField.DistanceToNearestTrue(masks.Explored);
 
         var image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         var distanceImage = Image.CreateEmpty(size, size, false, Image.Format.Rf);
@@ -230,7 +199,7 @@ public sealed class FogOfWarRenderer
             for (var tx = 0; tx < size; tx++)
             {
                 image.SetPixel(tx, ty, new Color(unexploredSharp[ty, tx], rememberedSharp[ty, tx], unexploredBlurred[ty, tx], rememberedBlurred[ty, tx]));
-                distanceImage.SetPixel(tx, ty, new Color(_distanceCells[ty, tx] * _metersPerTexel, 0f, 0f));
+                distanceImage.SetPixel(tx, ty, new Color(_distanceCells[ty, tx] * _grid.MetresPerTexel, 0f, 0f));
             }
         }
 

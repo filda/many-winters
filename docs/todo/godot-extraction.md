@@ -17,15 +17,6 @@ under "Mutation testing" - why a tidy test input is the usual reason a mutant su
 
 ## Split a method into calculation plus an engine wrapper
 
-**`FogOfWarRenderer`** — three pieces:
-
-- building the sharp masks (the texel loop producing two `float[,]` plus the `bool[,]`),
-- `DistanceToExploredMeters` — world to texel index to array lookup times metres-per-texel,
-- **the texel-to-world mapping**, which is currently written *asymmetrically*: texel to world
-  is `(((ty + 0.5f) / size) - 0.5f) * 2f * half` (half-texel offset), world to texel is
-  `((x / (2f * half)) + 0.5f) * size` floored (no offset). They are inverses but do not look
-  like it. Extract as a pair and assert the round trip.
-
 **`FreeCameraRig`** — the zoom step (`Pow(rate, direction * notch)` then
 `Clamp(current * factor, min, max)`), `CameraDirection()` (tilt degrees to unit vector), and
 the ground-clearance clamp inside `UpdateCamera`.
