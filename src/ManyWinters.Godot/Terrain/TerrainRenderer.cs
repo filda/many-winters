@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Godot;
-using ManyWinters.Core.Maps;
+using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Terrain;
@@ -12,33 +12,6 @@ public sealed class TerrainRenderer
 {
     private const float TextureTileMeters = 16f;
     private const float WaterSurfaceOffset = 0.15f;
-
-    // The real elevation data is only a 41x41 grid at 25m spacing (docs/terrain-and-world-
-    // scale-architecture.md) - bilinear interpolation between those samples alone reads as
-    // smooth, blank "placka" ground. A light procedural bump on top (todo: "použít Perlinův
-    // šum na lehkou modifikaci terénu") brings back some fine, organic surface variation -
-    // amplitude deliberately small (a texture, not a new hill range). The wavelength has to
-    // stay meaningfully larger than however far apart the mesh's own vertices actually are,
-    // or it aliases into per-vertex jitter instead of smooth rolling - see
-    // TerrainSubdivisionsPerCell below for why that's a mesh-resolution limit, not a
-    // performance one: evaluating the noise itself costs the same regardless of wavelength.
-    private static readonly Noise2D TerrainBumpNoise = new(TerrainBumpNoiseSeed);
-    private const int TerrainBumpNoiseSeed = 42;
-    private const int TerrainBumpOctaves = 3;
-    private const double TerrainBumpFrequency = 1.0 / 10.0;
-    private const float TerrainBumpAmplitudeMeters = 2.0f;
-
-    // Each 25m source heightmap cell is rendered as this many smaller ones instead of one -
-    // 10 -> 2.5m spacing between actual mesh vertices, 4 samples per TerrainBumpFrequency's
-    // 10m wave (comfortable margin above the 2-sample Nyquist minimum, not right at the
-    // edge of aliasing) while the DEM's own 41x41 samples stay exactly as they were
-    // (SampleHeight still just bilinearly interpolates them - see BuildTerrainMesh's
-    // VertexAt). Real cost, unlike the noise itself: (41-1)*10+1 = 401 vertices per side
-    // instead of 41 - a few hundred thousand triangles, not millions - and a correspondingly
-    // heavier collision trimesh, all built once at load, not per frame - a non-issue at this
-    // map's size, but the actual reason not to push subdivision arbitrarily high just to
-    // allow an even shorter wavelength.
-    private const int TerrainSubdivisionsPerCell = 10;
 
     private static readonly Color LowColor = new(0.22f, 0.24f, 0.16f);
     private static readonly Color HighColor = new(0.55f, 0.52f, 0.46f);
@@ -77,9 +50,8 @@ public sealed class TerrainRenderer
 
     private readonly string _groundTexturePath;
     private readonly string _waterwaysPath;
-    private HeightmapData _heightmap = null!;
+    private Heightmap _heightmap = null!;
     private string _heightmapJson = null!;
-    private float _minHeight;
 
     // Spatial hash (cell size = MinDecorationSpacing) of every decoration position placed so
     // far, across every ScatterDecoration call on this instance - an O(1)-ish neighbor lookup
@@ -100,99 +72,20 @@ public sealed class TerrainRenderer
     {
         var json = ContentFiles.ReadText(heightmapPath);
         _heightmapJson = json;
-        _heightmap = JsonSerializer.Deserialize<HeightmapData>(json, JsonOptions)
+        var data = JsonSerializer.Deserialize<HeightmapData>(json, JsonOptions)
             ?? throw new InvalidDataException($"Heightmap '{heightmapPath}' could not be parsed.");
 
-        var minHeight = float.MaxValue;
-        foreach (var row in _heightmap.Heights)
-        {
-            foreach (var h in row)
-            {
-                minHeight = Math.Min(minHeight, h);
-            }
-        }
-
-        _minHeight = minHeight;
-        Half = (_heightmap.GridSize - 1) * _heightmap.CellSizeMeters / 2f;
+        _heightmap = new Heightmap(data.Heights, data.GridSize, data.CellSizeMeters);
+        Half = _heightmap.HalfExtentMeters;
     }
 
-    // Every 25m source heightmap cell is rendered as this many smaller ones instead of one -
-    // see TerrainSubdivisionsPerCell's own doc comment for why (that field is the actual
-    // tunable; these two just expose the grid it implies to both SampleHeight and
-    // BuildTerrainMesh so they can never compute it two slightly different ways).
-    private int FineGridSize => ((_heightmap.GridSize - 1) * TerrainSubdivisionsPerCell) + 1;
+    private int FineGridSize => _heightmap.FineGridSize;
 
-    private float FineCellSize => _heightmap.CellSizeMeters / TerrainSubdivisionsPerCell;
+    private float FineCellSize => _heightmap.FineCellSize;
 
-    // The real elevation data plus the light procedural bump, at one exact fine-grid vertex -
-    // what BuildTerrainMesh's own vertices are (see VertexAt) and what SampleHeight below
-    // blends between for any other (x, z).
-    private float FineVertexHeight(int row, int col)
-    {
-        var x = (col * FineCellSize) - Half;
-        var z = (row * FineCellSize) - Half;
-        return SampleRawHeight(x, z) + TerrainBump(x, z);
-    }
-
-    // Ground height at any local (x, z) - what everything that actually needs to visually
-    // sit on the terrain uses (person/decoration placement, the camera rig, click-to-move).
-    // Bilinearly blends the FOUR SURROUNDING FINE-GRID VERTEX heights - the same ones
-    // BuildTerrainMesh's own vertices use - rather than evaluating the raw elevation+bump
-    // formula directly at (x, z). Those two used to agree closely enough not to matter, but
-    // the rendered surface between vertices is a flat triangle, not the smooth noise curve
-    // itself - near a peak the true curve bulges above that straight line, near a valley it
-    // dips below it - and once TerrainBump's wavelength got short enough relative to
-    // TerrainSubdivisionsPerCell (several rounds of "make the waves more visible" tuning),
-    // that gap became visible as a person floating above, or sinking into, ground that was
-    // rendered flat right under them even though their own height came from what looked like
-    // the same source. Matching the mesh's own vertices exactly, not just the formula they
-    // were built from, is what actually guarantees the two agree.
-    public float SampleHeight(float x, float z)
-    {
-        var fineGridSize = FineGridSize;
-        var fineCellSize = FineCellSize;
-        var colF = Mathf.Clamp((x + Half) / fineCellSize, 0, fineGridSize - 1);
-        var rowF = Mathf.Clamp((z + Half) / fineCellSize, 0, fineGridSize - 1);
-        var col0 = (int)Mathf.Floor(colF);
-        var row0 = (int)Mathf.Floor(rowF);
-        var col1 = Math.Min(col0 + 1, fineGridSize - 1);
-        var row1 = Math.Min(row0 + 1, fineGridSize - 1);
-        var tx = colF - col0;
-        var tz = rowF - row0;
-
-        var h0 = Mathf.Lerp(FineVertexHeight(row0, col0), FineVertexHeight(row0, col1), tx);
-        var h1 = Mathf.Lerp(FineVertexHeight(row1, col0), FineVertexHeight(row1, col1), tx);
-        return Mathf.Lerp(h0, h1, tz);
-    }
-
-    // Bilinear height sample at any local (x, z) from the real elevation data alone, clamped
-    // to the grid's edge beyond its bounds - no bump noise. Water (WaterVertex) is the only
-    // other caller: a river surface is naturally smoother than the ground around it in
-    // reality, not textured with the same small-scale variation, so it tracks the DEM's own
-    // valley without the bump making it look choppy.
-    private float SampleRawHeight(float x, float z)
-    {
-        var gridSize = _heightmap.GridSize;
-        var heights = _heightmap.Heights;
-        var colF = Mathf.Clamp((x + Half) / _heightmap.CellSizeMeters, 0, gridSize - 1);
-        var rowF = Mathf.Clamp((z + Half) / _heightmap.CellSizeMeters, 0, gridSize - 1);
-        var col0 = (int)Mathf.Floor(colF);
-        var row0 = (int)Mathf.Floor(rowF);
-        var col1 = Math.Min(col0 + 1, gridSize - 1);
-        var row1 = Math.Min(row0 + 1, gridSize - 1);
-        var tx = colF - col0;
-        var tz = rowF - row0;
-
-        var h0 = Mathf.Lerp(heights[row0][col0], heights[row0][col1], tx);
-        var h1 = Mathf.Lerp(heights[row1][col0], heights[row1][col1], tx);
-        return Mathf.Lerp(h0, h1, tz) - _minHeight;
-    }
-
-    // Fbm's own [0, 1] range remapped to [-1, 1] first - otherwise every point would only
-    // ever be nudged upward, raising the whole terrain by roughly half the amplitude
-    // instead of rolling both up and down around the real elevation.
-    private static float TerrainBump(float x, float z) =>
-        (float)((TerrainBumpNoise.Fbm(x, z, TerrainBumpOctaves, TerrainBumpFrequency) - 0.5) * 2.0) * TerrainBumpAmplitudeMeters;
+    // The ground height anything standing on the terrain should use - see Heightmap.HeightAt
+    // for why it interpolates the mesh's own vertices rather than the formula behind them.
+    public float SampleHeight(float x, float z) => _heightmap.HeightAt(x, z);
 
     // Cache format, bump whenever the vertex/color/UV formula below changes shape (subdivision,
     // bump noise params, or the low/high terrain colors) - the hash already covers every value
@@ -214,11 +107,7 @@ public sealed class TerrainRenderer
         var input = string.Join(
             '|',
             TerrainMeshCacheVersion,
-            TerrainSubdivisionsPerCell,
-            TerrainBumpNoiseSeed,
-            TerrainBumpOctaves,
-            TerrainBumpFrequency,
-            TerrainBumpAmplitudeMeters,
+            Heightmap.ShapeFingerprint,
             LowColor,
             HighColor,
             _heightmapJson);
@@ -276,18 +165,7 @@ public sealed class TerrainRenderer
 
     private (Mesh Mesh, Shape3D CollisionShape) BuildMeshAndCollision()
     {
-        var heights = _heightmap.Heights;
-
-        var maxHeight = float.MinValue;
-        foreach (var row in heights)
-        {
-            foreach (var h in row)
-            {
-                maxHeight = Math.Max(maxHeight, h);
-            }
-        }
-
-        var heightRange = Math.Max(0.001f, maxHeight - _minHeight);
+        var heightRange = Math.Max(0.001f, _heightmap.MaxHeight - _heightmap.MinHeight);
 
         // The real heightmap is only a 41x41 grid at 25m spacing - fine enough for the DEM's
         // own broad shape, but far too coarse to resolve TerrainBump's wavelength (see its
@@ -315,8 +193,8 @@ public sealed class TerrainRenderer
             {
                 var x = (col * fineCellSize) - Half;
                 var z = (row * fineCellSize) - Half;
-                var rawHeight = SampleRawHeight(x, z);
-                vertices[row, col] = new Vector3(x, rawHeight + TerrainBump(x, z), z);
+                var rawHeight = _heightmap.RawAt(x, z);
+                vertices[row, col] = new Vector3(x, rawHeight + Heightmap.BumpAt(x, z), z);
                 colors[row, col] = LowColor.Lerp(HighColor, rawHeight / heightRange);
             }
         }
@@ -434,7 +312,7 @@ public sealed class TerrainRenderer
         });
     }
 
-    private Vector3 WaterVertex(float x, float z) => new Vector3(x, SampleRawHeight(x, z) + WaterSurfaceOffset, z);
+    private Vector3 WaterVertex(float x, float z) => new Vector3(x, _heightmap.RawAt(x, z) + WaterSurfaceOffset, z);
 
     private static void AddPlainTriangle(SurfaceTool tool, Vector3 a, Vector3 b, Vector3 c)
     {

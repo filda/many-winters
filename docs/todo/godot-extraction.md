@@ -17,10 +17,6 @@ under "Mutation testing" - why a tidy test input is the usual reason a mutant su
 
 ## Split a method into calculation plus an engine wrapper
 
-**`TerrainRenderer.SampleHeight` / `SampleRawHeight` / `FineVertexHeight` / `TerrainBump`** —
-bilinear sampling over a `float[]` plus `Noise2D` (already in Core). Needs a small `Heightmap`
-type extracted first; `TerrainRenderer` keeps the `res://` loading.
-
 **`Main.ComputeOccludingSprites` / `UpdateOcclusionFade`** — deciding which sprites currently
 stand between the camera and the selection. It operates on `Sprite3D`, so what comes out is
 the test itself (a sprite's world rectangle against a screen point), leaving the iteration
