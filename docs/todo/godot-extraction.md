@@ -1,12 +1,17 @@
 # Godot layer: what can be extracted and tested
 
 Working backlog of what is *left*. Finished items are dropped rather than ticked off - git
-history is the record. Ordered by cost.
+history is the record. The sections are ordered by cost, the items inside them by value, so the
+first entry under each heading is the one worth doing next.
+
+Scope: code inside `src/ManyWinters.Godot`, and only what could move or be split. General
+refactoring lands in `refactoring.md`; anything whose answer belongs in Core is there too.
 
 The rules this works under are not repeated here: `docs/conventions.md` has the principle
 (calculation lives apart from the code the framework calls), and `docs/development.md`, under
 "Testing the presentation layer", has what the engine actually permits, where an extracted
-calculation belongs (`src/ManyWinters.Godot/Logic/`, which the mutation config globs).
+calculation belongs (`src/ManyWinters.Godot/Logic/`, which the mutation config globs), and -
+under "Mutation testing" - why a tidy test input is the usual reason a mutant survives.
 
 ---
 
@@ -44,28 +49,17 @@ walk-cycle phase.
 **`WorldPresenter.ToVector3`** — trivial, but instance-bound: make it static and take the
 height sampler as a parameter.
 
-## Consolidate — these are duplications, not just untested code
+## One concept, three formulas
 
-**Minimum spacing over a spatial hash exists three times.** `TerrainRenderer.CellFor` +
-`IsTooCloseToAnExistingDecoration` + `MarkOccupied` is line-for-line the same algorithm as
-`CloudSpotScatter.IsTooClose` in Core (buckets, 3x3 neighbourhood, `< spacing`), and
-`MapLoader` has its own variant for spacing people out. One shared type in Core replaces all
-three and is covered already.
-
-**Rejection sampling — "random candidate, reject if too close, give up after N attempts" —
-exists three times too:** `Main.FindFreeSpawnPosition`, `Main.FindFreeBuildingPosition` and
-`MapLoader.NextCrowdPosition`. The only Godot dependency is `GD.Randf()`; pass a `Random` and
-the whole thing moves to Core. Spawn placement is arguably a rule of the world rather than
-presentation anyway.
-
-**"How big does this sprite render" is owned in three places.** `BillboardUv.RenderedSize`
+**"How big does this sprite render"** is answered in three places. `BillboardUv.RenderedSize`
 (pixel size times texture size times per-axis scale) is the tested one, but
 `Main.ComputeOccludingSprites` re-derives a radius from pixel size and width alone, ignoring
 scale and assuming every billboard is square, and `SpriteVisibleExtent.Compute` re-derives
 metres-per-pixel from a `worldHeight` instead of asking the sprite, also ignoring scale. So for
 any scaled or non-square sprite - which `ResourceNodeView` does produce, and hover scaling
-creates on any sprite - the occlusion radius and the click rectangle are computed by different
-formulas. One owner would settle it.
+creates on any sprite - the occlusion radius and the click rectangle come out of different
+formulas. One owner would settle it, and it is a prerequisite for the two split items above
+that touch the same quantity.
 
 ## Deliberately left alone
 
@@ -73,17 +67,3 @@ formulas. One owner would settle it.
 `TextureCache`, `ContentFiles`, `CloudFogMask`, every `_Ready`/`_Process`/`OnInputEvent`, and
 the `On*ButtonPressed` handlers in `Main` are wiring with no decision of their own - a test
 would assert that the implementation is the implementation.
-
-## A lesson worth carrying to the next one
-
-Every ray in the first cut of `BillboardUvTests` ran perpendicular to the billboard's plane,
-which quietly hid four mutants: get the ray/plane crossing wrong and the point only moves
-along the plane's own normal, which the UV then ignores. A real pick ray is perpendicular only
-dead-centre on screen. **Oblique, off-centre, asymmetric inputs are what pin a geometric
-calculation** - the tidy axis-aligned case is the one that proves least. The texel-to-world
-mapping above is the next place this will matter.
-
-The same trap caught `EntityVisualVariation.RangeFor` from a different direction: every test
-of it used a 0-to-1 range, where multiplying by the width, dividing by it, and using
-`max + min` instead all give the same answer. **A range of 0 to 1, a rate of 1, an axis-aligned
-ray - any input where the operation cancels out is an input that tests nothing.**
