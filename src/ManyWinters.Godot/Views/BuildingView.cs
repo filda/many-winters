@@ -1,8 +1,9 @@
 using Godot;
 using ManyWinters.Core.Construction;
 using ManyWinters.Godot.Logic;
+using ManyWinters.Godot.Sprites;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Views;
 
 public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : Node3D
 {

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // Sprite art is looked up by convention next to the entity's other content files, so a
 // new kind only has to drop a PNG into its own folder to become visible.

@@ -1,4 +1,7 @@
 using Godot;
+using ManyWinters.Godot.Terrain;
+using ManyWinters.Godot.Interaction;
+using ManyWinters.Godot.Views;
 
 namespace ManyWinters.Godot.Prototypes;
 

@@ -40,6 +40,14 @@ Per the [technical implementation plan](<Of Folk and Many Winters — Technical 
 src/
 ├── ManyWinters.Core/          # Pure C# simulation — no Godot dependency, ever
 ├── ManyWinters.Godot/         # Godot project: presentation, rendering, input, UI, audio
+│   ├── Logic/                 #   engine-free, unit-tested logic — the only mutated folder
+│   ├── Views/                 #   one Node3D per simulation entity, plus WorldPresenter
+│   ├── Sprites/               #   billboards, hit testing, extents, tint, texture cache
+│   ├── Terrain/               #   heightmap mesh and waterways
+│   ├── Fog/                   #   fog of war and the cloud banks over it
+│   ├── Interaction/           #   camera rig, ground picking, hover fallback
+│   ├── Ui/                    #   status bar and floating panels
+│   └── Prototypes/            #   experiment scenes, held to a lower bar (see conventions)
 ├── ManyWinters.Tools/
 │   └── SimulationRunner/      # Headless console runner (no Godot required)
 ├── ManyWinters.Tests/         # Tests for ManyWinters.Core and the SimulationRunner
@@ -47,6 +55,8 @@ src/
 ```
 
 `ManyWinters.Core` must never reference `ManyWinters.Godot`. The simulation must be runnable and testable headlessly, without the engine.
+
+Inside the Godot project, namespaces follow folders — ReSharper's `CheckNamespace` inspection enforces it, so a move means a namespace change and a `using` at each consumer. Two things stay at the project root because Godot pins them by path, and getting either wrong fails *silently* rather than at build time: `Main.cs` (named in `Main.tscn`) and the two `*VisualDefinition.cs` files (named in 17 `.tres` files under `Content/`, whose loader falls back to a default colour rather than complaining). **A folder must not be named after a Godot type** — an `Input/` folder shadows the `Input` singleton and every `Input.IsKeyPressed` call in it stops compiling.
 
 ## Building and running
 

@@ -1,8 +1,10 @@
 using Godot;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
+using ManyWinters.Godot.Sprites;
+using ManyWinters.Godot.Interaction;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Views;
 
 public partial class ResourceNodeView : Area3D
 {

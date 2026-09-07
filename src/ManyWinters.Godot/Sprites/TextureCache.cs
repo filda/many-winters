@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // A tight loop that calls ResourceLoader.Load<T> for the same already-cached path thousands
 // of times in a row (spawning thousands of ResourceNodeViews of a small handful of distinct

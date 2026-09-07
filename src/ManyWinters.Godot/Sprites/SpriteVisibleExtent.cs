@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // The actual non-transparent extent of a sprite texture, in world meters, for a given
 // worldHeight (the same value passed to BillboardSprite.Create) - every one of our textures

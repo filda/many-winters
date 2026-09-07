@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // Hover feedback via a size bump (+ a modest tint) on the sprite itself, not a second
 // scaled-up "rim" sprite behind it (see git history on the now-removed SpriteOutline) - a

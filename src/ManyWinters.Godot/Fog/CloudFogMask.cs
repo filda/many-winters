@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Fog;
 
 // A real screen-space render, used by FogOfWarRenderer to exempt cloud pixels from
 // fog-of-war precisely, without touching depth reconstruction at all.

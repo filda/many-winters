@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Interaction;
 
 // Where on the actual ground a screen position points at, ignoring every entity's pickable
 // collision box along the way. Godot's own physics picking delivers a click only to the

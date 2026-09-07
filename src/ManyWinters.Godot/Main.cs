@@ -8,6 +8,12 @@ using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
+using ManyWinters.Godot.Views;
+using ManyWinters.Godot.Fog;
+using ManyWinters.Godot.Terrain;
+using ManyWinters.Godot.Interaction;
+using ManyWinters.Godot.Ui;
+using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot;
 

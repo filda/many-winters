@@ -1,6 +1,7 @@
 using Godot;
+using ManyWinters.Godot.Fog;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Interaction;
 
 // Free pan/zoom/rotate camera (visual plan "Confirmed design decisions: Camera"). Shared by
 // TerrainSandbox.cs and Main.cs so both get identical camera behavior over real terrain.

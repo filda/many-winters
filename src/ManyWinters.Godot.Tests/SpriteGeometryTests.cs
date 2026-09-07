@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Godot.Logic;
+using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Tests;
 

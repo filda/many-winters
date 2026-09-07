@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // A flat, ground-parallel shadow decal - deliberately not a billboard. Every other sprite
 // here rotates to face the camera; a shadow that did the same would visibly tilt as the

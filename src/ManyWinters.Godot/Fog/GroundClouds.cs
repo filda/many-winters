@@ -1,7 +1,7 @@
 using Godot;
 using ManyWinters.Core.World;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Fog;
 
 // Low cloud lying on never-explored ground: it rings the explored area and thickens with
 // distance from it (GroundCloudCoverage has the curve), so the unknown reads as

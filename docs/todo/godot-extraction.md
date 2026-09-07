@@ -44,6 +44,12 @@ walk-cycle phase.
 **`WorldPresenter.ToVector3`** — trivial, but instance-bound: make it static and take the
 height sampler as a parameter.
 
+**`HoverHighlight` and `EntityVisualVariation`** — already engine-free (`Color` and `Mathf`
+only, plus Core's `SeedHash`), so these are not splits at all: they just need tests and a move
+into `Logic/`, which is what makes them mutated. They sit in `Sprites/` meanwhile because
+moving them without tests would drop that folder's score below its threshold. Cheapest two
+items on this list.
+
 ## Consolidate — these are duplications, not just untested code
 
 **Minimum spacing over a spatial hash exists three times.** `TerrainRenderer.CellFor` +

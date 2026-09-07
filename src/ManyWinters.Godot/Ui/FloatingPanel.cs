@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Ui;
 
 // Self-contained window chrome: drag the title bar to move it, click the fold button to
 // collapse the body away and leave just the title bar. Callers add their own content to

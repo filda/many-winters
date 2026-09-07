@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Terrain;
 
 // Builds the terrain mesh and waterways - purely presentation/art, no gameplay rule lives
 // here (contrast MapLoader, which defines the actual starting WorldState). Every scattered

@@ -1,7 +1,7 @@
 using Godot;
 using ManyWinters.Core.World;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Ui;
 
 // Bottom-of-screen bar: transient notifications (left, auto-clearing), tick/season (right),
 // and a help popup - the reference text that used to permanently occupy screen space now

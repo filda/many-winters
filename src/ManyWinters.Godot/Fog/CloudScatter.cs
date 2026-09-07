@@ -1,6 +1,7 @@
 using Godot;
+using ManyWinters.Godot.Sprites;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Fog;
 
 // Purely decorative sky clouds, scattered once across the whole terrain footprint at
 // startup - unlike every other piece of scenery (trees, resources, decorations), these

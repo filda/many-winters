@@ -1,7 +1,7 @@
 using Godot;
 using ManyWinters.Godot.Logic;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // True per-pixel hit testing for a billboarded Sprite3D: is the actual pixel under the
 // cursor opaque, not just "somewhere inside a bounding shape"? A round tree canopy touches

@@ -2,7 +2,7 @@ using Godot;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Fog;
 
 // Renders both non-"currently visible" fog-of-war tiers (todo #13) as a single full-screen
 // post-process overlay (Content/effects/fog_of_war_screen.gdshader - see its own doc comment

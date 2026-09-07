@@ -1,7 +1,7 @@
 using Godot;
 using ManyWinters.Core.World;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Sprites;
 
 // Deterministic per-instance variety: same seed (an entity's stable id, via EntityId.SeedOf)
 // always produces the same tint/scale, so repeated saves/reloads don't reshuffle how things

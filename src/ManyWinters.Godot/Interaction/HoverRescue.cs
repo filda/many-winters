@@ -1,6 +1,7 @@
 using Godot;
+using ManyWinters.Godot.Views;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Interaction;
 
 // Godot's physics picking only ever delivers an input event to the single nearest collider
 // along the ray - whichever entity's broad-phase bounding box happens to be closest to the

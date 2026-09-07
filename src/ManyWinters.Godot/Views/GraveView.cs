@@ -1,7 +1,9 @@
 using Godot;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Godot.Sprites;
+using ManyWinters.Godot.Interaction;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Views;
 
 public partial class GraveView(Grave grave, Action<Grave> onSelected, CollisionObject3D.InputEventEventHandler onMissedClick) : Area3D
 {

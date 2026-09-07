@@ -5,7 +5,7 @@ using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Views;
 
 public sealed class WorldPresenter
 {

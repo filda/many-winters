@@ -1,3 +1,5 @@
+using ManyWinters.Godot.Sprites;
+
 namespace ManyWinters.Godot.Logic;
 
 // Combining the visible extents of the layers a single entity is drawn from - see

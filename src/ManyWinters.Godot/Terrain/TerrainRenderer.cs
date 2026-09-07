@@ -1,8 +1,9 @@
 using System.Text.Json;
 using Godot;
 using ManyWinters.Core.Maps;
+using ManyWinters.Godot.Sprites;
 
-namespace ManyWinters.Godot;
+namespace ManyWinters.Godot.Terrain;
 
 // Shared real-terrain rendering (docs/terrain-and-world-scale-architecture.md): loads one
 // elevation/waterway patch and builds it into a given Node3D. Used by both TerrainSandbox.cs
