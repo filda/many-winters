@@ -17,9 +17,6 @@ under "Mutation testing" - why a tidy test input is the usual reason a mutant su
 
 ## Split a method into calculation plus an engine wrapper
 
-**`PersonView`** — the position interpolation in `_Process`/`SetTargetPosition`, and the
-walk-cycle phase.
-
 **`WorldPresenter.ToVector3`** — trivial, but instance-bound: make it static and take the
 height sampler as a parameter.
 

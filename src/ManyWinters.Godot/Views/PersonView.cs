@@ -242,19 +242,18 @@ public partial class PersonView : Area3D
     {
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
 
-        var isWalking = Position.DistanceTo(_targetPosition) > 0.001f;
-        if (isWalking)
+        if (WalkCycle.IsWalking(Position, _targetPosition))
         {
-            _walkPhase += (float)delta * _walkCyclesPerSecond;
-            var bob = new Vector3(0, MathF.Sin(_walkPhase) * _bobAmplitude, 0);
-            var rotation = new Vector3(0, 0, MathF.Sin(_walkPhase * 0.5f) * _rockAmplitude);
-            // All three layers move as one rigid cutout, not independently.
-            _sprite.Position = bob;
-            _sprite.Rotation = rotation;
-            _clothingSprite.Position = bob;
-            _clothingSprite.Rotation = rotation;
-            _hairSprite.Position = bob;
-            _hairSprite.Rotation = rotation;
+            _walkPhase = WalkCycle.Advanced(_walkPhase, (float)delta, _walkCyclesPerSecond);
+            var pose = WalkCycle.PoseAt(_walkPhase, _bobAmplitude, _rockAmplitude);
+
+            // All three layers take the same pose, not their own.
+            _sprite.Position = pose.Offset;
+            _sprite.Rotation = pose.Rotation;
+            _clothingSprite.Position = pose.Offset;
+            _clothingSprite.Rotation = pose.Rotation;
+            _hairSprite.Position = pose.Offset;
+            _hairSprite.Rotation = pose.Rotation;
         }
 
         // Deliberately no "not walking" branch that snaps _walkPhase/_sprite back to
@@ -268,9 +267,8 @@ public partial class PersonView : Area3D
 
     public void SetTargetPosition(Vector3 target, float overSeconds)
     {
-        var distance = Position.DistanceTo(target);
+        _interpolationSpeed = WalkCycle.InterpolationSpeed(Position.DistanceTo(target), overSeconds);
         _targetPosition = target;
-        _interpolationSpeed = overSeconds > 0f ? distance / overSeconds : float.MaxValue;
     }
 
     public void SetAlive(bool isAlive)
