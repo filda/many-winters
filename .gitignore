@@ -31,3 +31,21 @@ mono_crash.*.json
 
 # Claude Code local settings (personal, not shared)
 .claude/settings.local.json
+
+# Beckett (AI MCP for Godot) auto-writes client configs for installed editors;
+# this project does not use VS Code, so its per-editor file is pure noise
+**/.vscode/mcp.json
+# Beckett's own .mcp.json lands next to project.godot, where no MCP client looks
+# from the repo root, and it carries this machine's auth token. The root-level
+# copies for Claude Code and OpenCode carry the same token, so all three stay
+# local; docs/development.md ("Editor plugins") generates the root ones.
+src/ManyWinters.Godot/.mcp.json
+/.mcp.json
+/opencode.json
+
+# Godot editor addons are dev-time tools restored by gd-plug from the pins in
+# src/ManyWinters.Godot/plug.gd, so only gd-plug itself (a single file) is committed.
+# After a fresh clone run the command in docs/development.md ("Editor plugins").
+src/ManyWinters.Godot/addons/*
+!src/ManyWinters.Godot/addons/gd-plug/
+src/ManyWinters.Godot/.plugged/

@@ -112,6 +112,46 @@ dotnet build src/ManyWinters.Godot
 
 `dotnet build` writes straight into the assembly Godot loads (`src/ManyWinters.Godot/.godot/mono/temp/bin/`), so no separate editor-side build step is needed.
 
+### Editor plugins
+
+Editor-only addons live in `src/ManyWinters.Godot/addons/`. Like NuGet packages they are **not committed**: the one exception is [gd-plug](https://github.com/imjp94/gd-plug), a single-file plugin manager (`addons/gd-plug/plug.gd`) that restores the rest. `src/ManyWinters.Godot/plug.gd` is the manifest; each line pins a GitHub repository to a tag:
+
+```gdscript
+extends "res://addons/gd-plug/plug.gd"
+
+func _plugging():
+	plug("beckettlab/beckett-godot-mcp", {"tag": "v1.15.0"})
+```
+
+**Restore — after a fresh clone, and again after every edit to `plug.gd` — from the repo root:**
+
+```powershell
+godot --headless --path src/ManyWinters.Godot -s plug.gd install
+```
+
+It needs `git` on `PATH`. Each repository is cloned into `src/ManyWinters.Godot/.plugged/` (gitignored) and its `addons/` folder is copied into ours; Beckett takes about two seconds. To update a plugin, bump its tag and run the command again (a changed pin re-clones); to remove one, delete its line and run it again (unlisted plugins are uninstalled). `status` instead of `install` lists what is installed. Two things to ignore: gd-plug exits non-zero (127 here) even when it succeeded, so read its log rather than the exit code, and a fresh-clone run opens with three `ERROR` lines about the `BeckettRuntime` autoload, because `project.godot` already references the addon that this very run is about to install.
+
+A clone that skips this step is not merely noisy: the editor drops the missing plugin from `project.godot`, and Godot logs `ERROR` lines for the dangling autoload on every import, export and game start, which is what the CI release job fails on. That job therefore runs the same command before importing.
+
+`addons/gd-plug/plug.gd` is upstream `master` at commit `209276d1f00d14b49b74403d9839f29598e9a8eb` (2026-05-23); the last tagged release (0.2.6, 2024) predates fixes needed on Godot 4.4+. To update it, replace the file from upstream.
+
+**Beckett.** [Beckett](https://github.com/beckettlab/beckett-godot-mcp) is a free, MIT-licensed MCP server that runs *inside* the Godot editor, so an AI assistant (Claude Code, OpenCode and others) can inspect scenes, write scripts, run the game, and read the live tree. Nothing in the build or the exported game needs it: its export filter strips it from the pack, leaving only an inert autoload stub. Open `src/ManyWinters.Godot` in the Godot editor after restoring it. `project.godot` already enables the plugin, and it starts on boot — you'll see `[beckett] server listening on http://127.0.0.1:8770/...` in the output. The server lives inside the editor process: close the editor and every MCP call fails until it is open again.
+
+**Connect an agent — run from the repo root, after the first editor start:**
+
+Beckett writes its client config next to `project.godot` (`src/ManyWinters.Godot/.mcp.json`, plus a `.vscode/mcp.json` we don't use), but the agents run from the repo root and look there: Claude Code reads `.mcp.json`, OpenCode reads `opencode.json` and does not read `.mcp.json` at all. The URL also carries a per-machine auth token from `src/ManyWinters.Godot/.beckett/token`, so all three files are gitignored and each machine generates its own root copies:
+
+```powershell
+$token = (Get-Content src/ManyWinters.Godot/.beckett/token -Raw).Trim()
+$port = (Get-Content src/ManyWinters.Godot/.beckett/port -Raw).Trim()
+$url = "http://127.0.0.1:$port/mcp/$token"
+$lf = New-Object System.Text.UTF8Encoding($false)
+[IO.File]::WriteAllText("$PWD/.mcp.json", "{`n  `"mcpServers`": {`n    `"beckett`": {`n      `"type`": `"http`",`n      `"url`": `"$url`"`n    }`n  }`n}`n", $lf)
+[IO.File]::WriteAllText("$PWD/opencode.json", "{`n  `"`$schema`": `"https://opencode.ai/config.json`",`n  `"mcp`": {`n    `"beckett`": {`n      `"type`": `"remote`",`n      `"url`": `"$url`",`n      `"enabled`": true`n    }`n  }`n}`n", $lf)
+```
+
+Re-run it if the token is regenerated or the server reports a different port (it walks past a busy 8770).
+
 ## Testing the presentation layer
 
 Most of `ManyWinters.Godot` is engine wiring, but the calculations mixed into it are ordinary functions worth pinning. `docs/conventions.md` asks for them to be written apart from the code the framework calls; this is what that means in practice here, and what the engine allows.

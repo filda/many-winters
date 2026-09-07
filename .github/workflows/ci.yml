@@ -219,7 +219,7 @@ jobs:
             -replace 'config/name="ManyWinters Godot"', "config/name=`"ManyWinters Godot`"`nconfig/version=`"$v`"" `
             | Set-Content $project -NoNewline
 
-      - name: Import assets
+      - name: Locate Godot
         run: |
           # The console wrapper, not the plain .exe: the latter is a GUI-subsystem binary whose
           # stderr is swallowed on Windows, which turns any export failure into a silent one.
@@ -227,8 +227,26 @@ jobs:
             Select-Object -First 1).FullName
           if (-not $godot) { throw "Godot console binary not found under tools/godot" }
           "GODOT=$godot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore editor plugins
+        run: |
+          # project.godot enables Beckett and registers its autoload, but the addon itself is not
+          # committed: gd-plug (the one addon that is) clones whatever plug.gd pins. Skipping this
+          # makes the import and export below log "Failed to create an autoload" errors, and the
+          # export step fails on any ERROR line. The exit code means nothing here: gd-plug exits
+          # non-zero even on success, and the autoload this run installs fails to boot before it
+          # runs, so check what landed on disk instead. See docs/development.md ("Editor plugins").
+          & $env:GODOT --headless --path src/ManyWinters.Godot -s plug.gd install
+          "gd-plug exit code: $LASTEXITCODE"
+          if (-not (Test-Path src/ManyWinters.Godot/addons/beckett/plugin.cfg)) {
+            throw "gd-plug did not install Beckett into src/ManyWinters.Godot/addons"
+          }
+          exit 0
+
+      - name: Import assets
+        run: |
           # First headless run builds the .godot/ import cache; a non-zero exit here is normal.
-          & $godot --headless --path src/ManyWinters.Godot --import
+          & $env:GODOT --headless --path src/ManyWinters.Godot --import
           "import exit code: $LASTEXITCODE"
           exit 0
 

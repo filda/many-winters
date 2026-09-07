@@ -23,9 +23,22 @@ config/features=PackedStringArray("4.7", "C#")
 boot_splash/bg_color=Color(0.32, 0.29, 0.26, 1)
 boot_splash/image="res://Content/splash/title_page.png"
 
+[autoload]
+
+BeckettRuntime="*uid://do68dqybesb7r"
+
+[beckett]
+
+effort_schema=2
+dock_revealed=true
+
 [dotnet]
 
 project/assembly_name="ManyWinters.Godot"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/beckett/plugin.cfg")
 
 [rendering]
 
