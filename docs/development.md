@@ -127,7 +127,7 @@ Most of `ManyWinters.Godot` is engine wiring, but the calculations mixed into it
 
 Testing the *wiring* itself — does a view add the right children, does a signal connect — would need a Godot-hosted runner such as gdUnit4 or GoDotTest, with a Godot binary and a headless display in CI. Not set up, and not worth it while the wiring is not producing bugs.
 
-`docs/todo/godot-extraction.md` lists what is still worth pulling out.
+**Wiring that is deliberately left untested.** `TerrainSetup`, `CloudScatter.Scatter`, `BillboardSprite.Create`, `GroundShadow.Create`, `TextureCache`, `ContentFiles`, `CloudFogMask`, every `_Ready`/`_Process`/`OnInputEvent`, and the `On*ButtonPressed` handlers in `Main` carry no decision of their own — a test would assert that the implementation is the implementation. Every calculation worth splitting out of the presentation layer has been split out; the next one arrives with the code that needs it rather than off a backlog.
 
 ## Mutation testing
 
