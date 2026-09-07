@@ -1709,7 +1709,7 @@ public class WorldStateTests
         var world = new WorldState(configuration);
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person));
+        FillTheBackpackWithWood(world, person);
         var node = world.SpawnResourceNode(grazing, new Position(10, 0), 100);
 
         world.Advance(1);
@@ -1728,7 +1728,7 @@ public class WorldStateTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 0f;
-        person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person));
+        FillTheBackpackWithWood(world, person);
         world.SpawnResourceNode(TestCatalogs.Apple, new Position(10, 0), 100);
 
         world.Advance(1);

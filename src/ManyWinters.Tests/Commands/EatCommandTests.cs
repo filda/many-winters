@@ -121,6 +121,9 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
+        // Without this the meal is refused for not knowing how to eat, and the branch this
+        // test is named after is never reached at all.
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
 

@@ -8,23 +8,22 @@ namespace ManyWinters.Godot.Tests;
 public class BillboardUvTests
 {
     private static readonly Vector3 SpriteCenter = Vector3.Zero;
-    private const float HalfWidth = 1f;
-    private const float HalfHeight = 2f;
+    private const float Width = 2f;
+    private const float Height = 4f;
+    private const float HalfWidth = Width / 2f;
+    private const float HalfHeight = Height / 2f;
 
-    private static Vector2? UvOfRayThrough(Vector3 aim, Vector3 cameraBackward, bool flipH = false)
-    {
-        // A ray travelling toward the sprite from ten metres out, aimed at `aim`.
-        var direction = -cameraBackward.Normalized();
-
-        return BillboardUv.At(cameraBackward, aim - (direction * 10f), direction, SpriteCenter, HalfWidth, HalfHeight, flipH);
-    }
+    // A ray travelling straight at the sprite from ten metres out, aimed at `aim` - the
+    // perpendicular special case of UvOfRayFrom below.
+    private static Vector2? UvOfRayThrough(Vector3 aim, Vector3 cameraBackward, bool flipH = false) =>
+        UvOfRayFrom(aim + (cameraBackward.Normalized() * 10f), aim, cameraBackward, flipH);
 
     // An oblique ray: from `eye` through `aim`, the way a perspective camera casts every ray
     // that is not dead-centre on screen. Rays perpendicular to the plane are a special case
     // that hides errors in the intersection, because getting the crossing point wrong then
     // only moves it along the plane's own normal - which the UV ignores.
     private static Vector2? UvOfRayFrom(Vector3 eye, Vector3 aim, Vector3 cameraBackward, bool flipH = false) =>
-        BillboardUv.At(cameraBackward, eye, (aim - eye).Normalized(), SpriteCenter, HalfWidth, HalfHeight, flipH);
+        BillboardUv.At(cameraBackward, eye, (aim - eye).Normalized(), SpriteCenter, Width, Height, flipH);
 
     [Fact]
     public void AnObliqueRayCrossesThePlaneWhereItActuallyPointsAtIt()
@@ -106,14 +105,7 @@ public class BillboardUvTests
         // camera's backward axis may be used - a pitched camera looking at the same spot has
         // to sample the same pixel as a level one.
         var level = UvOfRayThrough(new Vector3(0.5f, 0.5f, 0f), Vector3.Back);
-        var pitched = BillboardUv.At(
-            new Vector3(0f, 0.7f, 0.7f),
-            new Vector3(0.5f, 0.5f, 10f),
-            Vector3.Forward,
-            SpriteCenter,
-            HalfWidth,
-            HalfHeight,
-            flipH: false);
+        var pitched = UvOfRayFrom(new Vector3(0.5f, 0.5f, 10f), new Vector3(0.5f, 0.5f, 0f), new Vector3(0f, 0.7f, 0.7f));
 
         Assert.Equal(level!.Value.X, pitched!.Value.X, 5);
         Assert.Equal(level.Value.Y, pitched.Value.Y, 5);
@@ -142,22 +134,22 @@ public class BillboardUvTests
     public void ACameraLookingStraightDownHasNoYawLeftToFace()
     {
         // A FixedY billboard renders edge-on here, so there is no plane to intersect.
-        Assert.Null(BillboardUv.At(Vector3.Up, new Vector3(0f, 10f, 0f), Vector3.Down, SpriteCenter, HalfWidth, HalfHeight, flipH: false));
+        Assert.Null(UvOfRayFrom(new Vector3(0f, 10f, 0f), Vector3.Zero, Vector3.Up));
     }
 
     [Fact]
     public void ARayRunningAlongThePlaneNeverCrossesIt()
     {
-        Assert.Null(BillboardUv.At(Vector3.Back, new Vector3(-10f, 0f, 0f), Vector3.Right, SpriteCenter, HalfWidth, HalfHeight, flipH: false));
+        Assert.Null(BillboardUv.At(Vector3.Back, new Vector3(-10f, 0f, 0f), Vector3.Right, SpriteCenter, Width, Height, flipH: false));
     }
 
     [Theory]
     [InlineData(0f)]
     [InlineData(-1f)]
-    public void ASpriteWithNoSizeCannotBeHit(float half)
+    public void ASpriteWithNoSizeCannotBeHit(float size)
     {
-        Assert.Null(BillboardUv.At(Vector3.Back, new Vector3(0f, 0f, 10f), Vector3.Forward, SpriteCenter, half, HalfHeight, flipH: false));
-        Assert.Null(BillboardUv.At(Vector3.Back, new Vector3(0f, 0f, 10f), Vector3.Forward, SpriteCenter, HalfWidth, half, flipH: false));
+        Assert.Null(BillboardUv.At(Vector3.Back, new Vector3(0f, 0f, 10f), Vector3.Forward, SpriteCenter, size, Height, flipH: false));
+        Assert.Null(BillboardUv.At(Vector3.Back, new Vector3(0f, 0f, 10f), Vector3.Forward, SpriteCenter, Width, size, flipH: false));
     }
 
     [Fact]
@@ -182,9 +174,67 @@ public class BillboardUvTests
         // moving it has to move the sampled pixel with it.
         var center = new Vector3(5f, 3f, -2f);
 
-        var uv = BillboardUv.At(Vector3.Back, center + new Vector3(0f, 0f, 10f), Vector3.Forward, center, HalfWidth, HalfHeight, flipH: false);
+        var uv = BillboardUv.At(Vector3.Back, center + new Vector3(0f, 0f, 10f), Vector3.Forward, center, Width, Height, flipH: false);
 
         Assert.Equal(0.5f, uv!.Value.X, 5);
         Assert.Equal(0.5f, uv.Value.Y, 5);
+    }
+
+    [Fact]
+    public void RenderedSizeIsTheTexturesPixelsTurnedIntoMetres()
+    {
+        // A 100x200 texture at a centimetre per pixel, unscaled: one metre by two.
+        var size = BillboardUv.RenderedSize(pixelSize: 0.01f, textureWidth: 100, textureHeight: 200, scaleX: 1f, scaleY: 1f);
+
+        Assert.Equal(1f, size.X, 5);
+        Assert.Equal(2f, size.Y, 5);
+    }
+
+    [Fact]
+    public void EachAxisTakesItsOwnScale()
+    {
+        // The case per-axis scaling exists for: a tree stretched tall and squeezed narrow. A
+        // single shared scale factor would give a square sprite here and pick the wrong pixel
+        // on every non-square one.
+        var size = BillboardUv.RenderedSize(pixelSize: 0.01f, textureWidth: 100, textureHeight: 100, scaleX: 0.5f, scaleY: 3f);
+
+        Assert.Equal(0.5f, size.X, 5);
+        Assert.Equal(3f, size.Y, 5);
+    }
+
+    [Fact]
+    public void APixelSizeThatIgnoredScaleWouldMisreadAStretchedSprite()
+    {
+        // Guards the multiplication itself: at scale 2 the sprite covers twice the ground, so
+        // a ray landing 0.9m out is only 45% of the way to the edge, not past it.
+        var unscaled = BillboardUv.RenderedSize(0.01f, 100, 100, 1f, 1f);
+        var doubled = BillboardUv.RenderedSize(0.01f, 100, 100, 2f, 2f);
+
+        Assert.Equal(unscaled.X * 2f, doubled.X, 5);
+        Assert.Equal(unscaled.Y * 2f, doubled.Y, 5);
+    }
+
+    [Theory]
+    [InlineData(0f, 0f, 0, 0)]
+    [InlineData(0.5f, 0.5f, 50, 100)]
+    [InlineData(0.999f, 0.999f, 99, 199)]
+    public void PixelAtTruncatesTowardTheTopLeftOfTheTexel(float u, float v, int expectedX, int expectedY)
+    {
+        Assert.Equal((expectedX, expectedY), BillboardUv.PixelAt(new Vector2(u, v), width: 100, height: 200));
+    }
+
+    [Fact]
+    public void PixelAtKeepsTheFarEdgeInsideTheTexture()
+    {
+        // A ray through the sprite's own corner really does produce a UV of exactly 1, which
+        // truncates to the width itself - one past the last pixel. Out of bounds when sampled,
+        // and a one-pixel-wrong hover if it merely wrapped.
+        Assert.Equal((99, 199), BillboardUv.PixelAt(new Vector2(1f, 1f), width: 100, height: 200));
+    }
+
+    [Fact]
+    public void PixelAtRefusesToRunOffTheNearEdgeEither()
+    {
+        Assert.Equal((0, 0), BillboardUv.PixelAt(new Vector2(-0.5f, -0.5f), width: 100, height: 200));
     }
 }

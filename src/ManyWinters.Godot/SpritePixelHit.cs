@@ -32,6 +32,10 @@ public static class SpritePixelHit
 {
     private static readonly Dictionary<string, Image> _imageCache = new();
 
+    // Below this a pixel counts as see-through. Not zero: the sprites' ink edges are
+    // antialiased, so a hair of alpha at a silhouette's outer fringe is visually nothing.
+    private const float OpaqueAlphaThreshold = 0.1f;
+
     // spriteCenterOverride lets a caller pin the test plane to a stable anchor instead of the
     // sprite's own GlobalPosition - PersonView's walk animation nudges the sprite's local
     // Position by a few centimeters every frame (the bob), which otherwise sweeps the sampled
@@ -62,9 +66,8 @@ public static class SpritePixelHit
             _imageCache[texturePath] = image;
         }
 
-        var pixelX = Mathf.Clamp((int)(uv.X * image.GetWidth()), 0, image.GetWidth() - 1);
-        var pixelY = Mathf.Clamp((int)(uv.Y * image.GetHeight()), 0, image.GetHeight() - 1);
-        return image.GetPixel(pixelX, pixelY).A > 0.1f;
+        var (pixelX, pixelY) = BillboardUv.PixelAt(uv, image.GetWidth(), image.GetHeight());
+        return image.GetPixel(pixelX, pixelY).A > OpaqueAlphaThreshold;
     }
 
     // Everything the engine has to be asked for, handed to BillboardUv for the geometry: the
@@ -75,15 +78,17 @@ public static class SpritePixelHit
     private static Vector2? UvAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, Vector3 spriteCenter)
     {
         var screenPosition = camera.UnprojectPosition(rayHitPosition);
+        var texture = sprite.Texture;
         var scale = sprite.GlobalTransform.Basis.Scale;
+        var size = BillboardUv.RenderedSize(sprite.PixelSize, texture.GetWidth(), texture.GetHeight(), scale.X, scale.Y);
 
         return BillboardUv.At(
             camera.GlobalTransform.Basis.Z,
             camera.ProjectRayOrigin(screenPosition),
             camera.ProjectRayNormal(screenPosition),
             spriteCenter,
-            (sprite.PixelSize * sprite.Texture.GetWidth() * scale.X) / 2f,
-            (sprite.PixelSize * sprite.Texture.GetHeight() * scale.Y) / 2f,
+            size.X,
+            size.Y,
             sprite.FlipH);
     }
 }

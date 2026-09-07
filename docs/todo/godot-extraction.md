@@ -1,6 +1,7 @@
 # Godot layer: what can be extracted and tested
 
-Working backlog, ordered by cost. Group A is done; B and C are not started.
+Working backlog, ordered by cost. Group A is done, one B item with it; the rest of B and all
+of C are not started.
 
 ## What is actually possible (verified, not assumed)
 
@@ -28,7 +29,7 @@ whose signature mentions `Color`, `Vector3` or an `Extent` stays in the Godot pr
 tested from `ManyWinters.Godot.Tests`. Only genuinely engine-free logic moves to Core.
 
 What is left worth pulling out sits mostly in `Main`, `TerrainRenderer`, `ResourceNodeView`,
-`FreeCameraRig`, `PersonView`, `WorldPresenter`, `FogOfWarRenderer` and `SpritePixelHit` - the
+`FreeCameraRig`, `PersonView`, `WorldPresenter` and `FogOfWarRenderer` - the
 named items below, rather than a line count that would be wrong again after the next extraction.
 
 **Going forward this backlog should not need to grow.** `docs/conventions.md` now asks for
@@ -56,11 +57,13 @@ calculation that a large view class was only borrowing.
 | `Main.GraveText` | `InspectorText.ForGrave` |
 | `Main.ParentsText` | `InspectorText.ForParents` |
 
-`SpritePixelHit.TryGetUv` came out too, as `BillboardUv.At` - a split rather than a move (the
-camera calls stay behind in a wrapper), so it is really a group B item done early. It was worth
-doing first: the billboard plane's basis and the ray/plane intersection are where a wrong sign
-or axis shows up as hover that intermittently misses, which is miserable to diagnose from the
-symptom alone.
+`SpritePixelHit`'s geometry came out with it, as `BillboardUv` - a split rather than a move,
+since the camera and texture reads stay behind in a wrapper, so it is really a group B item
+done early. It was worth doing first: the billboard plane's basis, the ray/plane intersection,
+the per-axis rendered size and the UV-to-pixel truncation are where a wrong sign, axis or
+fencepost shows up as hover that intermittently misses - miserable to diagnose from the symptom
+alone. `BillboardUv.At`, `RenderedSize` and `PixelAt` now own all four; the wrapper is reduced
+to fetching values and sampling the pixel.
 
 Everything but the blur stays in the Godot project - `Color`, `Extent` and `res://` paths
 cannot cross into Core - and is `internal`, reached through `InternalsVisibleTo`, so the
@@ -115,14 +118,28 @@ exists three times too:** `Main.FindFreeSpawnPosition`, `Main.FindFreeBuildingPo
 the whole thing moves to Core. Spawn placement is arguably a rule of the world rather than
 presentation anyway.
 
+**"How big does this sprite render" is owned in three places.** `BillboardUv.RenderedSize`
+(pixel size x texture size x per-axis scale) is now the tested one, but
+`Main.ComputeOccludingSprites` re-derives a radius from pixel size and width alone, ignoring
+scale and assuming every billboard is square, and `SpriteVisibleExtent.Compute` re-derives
+metres-per-pixel from a `worldHeight` instead of asking the sprite, also ignoring scale. So for
+any scaled or non-square sprite - which `ResourceNodeView` does produce, and hover scaling
+creates on any sprite - the occlusion radius and the click rectangle are computed by different
+formulas. One owner, with the arithmetic in `BillboardUv` and a thin accessor reading the live
+node, would settle it.
+
 ## Deliberately left alone
 
 `TerrainSetup`, `CloudScatter.Scatter`, `BillboardSprite.Create`, `GroundShadow.Create`,
 `TextureCache`, `ContentFiles`, `CloudFogMask`, every `_Ready`/`_Process`/`OnInputEvent`, and
 `Main`'s `On*ButtonPressed` handlers are wiring with no decision of their own - a test would
-assert that the implementation is the implementation. `Main.ComputeOccludingSprites` and
-`UpdateOcclusionFade` do hold logic, but operate directly on `Sprite3D`, so extracting them
-would leave a wrapper around a wrapper.
+assert that the implementation is the implementation.
+
+`Main.ComputeOccludingSprites` and `UpdateOcclusionFade` were previously listed here on the
+grounds that extracting them "would leave a wrapper around a wrapper". That reasoning no longer
+holds - a thin wrapper over a tested calculation is exactly the shape this backlog now asks for,
+and `ComputeOccludingSprites` computes a sprite's world radius itself (`Main.cs:330`), which
+makes it a second owner of the concept below. They belong in B, not here.
 
 Testing whether the wiring itself is right (does the view add the right children, does the
 signal connect) needs a Godot-hosted runner such as gdUnit4 or GoDotTest, with a Godot binary

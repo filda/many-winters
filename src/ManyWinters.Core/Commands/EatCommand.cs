@@ -39,8 +39,7 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
     // returns how many, leaving the caller to take exactly that many from wherever they were.
     public static int Eat(WorldState world, Person person, ItemKindId food, int availableUnits)
     {
-        // Stryker disable once Equality: hunger is never negative, and at exactly zero the units-needed check below refuses just the same
-        if (!person.IsAlive || person.Needs.Hunger <= 0f)
+        if (!person.IsAlive)
         {
             return 0;
         }
@@ -54,7 +53,11 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
         }
 
         var restoredPerUnit = world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(food);
-        // Stryker disable once Equality: food that restores nothing yields a non-positive units-needed count, which the check below already refuses
+        // This is what keeps the division below from being by zero - an item nobody described
+        // restores nothing at all (see ItemCatalog.HungerRestoredPerUnitFor).
+        // Stryker disable once Equality: with < instead, a zero rate divides to infinity, which
+        // converts to a negative unit count that the check below then refuses anyway - the same
+        // answer by a worse route, and not one worth writing a test around
         if (restoredPerUnit <= 0f)
         {
             return 0;
