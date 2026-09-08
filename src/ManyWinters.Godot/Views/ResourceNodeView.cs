@@ -159,7 +159,10 @@ internal partial class ResourceNodeView : SpriteEntityView
                 var branches = BillboardSprite.Create(branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
                 branches.Modulate *= LayerBrightnessVariation(BranchBrightnessSalt);
                 branches.FlipH = mirrored;
-                Register(branches, branchesTexturePath);
+                // Pickable but not traced: a click on a bare twig should still select the tree,
+                // while a rim around twigs this fine reads as a squiggle floating beside the
+                // canopy instead of as the tree's own outline.
+                Register(branches, branchesTexturePath, outlines: false);
             }
         }
         else
@@ -194,7 +197,7 @@ internal partial class ResourceNodeView : SpriteEntityView
                 SpriteBase3D.AlphaCutMode.Disabled,
                 FruitOverlayRenderPriority);
             fruit.FlipH = mirrored;
-            _fruit = Register(fruit, fruitTexturePath, picks: false);
+            _fruit = Register(fruit, fruitTexturePath, picks: false, outlines: false);
         }
     }
 

@@ -68,6 +68,15 @@ public sealed class FogOfWarRenderer
     // has to safely cover the [-1, 1] clip-space range on both axes (2x2), never less.
     private const float OverlayQuadSize = 4f;
 
+    // One below the maximum, deliberately. These two sheets have to cover every piece of world
+    // content there is, which is what the priority is for (see BuildOverlays: the quad sits at
+    // the near plane, so distance sorting alone would not settle it), but they must not cover the
+    // hover rim: that answers "what is your cursor on", and a remembered tree is a perfectly good
+    // thing to point at. Leaving 127 free is what lets HoverOutline draw over the fog rather than
+    // under it - without it, the rim dimmed and brightened as the fog boundary drifted past
+    // whatever was hovered, which reads as the line changing weight rather than changing colour.
+    private const int OverlayRenderPriority = 126;
+
     private readonly RevealableExploration _exploration;
     private readonly TexelGrid _grid;
     private readonly ImageTexture _explorationTexture;
@@ -117,7 +126,7 @@ public sealed class FogOfWarRenderer
         // the last things composited, every frame (order between the two doesn't matter - see
         // their own shaders: a cell is never both unexplored and remembered at once, so they
         // never compete over the same pixel).
-        var unknownMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(UnknownShaderPath), RenderPriority = 127 };
+        var unknownMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(UnknownShaderPath), RenderPriority = OverlayRenderPriority };
         unknownMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         unknownMaterial.SetShaderParameter("fog_albedo", UnknownColor);
         unknownMaterial.SetShaderParameter("distance_texture", _distanceTexture);
@@ -130,7 +139,7 @@ public sealed class FogOfWarRenderer
         unknownMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         unknownMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
 
-        var rememberedMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(RememberedShaderPath), RenderPriority = 127 };
+        var rememberedMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(RememberedShaderPath), RenderPriority = OverlayRenderPriority };
         rememberedMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         rememberedMaterial.SetShaderParameter("remembered_tint", RememberedTint);
         rememberedMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);

@@ -41,10 +41,11 @@ internal static class SpriteExtents
 
     // The same extent as the sprite is actually rendering right now. From() answers for the
     // height the sprite was *created* at, which is what SpriteVisibleExtent caches per texture
-    // and is therefore blind to any scale applied since - and hover scales a sprite by a tenth
-    // (HoverHighlight.ScaleFactor). Left unscaled, a collision box or a marker anchor derived
-    // from the nominal extent sits a tenth out of step with the pixels on screen for exactly
-    // as long as the cursor is on the thing, which is the one moment it has to be right.
+    // and is therefore blind to any scale applied since - and entities are scaled: every person
+    // and tree draws its own size from its seed (EntityVisualVariation). Left unscaled, an
+    // anchor derived from the nominal extent floats above a short person's head and sinks into
+    // a tall one's, and any per-layer scale would put a collision box out of step with the
+    // pixels on screen.
     //
     // This is deliberately the same arithmetic as BillboardUv.RenderedSize, and the two agree
     // by construction rather than by coincidence: BillboardSprite.Apply sets

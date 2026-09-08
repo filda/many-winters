@@ -11,8 +11,8 @@ namespace ManyWinters.Godot.Views;
 // they block the view of the selection, and for most of them hoverable and clickable to the
 // pixel. All of that used to be written out once per view, and the four copies had drifted:
 // graves and buildings never dimmed with the fog at all, buildings alone had no collision
-// shape, a hovered sprite's click rectangle stayed the size it was before hover grew it, and a
-// person could only be picked by their body and never by the cloak hanging off it.
+// shape, the hover highlight grew a sprite past its own click rectangle, and a person could
+// only be picked by their body and never by the cloak hanging off it.
 //
 // What stays with each view is what genuinely differs: which layers it draws out of which
 // textures, what its own seed varies, what a click on it means, and any animation of its own.
@@ -27,7 +27,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // One drawn layer. TexturePath and BaseModulate are settable because a layer can be
     // re-pointed at a different image (PersonView swaps in the lying-down variants on death)
     // and re-coloured wholesale (that same death draining the colour out of it).
-    protected sealed class SpriteLayer(Sprite3D sprite, string texturePath, bool picks)
+    protected sealed class SpriteLayer(Sprite3D sprite, string texturePath, bool picks, bool outlines)
     {
         public Sprite3D Sprite { get; } = sprite;
 
@@ -43,6 +43,13 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         // fruit overlay does not: it is drawn inside the canopy's own silhouette, so it has no
         // pixels of its own to add.
         public bool Picks { get; } = picks;
+
+        // Whether this layer is part of the shape the hover rim traces, which is not the same
+        // question. A tree's branch layer is pickable - a click on a bare twig should select the
+        // tree - but tracing it draws a bright three-pixel line around a one-pixel dark twig,
+        // which reads as a squiggle floating in the air beside the canopy rather than as part of
+        // the tree's outline.
+        public bool Outlines { get; } = outlines;
     }
 
     private readonly List<SpriteLayer> _layers = new();
@@ -98,7 +105,6 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         // of them sit perfectly still nearly all of the time.
         SetProcess(NeedsEveryFrame || _remembered.IsFading);
         ApplyTints();
-
     }
 
     // Where a view creates its layers (Register), its ground shadow (SetUpGroundShadow) and
@@ -138,9 +144,9 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // is where the reasoning about alpha cut, render priority and occlusion-fade exclusion
     // belongs (see BillboardSprite.Create); from here on this class tints it, scales it,
     // measures it and picks against it along with all the others.
-    protected SpriteLayer Register(Sprite3D sprite, string texturePath, bool picks = true)
+    protected SpriteLayer Register(Sprite3D sprite, string texturePath, bool picks = true, bool outlines = true)
     {
-        var layer = new SpriteLayer(sprite, texturePath, picks);
+        var layer = new SpriteLayer(sprite, texturePath, picks, outlines);
         _layers.Add(layer);
         AddChild(sprite);
         return layer;
@@ -180,9 +186,11 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
 
     // The entity's drawn silhouette in this node's own local metres: the union of its picking
     // layers' visible extents - a split tree's trunk and canopy together reconstruct exactly
-    // what one combined image used to be - each scaled by what its own sprite is scaled to,
-    // which is hover. This node's own scale is deliberately not in it: the engine applies that
-    // to every child, so counting it here would apply it twice.
+    // what one combined image used to be - each scaled by whatever its own sprite is scaled to.
+    // Nothing scales a single layer today (hover stopped doing it - see ShowHovered), so that
+    // factor is 1 in every current caller; it stays in because a layer's own scale is the one
+    // thing this cannot read off anywhere else. This node's own scale is deliberately not in
+    // it: the engine applies that to every child, so counting it here would apply it twice.
     protected SpriteExtents.Extent VisibleExtent()
     {
         SpriteExtents.Extent? combined = null;
@@ -225,10 +233,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
 
     // Cut to the drawn silhouette rather than the full square canvas - a canopy or a standing
     // figure does not fill its canvas, so a shape the nominal size would hover and click well
-    // outside anything visible. Re-derived whenever what is drawn changes: a different texture
-    // (a corpse lies down - wider and shorter) or a different scale (hover), the latter being
-    // what used to leave a hovered sprite a tenth larger than the rectangle it could be
-    // clicked in.
+    // outside anything visible. Re-derived whenever what is drawn changes, which today means a
+    // different texture: a corpse lies down, wider and shorter than the figure that fell.
     protected void RefreshCollisionShape()
     {
         if (!IsPickable)
@@ -256,18 +262,47 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
 
         _isHovered = hovered;
 
-        // Every layer at once - hover is a single "this whole thing is what you are pointing
-        // at" signal, unlike the occlusion fade, where the layers deliberately differ (a
-        // tree's canopy ghosts, its trunk never does).
-        var scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+        // A rim traced around the silhouette, and nothing else: hover used to bump every layer
+        // to 1.1 and multiply a yellow tint into it, which grew the thing under the cursor away
+        // from its own click rectangle and washed out the drawing it was meant to point out.
+        // Geometry is untouched now, so nothing here has to be re-measured either.
+        ShowOutline(hovered);
+    }
+
+    // The rim that says what the cursor is on, traced once around the whole entity rather than
+    // once per layer - see HoverOutline. Only the layers that make up the readable silhouette go
+    // into it (SpriteLayer.Outlines): a fruit overlay sits inside the canopy's own shape and has
+    // no edge worth tracing, and a branch layer's twigs are too fine to trace without the line
+    // reading as a squiggle beside the tree. The rim hangs on the last of them, the one drawn on
+    // top, so it composites over the others.
+    private void ShowOutline(bool hovered)
+    {
+        Sprite3D? host = null;
+        List<Texture2D>? textures = null;
         foreach (var layer in _layers)
         {
-            layer.Sprite.Scale = scale;
+            if (!layer.Outlines)
+            {
+                continue;
+            }
+
+            host = layer.Sprite;
+            (textures ??= new List<Texture2D>()).Add(layer.Sprite.Texture);
         }
 
-        ApplyTints();
-        // The rectangle follows the size the layers just grew or shrank to.
-        RefreshCollisionShape();
+        if (host is null || textures is null)
+        {
+            return;
+        }
+
+        if (hovered)
+        {
+            HoverOutline.Show(host, textures);
+        }
+        else
+        {
+            HoverOutline.Clear(host);
+        }
     }
 
     // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
@@ -405,11 +440,6 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         foreach (var layer in _layers)
         {
             var color = _remembered.Applied(layer.BaseModulate);
-            if (_isHovered)
-            {
-                color = HoverHighlight.TintFor(color);
-            }
-
             color.A = layer.Sprite.Modulate.A;
             layer.Sprite.Modulate = color;
         }
