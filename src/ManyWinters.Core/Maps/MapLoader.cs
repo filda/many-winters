@@ -70,6 +70,7 @@ public static class MapLoader
     private const int RockCount = 150;
     private const int StumpCount = 25;
     private const int FallenLogCount = 18;
+    private const int MushroomCount = 15;
     private const int GroveTreeCount = 85;
     private const int GroveDeciduousTreeCount = 55;
     private const int GroveBushCount = 50;
@@ -79,6 +80,19 @@ public static class MapLoader
     private const int GroveRockCount = 30;
     private const int GroveStumpCount = 6;
     private const int GroveFallenLogCount = 4;
+    private const int GroveMushroomCount = 6;
+
+    // The band didn't camp just anywhere: these are the wild food plants growing right where
+    // it settled, and they replace the five hand-placed fruit/mushroom/potato nodes that used
+    // to sit at fixed offsets around camp. Scattered like every other kind (same rejection
+    // sampling, same spacing), only over a radius small enough that the starting crowd still
+    // has food within a short walk the way those fixed nodes guaranteed - the open world's own
+    // food (see ScatterOpenWorldBiomes) is spread far too thin to count on in the first winter.
+    private const float CampFoodRadius = 12f;
+    private const int CampAppleCount = 2;
+    private const int CampPearCount = 2;
+    private const int CampMushroomCount = 2;
+    private const int CampPotatoCount = 2;
 
     // Beyond the dense zone and the (still-forest-shaped) groves above, the rest of the
     // terrain used to get only a very thin, uniform "wide pass" - at those counts spread
@@ -108,9 +122,12 @@ public static class MapLoader
     private const double MeadowBandMin = 0.38;
 
     // Renewable ground cover/canopy (regenPerTick > 0) gets an amount in line with the
-    // existing hand-placed fruit trees/wood pile below; the finite ones (rock/stump/log,
-    // regenPerTick = 0) get a smaller one-shot amount since they never come back once spent.
+    // hand-placed wood pile below; the finite ones (rock/stump/log, regenPerTick = 0) get a
+    // smaller one-shot amount since they never come back once spent. Food-bearing plants keep
+    // the 200 the five hand-placed ones carried before they were scattered like everything
+    // else, so a camp's worth of food is the same amount of food it always was.
     private const float WoodAmount = 200f;
+    private const float FoodAmount = 200f;
     private const float GroundCoverAmount = 100f;
     private const float RockAmount = 80f;
     private const float DeadWoodAmount = 60f;
@@ -123,6 +140,10 @@ public static class MapLoader
     private static readonly ResourceKindId FernKind = new("fern");
     private static readonly ResourceKindId TreeStumpKind = new("tree_stump");
     private static readonly ResourceKindId FallenLogKind = new("fallen_log");
+    private static readonly ResourceKindId AppleKind = new("apple");
+    private static readonly ResourceKindId PearKind = new("pear");
+    private static readonly ResourceKindId MushroomKind = new("mushroom");
+    private static readonly ResourceKindId PotatoKind = new("potato");
 
     private static readonly ResourceKindId[] RockKinds =
     [
@@ -136,11 +157,9 @@ public static class MapLoader
 
         SpawnStartingCrowd(world, idRng);
 
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("apple"), Offset(-6f, 5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("pear"), Offset(0f, -5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("mushroom"), Offset(6f, 5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("potato"), Offset(-6f, -5f), 200f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("apple"), Offset(6f, -5f), 200f));
+        // What's left hand-placed is the band's starting stock, not scenery: a pile of wood and
+        // a cut patch of grass it brought to the spot. Everything that grows - food included -
+        // is scattered by ScatterDecorations below.
         world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("wood"), Offset(0f, 5f), 300f));
         world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("grass"), Offset(10f, 0f), 200f));
 
@@ -254,7 +273,7 @@ public static class MapLoader
         // the whole disk, called separately right after, same as before.
         void ScatterClump(
             double centerX, double centerY, float radius, int subClusters,
-            int treeCount, int deciduousCount, int bushCount, int rockCount, int stumpCount, int fallenLogCount)
+            int treeCount, int deciduousCount, int bushCount, int rockCount, int stumpCount, int fallenLogCount, int mushroomCount)
         {
             for (var sub = 0; sub < subClusters; sub++)
             {
@@ -270,10 +289,23 @@ public static class MapLoader
                 SpawnRock(rockCount / subClusters, subX, subY, subRadius);
                 SpawnKind(TreeStumpKind, stumpCount / subClusters, DeadWoodAmount, subX, subY, subRadius);
                 SpawnKind(FallenLogKind, fallenLogCount / subClusters, DeadWoodAmount, subX, subY, subRadius);
+
+                // Mushrooms belong to the shade of a real stand of trees, so they're scattered
+                // with the clump rather than left to the open world's forest band - that band
+                // is the rarest of the four and grows only a few dozen trees in total, which
+                // would have made mushrooms a curiosity nobody ever walks past.
+                SpawnKind(MushroomKind, mushroomCount / subClusters, FoodAmount, subX, subY, subRadius);
             }
         }
 
-        ScatterClump(CampCenter.X, CampCenter.Y, DecorationRadius, DenseZoneSubClusters, TreeCount, DeciduousTreeCount, BushCount, RockCount, StumpCount, FallenLogCount);
+        // Before the dense zone, so camp's own food gets the open ground closest to the crowd
+        // rather than whatever the forest leaves over.
+        SpawnKind(AppleKind, CampAppleCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
+        SpawnKind(PearKind, CampPearCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
+        SpawnKind(MushroomKind, CampMushroomCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
+        SpawnKind(PotatoKind, CampPotatoCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
+
+        ScatterClump(CampCenter.X, CampCenter.Y, DecorationRadius, DenseZoneSubClusters, TreeCount, DeciduousTreeCount, BushCount, RockCount, StumpCount, FallenLogCount, MushroomCount);
         SpawnKind(GrassKind, GrassCount, GroundCoverAmount, CampCenter.X, CampCenter.Y, DecorationRadius);
         SpawnKind(FlowerKind, FlowerCount, GroundCoverAmount, CampCenter.X, CampCenter.Y, DecorationRadius);
         SpawnKind(FernKind, FernCount, GroundCoverAmount, CampCenter.X, CampCenter.Y, DecorationRadius);
@@ -284,7 +316,7 @@ public static class MapLoader
             var groveY = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
             ScatterClump(
                 groveX, groveY, GroveRadius, GroveSubClusters,
-                GroveTreeCount, GroveDeciduousTreeCount, GroveBushCount, GroveRockCount, GroveStumpCount, GroveFallenLogCount);
+                GroveTreeCount, GroveDeciduousTreeCount, GroveBushCount, GroveRockCount, GroveStumpCount, GroveFallenLogCount, GroveMushroomCount);
             SpawnKind(GrassKind, GroveGrassCount, GroundCoverAmount, groveX, groveY, GroveRadius);
             SpawnKind(FlowerKind, GroveFlowerCount, GroundCoverAmount, groveX, groveY, GroveRadius);
             SpawnKind(FernKind, GroveFernCount, GroundCoverAmount, groveX, groveY, GroveRadius);
@@ -303,6 +335,13 @@ public static class MapLoader
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
         var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
 
+        // Two of the bands grow a little food among their own plants, so the open world is worth
+        // foraging through rather than only worth looking at: wild fruit trees in the scrub at
+        // the forest's edge, roots out in the meadow (mushrooms come with the forest clumps
+        // instead - see ScatterClump). Both are rare tails on their band's roll: a band that
+        // has to walk this far for a meal is already in trouble, and the food around camp is
+        // what the first winter runs on.
+
         // Stryker disable Equality: every threshold here is compared against a continuous
         // NextDouble(), which lands exactly on one of them with probability zero - < and <=
         // pick the same kind
@@ -314,16 +353,35 @@ public static class MapLoader
                 return (GrassKind, GroundCoverAmount);
             }
 
-            return roll < 0.8 ? (FlowerKind, GroundCoverAmount) : (FernKind, GroundCoverAmount);
+            if (roll < 0.8)
+            {
+                return (FlowerKind, GroundCoverAmount);
+            }
+
+            return roll < 0.99 ? (FernKind, GroundCoverAmount) : (PotatoKind, FoodAmount);
         }
 
         // Stryker disable once Equality: continuous draw, as the disabled block above - which does not reach into a local function's body
         (ResourceKindId Kind, float Amount) PickForestKind() =>
             rng.NextDouble() < 0.55 ? (ConiferTreeKind, WoodAmount) : (DeciduousTreeKind, WoodAmount);
 
-        // Stryker disable once Equality: as PickForestKind above
-        (ResourceKindId Kind, float Amount) PickThicketKind() =>
-            rng.NextDouble() < 0.6 ? (BushKind, WoodAmount) : (FernKind, GroundCoverAmount);
+        (ResourceKindId Kind, float Amount) PickThicketKind()
+        {
+            var roll = rng.NextDouble();
+            if (roll < 0.6)
+            {
+                return (BushKind, WoodAmount);
+            }
+
+            if (roll < 0.94)
+            {
+                return (FernKind, GroundCoverAmount);
+            }
+
+            // Which of the two fruit trees grows here is its own coin flip, so a stand of wild
+            // fruit comes out mixed rather than every thicket being an apple thicket.
+            return rng.NextDouble() < 0.5 ? (AppleKind, FoodAmount) : (PearKind, FoodAmount);
+        }
 
         // Stryker restore Equality
 

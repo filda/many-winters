@@ -197,25 +197,39 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultPopulatesTheWorldWithTheHandPlacedFoodAndWoodNodesFirst()
+    public void LoadDefaultPopulatesTheWorldWithTheHandPlacedStartingStockFirst()
     {
         var map = LoadDefault();
 
-        // The hand-placed starting supply (fruit/wood/grass near camp) is spawned before
-        // ScatterDecorations runs, so these are always the first 7 nodes regardless of how
-        // many procedural decoration nodes follow them.
-        var expectedFirstSeven = new[]
+        // All that is still hand-placed is the stock the band brought with it - a wood pile and
+        // a patch of cut grass. It is spawned before ScatterDecorations runs, so these are
+        // always the first 2 nodes regardless of how many procedural nodes follow them.
+        var expectedFirstTwo = new[]
         {
-            (TestCatalogs.Apple, new Position(-1f, 255f), 200f),
-            (TestCatalogs.Pear, new Position(5f, 245f), 200f),
-            (TestCatalogs.Mushroom, new Position(11f, 255f), 200f),
-            (TestCatalogs.Potato, new Position(-1f, 245f), 200f),
-            (TestCatalogs.Apple, new Position(11f, 245f), 200f),
             (TestCatalogs.Wood, new Position(5f, 255f), 300f),
             (TestCatalogs.Grass, new Position(15f, 250f), 200f),
         };
 
-        Assert.Equal(expectedFirstSeven, map.World.ResourceNodes.Take(7).Select(n => (n.Kind, n.Position, n.RemainingAmount)));
+        Assert.Equal(expectedFirstTwo, map.World.ResourceNodes.Take(2).Select(n => (n.Kind, n.Position, n.RemainingAmount)));
+    }
+
+    [Fact]
+    public void LoadDefaultGrowsEveryKindOfFoodWithinAShortWalkOfCamp()
+    {
+        var map = LoadDefault();
+
+        // The five fruit/mushroom/potato nodes that used to sit at fixed offsets around camp
+        // are scattered now, but what they guaranteed still has to hold: the starting crowd can
+        // reach every kind of food without leaving camp. Anything further out is the open
+        // world's own, far too thin to survive a first winter on.
+        var foodKinds = new[] { TestCatalogs.Apple, TestCatalogs.Pear, TestCatalogs.Mushroom, TestCatalogs.Potato };
+
+        var nearCamp = map.World.ResourceNodes
+            .Where(n => WorldState.Distance(n.Position, map.CampCenter) <= 12)
+            .GroupBy(n => n.Kind)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        Assert.All(foodKinds, kind => Assert.True(nearCamp.GetValueOrDefault(kind) >= 2, $"Camp grows fewer than two '{kind}' nodes."));
     }
 
     [Fact]
@@ -232,10 +246,11 @@ public class MapLoaderTests
             TestCatalogs.Grass, TestCatalogs.Flower, TestCatalogs.Fern,
             TestCatalogs.RockPile, TestCatalogs.RockBoulder, TestCatalogs.RockCluster,
             TestCatalogs.TreeStump, TestCatalogs.FallenLog,
+            TestCatalogs.Apple, TestCatalogs.Pear, TestCatalogs.Mushroom, TestCatalogs.Potato,
         };
 
         var countsByKind = map.World.ResourceNodes
-            .Skip(7)
+            .Skip(2)
             .GroupBy(n => n.Kind)
             .ToDictionary(g => g.Key, g => g.Count());
 
@@ -260,7 +275,7 @@ public class MapLoaderTests
         // Sampled rather than an exhaustive O(n^2) check (thousands of nodes) - a spot check
         // against MapLoader's own spatial-hash rejection sampling (MinDecorationSpacing) is
         // enough to catch a regression in that mechanism without a slow all-pairs test.
-        var positions = map.World.ResourceNodes.Skip(7).Select(n => n.Position).Take(500).ToList();
+        var positions = map.World.ResourceNodes.Skip(2).Select(n => n.Position).Take(500).ToList();
         for (var i = 0; i < positions.Count; i++)
         {
             for (var j = i + 1; j < positions.Count; j++)
@@ -315,28 +330,28 @@ public class MapLoaderTests
         // deliberately when the generation is retuned; a surprise change here is a bug.
         var expected = new Dictionary<ResourceKindId, int>
         {
-            [TestCatalogs.Grass] = 7281,
-            [TestCatalogs.Fern] = 3285,
-            [TestCatalogs.Flower] = 2039,
-            [TestCatalogs.Bush] = 1635,
-            [TestCatalogs.ConiferTree] = 883,
+            [TestCatalogs.Grass] = 7262,
+            [TestCatalogs.Fern] = 3148,
+            [TestCatalogs.Flower] = 2046,
+            [TestCatalogs.Bush] = 1645,
+            [TestCatalogs.ConiferTree] = 881,
             [TestCatalogs.DeciduousTree] = 585,
-            [TestCatalogs.RockPile] = 560,
-            [TestCatalogs.RockCluster] = 559,
-            [TestCatalogs.RockBoulder] = 554,
+            [TestCatalogs.RockCluster] = 564,
+            [TestCatalogs.RockBoulder] = 563,
+            [TestCatalogs.RockPile] = 546,
+            [TestCatalogs.Potato] = 63,
             [TestCatalogs.TreeStump] = 61,
+            [TestCatalogs.Mushroom] = 53,
+            [TestCatalogs.Apple] = 48,
+            [TestCatalogs.Pear] = 41,
             [TestCatalogs.FallenLog] = 33,
-            [TestCatalogs.Apple] = 2,
-            [TestCatalogs.Pear] = 1,
-            [TestCatalogs.Mushroom] = 1,
-            [TestCatalogs.Potato] = 1,
             [TestCatalogs.Wood] = 1,
         };
 
         var actual = map.World.ResourceNodes.GroupBy(n => n.Kind).ToDictionary(g => g.Key, g => g.Count());
 
         Assert.Equal(expected.OrderBy(kv => kv.Key.Value, StringComparer.Ordinal), actual.OrderBy(kv => kv.Key.Value, StringComparer.Ordinal));
-        Assert.Equal(17481, map.World.ResourceNodes.Count);
+        Assert.Equal(17540, map.World.ResourceNodes.Count);
     }
 
     [Fact]
@@ -344,16 +359,21 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Renewable canopy/ground cover gets an amount in line with the hand-placed fruit
-        // trees; the finite ones (rock, stump, log) get a smaller one-shot amount because they
-        // never come back once spent. The hand-placed grass node near camp is the one
-        // scattered kind that also exists at its own larger starting amount.
+        // Renewable canopy/ground cover and every food-bearing plant get the same amount the
+        // hand-placed fruit trees used to carry; the finite ones (rock, stump, log) get a
+        // smaller one-shot amount because they never come back once spent. The hand-placed
+        // grass node near camp is the one scattered kind that also exists at its own larger
+        // starting amount.
         var amountsByKind = map.World.ResourceNodes
             .GroupBy(n => n.Kind)
             .ToDictionary(g => g.Key, g => g.Select(n => n.RemainingAmount).Distinct().OrderBy(a => a).ToArray());
 
         var expected = new Dictionary<ResourceKindId, float[]>
         {
+            [TestCatalogs.Apple] = [200f],
+            [TestCatalogs.Pear] = [200f],
+            [TestCatalogs.Mushroom] = [200f],
+            [TestCatalogs.Potato] = [200f],
             [TestCatalogs.ConiferTree] = [200f],
             [TestCatalogs.DeciduousTree] = [200f],
             [TestCatalogs.Bush] = [200f],
@@ -411,8 +431,8 @@ public class MapLoaderTests
         var perBand = new (string Band, ResourceKindId[] Kinds)[]
         {
             ("forest", [TestCatalogs.ConiferTree, TestCatalogs.DeciduousTree]),
-            ("thicket", [TestCatalogs.Bush, TestCatalogs.Fern]),
-            ("meadow", [TestCatalogs.Grass, TestCatalogs.Flower, TestCatalogs.Fern]),
+            ("thicket", [TestCatalogs.Bush, TestCatalogs.Fern, TestCatalogs.Apple, TestCatalogs.Pear]),
+            ("meadow", [TestCatalogs.Grass, TestCatalogs.Flower, TestCatalogs.Fern, TestCatalogs.Potato]),
             ("rocky", [TestCatalogs.RockPile, TestCatalogs.RockBoulder, TestCatalogs.RockCluster]),
         };
 
