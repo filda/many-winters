@@ -888,23 +888,13 @@ public partial class Main : Node3D
     {
         const float minDistance = 1.2f;
         const float spread = 16f;
-        const int maxAttempts = 20;
 
-        for (var attempt = 0; attempt < maxAttempts; attempt++)
-        {
-            var candidate = new Position(
+        return FreePositionSearch.Find(
+            () => new Position(
                 _campCenter.X + ((GD.Randf() - 0.5f) * spread),
-                _campCenter.Y + ((GD.Randf() - 0.5f) * spread));
-            var tooClose = _world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance);
-            if (!tooClose)
-            {
-                return candidate;
-            }
-        }
-
-        return new Position(
-            _campCenter.X + ((GD.Randf() - 0.5f) * spread),
-            _campCenter.Y + ((GD.Randf() - 0.5f) * spread));
+                _campCenter.Y + ((GD.Randf() - 0.5f) * spread)),
+            candidate => !_world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance),
+            maxAttempts: 20);
     }
 
     private Position FindFreeBuildingPosition(Position near)
@@ -914,22 +904,14 @@ public partial class Main : Node3D
         // picked spot is never too far away to actually construct on, since ConstructCommand itself
         // now requires proximity.
         var spread = _world.Configuration.Rules.MaxInteractionDistance;
-        const int maxAttempts = 20;
 
-        for (var attempt = 0; attempt < maxAttempts; attempt++)
-        {
-            var candidate = new Position(
+        return FreePositionSearch.Find(
+            () => new Position(
                 near.X + ((GD.Randf() - 0.5f) * spread),
-                near.Y + ((GD.Randf() - 0.5f) * spread));
-            var blocked = _world.Buildings.Any(b => WorldState.Distance(b.Position, candidate) < minDistance)
-                || _world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance);
-            if (!blocked)
-            {
-                return candidate;
-            }
-        }
-
-        return new Position(near.X + ((GD.Randf() - 0.5f) * spread), near.Y + ((GD.Randf() - 0.5f) * spread));
+                near.Y + ((GD.Randf() - 0.5f) * spread)),
+            candidate => !_world.Buildings.Any(b => WorldState.Distance(b.Position, candidate) < minDistance)
+                && !_world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance),
+            maxAttempts: 20);
     }
 
     private void OnPersonClicked(Person person, MouseButton button)

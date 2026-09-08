@@ -444,30 +444,16 @@ public static class MapLoader
     }
 
     // Rejects a candidate too close to an already-placed person, so the crowd doesn't stack
-    // two people exactly on top of each other - falls back to the last candidate tried if
-    // CrowdRadius genuinely can't fit this many people with CrowdMinSpacing between them,
-    // rather than looping forever.
-    private static Position NextCrowdPosition(Random rng, List<Position> placed)
-    {
-        const int maxAttempts = 30;
-
-        // Stryker disable once Equality,Update: as with the decoration scatter, fifteen people
-        // in a four-metre disk always fit well inside the attempt budget, so the cap and its
-        // counter never decide anything
-        for (var attempt = 0; attempt < maxAttempts; attempt++)
-        {
-            var candidate = RandomDiskPosition(rng);
-
+    // two people exactly on top of each other. Fifteen people in a four-metre disk always fit
+    // well inside the attempt budget, so FreePositionSearch's giving up never decides anything
+    // here.
+    private static Position NextCrowdPosition(Random rng, List<Position> placed) =>
+        FreePositionSearch.Find(
+            () => RandomDiskPosition(rng),
             // Stryker disable once Equality: a candidate landing at exactly CrowdMinSpacing has
             // probability zero, so >= and > accept the same positions
-            if (placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing))
-            {
-                return candidate;
-            }
-        }
-
-        return RandomDiskPosition(rng);
-    }
+            candidate => placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing),
+            maxAttempts: 30);
 
     // Uniform over the disk's area, not its bounding square (see TerrainRenderer's own
     // ScatterDecoration for the same math) - sampling angle and radius independently and
