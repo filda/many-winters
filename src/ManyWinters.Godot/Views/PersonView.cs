@@ -109,9 +109,14 @@ public partial class PersonView : Area3D, IHoverable
     private Sprite3D _hairSprite = null!;
     private Color _clothingColor;
     private Color _hairColor;
-    private Color _normalModulate;
-    private Color _normalClothingModulate;
-    private Color _normalHairModulate;
+    private Color _baseModulate;
+    private Color _baseClothingModulate;
+    private Color _baseHairModulate;
+
+    // How far the group's memory has taken over from actually seeing this person - which for
+    // someone alive is never, since they are one of the eyes the fog is drawn from, but a
+    // corpse left behind where nobody is looking any more dims like anything else does.
+    private readonly RememberedFade _remembered = new();
     private CollisionShape3D _collisionShape = null!;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
@@ -173,7 +178,7 @@ public partial class PersonView : Area3D, IHoverable
         // as a forward/backward tilt. Needs a live look once the ground-contact fix is
         // confirmed - if the walk rock looks wrong now, that's the reason.
         _sprite = BillboardSprite.Create(_aliveTexturePath, Height, AliveColor);
-        _normalModulate = _sprite.Modulate;
+        _baseModulate = _sprite.Modulate;
         AddChild(_sprite);
 
         // Disabled, not the default OpaquePrepass - same reason as ResourceNodeView's fruit
@@ -186,7 +191,7 @@ public partial class PersonView : Area3D, IHoverable
         _clothingColor = ClothingColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 6, ClothingColorOptions.Length)];
         _clothingSprite = BillboardSprite.Create(_clothingAliveTexturePath, Height, _clothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
         _clothingSprite.Modulate = SpriteTint.ModulateFor(_clothingColor);
-        _normalClothingModulate = _clothingSprite.Modulate;
+        _baseClothingModulate = _clothingSprite.Modulate;
         AddChild(_clothingSprite);
 
         var hairIndex = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 7, HairTexturePaths.Length);
@@ -195,7 +200,7 @@ public partial class PersonView : Area3D, IHoverable
         _hairColor = HairColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 8, HairColorOptions.Length)];
         _hairSprite = BillboardSprite.Create(_hairAliveTexturePath, Height, _hairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
         _hairSprite.Modulate = SpriteTint.ModulateFor(_hairColor);
-        _normalHairModulate = _hairSprite.Modulate;
+        _baseHairModulate = _hairSprite.Modulate;
         AddChild(_hairSprite);
 
         _collisionShape = new CollisionShape3D();
@@ -207,6 +212,8 @@ public partial class PersonView : Area3D, IHoverable
         // chose, which is exactly what used to leave sprites lit forever (see HoverArbiter).
         // Losing hover is settled once a frame instead, by IsStillUnderCursor below.
         InputEvent += OnInputEvent;
+
+        ApplyTints();
     }
 
     public override void _ExitTree() => _hover.Forget(this);
@@ -220,12 +227,10 @@ public partial class PersonView : Area3D, IHoverable
 
         _isHovered = hovered;
         var scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
-        _sprite.Modulate = hovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
         _sprite.Scale = scale;
-        _clothingSprite.Modulate = hovered ? HoverHighlight.TintFor(_normalClothingModulate) : _normalClothingModulate;
         _clothingSprite.Scale = scale;
-        _hairSprite.Modulate = hovered ? HoverHighlight.TintFor(_normalHairModulate) : _normalHairModulate;
         _hairSprite.Scale = scale;
+        ApplyTints();
     }
 
     // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
@@ -257,6 +262,15 @@ public partial class PersonView : Area3D, IHoverable
     public override void _Process(double delta)
     {
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
+
+        // No SetProcess gating around this the way the other views have: this one is already
+        // processing every frame for the walk cycle, and there are dozens of people, not the
+        // thousands there are of resource nodes.
+        if (_remembered.IsFading)
+        {
+            _remembered.Advance((float)delta);
+            ApplyTints();
+        }
 
         if (WalkCycle.IsWalking(Position, _targetPosition))
         {
@@ -309,16 +323,14 @@ public partial class PersonView : Area3D, IHoverable
         BillboardSprite.Apply(_clothingSprite, isAlive ? _clothingAliveTexturePath : _clothingDeadTexturePath, Height, _clothingColor);
         BillboardSprite.Apply(_hairSprite, isAlive ? _hairAliveTexturePath : _hairDeadTexturePath, Height, _hairColor);
 
-        _normalModulate = isAlive ? Colors.White : DeadTint;
-        _normalClothingModulate = isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint;
-        _normalHairModulate = isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint;
+        _baseModulate = isAlive ? Colors.White : DeadTint;
+        _baseClothingModulate = isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint;
+        _baseHairModulate = isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint;
 
-        // Re-derives from the (now updated) normal colours rather than skipping this while
-        // hovered - otherwise dying while already hovered would leave the old alive-hover
-        // tint showing until the next real hover state change.
-        _sprite.Modulate = _isHovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
-        _clothingSprite.Modulate = _isHovered ? HoverHighlight.TintFor(_normalClothingModulate) : _normalClothingModulate;
-        _hairSprite.Modulate = _isHovered ? HoverHighlight.TintFor(_normalHairModulate) : _normalHairModulate;
+        // Re-painted from the (now updated) base colours rather than skipped while hovered or
+        // mid-fade - otherwise dying while already hovered left the old alive-hover tint
+        // showing until the next real hover state change.
+        ApplyTints();
 
         // The rotated "lying down" texture already reads as flat on the ground - any
         // leftover walk bob/rock from mid-stride would tilt it off that, so clear it once
@@ -338,6 +350,28 @@ public partial class PersonView : Area3D, IHoverable
         // collision box and the marker's resting height both need to follow it.
         _currentBodyTexturePath = isAlive ? _aliveTexturePath : _deadTexturePath;
         ApplyExtent(_currentBodyTexturePath);
+    }
+
+    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration). Only aims the
+    // fade; the tint itself moves a frame at a time in _Process, which is the whole point
+    // for a corpse: the group walking away from where someone fell should read as the place
+    // slowly passing into memory, not as the body changing colour the instant the last
+    // person turns their back.
+    public void SetRemembered(bool remembered) => _remembered.Retarget(remembered);
+
+    // Straight to the end state, no fade - nothing was ever on screen to fade out of. See
+    // ResourceNodeView.SnapRemembered.
+    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
+
+    // Every layer's displayed colour, always re-derived from its own base (which is what the
+    // layer looks like in full sight, alive or dead) rather than from whatever is on the
+    // sprite now, so nothing compounds. The single place any of this view's layers gets
+    // written, so hover, dying and the fog fade cannot disagree about what the other two did.
+    private void ApplyTints()
+    {
+        SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, _isHovered);
+        SpriteLayerTint.Apply(_clothingSprite, _baseClothingModulate, _remembered, _isHovered);
+        SpriteLayerTint.Apply(_hairSprite, _baseHairModulate, _remembered, _isHovered);
     }
 
     // How high above this person's own origin their actual head sits - for Main's

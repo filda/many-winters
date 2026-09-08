@@ -22,6 +22,15 @@ public sealed class WorldPresenter
     private readonly HoverArbiter _hover = new();
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
+    private readonly Dictionary<GraveId, GraveView> _graveViews = new();
+    private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
+
+    // Read every tick by RefreshExploration to ask where each entity currently stands
+    // relative to the fog. The world's own live collections, not copies - a view created
+    // later (a new grave, someone born) is in here the moment the simulation adds it.
+    private readonly IReadOnlyList<Person> _people;
+    private readonly IReadOnlyList<Grave> _graves;
+    private readonly IReadOnlyList<Building> _buildings;
 
     // Fog of war: a node outside anyone's ever-explored area gets no Godot view at
     // all yet, not just a hidden one - creating a ResourceNodeView for all ~17,000+ decoration-
@@ -48,6 +57,9 @@ public sealed class WorldPresenter
         _sampleHeight = sampleHeight;
         _resourceCatalog = world.Configuration.ResourceCatalog;
         _exploration = exploration;
+        _people = world.People;
+        _graves = world.Graves;
+        _buildings = world.Buildings;
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
@@ -141,6 +153,10 @@ public sealed class WorldPresenter
             Name = person.Name,
             Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
         };
+        // Snapped, not faded: whatever the fog does over a view's own spot, it was doing
+        // before the view existed, so there is nothing to fade from. Called before the view
+        // enters the tree, which is why SnapRemembered may not touch a node of its own.
+        view.SnapRemembered(IsOutOfSight(person.Position));
         _container.AddChild(view);
         _personViews[person.Id] = view;
     }
@@ -161,24 +177,69 @@ public sealed class WorldPresenter
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
         var view = new ResourceNodeView(node, canFell, _hover, _onResourceNodeSelected, _onMissedClick);
         view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
-        view.SetRemembered(!_exploration.IsVisible(ExplorationState.CellFor(node.Position)));
+        view.SnapRemembered(IsOutOfSight(node.Position));
         _container.AddChild(view);
         _resourceNodeViews[node.Id] = view;
     }
 
     // Called once per simulation tick (Main._Process's tick block), and again the moment the
     // "Reveal Map" toggle flips - cheap enough at that cadence (a HashSet lookup per
-    // pending/created node, not per frame) even at decoration scale. Three jobs: promote any
-    // still-pending node whose cell has now been explored to a real view, keep every
-    // already-created view's "remembered" (explored, not currently visible) tint in sync as
-    // the group wanders in and out of sight of it, and send a view whose cell is *not*
-    // explored back to pending. That last one only ever happens when the "Reveal Map"
-    // toggle is switched off again (ExplorationState itself never un-explores a cell): the
-    // fog shaders assume nothing is instantiated under unexplored ground - the boundary is
-    // deliberately soft on the unexplored side, and pixels that reconstruct implausibly
-    // far are skipped - so a view left standing there showed through as a fogged silhouette
-    // instead of disappearing the way it never existed before the reveal.
+    // pending/created view, not per frame) even at decoration scale, and each view's own
+    // early-out means the overwhelming majority of these calls end there (see
+    // RememberedFade.Retarget).
+    //
+    // Every family of view goes through here, not just resource nodes: a grave or a hut the
+    // group has walked away from used to stay at full brightness in the middle of sepia
+    // trees, and a corpse left where it fell stayed as bright as the living. What each view
+    // then does with it - the fade, and how the tint composes with hover or with being dead -
+    // is the view's own business.
     public void RefreshExploration()
+    {
+        RefreshResourceNodeExploration();
+
+        // People are read from the world rather than from _personViews because a person
+        // moves: the cell to ask about is wherever they are this tick. For anyone alive the
+        // answer is always "in sight" - they are one of the eyes the fog is drawn from - so
+        // this only ever really dims the dead.
+        foreach (var person in _people)
+        {
+            if (_personViews.TryGetValue(person.Id, out var personView))
+            {
+                personView.SetRemembered(IsOutOfSight(person.Position));
+            }
+        }
+
+        foreach (var grave in _graves)
+        {
+            if (_graveViews.TryGetValue(grave.Id, out var graveView))
+            {
+                graveView.SetRemembered(IsOutOfSight(grave.Position));
+            }
+        }
+
+        foreach (var building in _buildings)
+        {
+            if (_buildingViews.TryGetValue(building.Id, out var buildingView))
+            {
+                buildingView.SetRemembered(IsOutOfSight(building.Position));
+            }
+        }
+    }
+
+    private bool IsOutOfSight(Position position) =>
+        !_exploration.IsVisible(ExplorationState.CellFor(position));
+
+    // The resource nodes' own two extra jobs on top of the tint every view gets: promote any
+    // still-pending node whose cell has now been explored to a real view, and send a view
+    // whose cell is *not* explored back to pending. That last one only ever happens when the
+    // "Reveal Map" toggle is switched off again (ExplorationState itself never un-explores a
+    // cell): the fog shaders assume nothing is instantiated under unexplored ground - the
+    // boundary is deliberately soft on the unexplored side, and pixels that reconstruct
+    // implausibly far are skipped - so a view left standing there showed through as a fogged
+    // silhouette instead of disappearing the way it never existed before the reveal. Graves
+    // and buildings need none of this: both are built by the group's own hands, so their cell
+    // is explored before they exist and stays that way.
+    private void RefreshResourceNodeExploration()
     {
         if (_pendingResourceNodes.Count > 0)
         {
@@ -212,7 +273,7 @@ public sealed class WorldPresenter
                 continue;
             }
 
-            view.SetRemembered(!_exploration.IsVisible(cell));
+            view.SetRemembered(IsOutOfSight(view.Node.Position));
         }
 
         if (backToPending is not null)
@@ -232,7 +293,9 @@ public sealed class WorldPresenter
         {
             Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),
         };
+        view.SnapRemembered(IsOutOfSight(building.Position));
         _container.AddChild(view);
+        _buildingViews[building.Id] = view;
     }
 
     private void CreateGraveView(Grave grave)
@@ -241,6 +304,8 @@ public sealed class WorldPresenter
         {
             Position = WorldSpace.ToRender(grave.Position, GraveView.Size / 2f, _sampleHeight),
         };
+        view.SnapRemembered(IsOutOfSight(grave.Position));
+        _graveViews[grave.Id] = view;
         _container.AddChild(view);
     }
 }

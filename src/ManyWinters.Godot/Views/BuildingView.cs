@@ -15,6 +15,13 @@ public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : 
     private const float MaxScale = 1.1f;
     private const float ShadowDiameter = 3.5f;
 
+    private Sprite3D _sprite = null!;
+    private Color _baseModulate;
+
+    // Same fade as every other view (see RememberedFade): a hut the group has walked away
+    // from is a place they remember standing there, not one they are currently looking at.
+    private readonly RememberedFade _remembered = new();
+
     public override void _Ready()
     {
         var fallbackColor = EntityVisualVariation.Tint(ColorFor(kind), buildingId.Seed);
@@ -31,8 +38,44 @@ public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : 
         groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
         AddChild(groundShadow);
 
-        AddChild(BillboardSprite.Create(TexturePaths.ForBuilding(kind), Size, fallbackColor));
+        _sprite = BillboardSprite.Create(TexturePaths.ForBuilding(kind), Size, fallbackColor);
+        _baseModulate = _sprite.Modulate;
+        AddChild(_sprite);
+
+        // Processing frames only while a fade is actually running - a settled camp is a
+        // handful of huts that sit unchanged for hours of play.
+        SetProcess(_remembered.IsFading);
+        ApplyTint();
     }
+
+    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - aims the fade,
+    // which then moves a frame at a time in _Process.
+    public void SetRemembered(bool remembered)
+    {
+        if (!_remembered.Retarget(remembered))
+        {
+            return;
+        }
+
+        SetProcess(true);
+    }
+
+    // Straight to the end state, no fade. See ResourceNodeView.SnapRemembered.
+    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
+
+    public override void _Process(double delta)
+    {
+        var stillFading = _remembered.Advance((float)delta);
+        ApplyTint();
+        if (!stillFading)
+        {
+            SetProcess(false);
+        }
+    }
+
+    // A building is neither hoverable nor selectable yet, so there is no hover state to
+    // compose with here.
+    private void ApplyTint() => SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, hovered: false);
 
     private static Color ColorFor(BuildingKindId kind)
     {

@@ -57,14 +57,6 @@ public partial class ResourceNodeView : Area3D, IHoverable
     private const int BranchVariantSalt = 407;
     private const int BranchBrightnessSalt = 408;
 
-    // Fog of war's "remembered" tier - explored, but outside anyone's current sight
-    // (see ExplorationState) - reads as a sepia-ish memory of the place rather than what's
-    // actually there right now, same spirit as docs/ZemanConceptArt.png's own "Remembered"
-    // panel. Multiplied into each layer's own base modulate (see _baseModulate/_Ready), not a
-    // flat gray - a componentwise multiply that also darkens slightly keeps a warm, aged tone
-    // rather than looking merely faded.
-    private static readonly Color RememberedTint = new(0.78f, 0.68f, 0.52f);
-
     private readonly ResourceNode _node;
     private readonly ResourceKindId _kind;
 
@@ -81,18 +73,19 @@ public partial class ResourceNodeView : Area3D, IHoverable
     private Sprite3D _sprite = null!;
     private string _spriteTexturePath = null!;
     private Color _baseModulate;
-    private Color _normalModulate;
     private Sprite3D? _trunk;
     private string? _trunkTexturePath;
     private Color _trunkBaseModulate;
-    private Color _trunkNormalModulate;
     private Sprite3D? _branches;
     private string? _branchesTexturePath;
     private Color _branchesBaseModulate;
-    private Color _branchesNormalModulate;
     private Sprite3D? _fruitOverlay;
+    private Color _fruitBaseModulate;
     private bool _isHovered;
-    private bool _isRemembered;
+
+    // How far the group's memory has taken over from actually seeing this node, and the fade
+    // that carries it there - shared with every other view, so all of them dim alike.
+    private readonly RememberedFade _remembered = new();
 
     // Internal for the same reason as PersonView's own constructor - see there.
     internal ResourceNodeView(ResourceNode node, bool canFell, HoverArbiter hover, Action<ResourceNode> onSelected, InputEventEventHandler onMissedClick)
@@ -157,7 +150,6 @@ public partial class ResourceNodeView : Area3D, IHoverable
             _trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
             _trunk.FlipH = mirrored;
             _trunkBaseModulate = _trunk.Modulate;
-            _trunkNormalModulate = _trunkBaseModulate;
             AddChild(_trunk);
 
             _spriteTexturePath = CanopyTexturePathFor();
@@ -178,7 +170,6 @@ public partial class ResourceNodeView : Area3D, IHoverable
                 _branches.Modulate *= LayerBrightnessVariation(BranchBrightnessSalt);
                 _branches.FlipH = mirrored;
                 _branchesBaseModulate = _branches.Modulate;
-                _branchesNormalModulate = _branchesBaseModulate;
                 AddChild(_branches);
             }
         }
@@ -190,7 +181,6 @@ public partial class ResourceNodeView : Area3D, IHoverable
 
         _sprite.FlipH = mirrored;
         _baseModulate = _sprite.Modulate;
-        _normalModulate = _baseModulate;
         AddChild(_sprite);
 
         // Composite sprite: the tree itself never changes, but whether it's currently
@@ -207,6 +197,7 @@ public partial class ResourceNodeView : Area3D, IHoverable
                 SpriteBase3D.AlphaCutMode.Disabled,
                 FruitOverlayRenderPriority);
             _fruitOverlay.FlipH = mirrored;
+            _fruitBaseModulate = _fruitOverlay.Modulate;
             AddChild(_fruitOverlay);
         }
 
@@ -240,6 +231,13 @@ public partial class ResourceNodeView : Area3D, IHoverable
         // chose, which is exactly what used to leave sprites lit forever (see HoverArbiter).
         // Losing hover is settled once a frame instead, by IsStillUnderCursor below.
         InputEvent += OnInputEvent;
+
+        // A node can be born already dimmed - WorldPresenter creates one the moment its cell
+        // becomes explored, which for a world loaded from a save is somewhere the group
+        // walked long ago (see SnapRemembered). Frames are processed only while a fade is
+        // actually running: there are thousands of these once decorations are resource nodes.
+        SetProcess(_remembered.IsFading);
+        ApplyTints();
     }
 
     public override void _ExitTree() => _hover.Forget(this);
@@ -252,54 +250,84 @@ public partial class ResourceNodeView : Area3D, IHoverable
         }
 
         _isHovered = hovered;
-        _sprite.Modulate = hovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
-        _sprite.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+        var scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+        _sprite.Scale = scale;
 
         // The trunk (and branches) highlight together with the canopy - hover is a single
         // "this whole tree is what you're pointing at" signal, unlike occlusion fade where
         // the layers deliberately behave differently.
         if (_trunk is not null)
         {
-            _trunk.Modulate = hovered ? HoverHighlight.TintFor(_trunkNormalModulate) : _trunkNormalModulate;
-            _trunk.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+            _trunk.Scale = scale;
         }
 
         if (_branches is not null)
         {
-            _branches.Modulate = hovered ? HoverHighlight.TintFor(_branchesNormalModulate) : _branchesNormalModulate;
-            _branches.Scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
+            _branches.Scale = scale;
         }
+
+        // The fruit grows with the canopy it hangs on, which it did not before: a hovered
+        // tree swelled by a tenth around fruit that stayed exactly where it was.
+        if (_fruitOverlay is not null)
+        {
+            _fruitOverlay.Scale = scale;
+        }
+
+        ApplyTints();
     }
 
-    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - explored, but nobody
-    // currently has this node in sight. Recomputes each layer's own _...NormalModulate from its
-    // fixed _...BaseModulate (the brightness-jitter variation baked in at _Ready, never
-    // touched again) so repeated calls - the exploration state can flip back and forth as the
-    // group wanders - never compound the tint. Re-applies whatever's currently showing
-    // (hovered or not) afterward, since SetHovered's own early-return would otherwise skip
-    // refreshing the displayed color when the hover state itself hasn't changed.
+    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - explored, but
+    // nobody currently has this node in sight. Only aims the fade: the tint itself moves a
+    // frame at a time in _Process, so a place passing out of sight dims over about a second
+    // instead of switching in one frame. Called once a tick for every live view, so the
+    // no-change case has to cost nothing - which is what RememberedFade.Retarget answers.
     public void SetRemembered(bool remembered)
     {
-        if (remembered == _isRemembered)
+        if (!_remembered.Retarget(remembered))
         {
             return;
         }
 
-        _isRemembered = remembered;
-        var tint = remembered ? RememberedTint : Colors.White;
-        _normalModulate = _baseModulate * tint;
-        _trunkNormalModulate = _trunkBaseModulate * tint;
-        _branchesNormalModulate = _branchesBaseModulate * tint;
+        SetProcess(true);
+    }
 
-        _sprite.Modulate = _isHovered ? HoverHighlight.TintFor(_normalModulate) : _normalModulate;
+    // Straight to the end state, no fade - for a view created for somewhere the group has
+    // already left, where there was never anything on screen to fade out of. Touches no node
+    // of its own, so WorldPresenter can call it before this view enters the scene tree.
+    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
+
+    public override void _Process(double delta)
+    {
+        var stillFading = _remembered.Advance((float)delta);
+        ApplyTints();
+        if (!stillFading)
+        {
+            SetProcess(false);
+        }
+    }
+
+    // Every layer's displayed colour, always re-derived from its own fixed base modulate (the
+    // brightness jitter baked in at _Ready and never touched again) so repeated calls cannot
+    // compound a tint. The single place any of this view's layers gets written, so hover, the
+    // fog fade and the first paint in _Ready cannot disagree about what the other two did.
+    private void ApplyTints()
+    {
+        SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, _isHovered);
         if (_trunk is not null)
         {
-            _trunk.Modulate = _isHovered ? HoverHighlight.TintFor(_trunkNormalModulate) : _trunkNormalModulate;
+            SpriteLayerTint.Apply(_trunk, _trunkBaseModulate, _remembered, _isHovered);
         }
 
         if (_branches is not null)
         {
-            _branches.Modulate = _isHovered ? HoverHighlight.TintFor(_branchesNormalModulate) : _branchesNormalModulate;
+            SpriteLayerTint.Apply(_branches, _branchesBaseModulate, _remembered, _isHovered);
+        }
+
+        // The fruit fades with the tree, which it did not before: a remembered apple tree
+        // kept a canopy full of bright fruit hanging over sepia branches.
+        if (_fruitOverlay is not null)
+        {
+            SpriteLayerTint.Apply(_fruitOverlay, _fruitBaseModulate, _remembered, _isHovered);
         }
     }
 

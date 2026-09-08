@@ -1,5 +1,6 @@
 using Godot;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Sprites;
 using ManyWinters.Godot.Interaction;
 
@@ -18,6 +19,13 @@ public partial class GraveView(Grave grave, Action<Grave> onSelected, CollisionO
 
     private Sprite3D _sprite = null!;
     private string _texturePath = null!;
+    private Color _baseModulate;
+
+    // A grave is the one thing in the world the group is meant to come back to, so it is also
+    // the one where staying at full brightness after they walked away was most obviously
+    // wrong - a bright headstone standing in a field of sepia trees. Same fade as everything
+    // else now (see RememberedFade).
+    private readonly RememberedFade _remembered = new();
 
     public override void _Ready()
     {
@@ -31,6 +39,7 @@ public partial class GraveView(Grave grave, Action<Grave> onSelected, CollisionO
         AddChild(groundShadow);
 
         _sprite = BillboardSprite.Create(_texturePath, Size, fallbackColor);
+        _baseModulate = _sprite.Modulate;
         AddChild(_sprite);
 
         // Sized (and centered) to the actual drawn mound/stone, not the full square canvas.
@@ -42,7 +51,42 @@ public partial class GraveView(Grave grave, Action<Grave> onSelected, CollisionO
         });
 
         InputEvent += OnInputEvent;
+
+        // Graves outlive the group's attention by design, so one is routinely created and
+        // then left alone for a long time - and can be created already out of sight (see
+        // SnapRemembered). Frames are processed only while a fade is actually running.
+        SetProcess(_remembered.IsFading);
+        ApplyTint();
     }
+
+    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - aims the fade,
+    // which then moves a frame at a time in _Process.
+    public void SetRemembered(bool remembered)
+    {
+        if (!_remembered.Retarget(remembered))
+        {
+            return;
+        }
+
+        SetProcess(true);
+    }
+
+    // Straight to the end state, no fade. See ResourceNodeView.SnapRemembered.
+    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
+
+    public override void _Process(double delta)
+    {
+        var stillFading = _remembered.Advance((float)delta);
+        ApplyTint();
+        if (!stillFading)
+        {
+            SetProcess(false);
+        }
+    }
+
+    // No hover state to compose with: a grave is clickable but never highlighted (see
+    // HoverArbiter for what does get a highlight).
+    private void ApplyTint() => SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, hovered: false);
 
     private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
