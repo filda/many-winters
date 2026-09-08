@@ -14,8 +14,8 @@ internal interface IHoverable
 // There is one cursor, so at most one thing can be hovered - but nothing in the scene used to
 // enforce that. Each view tracked its own hover flag and cleared it on Godot's own
 // MouseExited, which only ever reaches the single collider Godot's picking chose. Two ways
-// that left a sprite lit forever, both of them everyday (the stuck-highlight bug in
-// docs/todo/todo.md - a crowd of people still tinted yellow long after the cursor left them):
+// that left a sprite lit forever, both of them everyday (the stuck-highlight bug this was
+// written for - a crowd of people still tinted yellow long after the cursor left them):
 //
 //   - A view highlighted through HoverRescue - the cursor is genuinely over its opaque pixels,
 //     but some other entity's broad-phase box won the pick - never received Godot's
