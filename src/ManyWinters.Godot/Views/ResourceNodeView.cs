@@ -2,11 +2,16 @@ using Godot;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Sprites;
-using ManyWinters.Godot.Interaction;
 
 namespace ManyWinters.Godot.Views;
 
-public partial class ResourceNodeView : Area3D, IHoverable
+// A resource - a berry bush, a mushroom, a standing tree - drawn out of up to four
+// layers so the occlusion fade can ghost a canopy while leaving its trunk solid, and so
+// a tree can grow fruit without a second whole texture. Everything about being a sprite
+// standing in the world (hover, clicks, the fog fade, the ground shadow, the collision
+// shape cut to the silhouette) comes from SpriteEntityView; what is here is which layers
+// this kind has, where their images live, and what its seed varies.
+internal partial class ResourceNodeView : SpriteEntityView
 {
     // Ordinary resources (berries, mushrooms, tubers...) read fine as a small icon sitting on
     // the ground. A fellable one is meant to be an actual tree standing in the world - a
@@ -57,72 +62,55 @@ public partial class ResourceNodeView : Area3D, IHoverable
     private const int BranchVariantSalt = 407;
     private const int BranchBrightnessSalt = 408;
 
+    // For a kind with no .tres visual definition of its own - a placeholder green, only
+    // ever seen if its art is missing too.
+    private static readonly Color DefaultColor = new(0.2f, 0.8f, 0.2f);
+
     private readonly ResourceNode _node;
     private readonly ResourceKindId _kind;
 
     // For WorldPresenter, which needs the node back when a view has to return to pending
     // (see WorldPresenter.RefreshExploration).
     public ResourceNode Node => _node;
-    private readonly bool _canFell;
-    private readonly HoverArbiter _hover;
     private readonly Action<ResourceNode> _onSelected;
-    private readonly InputEventEventHandler _onMissedClick;
     private readonly Color _baseColor;
     private int _variantIndex;
     private int _branchVariantIndex;
-    private Sprite3D _sprite = null!;
-    private string _spriteTexturePath = null!;
-    private Color _baseModulate;
-    private Sprite3D? _trunk;
-    private string? _trunkTexturePath;
-    private Color _trunkBaseModulate;
-    private Sprite3D? _branches;
-    private string? _branchesTexturePath;
-    private Color _branchesBaseModulate;
-    private Sprite3D? _fruitOverlay;
-    private Color _fruitBaseModulate;
-    private bool _isHovered;
 
-    // How far the group's memory has taken over from actually seeing this node, and the fade
-    // that carries it there - shared with every other view, so all of them dim alike.
-    private readonly RememberedFade _remembered = new();
+    // The only layer this view keeps a handle on after building itself: whether the tree is
+    // bearing fruit changes while it stands there (see SetHasFruit). Tinting, scaling,
+    // measuring and picking against all of the layers is SpriteEntityView's job.
+    private SpriteLayer? _fruit;
 
     // Internal for the same reason as PersonView's own constructor - see there.
     internal ResourceNodeView(ResourceNode node, bool canFell, HoverArbiter hover, Action<ResourceNode> onSelected, InputEventEventHandler onMissedClick)
+        : base(NominalHeightFor(node.Kind, canFell), hover, onMissedClick)
     {
         _node = node;
         _kind = node.Kind;
-        _canFell = canFell;
-        _hover = hover;
         _onSelected = onSelected;
-        _onMissedClick = onMissedClick;
-
-        var visual = LoadVisualDefinition(_kind);
-        _baseColor = visual?.Color ?? new Color(0.2f, 0.8f, 0.2f);
-        Size = visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
+        _baseColor = LoadVisualDefinition(node.Kind)?.Color ?? DefaultColor;
     }
 
-    public float Size { get; }
+    // What WorldPresenter places this node by - it sits the origin half a height above the
+    // ground - and the height every one of the layers below is created at.
+    public float Size => NominalHeight;
 
-    public override void _Ready()
+    // A kind's own authored height where it has one, otherwise a standing tree's or a ground
+    // icon's default. Static because the base class needs the answer before this view has any
+    // fields of its own.
+    private static float NominalHeightFor(ResourceKindId kind, bool canFell)
     {
-        InputRayPickable = true;
+        var visual = LoadVisualDefinition(kind);
+        return visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
+    }
 
+    protected override void Build()
+    {
         var fallbackColor = EntityVisualVariation.Tint(_baseColor, _node.Id.Seed);
-        var widthScale = EntityVisualVariation.RangeFor(_node.Id.Seed, WidthScaleSalt, MinScale, MaxScale);
-        var heightScale = EntityVisualVariation.RangeFor(_node.Id.Seed, HeightScaleSalt, MinScale, MaxScale);
-        Scale = new Vector3(widthScale, heightScale, widthScale);
-
-        // WorldPresenter positioned this node's own origin at groundHeight + Size/2,
-        // assuming Scale stayed 1 - the sprite (centered, spanning local Y from -Size/2 to
-        // +Size/2) then has its bottom edge land exactly on the ground. Scale.Y above
-        // multiplies that -Size/2 by heightScale before it's added to Position, so a
-        // shorter tree (heightScale < 1) floats with a visible gap under it and a taller
-        // one (> 1) sinks in - the very "trees clearly in the air" a live check turned up.
-        // Shifting this node's own Position by the same amount the scale just displaced the
-        // ground-contact point cancels it back out, regardless of which way heightScale
-        // went.
-        Position += new Vector3(0f, (Size / 2f) * (heightScale - 1f), 0f);
+        ScaleAndKeepGroundContact(
+            EntityVisualVariation.RangeFor(_node.Id.Seed, WidthScaleSalt, MinScale, MaxScale),
+            EntityVisualVariation.RangeFor(_node.Id.Seed, HeightScaleSalt, MinScale, MaxScale));
 
         // A coin flip, not a continuous value - shared by every layer below (trunk, canopy,
         // fruit) so they stay aligned with each other; flipping trunk and canopy
@@ -130,9 +118,7 @@ public partial class ResourceNodeView : Area3D, IHoverable
         // asymmetric shape.
         var mirrored = EntityVisualVariation.RangeFor(_node.Id.Seed, MirrorSalt, 0f, 1f) < 0.5f;
 
-        var groundShadow = GroundShadow.Create(Size * ShadowDiameterRatio);
-        groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
-        AddChild(groundShadow);
+        SetUpGroundShadow(Size * ShadowDiameterRatio);
 
         // A tree with a trunk/canopy split (art/generate_sprites.py's split_trunk_canopy)
         // renders as two separately-fadeable layers instead of one flattened sprite, so
@@ -140,21 +126,25 @@ public partial class ResourceNodeView : Area3D, IHoverable
         // stay solid" rule) never does - see Main.ComputeOccludingSprites. Falls back to
         // a single combined sprite for any kind without split art (non-tree resources,
         // or a future tree kind added before its split assets exist).
+        //
+        // Registered trunk first, then branches, then the canopy on top of both: all three
+        // sit at the same render priority and roughly the same depth, so their order in the
+        // tree is what settles which draws over which.
+        string canopyTexturePath;
+        Color? canopyBrightness = null;
         if (HasTrunkCanopySplit(_kind))
         {
             var variantCount = TreeVariantCount(_kind);
             _variantIndex = variantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Seed, TreeVariantSalt, variantCount) : 0;
 
-            _trunkTexturePath = TrunkTexturePathFor();
-            _trunk = BillboardSprite.Create(_trunkTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
-            _trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
-            _trunk.FlipH = mirrored;
-            _trunkBaseModulate = _trunk.Modulate;
-            AddChild(_trunk);
+            var trunkTexturePath = TrunkTexturePathFor();
+            var trunk = BillboardSprite.Create(trunkTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
+            trunk.Modulate *= LayerBrightnessVariation(TrunkBrightnessSalt);
+            trunk.FlipH = mirrored;
+            Register(trunk, trunkTexturePath);
 
-            _spriteTexturePath = CanopyTexturePathFor();
-            _sprite = BillboardSprite.Create(_spriteTexturePath, Size, fallbackColor);
-            _sprite.Modulate *= LayerBrightnessVariation(CanopyBrightnessSalt);
+            canopyTexturePath = CanopyTexturePathFor();
+            canopyBrightness = LayerBrightnessVariation(CanopyBrightnessSalt);
 
             // Chosen independently of the trunk/canopy variant above (own salt) - see
             // BranchVariantSalt's own comment for why. Bare twig tips poking past the
@@ -165,170 +155,53 @@ public partial class ResourceNodeView : Area3D, IHoverable
                 var branchVariantCount = BranchVariantCount(_kind);
                 _branchVariantIndex = branchVariantCount > 1 ? EntityVisualVariation.IndexFor(_node.Id.Seed, BranchVariantSalt, branchVariantCount) : 0;
 
-                _branchesTexturePath = BranchesTexturePathFor();
-                _branches = BillboardSprite.Create(_branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
-                _branches.Modulate *= LayerBrightnessVariation(BranchBrightnessSalt);
-                _branches.FlipH = mirrored;
-                _branchesBaseModulate = _branches.Modulate;
-                AddChild(_branches);
+                var branchesTexturePath = BranchesTexturePathFor();
+                var branches = BillboardSprite.Create(branchesTexturePath, Size, fallbackColor, excludeFromOcclusionFade: true);
+                branches.Modulate *= LayerBrightnessVariation(BranchBrightnessSalt);
+                branches.FlipH = mirrored;
+                Register(branches, branchesTexturePath);
             }
         }
         else
         {
-            _spriteTexturePath = TexturePathFor();
-            _sprite = BillboardSprite.Create(_spriteTexturePath, Size, fallbackColor);
+            canopyTexturePath = TexturePathFor();
         }
 
-        _sprite.FlipH = mirrored;
-        _baseModulate = _sprite.Modulate;
-        AddChild(_sprite);
+        var canopy = BillboardSprite.Create(canopyTexturePath, Size, fallbackColor);
+        if (canopyBrightness is { } brightness)
+        {
+            canopy.Modulate *= brightness;
+        }
+
+        canopy.FlipH = mirrored;
+        Register(canopy, canopyTexturePath);
 
         // Composite sprite: the tree itself never changes, but whether it's currently
         // bearing fruit does (see GatherCommand/WorldState.Advance) - a separate overlay
         // layer means that doesn't need its own whole "bare tree" texture per kind. Driven by
         // which art files actually exist, not by CanFell - a fellable former-decoration tree
         // (conifer/deciduous/bush) has just the one plain sprite, no separate fruiting state.
+        //
+        // Not a picking layer: the fruit is drawn inside the canopy's own silhouette, so it
+        // has no pixels of its own to be pointed at and nothing to add to the click rectangle.
         if (HasFruitOverlay(_kind))
         {
-            _fruitOverlay = BillboardSprite.Create(
-                FruitOverlayTexturePath(),
+            var fruitTexturePath = FruitOverlayTexturePath();
+            var fruit = BillboardSprite.Create(
+                fruitTexturePath,
                 Size,
                 fallbackColor,
                 SpriteBase3D.AlphaCutMode.Disabled,
                 FruitOverlayRenderPriority);
-            _fruitOverlay.FlipH = mirrored;
-            _fruitBaseModulate = _fruitOverlay.Modulate;
-            AddChild(_fruitOverlay);
-        }
-
-        // Sized (and centered) to the sprite's actual drawn silhouette, not its full square
-        // canvas - a canopy or a small icon doesn't fill the whole nominal Size, so a
-        // collision box that size would hover/click-trigger well outside the visible shape.
-        // A split tree has no single combined reference image any more (each shape variant
-        // only exists as separate trunk/canopy files) - the true silhouette is the union of
-        // both layers' own extents, which is exactly what the old single combined image's
-        // extent already amounted to.
-        var extent = SpriteVisibleExtent.Compute(_spriteTexturePath, Size);
-        if (_trunk is not null)
-        {
-            extent = SpriteExtents.Combine(extent, SpriteVisibleExtent.Compute(_trunkTexturePath!, Size));
-        }
-
-        if (_branches is not null)
-        {
-            extent = SpriteExtents.Combine(extent, SpriteVisibleExtent.Compute(_branchesTexturePath!, Size));
-        }
-        // The extent is computed from the unflipped texture - a mirrored sprite's visible
-        // content sits the same distance from center but on the opposite side.
-        var centerXOffset = mirrored ? -extent.CenterXOffset : extent.CenterXOffset;
-        AddChild(new CollisionShape3D
-        {
-            Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) },
-            Position = new Vector3(centerXOffset, extent.CenterYOffset, 0),
-        });
-
-        // No MouseExited here: Godot only ever sends that to the one collider its own picking
-        // chose, which is exactly what used to leave sprites lit forever (see HoverArbiter).
-        // Losing hover is settled once a frame instead, by IsStillUnderCursor below.
-        InputEvent += OnInputEvent;
-
-        // A node can be born already dimmed - WorldPresenter creates one the moment its cell
-        // becomes explored, which for a world loaded from a save is somewhere the group
-        // walked long ago (see SnapRemembered). Frames are processed only while a fade is
-        // actually running: there are thousands of these once decorations are resource nodes.
-        SetProcess(_remembered.IsFading);
-        ApplyTints();
-    }
-
-    public override void _ExitTree() => _hover.Forget(this);
-
-    public void ShowHovered(bool hovered)
-    {
-        if (hovered == _isHovered)
-        {
-            return;
-        }
-
-        _isHovered = hovered;
-        var scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
-        _sprite.Scale = scale;
-
-        // The trunk (and branches) highlight together with the canopy - hover is a single
-        // "this whole tree is what you're pointing at" signal, unlike occlusion fade where
-        // the layers deliberately behave differently.
-        if (_trunk is not null)
-        {
-            _trunk.Scale = scale;
-        }
-
-        if (_branches is not null)
-        {
-            _branches.Scale = scale;
-        }
-
-        // The fruit grows with the canopy it hangs on, which it did not before: a hovered
-        // tree swelled by a tenth around fruit that stayed exactly where it was.
-        if (_fruitOverlay is not null)
-        {
-            _fruitOverlay.Scale = scale;
-        }
-
-        ApplyTints();
-    }
-
-    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - explored, but
-    // nobody currently has this node in sight. Only aims the fade: the tint itself moves a
-    // frame at a time in _Process, so a place passing out of sight dims over about a second
-    // instead of switching in one frame. Called once a tick for every live view, so the
-    // no-change case has to cost nothing - which is what RememberedFade.Retarget answers.
-    public void SetRemembered(bool remembered)
-    {
-        if (!_remembered.Retarget(remembered))
-        {
-            return;
-        }
-
-        SetProcess(true);
-    }
-
-    // Straight to the end state, no fade - for a view created for somewhere the group has
-    // already left, where there was never anything on screen to fade out of. Touches no node
-    // of its own, so WorldPresenter can call it before this view enters the scene tree.
-    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
-
-    public override void _Process(double delta)
-    {
-        var stillFading = _remembered.Advance((float)delta);
-        ApplyTints();
-        if (!stillFading)
-        {
-            SetProcess(false);
+            fruit.FlipH = mirrored;
+            _fruit = Register(fruit, fruitTexturePath, picks: false);
         }
     }
 
-    // Every layer's displayed colour, always re-derived from its own fixed base modulate (the
-    // brightness jitter baked in at _Ready and never touched again) so repeated calls cannot
-    // compound a tint. The single place any of this view's layers gets written, so hover, the
-    // fog fade and the first paint in _Ready cannot disagree about what the other two did.
-    private void ApplyTints()
+    protected override bool OnClicked(MouseButton button)
     {
-        SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, _isHovered);
-        if (_trunk is not null)
-        {
-            SpriteLayerTint.Apply(_trunk, _trunkBaseModulate, _remembered, _isHovered);
-        }
-
-        if (_branches is not null)
-        {
-            SpriteLayerTint.Apply(_branches, _branchesBaseModulate, _remembered, _isHovered);
-        }
-
-        // The fruit fades with the tree, which it did not before: a remembered apple tree
-        // kept a canopy full of bright fruit hanging over sepia branches.
-        if (_fruitOverlay is not null)
-        {
-            SpriteLayerTint.Apply(_fruitOverlay, _fruitBaseModulate, _remembered, _isHovered);
-        }
+        _onSelected(_node);
+        return true;
     }
 
     private Color LayerBrightnessVariation(int salt)
@@ -337,62 +210,13 @@ public partial class ResourceNodeView : Area3D, IHoverable
         return new Color(value, value, value);
     }
 
-    // The true silhouette of a split tree is the union of its trunk's and canopy's own
-    // visible extents - equivalent to what a single combined image's extent already was,
-    // since the two are an exact partition of it (see split_trunk_canopy).
-    // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
-    // entity's broad-phase box won the pick instead - see its own doc comment for why that's
-    // not just a hypothetical.
-    public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
-    {
-        var opaque = IsOpaqueOnAnyLayer(camera, worldPosition);
-        _hover.Set(this, opaque);
-        return opaque;
-    }
-
-    // Asked once a frame while this view holds the highlight (HoverArbiter.Revalidate) - the
-    // same per-layer test as above, but from wherever the cursor is right now rather than from
-    // a picking event, since the everyday ways a highlight got stuck consist of no picking
-    // event arriving at all. A cursor over any UI panel counts as off: physics picking never
-    // fires under a Control, so the sprite behind one would otherwise stay lit.
-    public bool IsStillUnderCursor()
-    {
-        var viewport = GetViewport();
-        return viewport.GuiGetHoveredControl() is null
-            && viewport.GetCamera3D() is { } camera
-            && IsOpaqueOnAnyLayerAtScreen(camera, viewport.GetMousePosition());
-    }
-
-    public bool TryClickAt(Camera3D camera, Vector3 worldPosition)
-    {
-        if (!IsOpaqueOnAnyLayer(camera, worldPosition))
-        {
-            return false;
-        }
-
-        _onSelected(_node);
-        return true;
-    }
-
-    // A split tree has no single combined texture any more (see _Ready) - a point counts as
-    // opaque if it lands on any layer's own opaque pixels, since together they reconstruct
-    // exactly the same silhouette a single combined texture used to represent (branches
-    // included - a click on a bare twig tip should still select the tree).
-    private bool IsOpaqueOnAnyLayer(Camera3D camera, Vector3 worldPosition) =>
-        IsOpaqueOnAnyLayerAtScreen(camera, camera.UnprojectPosition(worldPosition));
-
-    private bool IsOpaqueOnAnyLayerAtScreen(Camera3D camera, Vector2 screenPosition) =>
-        (_trunk is not null && SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, _trunk, _trunkTexturePath!))
-        || (_branches is not null && SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, _branches, _branchesTexturePath!))
-        || SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, _sprite, _spriteTexturePath);
-
-    // No-op for a non-tree node (_fruitOverlay stays null) - only fellable kinds have a
-    // fruit layer to show or hide.
+    // No-op for a non-tree node (_fruit stays null) - only kinds with fruit art have a layer
+    // to show or hide.
     public void SetHasFruit(bool hasFruit)
     {
-        if (_fruitOverlay is not null)
+        if (_fruit is not null)
         {
-            _fruitOverlay.Visible = hasFruit;
+            _fruit.Sprite.Visible = hasFruit;
         }
     }
 
@@ -576,42 +400,5 @@ public partial class ResourceNodeView : Area3D, IHoverable
         var definition = ResourceLoader.Exists(path) ? ResourceLoader.Load<ResourceVisualDefinition>(path) : null;
         VisualDefinitionCache[kind] = definition;
         return definition;
-    }
-
-    private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
-    {
-        if (camera is not Camera3D camera3D)
-        {
-            return;
-        }
-
-        switch (@event)
-        {
-            case InputEventMouseMotion:
-                // Nothing opaque here and nothing behind it either means the cursor is over
-                // bare ground showing through, so whatever was lit has been left behind.
-                if (!TryHoverAt(camera3D, position) && !HoverRescue.TryHoverElsewhere(this, camera3D, position))
-                {
-                    _hover.Clear();
-                }
-
-                break;
-            // The broad-phase collision box (see the constructor's Size / SpriteVisibleExtent)
-            // is bigger than the actual silhouette - Godot only delivers a click to the
-            // nearest pickable collider along the ray, so a click landing inside the box but
-            // off the opaque pixels (e.g. on this node's own ground shadow) would otherwise be
-            // silently swallowed here instead of reaching the ground underneath. Try whatever
-            // else is actually at this point first (HoverRescue's click counterpart), only
-            // falling all the way back to a plain ground-click order if nothing there turns
-            // out to be real either.
-            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }:
-                if (!TryClickAt(camera3D, position)
-                    && !HoverRescue.TryClickElsewhere(this, camera3D, position, MouseButton.Left))
-                {
-                    _onMissedClick(camera, @event, position, normal, shapeIdx);
-                }
-
-                break;
-        }
     }
 }

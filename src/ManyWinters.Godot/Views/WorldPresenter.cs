@@ -111,10 +111,12 @@ public sealed class WorldPresenter
     public Vector3? GetPersonGlobalPosition(PersonId id) =>
         _personViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
 
-    // For Main.cs's screen-space selection marker overlay - the real head height above that
-    // position (see PersonView.HeadHeightOffset's own doc comment).
+    // For Main.cs's screen-space selection marker overlay - how far above this person's own
+    // position the top of their drawn silhouette sits (see SpriteEntityView.TopHeightOffset:
+    // content is not necessarily centred in its canvas, so a nominal half-height would float
+    // above or sink below a real head depending on the texture's own margins).
     public float? GetPersonHeadHeightOffset(PersonId id) =>
-        _personViews.TryGetValue(id, out var view) ? view.HeadHeightOffset : null;
+        _personViews.TryGetValue(id, out var view) ? view.TopHeightOffset : null;
 
     // For Main.cs's occlusion fade, to exclude the selection's own sprites from being
     // treated as blocking the view of themselves.

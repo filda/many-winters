@@ -25,4 +25,8 @@
     <ProjectReference Include="..\ManyWinters.Tools\SimulationRunner\ManyWinters.Tools.SimulationRunner.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="StrykerOutput\" />
+  </ItemGroup>
+
 </Project>

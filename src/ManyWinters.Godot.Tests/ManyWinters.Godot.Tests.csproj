@@ -24,4 +24,8 @@
     <ProjectReference Include="..\ManyWinters.Godot\ManyWinters.Godot.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="StrykerOutput\" />
+  </ItemGroup>
+
 </Project>

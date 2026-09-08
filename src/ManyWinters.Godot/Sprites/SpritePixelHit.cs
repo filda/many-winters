@@ -37,18 +37,16 @@ public static class SpritePixelHit
     // antialiased, so a hair of alpha at a silhouette's outer fringe is visually nothing.
     private const float OpaqueAlphaThreshold = 0.1f;
 
-    // spriteCenterOverride lets a caller pin the test plane to a stable anchor instead of the
-    // sprite's own GlobalPosition - PersonView's walk animation nudges the sprite's local
-    // Position by a few centimeters every frame (the bob), which otherwise sweeps the sampled
-    // pixel back and forth across silhouette edges under an unmoving cursor and reads as
-    // hover flickering on and off. No other view animates its sprite's position like this.
-    public static bool IsOpaqueAt(Camera3D camera, Vector3 rayHitPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null) =>
-        IsOpaqueAtScreen(camera, camera.UnprojectPosition(rayHitPosition), sprite, texturePath, spriteCenterOverride);
-
-    // The same test starting from where the cursor actually is on screen, for callers holding
-    // no ray hit at all: HoverArbiter.Revalidate asks "is the cursor still on you" once a
-    // frame without any picking event having happened (see its own doc comment), and a picking
-    // event is the only thing that ever hands out a ray hit position.
+    // Asked from a screen point rather than a world one, because that is what every caller
+    // actually has in common: HoverArbiter.Revalidate has only the cursor (no picking event
+    // ever happened - see its own doc comment), and a view holding a ray hit projects it once
+    // and then tests each of its layers against that same point (SpriteEntityView).
+    //
+    // spriteCenterOverride pins the test plane to a stable anchor instead of the sprite's own
+    // GlobalPosition - PersonView's walk animation nudges its layers' local Position by a few
+    // centimetres every frame (the bob), which otherwise sweeps the sampled pixel back and
+    // forth across silhouette edges under an unmoving cursor and reads as hover flickering on
+    // and off. No other view animates its sprites' positions like this.
     public static bool IsOpaqueAtScreen(Camera3D camera, Vector2 screenPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null)
     {
         // What the player can see through, they can click and hover through: a canopy

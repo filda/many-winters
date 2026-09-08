@@ -2,11 +2,14 @@ using Godot;
 using ManyWinters.Core.Population;
 using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Sprites;
-using ManyWinters.Godot.Interaction;
 
 namespace ManyWinters.Godot.Views;
 
-public partial class PersonView : Area3D, IHoverable
+// A person, drawn paper-doll style: a body with a garment and a hairstyle layered on top,
+// each an independent seeded pick, and each swapped for its lying-down counterpart on death.
+// The walk cycle is the only animation any view has, which is why this is the one that keeps
+// processing frames when nothing is fading.
+internal partial class PersonView : SpriteEntityView
 {
     public const float Height = 1.8f;
     private const float MinScale = 0.92f;
@@ -95,48 +98,39 @@ public partial class PersonView : Area3D, IHoverable
     private static readonly Color DeadTint = new(0.5f, 0.5f, 0.52f);
 
     private readonly Person _person;
-    private readonly HoverArbiter _hover;
     private readonly Action<Person, MouseButton> _onClicked;
-    private readonly InputEventEventHandler _onMissedClick;
     private readonly string _aliveTexturePath;
     private readonly string _deadTexturePath;
     private string _clothingAliveTexturePath = null!;
     private string _clothingDeadTexturePath = null!;
     private string _hairAliveTexturePath = null!;
     private string _hairDeadTexturePath = null!;
-    private Sprite3D _sprite = null!;
-    private Sprite3D _clothingSprite = null!;
-    private Sprite3D _hairSprite = null!;
+    private SpriteLayer _body = null!;
+    private SpriteLayer _clothing = null!;
+    private SpriteLayer _hair = null!;
     private Color _clothingColor;
     private Color _hairColor;
-    private Color _baseModulate;
-    private Color _baseClothingModulate;
-    private Color _baseHairModulate;
 
-    // How far the group's memory has taken over from actually seeing this person - which for
-    // someone alive is never, since they are one of the eyes the fog is drawn from, but a
-    // corpse left behind where nobody is looking any more dims like anything else does.
-    private readonly RememberedFade _remembered = new();
-    private CollisionShape3D _collisionShape = null!;
+    // What the body layer looks like alive, kept because SetAlive has to be able to put it
+    // back - it is normally plain white, but a missing texture leaves the fallback colour
+    // here instead, and that is still the honest "in full sight, alive" colour for it.
+    private Color _aliveBodyModulate;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
     private float _walkPhase;
     private float _walkCyclesPerSecond;
     private float _bobAmplitude;
     private float _rockAmplitude;
-    private bool _isHovered;
     private bool _isAlive = true;
-    private string _currentBodyTexturePath = null!;
 
     // Internal, like the HoverArbiter it takes: WorldPresenter is the only thing that ever
     // builds a view, and the hover invariant it hands over is the presentation layer's own
     // business (see AssemblyInfo).
     internal PersonView(Person person, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(Height, hover, onMissedClick)
     {
         _person = person;
-        _hover = hover;
         _onClicked = onClicked;
-        _onMissedClick = onMissedClick;
         // Body gender is its own independent seeded pick (distinct salt, see _Ready for the
         // rest) - deliberately not derived from the same draw as hairstyle/clothing below,
         // so gender doesn't end up correlated with them.
@@ -145,30 +139,19 @@ public partial class PersonView : Area3D, IHoverable
         _deadTexturePath = isMale ? BodyMaleDeadTexturePath : BodyFemaleDeadTexturePath;
     }
 
-    public override void _Ready()
+    protected override void Build()
     {
-        InputRayPickable = true;
-
+        // Narrow enough a range here (0.92-1.08) that the ground-contact correction goes
+        // unnoticed either way, unlike at ResourceNodeView's much wider tree range - but the
+        // correction is the same one, and it lives in the base class now.
         var scale = EntityVisualVariation.Scale(_person.Id.Seed, MinScale, MaxScale);
-        Scale = Vector3.One * scale;
-        // WorldPresenter positioned this node's own origin at groundHeight + Height/2,
-        // assuming Scale stayed 1 - the sprite (centered, spanning local Y from -Height/2
-        // to +Height/2) then has its bottom edge land exactly on the ground. Scale.Y above
-        // multiplies that -Height/2 by scale before it's added to Position, so anyone
-        // shorter than scale=1 floats with a small gap under their feet and anyone taller
-        // sinks in - narrow enough a range here (0.92-1.08) to go unnoticed, unlike the
-        // same bug at ResourceNodeView's much wider tree range. Shifting this node's own
-        // Position by the same amount the scale just displaced the ground-contact point
-        // cancels it back out, regardless of which way it went.
-        Position += new Vector3(0f, (Height / 2f) * (scale - 1f), 0f);
+        ScaleAndKeepGroundContact(scale, scale);
         _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
         _bobAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 2, MinBobAmplitude, MaxBobAmplitude);
         _rockAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 3, MinRockAmplitude, MaxRockAmplitude);
         _targetPosition = Position;
 
-        var groundShadow = GroundShadow.Create(ShadowDiameter);
-        groundShadow.Position += new Vector3(0, (-Height / 2f) + GroundShadow.GroundOffset, 0);
-        AddChild(groundShadow);
+        SetUpGroundShadow(ShadowDiameter);
 
         // BillboardSprite.Create always uses FixedY now (switched from full/spherical so a
         // standing figure's own feet actually land at ground level at this camera's oblique
@@ -177,9 +160,9 @@ public partial class PersonView : Area3D, IHoverable
         // where a Z roll reads as a proper side-to-side lean; under FixedY it may instead read
         // as a forward/backward tilt. Needs a live look once the ground-contact fix is
         // confirmed - if the walk rock looks wrong now, that's the reason.
-        _sprite = BillboardSprite.Create(_aliveTexturePath, Height, AliveColor);
-        _baseModulate = _sprite.Modulate;
-        AddChild(_sprite);
+        var body = BillboardSprite.Create(_aliveTexturePath, Height, AliveColor);
+        _aliveBodyModulate = body.Modulate;
+        _body = Register(body, _aliveTexturePath);
 
         // Disabled, not the default OpaquePrepass - same reason as ResourceNodeView's fruit
         // overlay: an overlay sharing the body's exact position/depth needs ordinary alpha
@@ -189,88 +172,44 @@ public partial class PersonView : Area3D, IHoverable
         _clothingAliveTexturePath = ClothingTexturePaths[clothingIndex];
         _clothingDeadTexturePath = ClothingDeadTexturePaths[clothingIndex];
         _clothingColor = ClothingColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 6, ClothingColorOptions.Length)];
-        _clothingSprite = BillboardSprite.Create(_clothingAliveTexturePath, Height, _clothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
-        _clothingSprite.Modulate = SpriteTint.ModulateFor(_clothingColor);
-        _baseClothingModulate = _clothingSprite.Modulate;
-        AddChild(_clothingSprite);
+        var clothing = BillboardSprite.Create(_clothingAliveTexturePath, Height, _clothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
+        clothing.Modulate = SpriteTint.ModulateFor(_clothingColor);
+        _clothing = Register(clothing, _clothingAliveTexturePath);
 
         var hairIndex = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 7, HairTexturePaths.Length);
         _hairAliveTexturePath = HairTexturePaths[hairIndex];
         _hairDeadTexturePath = HairDeadTexturePaths[hairIndex];
         _hairColor = HairColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 8, HairColorOptions.Length)];
-        _hairSprite = BillboardSprite.Create(_hairAliveTexturePath, Height, _hairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
-        _hairSprite.Modulate = SpriteTint.ModulateFor(_hairColor);
-        _baseHairModulate = _hairSprite.Modulate;
-        AddChild(_hairSprite);
-
-        _collisionShape = new CollisionShape3D();
-        AddChild(_collisionShape);
-        _currentBodyTexturePath = _aliveTexturePath;
-        ApplyExtent(_currentBodyTexturePath);
-
-        // No MouseExited here: Godot only ever sends that to the one collider its own picking
-        // chose, which is exactly what used to leave sprites lit forever (see HoverArbiter).
-        // Losing hover is settled once a frame instead, by IsStillUnderCursor below.
-        InputEvent += OnInputEvent;
-
-        ApplyTints();
+        var hair = BillboardSprite.Create(_hairAliveTexturePath, Height, _hairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
+        hair.Modulate = SpriteTint.ModulateFor(_hairColor);
+        _hair = Register(hair, _hairAliveTexturePath);
     }
 
-    public override void _ExitTree() => _hover.Forget(this);
+    // The walk cycle runs whether or not anything is fading, so processing never switches off.
+    protected override bool NeedsEveryFrame => true;
 
-    public void ShowHovered(bool hovered)
+    // A person answers to either button - left selects them, right is an order aimed at them -
+    // unlike everything else in the world, which only ever takes a left click.
+    protected override bool WantsClick(MouseButton button) => true;
+
+    // The walk bob moves the layers' local Position every frame, so the hit-test plane has to
+    // be pinned to this node's own position instead: anchoring it to a sprite that is bobbing
+    // sweeps the sampled pixel across silhouette edges under a cursor that never moved, and
+    // reads as the hover flickering on and off.
+    protected override Vector3? PixelHitAnchor => GlobalPosition;
+
+    protected override bool OnClicked(MouseButton button)
     {
-        if (hovered == _isHovered)
-        {
-            return;
-        }
-
-        _isHovered = hovered;
-        var scale = Vector3.One * (hovered ? HoverHighlight.ScaleFactor : 1f);
-        _sprite.Scale = scale;
-        _clothingSprite.Scale = scale;
-        _hairSprite.Scale = scale;
-        ApplyTints();
-    }
-
-    // Lets HoverRescue ask "is this exact point actually opaque on you", for when some other
-    // entity's broad-phase box won the pick instead - see its own doc comment for why that's
-    // not just a hypothetical.
-    public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
-    {
-        var opaque = SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _currentBodyTexturePath, GlobalPosition);
-        _hover.Set(this, opaque);
-        return opaque;
-    }
-
-    // Asked once a frame while this view holds the highlight (HoverArbiter.Revalidate) - the
-    // same pixel test as above, but from wherever the cursor is right now rather than from a
-    // picking event, since the two everyday ways a highlight got stuck both consist of no
-    // picking event arriving at all. A cursor over any UI panel counts as off: physics picking
-    // never fires under a Control, so the sprite behind one would otherwise stay lit.
-    public bool IsStillUnderCursor()
-    {
-        var viewport = GetViewport();
-        return viewport.GuiGetHoveredControl() is null
-            && viewport.GetCamera3D() is { } camera
-            && SpritePixelHit.IsOpaqueAtScreen(camera, viewport.GetMousePosition(), _sprite, _currentBodyTexturePath, GlobalPosition);
+        _onClicked(_person, button);
+        return true;
     }
 
     // Only the simulation tick moves a person; this just plays that motion back smoothly
     // between ticks instead of snapping once per tick, so speed always matches how far the
     // simulation actually moved them over that tick - never guessed or hardcoded.
-    public override void _Process(double delta)
+    protected override void OnProcess(double delta)
     {
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
-
-        // No SetProcess gating around this the way the other views have: this one is already
-        // processing every frame for the walk cycle, and there are dozens of people, not the
-        // thousands there are of resource nodes.
-        if (_remembered.IsFading)
-        {
-            _remembered.Advance((float)delta);
-            ApplyTints();
-        }
 
         if (WalkCycle.IsWalking(Position, _targetPosition))
         {
@@ -278,12 +217,12 @@ public partial class PersonView : Area3D, IHoverable
             var pose = WalkCycle.PoseAt(_walkPhase, _bobAmplitude, _rockAmplitude);
 
             // All three layers take the same pose, not their own.
-            _sprite.Position = pose.Offset;
-            _sprite.Rotation = pose.Rotation;
-            _clothingSprite.Position = pose.Offset;
-            _clothingSprite.Rotation = pose.Rotation;
-            _hairSprite.Position = pose.Offset;
-            _hairSprite.Rotation = pose.Rotation;
+            _body.Sprite.Position = pose.Offset;
+            _body.Sprite.Rotation = pose.Rotation;
+            _clothing.Sprite.Position = pose.Offset;
+            _clothing.Sprite.Rotation = pose.Rotation;
+            _hair.Sprite.Position = pose.Offset;
+            _hair.Sprite.Rotation = pose.Rotation;
         }
 
         // Deliberately no "not walking" branch that snaps _walkPhase/_sprite back to
@@ -317,15 +256,11 @@ public partial class PersonView : Area3D, IHoverable
 
         // Each layer swaps to its own matching rotated-onto-its-side variant (see
         // generate_sprites.py's _lay_down) - the same hairstyle/clothing this person had
-        // standing, not a generic corpse. BillboardSprite.Apply resets Modulate to white,
-        // which is why the actual tint is assigned afterward, not before.
-        BillboardSprite.Apply(_sprite, isAlive ? _aliveTexturePath : _deadTexturePath, Height, AliveColor);
-        BillboardSprite.Apply(_clothingSprite, isAlive ? _clothingAliveTexturePath : _clothingDeadTexturePath, Height, _clothingColor);
-        BillboardSprite.Apply(_hairSprite, isAlive ? _hairAliveTexturePath : _hairDeadTexturePath, Height, _hairColor);
-
-        _baseModulate = isAlive ? Colors.White : DeadTint;
-        _baseClothingModulate = isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint;
-        _baseHairModulate = isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint;
+        // standing, not a generic corpse. Retexture carries each layer's new base colour with
+        // it, because BillboardSprite.Apply underneath resets Modulate to white.
+        Retexture(_body, isAlive ? _aliveTexturePath : _deadTexturePath, isAlive ? _aliveBodyModulate : DeadTint, AliveColor);
+        Retexture(_clothing, isAlive ? _clothingAliveTexturePath : _clothingDeadTexturePath, isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint, _clothingColor);
+        Retexture(_hair, isAlive ? _hairAliveTexturePath : _hairDeadTexturePath, isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint, _hairColor);
 
         // Re-painted from the (now updated) base colours rather than skipped while hovered or
         // mid-fade - otherwise dying while already hovered left the old alive-hover tint
@@ -338,115 +273,18 @@ public partial class PersonView : Area3D, IHoverable
         // these while actually moving - see _Process).
         if (!isAlive)
         {
-            _sprite.Position = Vector3.Zero;
-            _sprite.Rotation = Vector3.Zero;
-            _clothingSprite.Position = Vector3.Zero;
-            _clothingSprite.Rotation = Vector3.Zero;
-            _hairSprite.Position = Vector3.Zero;
-            _hairSprite.Rotation = Vector3.Zero;
+            _body.Sprite.Position = Vector3.Zero;
+            _body.Sprite.Rotation = Vector3.Zero;
+            _clothing.Sprite.Position = Vector3.Zero;
+            _clothing.Sprite.Rotation = Vector3.Zero;
+            _hair.Sprite.Position = Vector3.Zero;
+            _hair.Sprite.Rotation = Vector3.Zero;
         }
 
         // Dead uses a differently-shaped (wider/shorter, lying down) silhouette - the
-        // collision box and the marker's resting height both need to follow it.
-        _currentBodyTexturePath = isAlive ? _aliveTexturePath : _deadTexturePath;
-        ApplyExtent(_currentBodyTexturePath);
+        // collision box and the marker's resting height both read off the layers, so both
+        // follow from re-measuring them.
+        RefreshCollisionShape();
     }
 
-    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration). Only aims the
-    // fade; the tint itself moves a frame at a time in _Process, which is the whole point
-    // for a corpse: the group walking away from where someone fell should read as the place
-    // slowly passing into memory, not as the body changing colour the instant the last
-    // person turns their back.
-    public void SetRemembered(bool remembered) => _remembered.Retarget(remembered);
-
-    // Straight to the end state, no fade - nothing was ever on screen to fade out of. See
-    // ResourceNodeView.SnapRemembered.
-    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
-
-    // Every layer's displayed colour, always re-derived from its own base (which is what the
-    // layer looks like in full sight, alive or dead) rather than from whatever is on the
-    // sprite now, so nothing compounds. The single place any of this view's layers gets
-    // written, so hover, dying and the fog fade cannot disagree about what the other two did.
-    private void ApplyTints()
-    {
-        SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, _isHovered);
-        SpriteLayerTint.Apply(_clothingSprite, _baseClothingModulate, _remembered, _isHovered);
-        SpriteLayerTint.Apply(_hairSprite, _baseHairModulate, _remembered, _isHovered);
-    }
-
-    // How high above this person's own origin their actual head sits - for Main's
-    // screen-space selection marker overlay (see SpriteVisibleExtent's doc comment: content
-    // isn't necessarily centered in its canvas, so the nominal Height/2 alone would float
-    // above or sink below a real head depending on the texture's own margins).
-    public float HeadHeightOffset
-    {
-        get
-        {
-            var extent = SpriteVisibleExtent.Compute(_currentBodyTexturePath, Height);
-            return extent.CenterYOffset + (extent.Height / 2f);
-        }
-    }
-
-    // Sized/positioned to the sprite's actual drawn silhouette, not its full square canvas -
-    // a standing figure doesn't fill its canvas edge to edge, so a collision shape based on
-    // the nominal Height would be oversized (hovering near-but-not-on the figure would still
-    // trigger it). Keyed off the body layer only, not clothing/hair - close enough for now,
-    // see docs/todo/todo.md.
-    private void ApplyExtent(string texturePath)
-    {
-        var extent = SpriteVisibleExtent.Compute(texturePath, Height);
-        _collisionShape.Shape = new BoxShape3D { Size = new Vector3(extent.Width, extent.Height, extent.Width) };
-        _collisionShape.Position = new Vector3(extent.CenterXOffset, extent.CenterYOffset, 0);
-    }
-
-    private void OnInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
-    {
-        if (camera is not Camera3D camera3D)
-        {
-            return;
-        }
-
-        // GlobalPosition (this node's own, not _sprite's) - see SpritePixelHit.IsOpaqueAt's
-        // spriteCenterOverride doc comment: the walk bob moves _sprite's local Position every
-        // frame, which must not feed into where the hit-test plane is anchored.
-        switch (@event)
-        {
-            case InputEventMouseMotion:
-                // Nothing opaque here and nothing behind it either means the cursor is over
-                // bare ground showing through, so whatever was lit has been left behind.
-                if (!TryHoverAt(camera3D, position) && !HoverRescue.TryHoverElsewhere(this, camera3D, position))
-                {
-                    _hover.Clear();
-                }
-
-                break;
-            case InputEventMouseButton { Pressed: true } mouseEvent:
-                // The broad-phase collision box (see ApplyExtent) is bigger than the actual
-                // silhouette - Godot only delivers a click to the nearest pickable collider
-                // along the ray, so a click landing inside the box but off the opaque pixels
-                // (e.g. on the ground shadow at this person's feet) would otherwise be
-                // silently swallowed here instead of reaching the ground underneath. Try
-                // whatever else is actually at this point first (HoverRescue's click
-                // counterpart), only falling all the way back to a plain ground-click order
-                // if nothing there turns out to be real either.
-                if (!TryClickAt(camera3D, position, mouseEvent.ButtonIndex)
-                    && !HoverRescue.TryClickElsewhere(this, camera3D, position, mouseEvent.ButtonIndex))
-                {
-                    _onMissedClick(camera, @event, position, normal, shapeIdx);
-                }
-
-                break;
-        }
-    }
-
-    public bool TryClickAt(Camera3D camera, Vector3 worldPosition, MouseButton button)
-    {
-        if (!SpritePixelHit.IsOpaqueAt(camera, worldPosition, _sprite, _currentBodyTexturePath, GlobalPosition))
-        {
-            return false;
-        }
-
-        _onClicked(_person, button);
-        return true;
-    }
 }

@@ -39,6 +39,24 @@ internal static class SpriteExtents
             (canvasCentre.Y - usedCentre.Y) * metresPerPixel);
     }
 
+    // The same extent as the sprite is actually rendering right now. From() answers for the
+    // height the sprite was *created* at, which is what SpriteVisibleExtent caches per texture
+    // and is therefore blind to any scale applied since - and hover scales a sprite by a tenth
+    // (HoverHighlight.ScaleFactor). Left unscaled, a collision box or a marker anchor derived
+    // from the nominal extent sits a tenth out of step with the pixels on screen for exactly
+    // as long as the cursor is on the thing, which is the one moment it has to be right.
+    //
+    // This is deliberately the same arithmetic as BillboardUv.RenderedSize, and the two agree
+    // by construction rather than by coincidence: BillboardSprite.Apply sets
+    // PixelSize = worldHeight / canvasHeight, so a texture's own pixels times PixelSize times
+    // scale is the same metres From() derives from worldHeight and then this multiplies by the
+    // same scale. SpriteExtentsTests pins that they do not drift apart.
+    internal static Extent Scaled(Extent extent, float scaleX, float scaleY) => new(
+        extent.Width * scaleX,
+        extent.Height * scaleY,
+        extent.CenterXOffset * scaleX,
+        extent.CenterYOffset * scaleY);
+
     // The true silhouette of a split tree is the union of its trunk's and canopy's own visible
     // extents - equivalent to what a single combined image's extent already was, since the two
     // are an exact partition of it (see split_trunk_canopy).

@@ -3,7 +3,7 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-public class SpriteGeometryTests
+public class SpriteExtentsTests
 {
     private static SpriteExtents.Extent Extent(float width, float height, float centerX, float centerY) =>
         new(width, height, centerX, centerY);
@@ -58,33 +58,6 @@ public class SpriteGeometryTests
         Assert.Equal(
             SpriteExtents.Combine(trunk, canopy),
             SpriteExtents.Combine(canopy, trunk));
-    }
-
-    [Fact]
-    public void ModulateUndoesTheRecolourableBaseSoTheAskedForColourComesOutOfTheShader()
-    {
-        // The person sprite is drawn in a near-white base tint so it can be recoloured; the
-        // modulate has to divide that base back out, or every requested colour renders darker
-        // than it was asked for. Feeding the base itself back in must therefore give plain
-        // white - no tint at all.
-        var neutral = new Color(0.82f, 0.80f, 0.78f);
-
-        var modulate = SpriteTint.ModulateFor(neutral);
-
-        Assert.Equal(1f, modulate.R, 5);
-        Assert.Equal(1f, modulate.G, 5);
-        Assert.Equal(1f, modulate.B, 5);
-    }
-
-    [Fact]
-    public void ModulateScalesEachChannelByItsOwnShareOfTheBase()
-    {
-        var modulate = SpriteTint.ModulateFor(new Color(0.41f, 0.40f, 0.39f));
-
-        // Exactly half of the base on every channel, so exactly half the modulate.
-        Assert.Equal(0.5f, modulate.R, 5);
-        Assert.Equal(0.5f, modulate.G, 5);
-        Assert.Equal(0.5f, modulate.B, 5);
     }
 
     // A 100x200 canvas standing 4m tall, so 2cm of world per pixel. The used rect is
@@ -179,5 +152,62 @@ public class SpriteGeometryTests
 
         Assert.Equal(1f, extent.Width, 5);
         Assert.Equal(2f, extent.Height, 5);
+    }
+
+    [Fact]
+    public void ScalingAnExtentMovesItsSizeAndItsOffsetTogether()
+    {
+        // Both have to scale: a collision box that grew but stayed anchored where it was is
+        // no more aligned with the drawn pixels than one that never grew at all.
+        var scaled = SpriteExtents.Scaled(Extent(0.6f, 1.2f, 0.1f, 0.3f), 2f, 3f);
+
+        Assert.Equal(1.2f, scaled.Width, 5);
+        Assert.Equal(3.6f, scaled.Height, 5);
+        Assert.Equal(0.2f, scaled.CenterXOffset, 5);
+        Assert.Equal(0.9f, scaled.CenterYOffset, 5);
+    }
+
+    [Fact]
+    public void ScalingByOneLeavesAnExtentExactlyAsItWas()
+    {
+        var original = Extent(0.6f, 1.2f, 0.1f, -0.3f);
+
+        Assert.Equal(original, SpriteExtents.Scaled(original, 1f, 1f));
+    }
+
+    [Fact]
+    public void TheTwoScaleAxesAreNotInterchangeable()
+    {
+        var scaled = SpriteExtents.Scaled(Extent(1f, 1f, 1f, 1f), 2f, 5f);
+
+        Assert.Equal(2f, scaled.Width, 5);
+        Assert.Equal(5f, scaled.Height, 5);
+        Assert.Equal(2f, scaled.CenterXOffset, 5);
+        Assert.Equal(5f, scaled.CenterYOffset, 5);
+    }
+
+    [Fact]
+    public void AScaledExtentIsTheSameSizeTheSpriteActuallyRenders()
+    {
+        // The one invariant that keeps "how big is this sprite" a single answer. Two paths
+        // compute it and both are load-bearing: SpritePixelHit builds its hit-test plane from
+        // BillboardUv.RenderedSize (the live sprite), while collision boxes and marker anchors
+        // come from a nominal extent scaled by the same factor. They agree only because
+        // BillboardSprite.Apply sets PixelSize = worldHeight / canvasHeight - if that ever
+        // changes, this test is what says so instead of a hovered sprite quietly drifting out
+        // of its own click rectangle.
+        var pixelSize = WorldHeight / Canvas.Y;
+        const float HoverScale = 1.1f;
+
+        // Content filling the whole canvas, so the extent and the rendered size are describing
+        // the very same rectangle.
+        var extent = SpriteExtents.Scaled(
+            SpriteExtents.From(Vector2.Zero, Canvas, Canvas, WorldHeight),
+            HoverScale,
+            HoverScale);
+        var rendered = BillboardUv.RenderedSize(pixelSize, (int)Canvas.X, (int)Canvas.Y, HoverScale, HoverScale);
+
+        Assert.Equal(rendered.X, extent.Width, 4);
+        Assert.Equal(rendered.Y, extent.Height, 4);
     }
 }

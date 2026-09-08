@@ -5,7 +5,12 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : Node3D
+// The one view nothing can point at or click yet: the inspector has no page for a hut (see
+// docs/todo/todo.md's note about a real player menu), so it is built inert - no hover arbiter
+// and no missed-click handler, which is what makes SpriteEntityView skip the collision shape
+// and ray picking altogether. Everything else a world sprite does, it does: seeded size
+// variation, a ground shadow, and dimming when the group walks away from its camp.
+internal partial class BuildingView : SpriteEntityView
 {
     // Was 1.2 - shorter than PersonView.Height (1.8), reading as knee-high next to a person
     // despite the art depicting a door someone could actually walk through. A modest one-room
@@ -15,72 +20,42 @@ public partial class BuildingView(BuildingId buildingId, BuildingKindId kind) : 
     private const float MaxScale = 1.1f;
     private const float ShadowDiameter = 3.5f;
 
-    private Sprite3D _sprite = null!;
-    private Color _baseModulate;
+    private readonly BuildingId _buildingId;
+    private readonly BuildingKindId _kind;
 
-    // Same fade as every other view (see RememberedFade): a hut the group has walked away
-    // from is a place they remember standing there, not one they are currently looking at.
-    private readonly RememberedFade _remembered = new();
-
-    public override void _Ready()
+    public BuildingView(BuildingId buildingId, BuildingKindId kind)
+        : base(Size, hover: null, onMissedClick: null)
     {
-        var fallbackColor = EntityVisualVariation.Tint(ColorFor(kind), buildingId.Seed);
-        var scale = EntityVisualVariation.Scale(buildingId.Seed, MinScale, MaxScale);
-        Scale = Vector3.One * scale;
-        // Same ground-contact fix as PersonView/ResourceNodeView: WorldPresenter set this
-        // node's own Position assuming Scale stayed 1, so Scale.Y != 1 shifts the sprite's
-        // (and the ground shadow's, both children scaled along with it) bottom edge away
-        // from the ground by Size/2*(scale-1). Shifting Position back by that same amount
-        // cancels it out.
-        Position += new Vector3(0f, (Size / 2f) * (scale - 1f), 0f);
-
-        var groundShadow = GroundShadow.Create(ShadowDiameter);
-        groundShadow.Position += new Vector3(0, (-Size / 2f) + GroundShadow.GroundOffset, 0);
-        AddChild(groundShadow);
-
-        _sprite = BillboardSprite.Create(TexturePaths.ForBuilding(kind), Size, fallbackColor);
-        _baseModulate = _sprite.Modulate;
-        AddChild(_sprite);
-
-        // Processing frames only while a fade is actually running - a settled camp is a
-        // handful of huts that sit unchanged for hours of play.
-        SetProcess(_remembered.IsFading);
-        ApplyTint();
+        _buildingId = buildingId;
+        _kind = kind;
     }
 
-    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration) - aims the fade,
-    // which then moves a frame at a time in _Process.
-    public void SetRemembered(bool remembered)
+    protected override void Build()
     {
-        if (!_remembered.Retarget(remembered))
-        {
-            return;
-        }
+        var fallbackColor = EntityVisualVariation.Tint(ColorFor(_kind), _buildingId.Seed);
+        var scale = EntityVisualVariation.Scale(_buildingId.Seed, MinScale, MaxScale);
+        ScaleAndKeepGroundContact(scale, scale);
+        SetUpGroundShadow(ShadowDiameter);
 
-        SetProcess(true);
+        var texturePath = TexturePaths.ForBuilding(_kind);
+        Register(BillboardSprite.Create(texturePath, Size, fallbackColor), texturePath);
     }
 
-    // Straight to the end state, no fade. See ResourceNodeView.SnapRemembered.
-    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
-
-    public override void _Process(double delta)
-    {
-        var stillFading = _remembered.Advance((float)delta);
-        ApplyTint();
-        if (!stillFading)
-        {
-            SetProcess(false);
-        }
-    }
-
-    // A building is neither hoverable nor selectable yet, so there is no hover state to
-    // compose with here.
-    private void ApplyTint() => SpriteLayerTint.Apply(_sprite, _baseModulate, _remembered, hovered: false);
+    // Cached per kind, not reloaded per building - the same reasoning (and the same C#-bridge
+    // crash under repeated ResourceLoader.Load of one path) as ResourceNodeView's own
+    // definition cache. A camp is a handful of huts today, so this is about keeping the two
+    // halves of one concern behaving alike rather than about the load itself.
+    private static readonly Dictionary<BuildingKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
 
     private static Color ColorFor(BuildingKindId kind)
     {
-        var path = $"res://Content/buildings/{kind.Value}/{kind.Value}.tres";
-        var visual = ResourceLoader.Exists(path) ? ResourceLoader.Load<BuildingVisualDefinition>(path) : null;
+        if (!VisualDefinitionCache.TryGetValue(kind, out var visual))
+        {
+            var path = $"res://Content/buildings/{kind.Value}/{kind.Value}.tres";
+            visual = ResourceLoader.Exists(path) ? ResourceLoader.Load<BuildingVisualDefinition>(path) : null;
+            VisualDefinitionCache[kind] = visual;
+        }
+
         return visual?.Color ?? new Color(0.6f, 0.6f, 0.6f);
     }
 }

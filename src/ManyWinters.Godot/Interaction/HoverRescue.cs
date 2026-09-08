@@ -33,24 +33,17 @@ public static class HoverRescue
     // the cursor for real (and has taken the highlight). False means there is nothing here at
     // all - bare ground - which is the caller's cue to put out whatever was still lit.
     public static bool TryHoverElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition) =>
-        TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) => view switch
-        {
-            PersonView personView => personView.TryHoverAt(cam, pos),
-            ResourceNodeView resourceView => resourceView.TryHoverAt(cam, pos),
-            _ => false,
-        });
+        TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) =>
+            view is SpriteEntityView entity && entity.TryHoverAt(cam, pos));
 
     // Returns true if something along the ray beyond the original miss turned out to actually
     // be there (and has already had its own click handler invoked) - the caller only needs to
     // fall back to a plain ground-click order when this comes back false.
+    // Which buttons a given kind of entity answers to is its own business (SpriteEntityView's
+    // WantsClick), not something this has to know per view type.
     public static bool TryClickElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition, MouseButton button) =>
-        TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) => view switch
-        {
-            PersonView personView => personView.TryClickAt(cam, pos, button),
-            ResourceNodeView resourceView when button == MouseButton.Left => resourceView.TryClickAt(cam, pos),
-            GraveView graveView when button == MouseButton.Left => graveView.TryClickAt(cam, pos),
-            _ => false,
-        });
+        TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) =>
+            view is SpriteEntityView entity && entity.TryClickAt(cam, pos, button));
 
     private static bool TryElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition, Func<CollisionObject3D, Camera3D, Vector3, bool> tryHandle)
     {
