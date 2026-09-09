@@ -18,8 +18,9 @@ public static class MapLoader
 
     // Indices (0-based, into the arrays above) of each starting person's mother/father, or null
     // for someone with no recorded parent. Three couples with children, plus a few people with no
-    // recorded family - basic family relationships. There's no reproduction command yet, so this
-    // is currently the only way any family tie can exist.
+    // recorded family - basic family relationships. Every tie made after the story begins comes
+    // from BirthCommand instead; this is only how the crowd that was already standing here when
+    // it began came by theirs.
     private static readonly int?[] StartingMotherIndex =
         [10, null, null, null, 2, 8, null, 10, null, null, null, null, null, 8, 2];
 

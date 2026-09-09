@@ -551,6 +551,10 @@ public partial class Main : Node3D
         eatButton.Pressed += OnEatButtonPressed;
         _contextualActions.AddChild(eatButton);
 
+        var childButton = new Button { Text = "Have Child With Nearest Person" };
+        childButton.Pressed += OnHaveChildButtonPressed;
+        _contextualActions.AddChild(childButton);
+
         _buildingsLabel = new Label { Text = "Buildings: none" };
         panel.Body.AddChild(_buildingsLabel);
 
@@ -914,6 +918,62 @@ public partial class Main : Node3D
             maxAttempts: 20);
     }
 
+    // The developer's way to make a child happen, in the same shape as every other button here.
+    // Reproduction is meant to end up autonomous, driven by whether two people actually like
+    // each other (docs/todo/todo.md, "heart-2-heart") rather than by the player pointing at a
+    // couple - but nothing can be tuned or even looked at until births can be made to happen
+    // on demand, so this comes first.
+    private void OnHaveChildButtonPressed()
+    {
+        if (_selectedPerson is not { } person)
+        {
+            _statusBar.Notify("Select a person first.");
+            return;
+        }
+
+        if (!person.IsAlive)
+        {
+            _statusBar.Notify("The dead have no children.");
+            return;
+        }
+
+        if (!_world.IsOldEnoughForChildren(person))
+        {
+            _statusBar.Notify($"{person.Name} is still a child.");
+            return;
+        }
+
+        var partner = FindNearestPartner(person);
+        if (partner is null)
+        {
+            _statusBar.Notify("Nobody grown up is standing close enough.");
+            return;
+        }
+
+        // Whoever the player has selected is the mother - there is no sex on a Person yet, and
+        // inventing one just to decide which half of a pair nurses would be a bigger change
+        // than this button is worth. What actually matters downstream is that exactly one of
+        // the two is the one the newborn follows and feeds from (see WorldState nursing).
+        if (_world.NursingInfantOf(person) is { } nursing)
+        {
+            _statusBar.Notify($"{person.Name} is still nursing {nursing.Name}.");
+            return;
+        }
+
+        var name = PersonNames.Pool[Random.Shared.Next(PersonNames.Pool.Length)];
+        _world.Execute(new BirthCommand(name, person, partner));
+        RefreshInfoLabel();
+    }
+
+    // The nearest grown person within reach who isn't the parent-to-be themselves. Reach, not
+    // "anywhere on the map": a child is had by two people standing together, and BirthCommand
+    // enforces the same thing anyway - this only exists so the button can say why not.
+    private Person? FindNearestPartner(Person person) =>
+        _world.People
+            .Where(p => p != person && p.IsAlive && _world.IsOldEnoughForChildren(p) && _world.IsWithinReach(person.Position, p.Position))
+            .OrderBy(p => WorldState.Distance(p.Position, person.Position))
+            .FirstOrDefault();
+
     private void OnPersonClicked(Person person, MouseButton button)
     {
         if (button == MouseButton.Right)
@@ -1103,7 +1163,7 @@ public partial class Main : Node3D
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
-            $"Age: {AgeText(person)}\n" +
+            $"Age: {AgeText(person)} ({_world.LifeStageOf(person)})\n" +
             $"Task: {InspectorText.ForTask(person)}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +

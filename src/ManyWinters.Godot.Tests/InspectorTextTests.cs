@@ -60,6 +60,16 @@ public class InspectorTextTests
     }
 
     [Fact]
+    public void AnInfantNamesTheMotherItIsKeepingUpWith()
+    {
+        var person = NewPerson();
+        var mother = new Person { Name = "Sela", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        person.Tasks.Interrupt(new FollowTask(mother, keepWithin: 2f, speedPerTick: 0.25f));
+
+        Assert.Equal("Keeping up with Sela", InspectorText.ForTask(person));
+    }
+
+    [Fact]
     public void AnUnmarkedGraveRecordsNothingAboutWhoLiesThere()
     {
         // A burial done without the practiced technique preserves no identity (see Grave) - the

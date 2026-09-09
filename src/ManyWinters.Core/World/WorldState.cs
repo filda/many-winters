@@ -123,6 +123,38 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / Configuration.Rules.TicksPerSeason;
 
+    public LifeStage LifeStageOf(Person person) => LifeStages.For(AgeInYears(person));
+
+    // Grown enough to have children of their own (BirthCommand). Elders count: this is the
+    // floor on childhood, not a fertility model - a world where the last two people are old
+    // is a world that ends, and that is a story the game should be allowed to tell rather
+    // than a rule to bolt on here.
+    public bool IsOldEnoughForChildren(Person person) => AgeInYears(person) >= LifeStages.AdultAgeYears;
+
+    // The infant this person is currently nursing, if any: her own living child, still under
+    // weaning age, and close enough to actually be fed.
+    //
+    // A scan of People per person per tick, same shape as AutoTeachNearbyPeople's own pass -
+    // at this game's population sizes (tens, not thousands) that is not where the time goes.
+    public Person? NursingInfantOf(Person mother)
+    {
+        foreach (var person in _people)
+        {
+            if (IsNursedBy(person, mother))
+            {
+                return person;
+            }
+        }
+
+        return null;
+    }
+
+    // Whether this person is an infant being fed right now. Deliberately reads the same three
+    // facts as NursingInfantOf above rather than being told by it: each side of the pair
+    // decides independently, so which of the two Advance happens to reach first within a tick
+    // cannot change what either of them gets.
+    public bool IsBeingNursed(Person person) => IsNursedBy(person, person.Mother);
+
     // How much this specific person can carry right now - varies by age (see CarryCapacity)
     // plus whatever gear (a basket, a bag, ...) they currently have on them (same "presence,
     // not count" convention as InsulationFor - carrying five baskets isn't five times the
@@ -174,12 +206,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                 if (!idleGraceHolds && ShouldReconsiderIdleTask(person))
                 {
                     var decidedTask = DecideIdleTask(person);
-                    // Keep the SAME IdleTask instance while the decision is still "just
-                    // wander" - IdleTask carries its own per-instance state (anchor, current
-                    // leg, pause countdown between legs), which replacing it every single
-                    // tick would silently throw away even though nothing actually changed.
-                    // Genuinely switching task type (to/from GatherTask) always interrupts.
-                    if (decidedTask is not IdleTask || person.Tasks.Current is not IdleTask)
+                    if (!KeepsCurrentTask(person.Tasks.Current, decidedTask))
                     {
                         person.Tasks.Interrupt(decidedTask);
                     }
@@ -194,9 +221,27 @@ public sealed class WorldState(WorldConfiguration configuration)
                     new GatherCommand(person, activeGather.Target).Execute(this);
                 }
 
-                var insulation = person.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
-                var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
-                person.Needs.Hunger = Math.Min(person.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), rules.MaxHunger);
+                // An infant at its mother's side is simply not hungry - it is being fed. It
+                // has no inventory, no techniques and no way to forage, so hunger on it would
+                // be nothing but a countdown to starving; what the feeding costs turns up on
+                // her side of this same loop instead, as NursingHungerMultiplier below. The
+                // moment she dies or is left behind, this stops and the countdown is real.
+                if (IsBeingNursed(person))
+                {
+                    person.Needs.Hunger = 0f;
+                }
+                else
+                {
+                    var insulation = person.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
+                    var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
+                    if (NursingInfantOf(person) is not null)
+                    {
+                        hungerMultiplier *= rules.NursingHungerMultiplier;
+                    }
+
+                    person.Needs.Hunger = Math.Min(person.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), rules.MaxHunger);
+                }
+
                 TryAutoEat(person);
 
                 var diedOfOldAge = AgeInYearsAt(person, currentTick) >= rules.MaxLifespanYears;
@@ -260,7 +305,22 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         null => true,
         IdleTask => true,
+        // Without this, an infant would follow its mother for the rest of its life:
+        // FollowTask never completes, so nothing else would ever notice it had been weaned.
+        FollowTask => true,
         GatherTask gather => !IsWorthGathering(person, gather.Target) || NeedsToSeekFoodUrgently(person),
+        _ => false,
+    };
+
+    // Whether the freshly decided autonomous task is the one already running, in which case it
+    // is dropped rather than installed. IdleTask carries per-instance state (anchor, current
+    // leg, pause countdown between legs) that replacing it every tick would silently throw
+    // away even though nothing changed; FollowTask carries none, but churning one a tick for
+    // the same mother is pointless. Genuinely switching task type always interrupts.
+    private static bool KeepsCurrentTask(PersonTask? current, PersonTask decided) => (current, decided) switch
+    {
+        (IdleTask, IdleTask) => true,
+        (FollowTask running, FollowTask fresh) => ReferenceEquals(running.Target, fresh.Target),
         _ => false,
     };
 
@@ -298,6 +358,17 @@ public sealed class WorldState(WorldConfiguration configuration)
     private PersonTask DecideIdleTask(Person person)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
+
+        // An infant has no skill to put to use and nothing it could gather, so every branch
+        // below would end in it wandering off alone to starve. It keeps up with its mother
+        // instead - which is what feeds it (see the nursing branch in Advance) and the only
+        // reason it is ever close enough to be taught anything at all (TeachCommand checks
+        // reach). An orphaned one falls through and wanders like anybody else with no skill:
+        // nothing here saves a child whose mother is gone, and nothing should.
+        if (LifeStageOf(person) == LifeStage.Infant && person.Mother.IsAlive)
+        {
+            return new FollowTask(person.Mother, reachDistance, Configuration.Rules.InfantFollowSpeedPerTick);
+        }
         // Knowing how to eat is what makes seeking food worth prioritizing over whatever else
         // this person knows - without it, gathering more food wouldn't help them anyway (see
         // EatCommand's own gate), so this falls through to the general search below.
@@ -332,6 +403,13 @@ public sealed class WorldState(WorldConfiguration configuration)
         var definition = Configuration.SkillCatalog.Find(skill);
         return definition is not null && person.KnownTechniques.Contains(definition.BaseTechnique);
     }
+
+    private bool IsNursedBy(Person person, Person mother) =>
+        person.IsAlive
+        && mother.IsAlive
+        && ReferenceEquals(person.Mother, mother)
+        && LifeStageOf(person) == LifeStage.Infant
+        && IsWithinReach(person.Position, mother.Position);
 
     private bool IsFoodResource(ResourceDefinition definition) =>
         definition.YieldsItem is { } item && Configuration.ItemCatalog.HungerRestoredPerUnitFor(item) > 0f;

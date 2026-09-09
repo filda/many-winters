@@ -13,6 +13,7 @@ internal static class InspectorText
     {
         MoveTask move => $"Walking to {move.Destination}",
         GatherTask gather => $"Gathering {gather.Target.Kind}",
+        FollowTask follow => $"Keeping up with {follow.Target.Name}",
         _ => "Idle",
     };
 

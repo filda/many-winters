@@ -38,6 +38,18 @@ public sealed record SimulationRules
     // hand goes looking for something to eat before going back to chopping wood.
     public float HungerSeekFoodThreshold { get; } = 50f;
 
+    // What feeding an infant costs the mother. A nursing mother gets hungry faster; the
+    // infant itself doesn't get hungry at all while she is alive and beside it (see
+    // WorldState.Advance). Deliberately a cost on her rather than a transfer between the two:
+    // a transfer would depend on which of the pair Advance happened to reach first that tick,
+    // and both halves of this read the same two facts independently instead.
+    public float NursingHungerMultiplier { get; } = 1.5f;
+
+    // How fast an infant toddles after its mother (see FollowTask). Faster than her own
+    // autonomous wandering (IdleTask) and slower than a walk with somewhere to be, so a child
+    // trails behind but never actually loses her.
+    public float InfantFollowSpeedPerTick { get; } = 0.25f;
+
     public float ConditionDecayPerTick { get; init; } = 0.05f;
 
     // Nobody autonomously treks halfway across a real ~1km terrain patch (see
