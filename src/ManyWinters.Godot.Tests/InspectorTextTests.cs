@@ -12,8 +12,11 @@ namespace ManyWinters.Godot.Tests;
 // parent wrong is visible in the game and invisible to every other test.
 public class InspectorTextTests
 {
+    // Sex is required of every Person (see Person.Sex) but means nothing to any of these -
+    // none of the inspector's wording reads it. Written out rather than drawn from the id so
+    // it is the same person on every run.
     private static Person NewPerson() =>
-        new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female };
 
     private static Grave NewGrave(
         bool isMarked = true,
@@ -63,7 +66,7 @@ public class InspectorTextTests
     public void AnInfantNamesTheMotherItIsKeepingUpWith()
     {
         var person = NewPerson();
-        var mother = new Person { Name = "Sela", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var mother = new Person { Name = "Sela", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female };
         person.Tasks.Interrupt(new FollowTask(mother, keepWithin: 2f, speedPerTick: 0.25f));
 
         Assert.Equal("Keeping up with Sela", InspectorText.ForTask(person));

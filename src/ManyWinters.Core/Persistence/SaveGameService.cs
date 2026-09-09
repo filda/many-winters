@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 15;
+    private const int CurrentVersion = 16;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -59,6 +59,10 @@ public static class SaveGameService
             .Select(cell => new ExplorationCellSaveData(cell.X, cell.Y))
             .ToList();
 
+        var affections = world.Affections.All
+            .Select(bond => new AffectionSaveData(bond.A.Value, bond.B.Value, bond.Value))
+            .ToList();
+
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
@@ -67,7 +71,8 @@ public static class SaveGameService
             resourceNodes,
             buildings,
             graves,
-            exploredCells);
+            exploredCells,
+            affections);
     }
 
     private static PersonSaveData ToPersonSaveData(Person person) => new(
@@ -86,7 +91,8 @@ public static class SaveGameService
         person.CauseOfDeath,
         person.IsBuried,
         person.Mother.Id.Value,
-        person.Father.Id.Value);
+        person.Father.Id.Value,
+        person.Sex);
 
     private static WorldState FromSaveData(SaveData data, WorldConfiguration configuration)
     {
@@ -159,6 +165,11 @@ public static class SaveGameService
 
         world.Exploration.RestoreExplored(data.ExploredCells.Select(cell => new ExplorationCell(cell.X, cell.Y)));
 
+        foreach (var bond in data.Affections)
+        {
+            world.Affections.Set(new PersonId(bond.PersonA), new PersonId(bond.PersonB), bond.Value);
+        }
+
         return world;
     }
 
@@ -176,6 +187,7 @@ public static class SaveGameService
             IsBuried = personData.IsBuried,
             Mother = ParentById(personData.MotherId, peopleById),
             Father = ParentById(personData.FatherId, peopleById),
+            Sex = personData.Sex,
         };
         person.Needs.Hunger = personData.Hunger;
         person.Needs.Fatigue = personData.Fatigue;

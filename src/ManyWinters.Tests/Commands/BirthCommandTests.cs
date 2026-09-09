@@ -9,15 +9,19 @@ public class BirthCommandTests
 {
     private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears;
 
-    private static Person SpawnAdult(WorldState world, string name, Position position) =>
-        world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world));
+    private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
+        world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);
+
+    private static Person SpawnMother(WorldState world, Position position) => SpawnAdult(world, "Sela", position, Sex.Female);
+
+    private static Person SpawnFather(WorldState world, Position position) => SpawnAdult(world, "Doran", position, Sex.Male);
 
     [Fact]
     public void AddsTheChildToTheWorld()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -31,8 +35,8 @@ public class BirthCommandTests
     public void TheChildIsBornNowSoItStartsAtAgeZero()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         // The clock alone, not a full Advance: fifty simulated ticks would also have the two
         // of them wander apart, and the birth would then be refused for being out of reach -
         // which is DoesNothingWhenTheParentsAreNotStandingTogether's job, not this one's.
@@ -50,8 +54,8 @@ public class BirthCommandTests
     public void TheChildIsBornWhereItsMotherIs()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(4, 7));
-        var father = SpawnAdult(world, "Doran", new Position(5, 7));
+        var mother = SpawnMother(world, new Position(4, 7));
+        var father = SpawnFather(world, new Position(5, 7));
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -63,8 +67,8 @@ public class BirthCommandTests
     public void TheChildInheritsNoTechniquesSkillsOrBelongings()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         mother.KnownTechniques.Add(TestCatalogs.BasicForaging);
         mother.Skills.Increase(TestCatalogs.Foraging, 5f);
         mother.Inventory.Add(TestCatalogs.WoodItem, 3);
@@ -82,8 +86,8 @@ public class BirthCommandTests
     public void TellsThePresentationLayerAboutTheChild()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         var announced = new List<Person>();
         world.PersonAdded += announced.Add;
 
@@ -96,8 +100,8 @@ public class BirthCommandTests
     public void DoesNothingWhenTheMotherIsDead()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         mother.IsAlive = false;
 
         world.Execute(new BirthCommand("Bran", mother, father));
@@ -109,8 +113,8 @@ public class BirthCommandTests
     public void DoesNothingWhenTheFatherIsDead()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         father.IsAlive = false;
 
         world.Execute(new BirthCommand("Bran", mother, father));
@@ -122,7 +126,7 @@ public class BirthCommandTests
     public void DoesNothingWhenTheTwoParentsAreTheSamePerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
 
         world.Execute(new BirthCommand("Bran", mother, mother));
 
@@ -134,8 +138,8 @@ public class BirthCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
-        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * (LifeStages.AdultAgeYears - 1));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * (LifeStages.AdultAgeYears - 1), sex: Sex.Female);
+        var father = SpawnFather(world, new Position(1, 0));
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -147,8 +151,8 @@ public class BirthCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * (LifeStages.AdultAgeYears - 1));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * (LifeStages.AdultAgeYears - 1), sex: Sex.Male);
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -162,8 +166,8 @@ public class BirthCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
-        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * LifeStages.ElderAgeYears);
-        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * LifeStages.ElderAgeYears);
+        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * LifeStages.ElderAgeYears, sex: Sex.Female);
+        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * LifeStages.ElderAgeYears, sex: Sex.Male);
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -174,8 +178,8 @@ public class BirthCommandTests
     public void DoesNothingWhenTheParentsAreNotStandingTogether()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(50, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(50, 0));
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -187,8 +191,8 @@ public class BirthCommandTests
     public void DoesNothingWhileTheMotherIsStillNursing()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         world.Execute(new BirthCommand("Bran", mother, father));
 
         world.Execute(new BirthCommand("Ivy", mother, father));
@@ -200,8 +204,8 @@ public class BirthCommandTests
     public void AllowsAnotherChildOnceTheFirstIsWeaned()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         world.Execute(new BirthCommand("Bran", mother, father));
         world.Clock.Advance(world.Configuration.Rules.TicksPerYear * LifeStages.WeaningAgeYears);
 
@@ -217,8 +221,8 @@ public class BirthCommandTests
     public void AllowsAnotherChildWhileTheFirstIsOutOfReach()
     {
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnAdult(world, "Sela", new Position(0, 0));
-        var father = SpawnAdult(world, "Doran", new Position(1, 0));
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
         world.Execute(new BirthCommand("Bran", mother, father));
         world.People[^1].Position = new Position(50, 0);
 

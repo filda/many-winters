@@ -14,7 +14,8 @@ public sealed record SaveData(
     IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
     IReadOnlyList<BuildingSaveData> Buildings,
     IReadOnlyList<GraveSaveData> Graves,
-    IReadOnlyList<ExplorationCellSaveData> ExploredCells);
+    IReadOnlyList<ExplorationCellSaveData> ExploredCells,
+    IReadOnlyList<AffectionSaveData> Affections);
 
 public sealed record PersonSaveData(
     Guid Id,
@@ -34,7 +35,15 @@ public sealed record PersonSaveData(
     // Guid.Empty is Person.Unknown - the only id a Person can carry without being in People
     // or Forebears (see Person.Unknown).
     Guid MotherId,
-    Guid FatherId);
+    Guid FatherId,
+    // Stored rather than re-derived from the id on load: it usually would come out the same
+    // (see Person.Sex), but MapLoader pins it for the starting band, and a pinned sex has to
+    // survive a reload.
+    Sex Sex);
+
+// One bond, written once per pair rather than once per direction - Affections is symmetric,
+// and which of the two ids is A is whatever order it happened to store them in.
+public sealed record AffectionSaveData(Guid PersonA, Guid PersonB, float Value);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 

@@ -9,6 +9,40 @@ public class MapLoaderTests
 {
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
 
+    // The family table settles who bore whom before any id gets a say (see Person.Sex and
+    // MapLoader.StartingSexFor) - without that pinning, the table could hand a man a child to
+    // have borne.
+    [Fact]
+    public void EveryStartingMotherIsAWomanAndEveryStartingFatherIsAMan()
+    {
+        var map = LoadDefault();
+        var everyone = map.World.People.Concat(map.World.Forebears).ToList();
+
+        foreach (var person in everyone)
+        {
+            if (everyone.Any(child => ReferenceEquals(child.Mother, person)))
+            {
+                Assert.Equal(Sex.Female, person.Sex);
+            }
+
+            if (everyone.Any(child => ReferenceEquals(child.Father, person)))
+            {
+                Assert.Equal(Sex.Male, person.Sex);
+            }
+        }
+    }
+
+    // Not everybody is somebody's parent, and those people are left to their id - a band of
+    // fifteen that came out all one sex would mean the pinning had swallowed the draw.
+    [Fact]
+    public void TheStartingBandIsNotAllOneSex()
+    {
+        var people = LoadDefault().World.People;
+
+        Assert.Contains(people, person => person.Sex == Sex.Female);
+        Assert.Contains(people, person => person.Sex == Sex.Male);
+    }
+
     [Fact]
     public void LoadDefaultReturnsTheCampCenterUsedToPlaceEverything()
     {

@@ -12,7 +12,7 @@ public class WorldStateNursingTests
     private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears;
 
     private static Person SpawnMother(WorldState world, Position position) =>
-        world.SpawnPerson("Sela", position, initialAgeTicks: AdultAgeTicks(world));
+        world.SpawnPerson("Sela", position, initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
 
     private static Person SpawnInfant(WorldState world, Person mother, Position position, long ageTicks = 0) =>
         world.SpawnPerson("Bran", position, initialAgeTicks: ageTicks, mother: mother);
@@ -235,12 +235,17 @@ public class WorldStateNursingTests
     public void AnInfantStaysWithinReachOfAMotherWhoWandersOffOnHerOwn()
     {
         // The mother's own idle wandering is what would otherwise strand the child - the
-        // infant has to be able to out-walk her, not merely walk. Fifty ticks: long enough for
-        // her to cover several times the reach she has to be caught up with, short enough that
-        // she has not yet starved (a nursing mother with nothing to eat is on a much shorter
-        // clock than usual, which AnOrphanedInfantEventuallyStarves picks up from there).
+        // infant has to be able to out-walk her, not merely walk. Her id is pinned because
+        // IdleTask's wander is seeded from it (see IdleTask.SeedFor): with a random one, how
+        // far she actually gets in a given number of ticks - and so whether this test is
+        // testing anything - would be a fresh coin flip every run.
+        //
+        // Fifty ticks: long enough for her to cover several times the reach the infant has to
+        // stay inside, short enough that she has not yet starved (a nursing mother with
+        // nothing to eat is on a much shorter clock than usual, which
+        // AnOrphanedInfantEventuallyStarves picks up from there).
         var world = TestCatalogs.CreateWorld();
-        var mother = SpawnMother(world, new Position(0, 0));
+        var mother = world.SpawnPerson(TestIds.Person(1), "Sela", new Position(0, 0), initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
         var infant = SpawnInfant(world, mother, new Position(0, 0));
 
         AdvanceTickByTick(world, 50);

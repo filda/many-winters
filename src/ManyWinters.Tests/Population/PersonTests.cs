@@ -1,5 +1,6 @@
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Population;
 
@@ -14,8 +15,8 @@ public class PersonTests
     [Fact]
     public void ANewPersonDrawsItsOwnIdDistinctFromEveryOther()
     {
-        var first = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
-        var second = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var first = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var second = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
         Assert.NotEqual(first.Id, second.Id);
         Assert.NotEqual(Person.Unknown.Id, first.Id);

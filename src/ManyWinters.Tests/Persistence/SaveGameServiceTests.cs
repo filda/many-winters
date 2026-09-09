@@ -116,6 +116,38 @@ public class SaveGameServiceTests
     }
 
     [Fact]
+    public void RoundTripPreservesSexAndTheBondsBetweenPeople()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var sela = world.SpawnPerson("Sela", new Position(0, 0), sex: Sex.Female);
+        var doran = world.SpawnPerson("Doran", new Position(1, 0), sex: Sex.Male);
+        var tora = world.SpawnPerson("Tora", new Position(2, 0), sex: Sex.Female);
+        world.Affections.Set(sela.Id, doran.Id, 62.5f);
+        world.Affections.Set(doran.Id, tora.Id, 11f);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var restoredSela = restored.People.Single(p => p.Name == "Sela");
+            var restoredDoran = restored.People.Single(p => p.Name == "Doran");
+            var restoredTora = restored.People.Single(p => p.Name == "Tora");
+
+            Assert.Equal(Sex.Female, restoredSela.Sex);
+            Assert.Equal(Sex.Male, restoredDoran.Sex);
+            Assert.Equal(62.5f, restored.Affections.Between(restoredSela.Id, restoredDoran.Id));
+            Assert.Equal(11f, restored.Affections.Between(restoredDoran.Id, restoredTora.Id));
+            Assert.Equal(0f, restored.Affections.Between(restoredSela.Id, restoredTora.Id));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void RoundTripPreservesForebearsAndTheChildrenWhoPointAtThem()
     {
         var world = TestCatalogs.CreateWorld();
@@ -247,8 +279,8 @@ public class SaveGameServiceTests
         // Better to say so than to silently hand the child an Unknown parent and quietly lose
         // the lineage on the next save.
         var world = TestCatalogs.CreateWorld();
-        var mother = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
-        var child = new Person { Name = "Ava", BirthTick = 0, Mother = mother, Father = Person.Unknown };
+        var mother = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var child = new Person { Name = "Ava", BirthTick = 0, Mother = mother, Father = Person.Unknown, Sex = TestPeople.AnySex };
         world.AddPerson(child);
         world.AddPerson(mother);
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");

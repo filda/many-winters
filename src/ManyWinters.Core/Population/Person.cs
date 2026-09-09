@@ -34,6 +34,11 @@ public sealed class Person
         IsBuried = true;
         Mother = this;
         Father = this;
+
+        // Arbitrary, and never read: this one is dead, is nobody's parent in the sense that
+        // matters (see Kinship), and never appears in a world. Drawn from the id rather than
+        // written as a literal so it is at least not a claim about anything.
+        Sex = SexOf(Id);
     }
 
     // Drawn here, not handed out by a world - see EntityId.
@@ -61,6 +66,16 @@ public sealed class Person
 
     public required Person Father { get; init; }
 
+    // Required, like Mother and Father and for the same reason: there is no such thing as a
+    // person without one, so nobody gets to leave it to chance by accident. A caller that
+    // genuinely does not care says so out loud with SexOf below, rather than this quietly
+    // drawing for them - which it used to, and which made every test person's sex a fresh coin
+    // flip per run.
+    //
+    // Saved rather than re-derived from the id on load (see PersonSaveData): a sex somebody
+    // chose would otherwise be replaced by whatever the id happens to say on the next reload.
+    public required Sex Sex { get; init; }
+
     public Needs Needs { get; } = new();
 
     public Skills Skills { get; } = new();
@@ -70,6 +85,16 @@ public sealed class Person
     public Inventory Inventory { get; } = new();
 
     public PersonTaskQueue Tasks { get; } = new();
+
+    // A plausible sex for someone nobody has an opinion about, drawn from their own id the way
+    // every other per-entity variation in this game is (EntityVisualVariation's tint and
+    // scale, an idle wander, a casual-teaching roll) - so it is stable across a reload and
+    // spread by SeedHash first, because ids that sit close together must not come out alike.
+    //
+    // This is what a caller with no stake in the answer reaches for (SpawnPersonCommand and
+    // the test spawn helper both do), which is deliberately a thing you have to ask for.
+    public static Sex SexOf(PersonId id) =>
+        (SeedHash.Avalanche(unchecked((uint)id.Seed)) & 1) == 0 ? Sex.Female : Sex.Male;
 
     // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't drop this
     // person into an IdleTask even with an empty queue - lets the presentation layer (the

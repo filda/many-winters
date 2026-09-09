@@ -13,7 +13,11 @@ public sealed record SpawnPersonCommand(
     Position Position,
     Person Mother,
     Person Father,
-    long InitialAgeTicks = 0) : ICommand
+    long InitialAgeTicks = 0,
+    // Left unset by anyone who has no reason to care, in which case the person's own id
+    // decides (see Person.Sex). MapLoader cares: its starting band comes with a family table
+    // that has already settled who bore whom.
+    Sex? Sex = null) : ICommand
 {
     public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0)
         : this(PersonId.New(), name, position, mother, father, initialAgeTicks)
@@ -28,5 +32,6 @@ public sealed record SpawnPersonCommand(
         BirthTick = world.Clock.CurrentTick - InitialAgeTicks,
         Mother = Mother,
         Father = Father,
+        Sex = Sex ?? Person.SexOf(Id),
     });
 }

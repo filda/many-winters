@@ -50,7 +50,7 @@ public class WorldStateTests
     public void AddPersonTracksThemInPeople()
     {
         var world = TestCatalogs.CreateWorld();
-        var ava = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var ava = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
         world.AddPerson(ava);
 
@@ -61,7 +61,7 @@ public class WorldStateTests
     public void AddForebearTracksThemInForebearsNotPeople()
     {
         var world = TestCatalogs.CreateWorld();
-        var forebear = new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown };
+        var forebear = new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
         world.AddForebear(forebear);
 
@@ -76,7 +76,7 @@ public class WorldStateTests
         var raised = false;
         world.PersonAdded += _ => raised = true;
 
-        world.AddForebear(new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown });
+        world.AddForebear(new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex });
 
         Assert.False(raised);
         Assert.Empty(world.Exploration.Explored);
@@ -86,7 +86,7 @@ public class WorldStateTests
     public void AddForebearRejectsALivingPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var alive = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var alive = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
         var ex = Assert.Throws<ArgumentException>(() => world.AddForebear(alive));
 
@@ -102,7 +102,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Position = new Position(0, 0), Mother = Person.Unknown, Father = Person.Unknown });
+        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Position = new Position(0, 0), Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex });
 
         Assert.NotEmpty(world.Exploration.Explored);
     }
@@ -1243,7 +1243,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Person? raised = null;
         world.PersonAdded += p => raised = p;
-        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown };
+        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
         world.AddPerson(person);
 
@@ -1255,7 +1255,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown });
+        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex });
     }
 
     [Fact]

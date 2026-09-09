@@ -50,6 +50,44 @@ public sealed record SimulationRules
     // trails behind but never actually loses her.
     public float InfantFollowSpeedPerTick { get; } = 0.25f;
 
+    // What two people are worth to each other at most (see Affections). A ceiling rather than
+    // an open-ended tally, for the reason Skills.Increase has diminishing returns: without one,
+    // a bond becomes a count of ticks spent in the same clearing, and ticks are cheap.
+    public float MaxAffection { get; } = 100f;
+
+    // A bond grows while two people are together and fades while they are not - both of them
+    // the same one number, moved up or down (see Affections). Deliberately an order of
+    // magnitude apart: a friendship is made faster than it is lost, so someone away on a long
+    // errand comes back to the people they knew rather than to strangers, while a person who
+    // genuinely leaves the group does drift out of it.
+    public float AffectionGainedPerTickTogether { get; } = 0.5f;
+
+    public float AffectionLostPerTickApart { get; } = 0.05f;
+
+    // What the two above mean by "together": standing around each other, not at arm's length.
+    // Deliberately wider than MaxInteractionDistance, because handing something to somebody is
+    // an act that needs reach whereas spending the day near them is not. Wide enough to cover
+    // the starting camp (MapLoader.CrowdRadius is 4m) without reaching across the map, so a
+    // band that stays home grows close and somebody who leaves for good drifts out of it.
+    // FamilyMilestoneTests.TheShippedStartingBandHasChildrenOfItsOwn is what keeps this
+    // honest: set too tight, the numbers here stay theory and no child is ever born in the
+    // actual game.
+    public float TogetherDistance { get; } = 5f;
+
+    // The value a newborn's bond with each of its parents is written at (docs/todo/todo.md, "u
+    // potomku automaticky vyšší") - a starting point on the same scale as everything else
+    // here, not a bond of some separate kind. Well above nothing and well below the threshold
+    // below: a child is close to its parents from its first day, and closeness to family is
+    // never what makes more of it. Nothing enforces that by value, because it cannot - a grown
+    // child living beside its mother sails past the threshold on its own. Kinship is a
+    // structural check on the family tree for exactly that reason.
+    public float StartingAffectionWithParents { get; } = 50f;
+
+    // The point on that same scale past which a child follows without the player asking for
+    // one (see WorldState.Advance). Reachable from nothing in a couple of hundred ticks of
+    // company, so a band left alone for a year does grow.
+    public float AffectionNeededToHaveAChild { get; } = 60f;
+
     public float ConditionDecayPerTick { get; init; } = 0.05f;
 
     // Nobody autonomously treks halfway across a real ~1km terrain patch (see

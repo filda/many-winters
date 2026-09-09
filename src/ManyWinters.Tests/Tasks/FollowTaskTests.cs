@@ -1,6 +1,7 @@
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
@@ -10,7 +11,7 @@ public class FollowTaskTests
     private const float Speed = 0.25f;
 
     private static Person NewPerson(string name, Position position) =>
-        new() { Name = name, BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown };
+        new() { Name = name, BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
     [Fact]
     public void IsNeverComplete()

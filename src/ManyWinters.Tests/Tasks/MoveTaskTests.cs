@@ -1,13 +1,14 @@
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
 public class MoveTaskTests
 {
     private static Person NewPerson(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown };
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
     [Fact]
     public void DestinationExposesTheGivenDestination()

@@ -23,6 +23,12 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public ExplorationState Exploration { get; } = new();
 
+    // What any two people have come to mean to each other. Unlike People/Graves/... this is
+    // not a list of things in the world but a record about pairs of them, so it has no Add*
+    // of its own and nothing announces a change to the presentation layer - the inspector
+    // reads it when it draws (see Main.cs).
+    public Affections Affections { get; } = new();
+
     // What this world was built from and runs on (catalogs, calendar, tuning numbers) - fixed
     // for the world's lifetime, unlike everything else here. Not part of a save file.
     public WorldConfiguration Configuration { get; } = configuration;
@@ -254,6 +260,8 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
 
             AutoTeachNearbyPeople(currentTick);
+            AdvanceAffections();
+            StartFamilies(currentTick);
             ResolveCollisions();
             RefreshExploration();
 
@@ -507,6 +515,83 @@ public sealed class WorldState(WorldConfiguration configuration)
                 }
             }
         }
+    }
+
+    // Time spent together is the whole of what grows a bond, and time apart is what loses it
+    // (docs/todo/todo.md, "zvyšuje se, když spolu dělají věci nebo spolu tráví čas"). Every
+    // living pair, every tick - the same O(n^2) shape as AutoTeachNearbyPeople above, and
+    // negligible for the same reason: this game has tens of people, not thousands.
+    //
+    // Pairs involving the dead are skipped rather than decayed, so what someone meant to the
+    // people around them is still there to read after they are gone.
+    private void AdvanceAffections()
+    {
+        var rules = Configuration.Rules;
+        for (var i = 0; i < _people.Count; i++)
+        {
+            var first = _people[i];
+            if (!first.IsAlive)
+            {
+                continue;
+            }
+
+            for (var j = i + 1; j < _people.Count; j++)
+            {
+                var second = _people[j];
+                if (!second.IsAlive)
+                {
+                    continue;
+                }
+
+                var together = Distance(first.Position, second.Position) <= rules.TogetherDistance;
+                var delta = together ? rules.AffectionGainedPerTickTogether : -rules.AffectionLostPerTickApart;
+                Affections.Change(first.Id, second.Id, delta, rules.MaxAffection);
+            }
+        }
+    }
+
+    // Where children come from when nobody asks for one. Whether a birth is *possible* is
+    // BirthCommand's business and is not repeated here; all this pass adds is that the two of
+    // them have come to mean enough to each other (SimulationRules.AffectionNeededToHaveAChild).
+    //
+    // Iterates a snapshot, because BirthCommand adds to _people: a child must not be able to
+    // turn up as a candidate parent on the very tick it is born.
+    private void StartFamilies(long currentTick)
+    {
+        var threshold = Configuration.Rules.AffectionNeededToHaveAChild;
+        var candidates = _people.Where(person => person.IsAlive && IsOldEnoughForChildren(person)).ToList();
+
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            for (var j = i + 1; j < candidates.Count; j++)
+            {
+                var first = candidates[i];
+                var second = candidates[j];
+                if (Affections.Between(first.Id, second.Id) < threshold)
+                {
+                    continue;
+                }
+
+                var mother = first.Sex == Sex.Female ? first : second;
+                var father = ReferenceEquals(mother, first) ? second : first;
+
+                // Everything else - both of them alive and grown, one of each sex, not close
+                // kin, within reach, the mother not already nursing - is checked inside, and
+                // silently declines like every other command that cannot do what it was asked.
+                new BirthCommand(NameForNewborn(mother, father, currentTick), mother, father).Execute(this);
+            }
+        }
+    }
+
+    // A newborn's name, drawn from the same pool the starting band and the player's own "Spawn
+    // Person" button use, deterministically from its parents and the moment - so a world
+    // replayed from the same save names the same children. Repeats within a band are possible
+    // and left alone; richer naming is its own item (docs/todo/todo.md).
+    private static string NameForNewborn(Person mother, Person father, long tick)
+    {
+        var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ (uint)(father.Id.Seed * 19349663) ^ ((uint)tick * 2654435761u));
+        var index = (int)((uint)SeedHash.Avalanche(mixed) % (uint)PersonNames.Pool.Length);
+        return PersonNames.Pool[index];
     }
 
     // Deterministic from the ids (their seeds - see EntityId.SeedOf) and the tick alone (same

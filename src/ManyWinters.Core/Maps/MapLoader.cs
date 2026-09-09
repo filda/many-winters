@@ -191,7 +191,7 @@ public static class MapLoader
         var spawned = new Dictionary<int, Person>();
         var nextForebearName = 0;
 
-        Person SpawnForebear()
+        Person SpawnForebear(Sex sex)
         {
             // Died the winter before the story began, after a full life - old enough to have
             // raised anyone in the starting crowd, gone for long enough that nobody expects to
@@ -208,6 +208,7 @@ public static class MapLoader
                 IsBuried = true,
                 Mother = Person.Unknown,
                 Father = Person.Unknown,
+                Sex = sex,
             };
 
             world.AddForebear(forebear);
@@ -221,10 +222,17 @@ public static class MapLoader
                 return alreadySpawned;
             }
 
-            var mother = StartingMotherIndex[index] is { } motherIndex ? SpawnStarting(motherIndex) : SpawnForebear();
-            var father = StartingFatherIndex[index] is { } fatherIndex ? SpawnStarting(fatherIndex) : SpawnForebear();
+            var mother = StartingMotherIndex[index] is { } motherIndex ? SpawnStarting(motherIndex) : SpawnForebear(Sex.Female);
+            var father = StartingFatherIndex[index] is { } fatherIndex ? SpawnStarting(fatherIndex) : SpawnForebear(Sex.Male);
             var initialAgeTicks = StartingAgesInWinters[index] * rules.TicksPerYear;
-            world.Execute(new SpawnPersonCommand(PersonId.New(idRng), PersonNames.Pool[index], positions[index], mother, father, initialAgeTicks));
+            world.Execute(new SpawnPersonCommand(
+                PersonId.New(idRng),
+                PersonNames.Pool[index],
+                positions[index],
+                mother,
+                father,
+                initialAgeTicks,
+                StartingSexFor(index)));
 
             // The command doesn't hand the person back (commands are plain data - see
             // ICommand); the one it just added is the newest in People.
@@ -237,6 +245,24 @@ public static class MapLoader
         {
             SpawnStarting(i);
         }
+    }
+
+    // Anyone the family table above already names as somebody's mother or father has had
+    // their sex settled by it; their own id does not get a say (see Person.Sex), or the table
+    // could hand a man a child to have borne. Everybody else is left to the id.
+    private static Sex? StartingSexFor(int index)
+    {
+        if (StartingMotherIndex.Contains(index))
+        {
+            return Sex.Female;
+        }
+
+        if (StartingFatherIndex.Contains(index))
+        {
+            return Sex.Male;
+        }
+
+        return null;
     }
 
     private static Position Offset(double x, double y) => new(CampCenter.X + x, CampCenter.Y + y);

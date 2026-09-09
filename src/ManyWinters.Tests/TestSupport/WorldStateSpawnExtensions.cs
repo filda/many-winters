@@ -17,8 +17,9 @@ public static class WorldStateSpawnExtensions
         Position position,
         long initialAgeTicks = 0,
         Person? mother = null,
-        Person? father = null) =>
-        world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father);
+        Person? father = null,
+        Sex? sex = null) =>
+        world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father, sex);
 
     // With a chosen id - for tests pinning an outcome that runs on the id's seed (see TestIds).
     public static Person SpawnPerson(
@@ -28,7 +29,11 @@ public static class WorldStateSpawnExtensions
         Position position,
         long initialAgeTicks = 0,
         Person? mother = null,
-        Person? father = null)
+        Person? father = null,
+        // Left unset by every test that has no stake in it, in which case the id decides (see
+        // Person.Sex). A test about who can have a child with whom pins it, because otherwise
+        // it is asserting against a coin flip.
+        Sex? sex = null)
     {
         var person = new Person
         {
@@ -38,6 +43,7 @@ public static class WorldStateSpawnExtensions
             BirthTick = world.Clock.CurrentTick - initialAgeTicks,
             Mother = mother ?? Person.Unknown,
             Father = father ?? Person.Unknown,
+            Sex = sex ?? Person.SexOf(id),
         };
 
         world.AddPerson(person);
@@ -57,6 +63,7 @@ public static class WorldStateSpawnExtensions
             IsBuried = true,
             Mother = Person.Unknown,
             Father = Person.Unknown,
+            Sex = TestPeople.AnySex,
         };
 
         world.AddForebear(forebear);

@@ -918,11 +918,10 @@ public partial class Main : Node3D
             maxAttempts: 20);
     }
 
-    // The developer's way to make a child happen, in the same shape as every other button here.
-    // Reproduction is meant to end up autonomous, driven by whether two people actually like
-    // each other (docs/todo/todo.md, "heart-2-heart") rather than by the player pointing at a
-    // couple - but nothing can be tuned or even looked at until births can be made to happen
-    // on demand, so this comes first.
+    // The player asking for a child directly, rather than waiting for two people to grow fond
+    // enough of each other on their own (WorldState's own pass). It skips only the fondness:
+    // everything about whether a birth is possible at all is BirthCommand's, and this button
+    // repeats the checks purely so it can say which one stopped it instead of doing nothing.
     private void OnHaveChildButtonPressed()
     {
         if (_selectedPerson is not { } person)
@@ -946,33 +945,55 @@ public partial class Main : Node3D
         var partner = FindNearestPartner(person);
         if (partner is null)
         {
-            _statusBar.Notify("Nobody grown up is standing close enough.");
+            _statusBar.Notify($"Nobody {person.Name} could have a child with is standing close enough.");
             return;
         }
 
-        // Whoever the player has selected is the mother - there is no sex on a Person yet, and
-        // inventing one just to decide which half of a pair nurses would be a bigger change
-        // than this button is worth. What actually matters downstream is that exactly one of
-        // the two is the one the newborn follows and feeds from (see WorldState nursing).
-        if (_world.NursingInfantOf(person) is { } nursing)
+        // Which of the two is the mother is decided by them, not by whoever the player clicked
+        // first: she is the one the newborn will follow and feed from (see WorldState nursing).
+        var mother = person.Sex == Sex.Female ? person : partner;
+        var father = ReferenceEquals(mother, person) ? partner : person;
+
+        if (_world.NursingInfantOf(mother) is { } nursing)
         {
-            _statusBar.Notify($"{person.Name} is still nursing {nursing.Name}.");
+            _statusBar.Notify($"{mother.Name} is still nursing {nursing.Name}.");
             return;
         }
 
         var name = PersonNames.Pool[Random.Shared.Next(PersonNames.Pool.Length)];
-        _world.Execute(new BirthCommand(name, person, partner));
+        _world.Execute(new BirthCommand(name, mother, father));
         RefreshInfoLabel();
     }
 
-    // The nearest grown person within reach who isn't the parent-to-be themselves. Reach, not
-    // "anywhere on the map": a child is had by two people standing together, and BirthCommand
-    // enforces the same thing anyway - this only exists so the button can say why not.
+    // The nearest person this one could actually have a child with: grown, of the other sex,
+    // not close kin, and within reach. Every one of those is BirthCommand's rule rather than
+    // this button's - matching them here is what lets it name the obstacle rather than
+    // silently no-op, the same way the "nearest building" buttons already do.
     private Person? FindNearestPartner(Person person) =>
         _world.People
-            .Where(p => p != person && p.IsAlive && _world.IsOldEnoughForChildren(p) && _world.IsWithinReach(person.Position, p.Position))
+            .Where(p => p != person
+                && p.IsAlive
+                && p.Sex != person.Sex
+                && !Kinship.AreCloseKin(person, p)
+                && _world.IsOldEnoughForChildren(p)
+                && _world.IsWithinReach(person.Position, p.Position))
             .OrderBy(p => WorldState.Distance(p.Position, person.Position))
             .FirstOrDefault();
+
+    // The handful of people this one is closest to, as the inspector shows them. Bonds nobody
+    // has ever formed are simply absent (see Affections.For), so a loner's line reads "none"
+    // rather than a column of zeroes.
+    private string BondsText(Person person)
+    {
+        var namesById = _world.People.ToDictionary(p => p.Id, p => p.Name);
+        var bonds = _world.Affections.For(person.Id)
+            .Where(bond => namesById.ContainsKey(bond.Other))
+            .Take(3)
+            .Select(bond => $"{namesById[bond.Other]} {bond.Value:0}")
+            .ToList();
+
+        return bonds.Count > 0 ? string.Join(", ", bonds) : "none";
+    }
 
     private void OnPersonClicked(Person person, MouseButton button)
     {
@@ -1163,11 +1184,12 @@ public partial class Main : Node3D
         _infoLabel.Text =
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
-            $"Age: {AgeText(person)} ({_world.LifeStageOf(person)})\n" +
+            $"Age: {AgeText(person)} ({_world.LifeStageOf(person)}, {person.Sex})\n" +
             $"Task: {InspectorText.ForTask(person)}\n" +
             $"Hunger: {person.Needs.Hunger}  Fatigue: {person.Needs.Fatigue}\n" +
             $"Skills: {skills}\n" +
             $"Known techniques: {techniques}\n" +
+            $"Closest to: {BondsText(person)}\n" +
             $"Carrying: {carriedWeight}/{maxCarryWeight}\n" +
             $"Inventory: {inventory}";
     }
