@@ -64,13 +64,12 @@ public class ResourceDefinitionTests
     }
 
     [Fact]
-    public void CanFellFellLeavesKindAndTicksToWitherDefaultToNotFellableAndNeverWithering()
+    public void CanFellFellLeavesAndTicksToWitherDefaultToNotFellableAndNeverWithering()
     {
         var definition = new ResourceDefinition(TestCatalogs.Wood, "Wood", TestCatalogs.Woodcutting);
 
         Assert.False(definition.CanFell);
-        Assert.Null(definition.FellLeavesKind);
-        Assert.Equal(0f, definition.FellLeavesAmount);
+        Assert.Null(definition.FellLeaves);
         Assert.Equal(float.MaxValue, definition.TicksToWither);
     }
 }

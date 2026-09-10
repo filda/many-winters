@@ -1619,39 +1619,80 @@ def wild_grass():
     return c
 
 
+def _bark_dashes_along(c, bark, x0, x1, ys, rng):
+    """Long broken dashes running the length of a lying trunk - bark grain follows the
+    axis of the wood (this is what the reference log barrels show), not a crosshatch."""
+    for y in ys:
+        x = x0 + rng.uniform(0, 3)
+        while x < x1:
+            seg = rng.uniform(3.5, 8.0)
+            gap = rng.uniform(1.2, 3.0)
+            yy = y + rng.uniform(-0.5, 0.5)
+            c.flat(rect(x, yy, min(x + seg, x1), yy + 0.7), darken(bark, 0.3))
+            x += seg + gap
+
+
+def _log_knot(c, cx, cy, bark, rng):
+    c.flat(ellipse(cx, cy, 2.2, 1.6), darken(bark, 0.45))
+    c.flat(ellipse(cx + 0.3, cy - 0.2, 1.0, 0.7), lighten(bark, 0.15))
+
+
 def tree_stump():
-    """A cut stump: bark rind, a ring-marked top, a couple of surface roots - still
-    rooted in the ground, unlike fallen_log lying on its side."""
+    """A cut stump: bark rind around a short, slightly flared drum with roots splaying at
+    the base, topped by a foreshortened cut face - a stump is broken/cut, not machined, so
+    it also carries a torn-off splinter at the rim."""
     seed = seed_for("tree_stump")
     rng = random.Random(seed)
     c = Canvas(seed)
     bark = rgb(0.36, 0.24, 0.14)
     core = rgb(0.68, 0.52, 0.32)
-    root_l = jagged_poly([(14, GROUND_CONTACT_Y), (24, 51), (28, GROUND_CONTACT_Y)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
-    root_r = jagged_poly([(50, GROUND_CONTACT_Y), (40, 51), (36, GROUND_CONTACT_Y)], rng, amp=0.6, segments_per_edge=3, smooth_passes=1)
-    c.fill(poly(root_l) | poly(root_r), darken(bark, 0.1))
-    _wood_log(c, 32, 47, 17, 15, bark, core, seed)
-    _ground_shadow_dashes(c, 32, GROUND_CONTACT_Y, 16, seed + 99)
+
+    side_pts = [(17.5, 37.5), (46.5, 37.5), (47.5, 48), (55, GROUND_CONTACT_Y), (46, GROUND_CONTACT_Y),
+                (38, GROUND_CONTACT_Y + 0.5), (26, GROUND_CONTACT_Y + 0.5), (18, GROUND_CONTACT_Y),
+                (9, GROUND_CONTACT_Y), (16.5, 48)]
+    side = poly(jagged_poly(side_pts, rng, amp=0.7, segments_per_edge=3, smooth_passes=1))
+    c.fill(side, bark)
+    for x in (22, 27.5, 33, 38.5, 43):
+        sx = x + rng.uniform(-0.8, 0.8)
+        y0 = 40 + rng.uniform(0, 3)
+        c.flat(rect(sx, y0, sx + 0.8, GROUND_CONTACT_Y - rng.uniform(0.5, 3)) & side, darken(bark, 0.28))
+    _log_knot(c, 41, 49, bark, rng)
+
+    splinter = poly(jagged_poly([(19, 38), (23, 38), (21.5, 32.5)], rng, amp=0.3,
+                                 segments_per_edge=2, smooth_passes=1))
+    c.fill(splinter, darken(bark, 0.1))
+
+    _wood_log(c, 32, 37.5, 15, 5.8, bark, core, seed)
+    _ground_shadow_dashes(c, 32, GROUND_CONTACT_Y, 17, seed + 99)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
 
 def fallen_log():
-    """A log lying on its side - one cut end shows growth rings, the long body is just
-    crosshatched bark with a few seam lines (rings only read at an actual cut face)."""
+    """A log lying on its side - a barrel thick at one end tapering to the other, a
+    snapped branch stub, and the cut end seen obliquely as a narrow upright ellipse (not
+    a full front-facing disc)."""
     seed = seed_for("fallen_log")
     rng = random.Random(seed)
     c = Canvas(seed)
     bark = rgb(0.38, 0.26, 0.15)
     core = rgb(0.70, 0.53, 0.33)
-    body = poly(jagged_poly(
-        [(14, 51), (50, 45), (52, 57), (16, GROUND_CONTACT_Y)], rng, amp=0.8, segments_per_edge=4, smooth_passes=1))
+
+    body_pts = [(15, 44), (30, 43.5), (49, 45.5), (53.5, 50), (52.5, 56.5),
+                (34, 58), (16, GROUND_CONTACT_Y), (11.5, 51.5)]
+    body = poly(jagged_poly(body_pts, rng, amp=0.7, segments_per_edge=3, smooth_passes=1))
     c.fill(body, bark)
-    for x in (22, 30, 38):
-        seam_x = x + rng.uniform(-1, 1)
-        c.flat(rect(seam_x, 47, seam_x + 0.8, 61) & body, darken(bark, 0.22))
-    _wood_log(c, 14, 52, 9, 11, bark, core, seed + 1)
-    _ground_shadow_dashes(c, 34, GROUND_CONTACT_Y, 20, seed + 99)
+    _bark_dashes_along(c, bark, 19, 51, (46.5, 49.5, 52.5, 55.5), rng)
+    _log_knot(c, 31, 49, bark, rng)
+    _log_knot(c, 43, 53.5, bark, rng)
+
+    stub = poly(jagged_poly([(37, 44.5), (40.5, 44.5), (44.5, 37.5), (42.5, 36.5)],
+                            rng, amp=0.4, segments_per_edge=2, smooth_passes=1))
+    c.fill(stub, darken(bark, 0.08))
+    c.flat(ellipse(43.6, 37.2, 1.3, 0.9), core)
+
+    _wood_log(c, 14, 51.3, 5.2, 7.3, bark, core, seed + 1)
+    _ground_shadow_dashes(c, 33, GROUND_CONTACT_Y, 21, seed + 99)
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 

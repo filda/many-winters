@@ -49,7 +49,7 @@ public class FellCommandTests
         var configuration = TestCatalogs.CreateConfiguration() with
         {
             ResourceCatalog = new ResourceCatalog([
-                new ResourceDefinition(hollow, "Hollow Tree", TestCatalogs.Foraging, CanFell: true, FellLeavesKind: TestCatalogs.Wood, FellLeavesAmount: 0f),
+                new ResourceDefinition(hollow, "Hollow Tree", TestCatalogs.Foraging, CanFell: true, FellLeaves: [new(TestCatalogs.Wood, 0f)]),
             ]),
         };
         var world = new WorldState(configuration);
@@ -97,6 +97,23 @@ public class FellCommandTests
         world.Execute(new GatherCommand(person, leftover));
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void FellingAForestTreeLeavesBothAStumpInPlaceAndAFallenLogNearby()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(3, 4));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var node = world.SpawnResourceNode(TestCatalogs.ConiferTree, new Position(3, 4), 100);
+
+        world.Execute(new FellCommand(person, node));
+
+        Assert.Equal(3, world.ResourceNodes.Count);
+        var stump = Assert.Single(world.ResourceNodes, n => n.Kind == TestCatalogs.TreeStump);
+        Assert.Equal(new Position(3, 4), stump.Position);
+        var log = Assert.Single(world.ResourceNodes, n => n.Kind == TestCatalogs.FallenLog);
+        Assert.NotEqual(new Position(3, 4), log.Position);
     }
 
     [Fact]

@@ -1,1 +1,1 @@
-{ "id": "deciduous_tree", "displayName": "Deciduous Tree", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5, "canFell": true, "fellLeavesKind": "tree_stump", "fellLeavesAmount": 60, "collisionRadius": 0.4 }
+{ "id": "deciduous_tree", "displayName": "Deciduous Tree", "skill": "woodcutting", "yieldsItem": "wood", "regenPerTick": 0.5, "canFell": true, "fellLeaves": [{ "kind": "tree_stump", "amount": 20 }, { "kind": "fallen_log", "amount": 40 }], "collisionRadius": 0.4 }

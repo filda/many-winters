@@ -134,10 +134,13 @@ public static class TestCatalogs
     private const float DecorationWoodRegenPerTick = 0.5f;
     private const float DecorationGroundCoverRegenPerTick = 1f;
 
-    // Felling a standing forest tree leaves a stump (still has some wood left to gather, but
-    // never regrows - a stump doesn't put out new branches); felling a bush just leaves an
-    // ordinary small wood pile, the same kind a cleared fruit tree leaves.
-    private const float FellTreeStumpYield = 60f;
+    // Felling a standing forest tree leaves both a stump in its own spot (still has some wood
+    // left to gather, but never regrows - a stump doesn't put out new branches) and a fallen
+    // log nearby (the bulk of the trunk's wood, too much for one inventory load to carry off
+    // in one go); felling a bush just leaves an ordinary small wood pile, the same kind a
+    // cleared fruit tree leaves.
+    private const float FellTreeStumpYield = 20f;
+    private const float FellLogYield = 40f;
     private const float FellBushWoodYield = 30f;
 
     // Mirrors Content/resources/{kind}/{kind}.json's collisionRadius exactly - see
@@ -159,15 +162,15 @@ public static class TestCatalogs
 
     private static ResourceCatalog CreateResourceCatalog() => new(new[]
     {
-        new ResourceDefinition(Apple, "Apple", Foraging, AppleItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield, CollisionRadius: FruitTreeCollisionRadius),
-        new ResourceDefinition(Pear, "Pear", Foraging, PearItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellWoodYield, CollisionRadius: FruitTreeCollisionRadius),
+        new ResourceDefinition(Apple, "Apple", Foraging, AppleItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeaves: [new(Wood, FellWoodYield)], CollisionRadius: FruitTreeCollisionRadius),
+        new ResourceDefinition(Pear, "Pear", Foraging, PearItem, ColdFoodYield, FoodRegenPerTick, CanFell: true, FellLeaves: [new(Wood, FellWoodYield)], CollisionRadius: FruitTreeCollisionRadius),
         new ResourceDefinition(Mushroom, "Mushroom", MushroomForaging, MushroomItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Potato, "Potato", RootDigging, PotatoItem, ColdFoodYield, FoodRegenPerTick),
         new ResourceDefinition(Wood, "Wood", Woodcutting, WoodItem, RegenPerTick: WoodRegenPerTick),
         new ResourceDefinition(Grass, "Wild Grass", Foraging, GrassItem, RegenPerTick: GrassRegenPerTick),
-        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield, CollisionRadius: ForestTreeCollisionRadius),
-        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: TreeStump, FellLeavesAmount: FellTreeStumpYield, CollisionRadius: ForestTreeCollisionRadius),
-        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeavesKind: Wood, FellLeavesAmount: FellBushWoodYield, CollisionRadius: BushCollisionRadius),
+        new ResourceDefinition(ConiferTree, "Conifer Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeaves: [new(TreeStump, FellTreeStumpYield), new(FallenLog, FellLogYield)], CollisionRadius: ForestTreeCollisionRadius),
+        new ResourceDefinition(DeciduousTree, "Deciduous Tree", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeaves: [new(TreeStump, FellTreeStumpYield), new(FallenLog, FellLogYield)], CollisionRadius: ForestTreeCollisionRadius),
+        new ResourceDefinition(Bush, "Bush", Woodcutting, WoodItem, RegenPerTick: DecorationWoodRegenPerTick, CanFell: true, FellLeaves: [new(Wood, FellBushWoodYield)], CollisionRadius: BushCollisionRadius),
         new ResourceDefinition(Flower, "Flower", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
         new ResourceDefinition(Fern, "Fern", Foraging, GrassItem, RegenPerTick: DecorationGroundCoverRegenPerTick),
         new ResourceDefinition(RockPile, "Rock Pile", Mining, StoneItem, CollisionRadius: RockPileCollisionRadius),
