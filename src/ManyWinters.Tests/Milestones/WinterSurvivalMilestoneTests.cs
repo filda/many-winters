@@ -17,7 +17,10 @@ public class WinterSurvivalMilestoneTests
     [Fact]
     public void PeopleWhoStopGatheringRightAsWinterBeginsStarveDuringIt()
     {
-        var world = TestCatalogs.CreateWorld();
+        // The 50-tick winter window below is sized exactly to this rules set's cold-climate
+        // hunger multiplier, so it needs the one threshold everybody shares rather than a
+        // margin a hardy person's own draw could ride out (Person.HungerToleranceOffset).
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);

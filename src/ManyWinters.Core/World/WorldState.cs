@@ -245,13 +245,14 @@ public sealed class WorldState(WorldConfiguration configuration)
                         hungerMultiplier *= rules.NursingHungerMultiplier;
                     }
 
-                    person.Needs.Hunger = Math.Min(person.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), rules.MaxHunger);
+                    person.Needs.Hunger = Math.Min(person.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), person.MaxHunger);
                 }
 
                 TryAutoEat(person);
 
                 var diedOfOldAge = AgeInYearsAt(person, currentTick) >= rules.MaxLifespanYears;
-                if (person.Needs.Hunger >= rules.MaxHunger || diedOfOldAge)
+                // Their own MaxHunger, not the rules' - see Person.MaxHunger.
+                if (person.Needs.Hunger >= person.MaxHunger || diedOfOldAge)
                 {
                     person.IsAlive = false;
                     person.DeathTick = currentTick;

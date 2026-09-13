@@ -1,4 +1,6 @@
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
@@ -38,6 +40,66 @@ public class SimulationRulesTests
         var rules = new SimulationRules { TicksPerSeason = 3 };
 
         Assert.Equal(expected, rules.SeasonAt(tick));
+    }
+
+    // Deliberately not MaxHunger 100 with a variation of 0.5: at those numbers halving,
+    // doubling and adding all come out alike (docs/development.md, "Inspections").
+    private static readonly SimulationRules HungerRules = new() { MaxHunger = 80f, MaxHungerVariation = 0.25f };
+
+    [Fact]
+    public void ADrawnMaxHungerStaysWithinTheVariationEitherWayOfTheAverage()
+    {
+        var drawn = Enumerable.Range(1, 1000).Select(seed => HungerRules.MaxHungerFor(TestIds.Person(seed)));
+
+        Assert.All(drawn, maxHunger => Assert.InRange(maxHunger, 60f, 100f));
+    }
+
+    [Fact]
+    public void TheSameIdAlwaysDrawsTheSameMaxHunger()
+    {
+        // Nothing saves this, so a person restored by id has to come back the same - see
+        // Person.MaxHunger.
+        Assert.Equal(HungerRules.MaxHungerFor(TestIds.Person(7)), HungerRules.MaxHungerFor(TestIds.Person(7)));
+    }
+
+    // The reason the draw runs through SeedHash: consecutive ids must not come out alike, and a
+    // starting band is exactly a run of them.
+    [Fact]
+    public void NeighbouringIdsDrawNoticeablyDifferentMaxHungers()
+    {
+        var drawn = Enumerable.Range(1, 12).Select(seed => HungerRules.MaxHungerFor(TestIds.Person(seed))).ToList();
+
+        Assert.True(drawn.Max() - drawn.Min() > 20f, $"Twelve consecutive ids only spanned {drawn.Max() - drawn.Min():0.0}.");
+    }
+
+    [Fact]
+    public void DrawsFallOnBothSidesOfTheAverageAboutEqually()
+    {
+        var below = Enumerable.Range(1, 1000).Count(seed => HungerRules.MaxHungerFor(TestIds.Person(seed)) < HungerRules.MaxHunger);
+
+        Assert.InRange(below, 400, 600);
+    }
+
+    // The reason the draw reads every bit of the spread except the one Person.SexOf takes: a
+    // band whose men all outlast its women is not what this is for.
+    [Fact]
+    public void HowLongSomebodyLastsDoesNotFollowFromTheirSex()
+    {
+        var longLastingWomen = Enumerable.Range(1, 1000)
+            .Select(TestIds.Person)
+            .Count(id => Person.SexOf(id) == Sex.Female && HungerRules.MaxHungerFor(id) > HungerRules.MaxHunger);
+
+        // A quarter of 1000 if the two draws are independent, all or nothing if they are not.
+        Assert.InRange(longLastingWomen, 200, 300);
+    }
+
+    [Fact]
+    public void WithoutVariationEverybodyDrawsTheAverage()
+    {
+        var rules = new SimulationRules { MaxHunger = 80f, MaxHungerVariation = 0f };
+
+        Assert.Equal(80f, rules.MaxHungerFor(TestIds.Person(7)));
+        Assert.Equal(80f, rules.MaxHungerFor(TestIds.Person(8)));
     }
 
     [Fact]

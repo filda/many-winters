@@ -44,6 +44,7 @@ public static class WorldStateSpawnExtensions
             Mother = mother ?? Person.Unknown,
             Father = father ?? Person.Unknown,
             Sex = sex ?? Person.SexOf(id),
+            MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
         };
 
         world.AddPerson(person);

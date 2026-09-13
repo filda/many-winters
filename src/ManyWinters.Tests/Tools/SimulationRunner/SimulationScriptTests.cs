@@ -176,7 +176,7 @@ public class SimulationScriptTests
     [Fact]
     public void SimulatingLongEnoughStarvesPeopleToDeath()
     {
-        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+        var script = new SimulationScript(TestCatalogs.CreateConfigurationWithoutHungerVariation());
         script.Run(["create 1", "simulate 100"]);
 
         var output = script.Run(["print population"]);
@@ -188,7 +188,7 @@ public class SimulationScriptTests
     [Fact]
     public void PrintPopulationMarksOnlyDeadPeopleAndLeavesLivingLinesUnsuffixed()
     {
-        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+        var script = new SimulationScript(TestCatalogs.CreateConfigurationWithoutHungerVariation());
         script.Run(["create 1"]);
         script.Run(["simulate 60"]);
         script.Run(["create 1"]);
@@ -255,7 +255,7 @@ public class SimulationScriptTests
     [Fact]
     public void PrintEpitaphAfterTheBandStarvedPrintsTheInscription()
     {
-        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+        var script = new SimulationScript(TestCatalogs.CreateConfigurationWithoutHungerVariation());
         script.World.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: 600, sex: Sex.Female);
         script.World.SpawnPerson("Doran", new Position(0, 0), initialAgeTicks: 300, sex: Sex.Male);
         script.Run(["simulate 100"]);

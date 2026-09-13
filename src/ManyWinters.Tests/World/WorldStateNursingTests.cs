@@ -72,12 +72,12 @@ public class WorldStateNursingTests
         // The stake the whole arrangement rests on: nothing else in the world will feed a
         // child whose mother is gone.
         var world = TestCatalogs.CreateWorld();
-        var rules = world.Configuration.Rules;
         var mother = SpawnMother(world, new Position(0, 0));
         var infant = SpawnInfant(world, mother, new Position(0, 0));
         mother.IsAlive = false;
 
-        AdvanceTickByTick(world, (int)rules.MaxHunger + 1);
+        // This infant dies at its own MaxHunger, not the rules' one (see Person.MaxHunger).
+        AdvanceTickByTick(world, (int)infant.MaxHunger + 1);
 
         Assert.False(infant.IsAlive);
         Assert.Equal(DeathCause.Hunger, infant.CauseOfDeath);

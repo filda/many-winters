@@ -20,7 +20,35 @@ public sealed record SimulationRules
 
     public float HungerPerTick { get; init; } = 1f;
 
+    // The hunger an average person dies at. Nobody in a world is exactly average, though - each
+    // one gets their own out of this (see MaxHungerFor), which is the number that actually
+    // kills them, so this is the middle of a range rather than a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;
+
+    // How far one person's own MaxHunger can sit from the average one, as a fraction of it
+    // either way - so a famine thins a band one by one instead of every last person keeling
+    // over on the exact same tick, which reads as a scripted die-off rather than a winter.
+    //
+    // It stretches the warning as well as the ending: HungerEatThreshold and
+    // HungerSeekFoodThreshold are fixed numbers, so someone who dies early has noticeably fewer
+    // ticks between setting off for food and dying than someone who lasts. That costing twice
+    // is the point, not a side effect - but it is why this stays a fraction well under half.
+    public float MaxHungerVariation { get; init; } = 0.2f;
+
+    // One new person's own MaxHunger, drawn when they are created and carried on them from then
+    // on (see Person.MaxHunger). Taken from their own id and spread by SeedHash the way every
+    // other per-entity draw in this game is (Person.SexOf, an idle wander, a casual-teaching
+    // roll) rather than from a random number: it comes out the same on every reload without
+    // anybody having to save it, and does not depend on what order people were created in.
+    public float MaxHungerFor(PersonId id)
+    {
+        // Bit 0 of this spread is the bit Person.SexOf reads. Everything above it is untouched,
+        // so how long somebody lasts says nothing about who they are.
+        var spread = unchecked((uint)SeedHash.Avalanche(unchecked((uint)id.Seed))) >> 1;
+        var fraction = ((spread / (float)(uint.MaxValue >> 1)) * 2f) - 1f;
+
+        return MaxHunger * (1f + (fraction * MaxHungerVariation));
+    }
 
     public long MaxLifespanYears { get; init; } = 10;
 

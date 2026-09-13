@@ -141,7 +141,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceClampsHungerAtItsMaximum()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(1000);
@@ -152,7 +152,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceKillsAPersonWhoseHungerReachesTheMaximum()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(99);
@@ -915,7 +915,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceAssignsTheExactCurrentTickWhenDeathOccursMidwayThroughAMultiTickAdvance()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 98;
 
@@ -927,7 +927,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceDoesNotKeepUpdatingDeathTickForAnAlreadyDeadPerson()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(100);
@@ -1002,9 +1002,45 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
-        world.Advance(100);
+        // Their own MaxHunger, not the rules' one - see Person.MaxHunger.
+        world.Advance((long)person.MaxHunger + 1);
 
         Assert.Equal(DeathCause.Hunger, person.CauseOfDeath);
+    }
+
+    // What a MaxHunger of one's own exists for: a band that runs out of food does not keel over
+    // in one synchronised heap.
+    [Fact]
+    public void AStarvingBandDiesOffOverSeveralTicksRatherThanAllOnTheSameOne()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var band = Enumerable.Range(1, 20)
+            .Select(seed => world.SpawnPerson(TestIds.Person(seed), $"Person {seed}", new Position(seed * 100, 0)))
+            .ToList();
+
+        world.Advance((long)band.Max(person => person.MaxHunger) + 1);
+
+        Assert.All(band, person => Assert.False(person.IsAlive));
+
+        var deathTicks = band.Select(person => person.DeathTick).ToList();
+        Assert.True(
+            deathTicks.Max() - deathTicks.Min() >= 20,
+            $"Expected a band to starve over a spread of ticks, got {deathTicks.Min()}..{deathTicks.Max()}.");
+    }
+
+    // The other half of the same rule: a world that switches the variation off gets the plain
+    // shared threshold back, which is what every test pinning an exact tick relies on.
+    [Fact]
+    public void WithoutHungerVariationAWholeBandStarvesOnTheSameTick()
+    {
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
+        var band = Enumerable.Range(1, 20)
+            .Select(seed => world.SpawnPerson(TestIds.Person(seed), $"Person {seed}", new Position(seed * 100, 0)))
+            .ToList();
+
+        world.Advance((long)world.Configuration.Rules.MaxHunger);
+
+        Assert.Single(band.Select(person => person.DeathTick).Distinct());
     }
 
     [Fact]
@@ -1045,7 +1081,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceRaisesHungerByTheConfiguredAmountPerTickAndCapsItAtTheConfiguredMaximum()
     {
-        var world = CreateWorld(new SimulationRules { HungerPerTick = 30f, MaxHunger = 70f });
+        var world = CreateWorld(new SimulationRules { HungerPerTick = 30f, MaxHunger = 70f, MaxHungerVariation = 0f });
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
         world.Advance(2);
@@ -1128,7 +1164,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceLeavesADeceasedPersonsInventoryUntouchedRatherThanTransferringItAutomatically()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var parent = world.SpawnPerson("Ava", new Position(0, 0));
         parent.Needs.Hunger = 99;
         parent.Inventory.Add(TestCatalogs.WoodItem, 5);
@@ -1213,7 +1249,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceStopsMovingAPersonOnceTheyDieFromHunger()
     {
-        var world = TestCatalogs.CreateWorld();
+        var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         world.Execute(new MoveCommand(person, new Position(1000, 0)));
 

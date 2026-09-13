@@ -105,12 +105,12 @@ public static class SaveGameService
         var peopleById = new Dictionary<Guid, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
         foreach (var forebearData in data.Forebears)
         {
-            world.RestoreForebear(RestorePerson(forebearData, peopleById));
+            world.RestoreForebear(RestorePerson(forebearData, peopleById, configuration.Rules));
         }
 
         foreach (var personData in data.People)
         {
-            world.RestorePerson(RestorePerson(personData, peopleById));
+            world.RestorePerson(RestorePerson(personData, peopleById, configuration.Rules));
         }
 
         foreach (var nodeData in data.ResourceNodes)
@@ -173,11 +173,12 @@ public static class SaveGameService
         return world;
     }
 
-    private static Person RestorePerson(PersonSaveData personData, Dictionary<Guid, Person> peopleById)
+    private static Person RestorePerson(PersonSaveData personData, Dictionary<Guid, Person> peopleById, SimulationRules rules)
     {
+        var id = new PersonId(personData.Id);
         var person = new Person
         {
-            Id = new PersonId(personData.Id),
+            Id = id,
             Name = personData.Name,
             Position = new Position(personData.PositionX, personData.PositionY),
             IsAlive = personData.IsAlive,
@@ -188,6 +189,10 @@ public static class SaveGameService
             Mother = ParentById(personData.MotherId, peopleById),
             Father = ParentById(personData.FatherId, peopleById),
             Sex = personData.Sex,
+
+            // Redrawn rather than read out of the file - it was never written there, because
+            // the id it comes off was (see Person.MaxHunger).
+            MaxHunger = rules.MaxHungerFor(id),
         };
         person.Needs.Hunger = personData.Hunger;
         person.Needs.Fatigue = personData.Fatigue;

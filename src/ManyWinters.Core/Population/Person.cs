@@ -76,6 +76,17 @@ public sealed class Person
     // chose would otherwise be replaced by whatever the id happens to say on the next reload.
     public required Sex Sex { get; init; }
 
+    // The hunger this person dies at - WorldState.Advance checks Needs.Hunger against this one,
+    // not against the rule everybody shares. Settled when they are created: a creator inside a
+    // world draws it for them (SimulationRules.MaxHungerFor, off their own id, so two people
+    // born the same tick still don't run out together), and the average is what is left for a
+    // person built outside any world, who has no rules to be measured against and never gets
+    // hungry anyway.
+    //
+    // Not saved, for the reason Sex is: a sex can be somebody's choice, whereas this is only
+    // ever the draw, and the draw comes back off the id.
+    public float MaxHunger { get; init; } = SimulationRules.Default.MaxHunger;
+
     public Needs Needs { get; } = new();
 
     public Skills Skills { get; } = new();

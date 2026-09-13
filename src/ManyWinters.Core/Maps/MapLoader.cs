@@ -197,9 +197,10 @@ public static class MapLoader
             // raised anyone in the starting crowd, gone for long enough that nobody expects to
             // find them lying around camp.
             var deathTick = -rules.TicksPerYear;
+            var id = PersonId.New(idRng);
             var forebear = new Person
             {
-                Id = PersonId.New(idRng),
+                Id = id,
                 Name = PersonNames.Forebears[nextForebearName++],
                 BirthTick = deathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
                 IsAlive = false,
@@ -209,6 +210,7 @@ public static class MapLoader
                 Mother = Person.Unknown,
                 Father = Person.Unknown,
                 Sex = sex,
+                MaxHunger = rules.MaxHungerFor(id),
             };
 
             world.AddForebear(forebear);

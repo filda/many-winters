@@ -147,6 +147,38 @@ public class SaveGameServiceTests
         }
     }
 
+    // Sex is saved because somebody may have chosen it; a MaxHunger of one's own never is,
+    // because nobody chooses it - it is redrawn off the id (Person.MaxHunger). This is what says
+    // the id is enough: a loaded band goes on starving at the same numbers it had before the
+    // save rather than all at once on the next tick.
+    [Fact]
+    public void RoundTripLeavesEveryoneStarvingAtTheSameMaxHungerTheyHadBefore()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var band = Enumerable.Range(1, 6)
+            .Select(seed => world.SpawnPerson(TestIds.Person(seed), $"Person {seed}", new Position(seed * 100, 0)))
+            .ToList();
+        world.Advance(40);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            Assert.All(band, person =>
+                Assert.Equal(person.MaxHunger, restored.People.Single(p => p.Id == person.Id).MaxHunger));
+
+            // And nobody drops dead the moment the world starts running again.
+            restored.Advance(1);
+            Assert.All(restored.People, person => Assert.True(person.IsAlive));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public void RoundTripPreservesForebearsAndTheChildrenWhoPointAtThem()
     {

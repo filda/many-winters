@@ -251,4 +251,13 @@ public static class TestCatalogs
     }
 
     public static WorldState CreateWorld() => new(CreateConfiguration());
+
+    // A world where everybody's Person.MaxHunger comes out at exactly SimulationRules.MaxHunger.
+    // The shipped game draws one per person, so a test that pins an exact tick of death - or
+    // expects a whole band to go at once - would otherwise be asserting against a draw rather
+    // than against the rule it means to check. Tests about the spread itself use CreateWorld.
+    public static WorldConfiguration CreateConfigurationWithoutHungerVariation() =>
+        CreateConfiguration() with { Rules = SimulationRules.Default with { MaxHungerVariation = 0f } };
+
+    public static WorldState CreateWorldWithoutHungerVariation() => new(CreateConfigurationWithoutHungerVariation());
 }

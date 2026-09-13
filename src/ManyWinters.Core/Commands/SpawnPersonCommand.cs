@@ -33,5 +33,6 @@ public sealed record SpawnPersonCommand(
         Mother = Mother,
         Father = Father,
         Sex = Sex ?? Person.SexOf(Id),
+        MaxHunger = world.Configuration.Rules.MaxHungerFor(Id),
     });
 }

@@ -37,6 +37,7 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
             BirthTick = world.Clock.CurrentTick,
             Mother = Mother,
             Father = Father,
+            MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
         };
 
         world.AddPerson(child);
