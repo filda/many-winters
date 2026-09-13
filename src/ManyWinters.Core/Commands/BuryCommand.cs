@@ -15,12 +15,31 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
 
     private static readonly SkillTypeId BurialSkill = new("burial");
 
+    public ActionBlocker Blocker(WorldState world)
+    {
+        if (!BuryingPerson.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (Deceased.IsAlive)
+        {
+            return ActionBlocker.TargetIsAlive;
+        }
+
+        if (Deceased.IsBuried)
+        {
+            return ActionBlocker.AlreadyBuried;
+        }
+
+        return world.IsWithinReach(BuryingPerson.Position, Deceased.Position)
+            ? ActionBlocker.None
+            : ActionBlocker.TooFar;
+    }
+
     public void Execute(WorldState world)
     {
-        if (!BuryingPerson.IsAlive
-            || Deceased.IsAlive
-            || Deceased.IsBuried
-            || !world.IsWithinReach(BuryingPerson.Position, Deceased.Position))
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }

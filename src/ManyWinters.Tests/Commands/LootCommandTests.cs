@@ -123,4 +123,48 @@ public class LootCommandTests
         Assert.Equal(world.MaxCarryWeightFor(looter), looter.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, deceased.Inventory.Get(TestCatalogs.WoodItem));
     }
+
+    [Fact]
+    public void NothingBlocksLootingACorpseWithinReach()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
+        deceased.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.None, new LootCommand(looter, deceased).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadLooterIsBlockedFromLooting()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
+        looter.IsAlive = false;
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
+        deceased.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new LootCommand(looter, deceased).Blocker(world));
+    }
+
+    [Fact]
+    public void ALivingTargetBlocksTheLoot()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
+        var living = world.SpawnPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.TargetIsAlive, new LootCommand(looter, living).Blocker(world));
+    }
+
+    [Fact]
+    public void ACorpseOutOfReachBlocksTheLootAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var looter = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        deceased.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.TooFar, new LootCommand(looter, deceased).Blocker(world));
+    }
 }

@@ -44,4 +44,23 @@ public class MoveCommandTests
 
         Assert.Null(person.Tasks.Current);
     }
+
+    [Fact]
+    public void NothingBlocksALivingPersonFromWalking()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.None, new MoveCommand(person, new Position(5, 5)).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromWalking()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new MoveCommand(person, new Position(5, 5)).Blocker(world));
+    }
 }

@@ -308,21 +308,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating && person.KnownTechniques.Contains(eating.BaseTechnique);
 
     private bool IsWorthGathering(Person person, ResourceNode node) =>
-        node is { IsAlive: true, RemainingAmount: > 0f } && CanTakeAnythingFrom(person, Configuration.ResourceCatalog.Get(node.Kind));
-
-    // Whether a gather here would come away with anything, mirroring GatherCommand: eat on the
-    // spot (hungry, knows how, food source) or pocket at least one unit. Otherwise a person with
-    // a full pack would stand at a source gathering nothing until they starved.
-    private bool CanTakeAnythingFrom(Person person, ResourceDefinition definition)
-    {
-        if (definition.YieldsItem is not { } item)
-        {
-            return true;
-        }
-
-        var canEatOnTheSpot = IsHungryEnoughToEat(person) && KnowsHowToEat(person) && IsFoodResource(definition);
-        return canEatOnTheSpot || person.Inventory.HasRoomFor(item, Configuration.ItemCatalog, MaxCarryWeightFor(person));
-    }
+        node is { IsAlive: true, RemainingAmount: > 0f }
+        && GatherCommand.CanTakeAnythingFrom(this, person, Configuration.ResourceCatalog.Get(node.Kind), node.RemainingAmount);
 
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
     // (IdleTask) is the fallback. Hunger wins over a known skill (see
@@ -382,7 +369,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
     // the same kind is normally nearby - and so is anything this person could not take from
-    // (see CanTakeAnythingFrom): nobody walks to a source to gather nothing.
+    // (see GatherCommand.CanTakeAnythingFrom): nobody walks to a source to gather nothing.
     private ResourceNode? FindNearestGatherableResourceNode(Person person, Func<ResourceDefinition, bool> matches)
     {
         ResourceNode? nearest = null;

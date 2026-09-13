@@ -13,10 +13,56 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
     // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
+    public ActionBlocker Blocker(WorldState world)
+    {
+        if (!Person.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (!Node.IsAlive)
+        {
+            return ActionBlocker.TargetIsGone;
+        }
+
+        // Stryker disable once Equality: RemainingAmount never goes negative, and consuming zero is already a no-op below, so > 0 and >= 0 are indistinguishable here
+        if (Node.RemainingAmount <= 0)
+        {
+            return ActionBlocker.NothingLeft;
+        }
+
+        if (!world.IsWithinReach(Person.Position, Node.Position))
+        {
+            return ActionBlocker.TooFar;
+        }
+
+        var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
+        var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
+        // Never self-taught, unlike the efficient technique: it has to be taught first
+        // (see SkillDefinition.BaseTechnique).
+        if (!Person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
+        {
+            return ActionBlocker.NotLearned;
+        }
+
+        if (resource.YieldsItem is null)
+        {
+            return ActionBlocker.None;
+        }
+
+        if (PotentialHarvestUnits(world, Person, resource, Node.RemainingAmount) <= 0)
+        {
+            return ActionBlocker.NothingLeft;
+        }
+
+        return CanTakeAnythingFrom(world, Person, resource, Node.RemainingAmount)
+            ? ActionBlocker.None
+            : ActionBlocker.InventoryFull;
+    }
+
     public void Execute(WorldState world)
     {
-        // Stryker disable once Equality: RemainingAmount never goes negative, and consuming zero is already a no-op below, so > 0 and >= 0 are indistinguishable here
-        if (!Person.IsAlive || !Node.IsAlive || Node.RemainingAmount <= 0 || !world.IsWithinReach(Person.Position, Node.Position))
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
@@ -24,45 +70,24 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
         var skill = resource.Skill;
         var skillDefinition = world.Configuration.SkillCatalog.Get(skill);
-        // Never self-taught, unlike the efficient technique: it has to be taught first
-        // (see SkillDefinition.BaseTechnique).
-        if (!Person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
-        {
-            return;
-        }
-
         var technique = skillDefinition.EfficientTechnique;
-
-        var harvestAmount = Person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
-        if (skillDefinition.Tool is { } tool && Person.Inventory.Get(tool) > 0)
-        {
-            harvestAmount += skillDefinition.ToolHarvestBonus;
-        }
-
-        var climate = world.Configuration.SeasonParameters.ClimateFor(world.CurrentSeason);
-        harvestAmount *= resource.YieldMultiplierFor(climate);
-
-        var potentialConsumed = Math.Min(Node.RemainingAmount, harvestAmount);
 
         if (resource.YieldsItem is { } item)
         {
+            var availableUnits = PotentialHarvestUnits(world, Person, resource, Node.RemainingAmount);
             // A hungry picker eats as they go before pocketing anything - how someone with a full
             // pack still gets fed. Only what was eaten or fits comes off the node; the rest stays
             // for later. Same hunger test as the autonomous pass (WorldState.IsHungryEnoughToEat),
             // or a picker at a food source would eat one unit every tick and practice forever.
-            var eaten = world.IsHungryEnoughToEat(Person) ? EatCommand.Eat(world, Person, item, (int)potentialConsumed) : 0;
-            var added = Person.Inventory.AddUpToCapacity(item, (int)potentialConsumed - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
+            var eaten = world.IsHungryEnoughToEat(Person) ? EatCommand.Eat(world, Person, item, availableUnits) : 0;
+            var added = Person.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
             var taken = eaten + added;
-            // Coming away with nothing earns no practice, so a full pack cannot grind a technique.
-            if (taken <= 0)
-            {
-                return;
-            }
 
             Node.RemainingAmount -= taken;
         }
         else
         {
+            var potentialConsumed = PotentialHarvestAmount(world, Person, resource, Node.RemainingAmount);
             Node.RemainingAmount -= potentialConsumed;
             Person.Needs.Hunger = Math.Max(0f, Person.Needs.Hunger - potentialConsumed);
         }
@@ -72,5 +97,58 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
         {
             Person.KnownTechniques.Add(technique);
         }
+    }
+
+    // Used by WorldState before it sends someone walking to a source: range is deliberately not
+    // part of this question, because a distant useful source is still a good GatherTask target.
+    public static bool CanTakeAnythingFrom(
+        WorldState world,
+        Person person,
+        ResourceDefinition resource,
+        float remainingAmount)
+    {
+        if (resource.YieldsItem is not { } item)
+        {
+            return true;
+        }
+
+        if (PotentialHarvestUnits(world, person, resource, remainingAmount) <= 0)
+        {
+            return false;
+        }
+
+        var canEatOnTheSpot =
+            world.IsHungryEnoughToEat(person)
+            && EatCommand.EatingBlocker(world, person, item) is ActionBlocker.None;
+
+        return canEatOnTheSpot
+            || person.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
+    }
+
+    private static int PotentialHarvestUnits(
+        WorldState world,
+        Person person,
+        ResourceDefinition resource,
+        float remainingAmount) =>
+        (int)PotentialHarvestAmount(world, person, resource, remainingAmount);
+
+    private static float PotentialHarvestAmount(
+        WorldState world,
+        Person person,
+        ResourceDefinition resource,
+        float remainingAmount)
+    {
+        var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
+        var technique = skillDefinition.EfficientTechnique;
+        var harvestAmount = person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
+        if (skillDefinition.Tool is { } tool && person.Inventory.Get(tool) > 0)
+        {
+            harvestAmount += skillDefinition.ToolHarvestBonus;
+        }
+
+        var climate = world.Configuration.SeasonParameters.ClimateFor(world.CurrentSeason);
+        harvestAmount *= resource.YieldMultiplierFor(climate);
+
+        return Math.Min(remainingAmount, harvestAmount);
     }
 }

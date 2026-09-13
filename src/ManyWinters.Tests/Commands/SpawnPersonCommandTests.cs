@@ -68,4 +68,15 @@ public class SpawnPersonCommandTests
         Assert.Equal(2, world.People.Count);
         Assert.NotEqual(world.People[0].Id, world.People[1].Id);
     }
+
+    // World-building, not a player action: there is no state in which it refuses.
+    [Fact]
+    public void NothingEverBlocksSpawningAPerson()
+    {
+        var world = TestCatalogs.CreateWorld();
+
+        var command = new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown);
+
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+    }
 }

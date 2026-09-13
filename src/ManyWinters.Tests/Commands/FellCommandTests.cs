@@ -70,8 +70,10 @@ public class FellCommandTests
         var person = world.SpawnPerson("Ava", new Position(3, 4));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(3, 4), 100);
+        var command = new FellCommand(person, node);
 
-        world.Execute(new FellCommand(person, node));
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
 
         Assert.False(node.IsAlive);
         Assert.Equal(ResourceDeathCause.Felled, node.CauseOfDeath);
@@ -149,8 +151,10 @@ public class FellCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Mushroom, new Position(0, 0), 100);
+        var command = new FellCommand(person, node);
 
-        world.Execute(new FellCommand(person, node));
+        Assert.Equal(ActionBlocker.CannotBeFelled, command.Blocker(world));
+        world.Execute(command);
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -163,8 +167,10 @@ public class FellCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
         node.IsAlive = false;
+        var command = new FellCommand(person, node);
 
-        world.Execute(new FellCommand(person, node));
+        Assert.Equal(ActionBlocker.TargetIsGone, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Single(world.ResourceNodes);
     }
@@ -175,8 +181,10 @@ public class FellCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var command = new FellCommand(person, node);
 
-        world.Execute(new FellCommand(person, node));
+        Assert.Equal(ActionBlocker.NotLearned, command.Blocker(world));
+        world.Execute(command);
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -189,8 +197,10 @@ public class FellCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var command = new FellCommand(person, node);
 
-        world.Execute(new FellCommand(person, node));
+        Assert.Equal(ActionBlocker.ActorIsDead, command.Blocker(world));
+        world.Execute(command);
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -215,8 +225,10 @@ public class FellCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
+        var command = new FellCommand(person, node);
 
-        world.Execute(new FellCommand(person, node));
+        Assert.Equal(ActionBlocker.TooFar, command.Blocker(world));
+        world.Execute(command);
 
         Assert.True(node.IsAlive);
         Assert.Single(world.ResourceNodes);
@@ -244,5 +256,73 @@ public class FellCommandTests
 
         Assert.False(node.IsAlive);
         Assert.Single(world.ResourceNodes);
+    }
+
+    [Fact]
+    public void NothingBlocksFellingATreeWithinReachBySomebodyTaught()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.None, new FellCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromFelling()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.IsAlive = false;
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new FellCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void AnAlreadyFelledNodeBlocksTheFellingAsTargetIsGone()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        node.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.TargetIsGone, new FellCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void ATreeOutOfReachBlocksTheFellingAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
+
+        Assert.Equal(ActionBlocker.TooFar, new FellCommand(person, node).Blocker(world));
+    }
+
+    // A stump is already what felling leaves behind; there is nothing there to bring down.
+    [Fact]
+    public void ANodeThatCannotBeFelledSaysSoRatherThanBlamingTheWoodcutter()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var node = world.SpawnResourceNode(TestCatalogs.TreeStump, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.CannotBeFelled, new FellCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void NeverHavingBeenTaughtBlocksTheFellingAsNotLearned()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.NotLearned, new FellCommand(person, node).Blocker(world));
     }
 }

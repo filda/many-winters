@@ -59,4 +59,23 @@ public class GrantTechniqueCommandTests
         Assert.Empty(bran.KnownTechniques);
         Assert.Empty(ava.KnownTechniques);
     }
+
+    [Fact]
+    public void NothingBlocksThePlayerShowingALivingPersonHow()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.None, new GrantTechniqueCommand(person, TestCatalogs.BasicForaging).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromBeingShownHow()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new GrantTechniqueCommand(person, TestCatalogs.BasicForaging).Blocker(world));
+    }
 }

@@ -12,6 +12,9 @@ public sealed record SpawnResourceNodeCommand(ResourceNodeId Id, ResourceKindId 
     {
     }
 
+    // World-building, not a player action (see SpawnPersonCommand.Blocker).
+    public ActionBlocker Blocker(WorldState world) => ActionBlocker.None;
+
     public void Execute(WorldState world) => world.AddResourceNode(new ResourceNode
     {
         Id = Id,

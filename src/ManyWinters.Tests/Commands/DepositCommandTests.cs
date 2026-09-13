@@ -13,8 +13,10 @@ public class DepositCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var command = new DepositCommand(person, building, TestCatalogs.WoodItem, 15);
 
-        world.Execute(new DepositCommand(person, building, TestCatalogs.WoodItem, 15));
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
@@ -27,8 +29,10 @@ public class DepositCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 5);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var command = new DepositCommand(person, building, TestCatalogs.WoodItem, 15);
 
-        world.Execute(new DepositCommand(person, building, TestCatalogs.WoodItem, 15));
+        Assert.Equal(ActionBlocker.MissingMaterials, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, building.Inventory.Get(TestCatalogs.WoodItem));
@@ -42,8 +46,10 @@ public class DepositCommandTests
         person.IsAlive = false;
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var command = new DepositCommand(person, building, TestCatalogs.WoodItem, 15);
 
-        world.Execute(new DepositCommand(person, building, TestCatalogs.WoodItem, 15));
+        Assert.Equal(ActionBlocker.ActorIsDead, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, building.Inventory.Get(TestCatalogs.WoodItem));
@@ -69,10 +75,57 @@ public class DepositCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        var command = new DepositCommand(person, building, TestCatalogs.WoodItem, 15);
 
-        world.Execute(new DepositCommand(person, building, TestCatalogs.WoodItem, 15));
+        Assert.Equal(ActionBlocker.TooFar, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, building.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    [Fact]
+    public void NothingBlocksADepositWithTheItemsInHand()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 5);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.None, new DepositCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromDepositing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 5);
+        person.IsAlive = false;
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new DepositCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
+
+    [Fact]
+    public void ABuildingOutOfReachBlocksTheDepositAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 5);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+
+        Assert.Equal(ActionBlocker.TooFar, new DepositCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
+
+    [Fact]
+    public void CarryingTooFewOfTheItemBlocksTheDepositAsMissingMaterials()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 4);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.MissingMaterials, new DepositCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
     }
 }

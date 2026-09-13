@@ -8,9 +8,12 @@ namespace ManyWinters.Core.Commands;
 // Renewed every tick while a person stays selected, so they do not wander off mid-attention.
 public sealed record GrantIdleGraceCommand(Person Person, long GraceTicks) : ICommand
 {
+    public ActionBlocker Blocker(WorldState world) =>
+        Person.IsAlive ? ActionBlocker.None : ActionBlocker.ActorIsDead;
+
     public void Execute(WorldState world)
     {
-        if (!Person.IsAlive)
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }

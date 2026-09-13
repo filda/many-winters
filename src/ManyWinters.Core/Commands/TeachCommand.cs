@@ -24,33 +24,55 @@ public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Te
     // small group, not a whisper.
     private const float EfficientTeachingRangeMultiplier = 2f;
 
-    public void Execute(WorldState world)
+    public ActionBlocker Blocker(WorldState world)
     {
-        // Find, not Get: a catalog without "teaching" (a minimal test world) means nobody can
-        // teach.
-        if (!Teacher.IsAlive
-            || !Student.IsAlive
-            || !Teacher.KnownTechniques.Contains(Technique)
-            || world.Configuration.SkillCatalog.Find(TeachingSkill) is not { } teachingDefinition
-            || !Teacher.KnownTechniques.Contains(teachingDefinition.BaseTechnique))
+        if (!Teacher.IsAlive)
         {
-            return;
+            return ActionBlocker.ActorIsDead;
         }
 
-        var rangeMultiplier = Teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
-            ? EfficientTeachingRangeMultiplier
-            : 1f;
-        if (!world.IsWithinReach(Teacher.Position, Student.Position, rangeMultiplier))
+        if (!Student.IsAlive)
+        {
+            return ActionBlocker.TargetIsDead;
+        }
+
+        if (!Teacher.KnownTechniques.Contains(Technique))
+        {
+            return ActionBlocker.TeacherDoesNotKnowIt;
+        }
+
+        // Find, not Get: a catalog without "teaching" (a minimal test world) means nobody can
+        // teach.
+        if (world.Configuration.SkillCatalog.Find(TeachingSkill) is not { } teachingDefinition
+            || !Teacher.KnownTechniques.Contains(teachingDefinition.BaseTechnique))
+        {
+            return ActionBlocker.NotLearned;
+        }
+
+        return world.IsWithinReach(Teacher.Position, Student.Position, RangeMultiplier(teachingDefinition))
+            ? ActionBlocker.None
+            : ActionBlocker.TooFar;
+    }
+
+    public void Execute(WorldState world)
+    {
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
 
         Student.KnownTechniques.Add(Technique);
 
+        var teachingDefinition = world.Configuration.SkillCatalog.Get(TeachingSkill);
         Teacher.Skills.Increase(TeachingSkill, SkillGainPerLesson);
         if (Teacher.Skills.Get(TeachingSkill) >= DiscoveryThreshold)
         {
             Teacher.KnownTechniques.Add(teachingDefinition.EfficientTechnique);
         }
     }
+
+    private float RangeMultiplier(SkillDefinition teachingDefinition) =>
+        Teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
+            ? EfficientTeachingRangeMultiplier
+            : 1f;
 }

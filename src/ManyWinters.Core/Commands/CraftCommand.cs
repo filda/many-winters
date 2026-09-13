@@ -6,19 +6,28 @@ namespace ManyWinters.Core.Commands;
 
 public sealed record CraftCommand(Person Person, ItemKindId Output) : ICommand
 {
-    public void Execute(WorldState world)
+    public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        var recipe = world.Configuration.RecipeCatalog.Get(Output);
+        return Person.Inventory.Get(recipe.InputItem) < recipe.InputAmount
+            ? ActionBlocker.MissingMaterials
+            : ActionBlocker.None;
+    }
+
+    public void Execute(WorldState world)
+    {
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
 
         var recipe = world.Configuration.RecipeCatalog.Get(Output);
-        if (!Person.Inventory.Remove(recipe.InputItem, recipe.InputAmount))
-        {
-            return;
-        }
-
+        Person.Inventory.Remove(recipe.InputItem, recipe.InputAmount);
         Person.Inventory.Add(Output, 1);
     }
 }

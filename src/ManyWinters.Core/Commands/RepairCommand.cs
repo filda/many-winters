@@ -1,4 +1,5 @@
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -9,22 +10,42 @@ public sealed record RepairCommand(Person Person, Building Building) : ICommand
     private const float RepairConditionAmount = 25f;
     private const float MaxCondition = 100f;
 
+    public ActionBlocker Blocker(WorldState world)
+    {
+        if (!Person.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (Building.Condition >= MaxCondition)
+        {
+            return ActionBlocker.NothingToRepair;
+        }
+
+        if (!world.IsWithinReach(Person.Position, Building.Position))
+        {
+            return ActionBlocker.TooFar;
+        }
+
+        return Person.Inventory.Get(CostItem(world)) < RepairCost(world)
+            ? ActionBlocker.MissingMaterials
+            : ActionBlocker.None;
+    }
+
     public void Execute(WorldState world)
     {
-        if (!Person.IsAlive
-            || Building.Condition >= MaxCondition
-            || !world.IsWithinReach(Person.Position, Building.Position))
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
 
-        var definition = world.Configuration.BuildingCatalog.Get(Building.Kind);
-        var repairCost = Math.Max(1, definition.RequiredAmount / 4);
-        if (!Person.Inventory.Remove(definition.RequiredItem, repairCost))
-        {
-            return;
-        }
-
+        Person.Inventory.Remove(CostItem(world), RepairCost(world));
         Building.Condition = Math.Min(MaxCondition, Building.Condition + RepairConditionAmount);
     }
+
+    private ItemKindId CostItem(WorldState world) => world.Configuration.BuildingCatalog.Get(Building.Kind).RequiredItem;
+
+    // A quarter of what the building cost to put up, and never free.
+    private int RepairCost(WorldState world) =>
+        Math.Max(1, world.Configuration.BuildingCatalog.Get(Building.Kind).RequiredAmount / 4);
 }

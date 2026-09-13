@@ -58,4 +58,35 @@ public class CraftCommandTests
         Assert.Equal(TestCatalogs.AxeInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.Axe));
     }
+
+    [Fact]
+    public void NothingBlocksACraftWithTheMaterialsInHand()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount);
+
+        Assert.Equal(ActionBlocker.None, new CraftCommand(person, TestCatalogs.Axe).Blocker(world));
+    }
+
+    [Fact]
+    public void TooFewInputItemsBlocksTheCraftAsMissingMaterials()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount - 1);
+
+        Assert.Equal(ActionBlocker.MissingMaterials, new CraftCommand(person, TestCatalogs.Axe).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadCrafterBlocksTheCraft()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.AxeInputAmount);
+        person.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new CraftCommand(person, TestCatalogs.Axe).Blocker(world));
+    }
 }

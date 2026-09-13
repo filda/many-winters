@@ -5,11 +5,26 @@ namespace ManyWinters.Core.Commands;
 
 public sealed record LootCommand(Person LootingPerson, Person Deceased) : ICommand
 {
+    public ActionBlocker Blocker(WorldState world)
+    {
+        if (!LootingPerson.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (Deceased.IsAlive)
+        {
+            return ActionBlocker.TargetIsAlive;
+        }
+
+        return world.IsWithinReach(LootingPerson.Position, Deceased.Position)
+            ? ActionBlocker.None
+            : ActionBlocker.TooFar;
+    }
+
     public void Execute(WorldState world)
     {
-        if (!LootingPerson.IsAlive
-            || Deceased.IsAlive
-            || !world.IsWithinReach(LootingPerson.Position, Deceased.Position))
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }

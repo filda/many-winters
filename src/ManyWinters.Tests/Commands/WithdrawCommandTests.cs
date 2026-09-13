@@ -106,4 +106,51 @@ public class WithdrawCommandTests
         Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
     }
+
+    [Fact]
+    public void NothingBlocksAWithdrawalFromAStockedBuilding()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+
+        Assert.Equal(ActionBlocker.None, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromWithdrawing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.IsAlive = false;
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
+
+    [Fact]
+    public void ABuildingOutOfReachBlocksTheWithdrawalAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+
+        Assert.Equal(ActionBlocker.TooFar, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
+
+    // The store's shortage, not the person's - a distinction the player standing at an empty hut
+    // needs told apart from carrying nothing themselves.
+    [Fact]
+    public void AStoreWithoutEnoughOfTheItemBlocksTheWithdrawalAsStoreIsEmpty()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Inventory.Add(TestCatalogs.WoodItem, 4);
+
+        Assert.Equal(ActionBlocker.StoreIsEmpty, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+    }
 }

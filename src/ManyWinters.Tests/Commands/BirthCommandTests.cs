@@ -227,4 +227,96 @@ public class BirthCommandTests
 
         Assert.Equal(4, world.People.Count);
     }
+
+    [Fact]
+    public void NothingBlocksTwoAdultsStandingTogether()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
+
+        Assert.Equal(ActionBlocker.None, new BirthCommand("Bran", mother, father).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadMotherBlocksTheBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
+        mother.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new BirthCommand("Bran", mother, father).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadFatherBlocksTheBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
+        father.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.TargetIsDead, new BirthCommand("Bran", mother, father).Blocker(world));
+    }
+
+    [Fact]
+    public void OnePersonNamedAsBothParentsBlocksTheBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.SamePerson, new BirthCommand("Bran", mother, mother).Blocker(world));
+    }
+
+    [Fact]
+    public void TwoPeopleOfTheSameSexBlockTheBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var other = SpawnAdult(world, "Mira", new Position(1, 0), Sex.Female);
+
+        Assert.Equal(ActionBlocker.WrongSex, new BirthCommand("Bran", mother, other).Blocker(world));
+    }
+
+    [Fact]
+    public void CloseKinBlockTheBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var son = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: AdultAgeTicks(world), mother: mother, sex: Sex.Male);
+
+        Assert.Equal(ActionBlocker.CloseKin, new BirthCommand("Bran", mother, son).Blocker(world));
+    }
+
+    [Fact]
+    public void AParentWhoIsStillAChildBlocksTheBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = world.SpawnPerson("Sela", new Position(0, 0), sex: Sex.Female);
+        var father = SpawnFather(world, new Position(1, 0));
+
+        Assert.Equal(ActionBlocker.TooYoung, new BirthCommand("Bran", mother, father).Blocker(world));
+    }
+
+    [Fact]
+    public void ParentsNotStandingTogetherBlockTheBirthAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+
+        Assert.Equal(ActionBlocker.TooFar, new BirthCommand("Bran", mother, father).Blocker(world));
+    }
+
+    [Fact]
+    public void AMotherStillNursingBlocksASecondBirth()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
+        world.Execute(new BirthCommand("Bran", mother, father));
+
+        Assert.Equal(ActionBlocker.AlreadyNursing, new BirthCommand("Ivy", mother, father).Blocker(world));
+    }
 }

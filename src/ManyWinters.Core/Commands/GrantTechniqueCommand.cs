@@ -11,11 +11,16 @@ namespace ManyWinters.Core.Commands;
 // do not yet know how to - pointing at the resource is showing them how.
 public sealed record GrantTechniqueCommand(Person Person, TechniqueId Technique) : ICommand
 {
+    public ActionBlocker Blocker(WorldState world) =>
+        Person.IsAlive ? ActionBlocker.None : ActionBlocker.ActorIsDead;
+
     public void Execute(WorldState world)
     {
-        if (Person.IsAlive)
+        if (Blocker(world) is not ActionBlocker.None)
         {
-            Person.KnownTechniques.Add(Technique);
+            return;
         }
+
+        Person.KnownTechniques.Add(Technique);
     }
 }

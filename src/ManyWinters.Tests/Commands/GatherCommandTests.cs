@@ -22,8 +22,10 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.Needs.Hunger = 50f;
         var node = world.SpawnResourceNode(grazing, new Position(0, 0), 100);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(30f, person.Needs.Hunger);
         Assert.Equal(80f, node.RemainingAmount);
@@ -56,8 +58,10 @@ public class GatherCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(80f, node.RemainingAmount);
@@ -99,8 +103,10 @@ public class GatherCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.NothingLeft, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(0f, node.RemainingAmount);
@@ -127,8 +133,10 @@ public class GatherCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.NotLearned, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -408,8 +416,10 @@ public class GatherCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(50, 0), 100);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.TooFar, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -463,8 +473,10 @@ public class GatherCommandTests
         person.Needs.Hunger = 8f;
         FillTheBackpackWithWood(world, person);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(0f, person.Needs.Hunger);
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
@@ -530,8 +542,10 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         FillTheBackpackWithWood(world, person);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        var command = new GatherCommand(person, node);
 
-        world.Execute(new GatherCommand(person, node));
+        Assert.Equal(ActionBlocker.InventoryFull, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(100f, node.RemainingAmount);
@@ -542,5 +556,73 @@ public class GatherCommandTests
     {
         var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
         person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
+    }
+
+    [Fact]
+    public void NothingBlocksGatheringFromAFullNodeWithinReachBySomebodyTaught()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.None, new GatherCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromGathering()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.IsAlive = false;
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new GatherCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void AFelledNodeBlocksTheGatherAsTargetIsGone()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+        node.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.TargetIsGone, new GatherCommand(person, node).Blocker(world));
+    }
+
+    // Standing, but picked bare - it will regrow, so this is not the same as TargetIsGone.
+    [Fact]
+    public void APickedBareNodeBlocksTheGatherAsNothingLeft()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 0);
+
+        Assert.Equal(ActionBlocker.NothingLeft, new GatherCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void ANodeOutOfReachBlocksTheGatherAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0), 100);
+
+        Assert.Equal(ActionBlocker.TooFar, new GatherCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void NeverHavingBeenTaughtBlocksTheGatherAsNotLearned()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.NotLearned, new GatherCommand(person, node).Blocker(world));
     }
 }

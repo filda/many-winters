@@ -277,4 +277,60 @@ public class BuryCommandTests
         Assert.Empty(world.Graves);
         Assert.False(deceased.IsBuried);
     }
+
+    [Fact]
+    public void NothingBlocksBuryingACorpseWithinReach()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var digger = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
+        deceased.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.None, new BuryCommand(digger, deceased).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadGravediggerIsBlockedFromBurying()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var digger = world.SpawnPerson("Bran", new Position(0, 0));
+        digger.IsAlive = false;
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
+        deceased.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new BuryCommand(digger, deceased).Blocker(world));
+    }
+
+    [Fact]
+    public void ALivingTargetBlocksTheBurial()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var digger = world.SpawnPerson("Bran", new Position(0, 0));
+        var living = world.SpawnPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.TargetIsAlive, new BuryCommand(digger, living).Blocker(world));
+    }
+
+    [Fact]
+    public void AnAlreadyBuriedPersonBlocksASecondBurial()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var digger = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0));
+        deceased.IsAlive = false;
+        deceased.IsBuried = true;
+
+        Assert.Equal(ActionBlocker.AlreadyBuried, new BuryCommand(digger, deceased).Blocker(world));
+    }
+
+    [Fact]
+    public void ACorpseOutOfReachBlocksTheBurialAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var digger = world.SpawnPerson("Bran", new Position(0, 0));
+        var deceased = world.SpawnPerson("Ava", new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        deceased.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.TooFar, new BuryCommand(digger, deceased).Blocker(world));
+    }
 }

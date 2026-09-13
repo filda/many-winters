@@ -7,17 +7,31 @@ namespace ManyWinters.Core.Commands;
 
 public sealed record WithdrawCommand(Person Person, Building Building, ItemKindId Item, int Amount) : ICommand
 {
+    public ActionBlocker Blocker(WorldState world)
+    {
+        if (!Person.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (!world.IsWithinReach(Person.Position, Building.Position))
+        {
+            return ActionBlocker.TooFar;
+        }
+
+        // The store's shortage, not the person's - the two read differently to a player standing
+        // at an empty hut (see ActionBlocker.MissingMaterials).
+        return Building.Inventory.Get(Item) < Amount ? ActionBlocker.StoreIsEmpty : ActionBlocker.None;
+    }
+
     public void Execute(WorldState world)
     {
-        if (!Person.IsAlive || !world.IsWithinReach(Person.Position, Building.Position))
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
 
-        if (!Building.Inventory.Remove(Item, Amount))
-        {
-            return;
-        }
+        Building.Inventory.Remove(Item, Amount);
 
         // Unlike Deposit into a building's uncapped storage, this goes into the person's capped
         // inventory (see WorldState.MaxCarryWeightFor); what does not fit goes back into the

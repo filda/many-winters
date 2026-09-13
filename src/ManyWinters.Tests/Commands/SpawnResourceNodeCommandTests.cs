@@ -42,4 +42,15 @@ public class SpawnResourceNodeCommandTests
         Assert.Equal(2, world.ResourceNodes.Count);
         Assert.NotEqual(world.ResourceNodes[0].Id, world.ResourceNodes[1].Id);
     }
+
+    // World-building, not a player action: there is no state in which it refuses.
+    [Fact]
+    public void NothingEverBlocksSpawningAResourceNode()
+    {
+        var world = TestCatalogs.CreateWorld();
+
+        var command = new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+    }
 }

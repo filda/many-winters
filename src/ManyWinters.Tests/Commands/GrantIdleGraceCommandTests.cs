@@ -40,4 +40,23 @@ public class GrantIdleGraceCommandTests
 
         Assert.Equal(0, person.IdleGraceUntilTick);
     }
+
+    [Fact]
+    public void NothingBlocksGraceForALivingPerson()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.None, new GrantIdleGraceCommand(person, 5).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromBeingGrantedGrace()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new GrantIdleGraceCommand(person, 5).Blocker(world));
+    }
 }

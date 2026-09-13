@@ -3,25 +3,48 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Destroys a fellable node, leaving one-time piles of whatever ResourceDefinition.FellLeaves
-// says (typically wood), still to be gathered - unlike GatherCommand, which leaves the node
-// standing.
+// Destroys a fellable resource node (a fruit tree, say), leaving behind one or more one-time
+// piles of whatever ResourceDefinition.FellLeaves says (typically wood) that still have to be
+// gathered - unlike GatherCommand, which takes from the node repeatedly and leaves it standing.
 public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
 {
-    // How far a second or later leftover (a log beside the stump) lands from where the tree
-    // stood, so the two do not overlap.
+    // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in
+    // its own spot - lands from where the tree stood, so the two don't sit exactly on top of
+    // each other.
     private const double SubsequentLeftoverDistance = 1.4;
 
-    public void Execute(WorldState world)
+    public ActionBlocker Blocker(WorldState world)
     {
-        if (!Person.IsAlive || !Node.IsAlive || !world.IsWithinReach(Person.Position, Node.Position))
+        if (!Person.IsAlive)
         {
-            return;
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (!Node.IsAlive)
+        {
+            return ActionBlocker.TargetIsGone;
+        }
+
+        if (!world.IsWithinReach(Person.Position, Node.Position))
+        {
+            return ActionBlocker.TooFar;
         }
 
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
+        if (!resource.CanFell)
+        {
+            return ActionBlocker.CannotBeFelled;
+        }
+
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
-        if (!resource.CanFell || !Person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
+        return Person.KnownTechniques.Contains(skillDefinition.BaseTechnique)
+            ? ActionBlocker.None
+            : ActionBlocker.NotLearned;
+    }
+
+    public void Execute(WorldState world)
+    {
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
@@ -30,7 +53,7 @@ public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
         Node.DeathTick = world.Clock.CurrentTick;
         Node.CauseOfDeath = ResourceDeathCause.Felled;
 
-        if (resource.FellLeaves is not { } leftovers)
+        if (world.Configuration.ResourceCatalog.Get(Node.Kind).FellLeaves is not { } leftovers)
         {
             return;
         }

@@ -107,4 +107,63 @@ public class RepairCommandTests
         Assert.Equal(50f, building.Condition);
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
     }
+
+    [Fact]
+    public void NothingBlocksRepairingADamagedBuildingWithWoodInHand()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Condition = 40f;
+
+        Assert.Equal(ActionBlocker.None, new RepairCommand(person, building).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromRepairing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+        person.IsAlive = false;
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Condition = 40f;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new RepairCommand(person, building).Blocker(world));
+    }
+
+    [Fact]
+    public void AnUndamagedBuildingBlocksTheRepairAsNothingToRepair()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Equal(ActionBlocker.NothingToRepair, new RepairCommand(person, building).Blocker(world));
+    }
+
+    [Fact]
+    public void ABuildingOutOfReachBlocksTheRepairAsTooFar()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, TestCatalogs.StorageHutInputAmount);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
+        building.Condition = 40f;
+
+        Assert.Equal(ActionBlocker.TooFar, new RepairCommand(person, building).Blocker(world));
+    }
+
+    [Fact]
+    public void NoWoodInHandBlocksTheRepairAsMissingMaterials()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        building.Condition = 40f;
+
+        Assert.Equal(ActionBlocker.MissingMaterials, new RepairCommand(person, building).Blocker(world));
+    }
 }

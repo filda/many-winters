@@ -47,7 +47,7 @@ public sealed class Inventory
     }
 
     // Whether a single unit of `kind` would still fit - asked before walking to a source of it
-    // (see WorldState.CanTakeAnythingFrom).
+    // (see GatherCommand.CanTakeAnythingFrom).
     public bool HasRoomFor(ItemKindId kind, ItemCatalog catalog, float maxWeight) => UnitsThatFit(kind, catalog, maxWeight) > 0;
 
     private int UnitsThatFit(ItemKindId kind, ItemCatalog catalog, float maxWeight)

@@ -22,6 +22,10 @@ public sealed record SpawnPersonCommand(
     {
     }
 
+    // World-building, not a player action: whoever calls this is creating the world rather than
+    // acting inside it, so there is nothing to refuse.
+    public ActionBlocker Blocker(WorldState world) => ActionBlocker.None;
+
     public void Execute(WorldState world) => world.AddPerson(new Person
     {
         Id = Id,

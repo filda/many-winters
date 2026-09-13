@@ -17,8 +17,10 @@ public class EatCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 15;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
+        var command = new EatCommand(person, TestCatalogs.AppleItem);
 
-        world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(0f, person.Needs.Hunger);
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.AppleItem));
@@ -59,10 +61,13 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 0;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
+        var command = new EatCommand(person, TestCatalogs.AppleItem);
 
-        world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
+        Assert.Equal(ActionBlocker.NotHungry, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
     }
@@ -74,8 +79,10 @@ public class EatCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
+        var command = new EatCommand(person, TestCatalogs.AppleItem);
 
-        world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
+        Assert.Equal(ActionBlocker.NotLearned, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(50f, person.Needs.Hunger);
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
@@ -105,8 +112,10 @@ public class EatCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 50;
+        var command = new EatCommand(person, TestCatalogs.AppleItem);
 
-        world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
+        Assert.Equal(ActionBlocker.MissingMaterials, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(50f, person.Needs.Hunger);
         // Miming a meal with an empty pack must not count as practice toward the technique.
@@ -124,8 +133,10 @@ public class EatCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
+        var command = new EatCommand(person, TestCatalogs.WoodItem);
 
-        world.Execute(new EatCommand(person, TestCatalogs.WoodItem));
+        Assert.Equal(ActionBlocker.NotEdible, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(50f, person.Needs.Hunger);
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -141,8 +152,10 @@ public class EatCommandTests
         person.IsAlive = false;
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
+        var command = new EatCommand(person, TestCatalogs.AppleItem);
 
-        world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
+        Assert.Equal(ActionBlocker.ActorIsDead, command.Blocker(world));
+        world.Execute(command);
 
         Assert.Equal(50f, person.Needs.Hunger);
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.AppleItem));
@@ -217,5 +230,72 @@ public class EatCommandTests
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
 
         return person;
+    }
+
+    [Fact]
+    public void NothingBlocksAHungryPersonWithFoodTheyKnowHowToEat()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = EaterWithFood(world);
+        person.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.None, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
+
+    [Fact]
+    public void ADeadPersonIsBlockedFromEating()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = EaterWithFood(world);
+        person.Needs.Hunger = 50f;
+        person.IsAlive = false;
+
+        Assert.Equal(ActionBlocker.ActorIsDead, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
+
+    [Fact]
+    public void NeverHavingBeenTaughtToEatBlocksTheMealAsNotLearned()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.AppleItem, 20);
+        person.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.NotLearned, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
+
+    [Fact]
+    public void AnItemThatIsNotFoodBlocksTheMealAsNotEdible()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Inventory.Add(TestCatalogs.WoodItem, 20);
+        person.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.NotEdible, new EatCommand(person, TestCatalogs.WoodItem).Blocker(world));
+    }
+
+    // The player's Eat button stops only at no hunger at all, not at
+    // WorldState.IsHungryEnoughToEat: being told to eat is not the same as deciding to.
+    [Fact]
+    public void HavingNoHungerLeftBlocksTheMealAsNotHungry()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = EaterWithFood(world);
+        person.Needs.Hunger = 0f;
+
+        Assert.Equal(ActionBlocker.NotHungry, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
+
+    [Fact]
+    public void CarryingNoneOfThatFoodBlocksTheMealAsMissingMaterials()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.MissingMaterials, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
     }
 }

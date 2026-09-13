@@ -8,9 +8,54 @@ namespace ManyWinters.Core.Commands;
 // foragers starts as ignorant as any other.
 public sealed record BirthCommand(string Name, Person Mother, Person Father) : ICommand
 {
+    // Every precondition lives here, so the player's button and WorldState's autonomous pass
+    // can never disagree; they differ only in motivation.
+    public ActionBlocker Blocker(WorldState world)
+    {
+        if (!Mother.IsAlive)
+        {
+            return ActionBlocker.ActorIsDead;
+        }
+
+        if (!Father.IsAlive)
+        {
+            return ActionBlocker.TargetIsDead;
+        }
+
+        // Nothing else here would catch the same person twice.
+        if (ReferenceEquals(Mother, Father))
+        {
+            return ActionBlocker.SamePerson;
+        }
+
+        if (Mother.Sex != Sex.Female || Father.Sex != Sex.Male)
+        {
+            return ActionBlocker.WrongSex;
+        }
+
+        if (Kinship.AreCloseKin(Mother, Father))
+        {
+            return ActionBlocker.CloseKin;
+        }
+
+        if (!world.IsOldEnoughForChildren(Mother) || !world.IsOldEnoughForChildren(Father))
+        {
+            return ActionBlocker.TooYoung;
+        }
+
+        if (!world.IsWithinReach(Mother.Position, Father.Position))
+        {
+            return ActionBlocker.TooFar;
+        }
+
+        // One at a time: a mother already nursing cannot feed a second newborn
+        // (see WorldState.NursingInfantOf).
+        return world.NursingInfantOf(Mother) is null ? ActionBlocker.None : ActionBlocker.AlreadyNursing;
+    }
+
     public void Execute(WorldState world)
     {
-        if (!CanBearAChild(world))
+        if (Blocker(world) is not ActionBlocker.None)
         {
             return;
         }
@@ -40,21 +85,4 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
         world.Affections.Set(child.Id, Mother.Id, startingAffection);
         world.Affections.Set(child.Id, Father.Id, startingAffection);
     }
-
-    // Every precondition lives here, so the player's button and WorldState's autonomous pass
-    // can never disagree; they differ only in motivation.
-    private bool CanBearAChild(WorldState world) =>
-        Mother.IsAlive
-        && Father.IsAlive
-        // Nothing else here would catch the same person twice.
-        && !ReferenceEquals(Mother, Father)
-        && Mother.Sex == Sex.Female
-        && Father.Sex == Sex.Male
-        && !Kinship.AreCloseKin(Mother, Father)
-        && world.IsOldEnoughForChildren(Mother)
-        && world.IsOldEnoughForChildren(Father)
-        && world.IsWithinReach(Mother.Position, Father.Position)
-        // One at a time: a mother already nursing cannot feed a second newborn
-        // (see WorldState.NursingInfantOf).
-        && world.NursingInfantOf(Mother) is null;
 }
