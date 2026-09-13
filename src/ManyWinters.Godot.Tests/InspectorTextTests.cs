@@ -7,14 +7,12 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// The strings a player actually reads in the inspector. Worth pinning because they are the
-// one place simulation state gets rendered into English, and getting a plural or a missing
-// parent wrong is visible in the game and invisible to every other test.
+// The one place simulation state is rendered into English; a wrong plural or a missing parent
+// is visible in the game and invisible to every other test.
 public class InspectorTextTests
 {
-    // Sex is required of every Person (see Person.Sex) but means nothing to any of these -
-    // none of the inspector's wording reads it. Written out rather than drawn from the id so
-    // it is the same person on every run.
+    // Sex is required of every Person but none of the inspector's wording reads it. Fixed
+    // rather than drawn from the id so it is the same person on every run.
     private static Person NewPerson() =>
         new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female };
 
@@ -75,8 +73,8 @@ public class InspectorTextTests
     [Fact]
     public void AnUnmarkedGraveRecordsNothingAboutWhoLiesThere()
     {
-        // A burial done without the practiced technique preserves no identity (see Grave) - the
-        // text must not leak the name it still happens to be carrying.
+        // An unmarked grave preserves no identity (see Grave); the text must not leak the name
+        // it still carries.
         var text = InspectorText.ForGrave(NewGrave(isMarked: false));
 
         Assert.Contains("Unmarked grave - no record survives.", text, StringComparison.Ordinal);
@@ -111,8 +109,7 @@ public class InspectorTextTests
     [Fact]
     public void SeveralRememberedTechniquesAreListedSeparately()
     {
-        // One technique never exercises the separator - the run-together
-        // "basic_foragingbasic_woodcutting" only shows up once a grave holds two.
+        // One technique never exercises the separator; "basic_foragingbasic_woodcutting" needs two.
         var text = InspectorText.ForGrave(NewGrave(techniques:
             [new TechniqueId("basic_foraging"), new TechniqueId("basic_woodcutting")]));
 
@@ -139,8 +136,8 @@ public class InspectorTextTests
     {
         var text = InspectorText.ForGrave(NewGrave(causeOfDeath: null));
 
-        // The age line ends right after "winters" - no cause clause is appended. Checked that
-        // way rather than by searching for " of ", which the parent line legitimately contains.
+        // The age line ends right after "winters". Not checked via " of ", which the parent line
+        // legitimately contains.
         Assert.Contains("died at age 7 winters\n", text, StringComparison.Ordinal);
         Assert.DoesNotContain("of hunger", text, StringComparison.Ordinal);
         Assert.DoesNotContain("of old age", text, StringComparison.Ordinal);

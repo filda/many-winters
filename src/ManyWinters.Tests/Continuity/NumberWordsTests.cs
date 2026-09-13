@@ -43,8 +43,8 @@ public class NumberWordsTests
     [InlineData(80, "eighty")]
     public void EveryWordInTheTablesIsTheRightOne(int value, string expected)
     {
-        // Each entry is content that ends up carved on an inscription, so each one is asserted
-        // rather than only the shape of the tables.
+        // Each entry is content carved on an inscription, so each one is asserted, not only the
+        // tables' shape.
         Assert.Equal(expected, NumberWords.Of(value));
     }
 

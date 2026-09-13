@@ -6,7 +6,7 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.TestSupport;
 
-// Mirrors the content files under src/ManyWinters.Godot/Content/ so tests exercise the same ids without touching disk.
+// Mirrors src/ManyWinters.Godot/Content/ so tests use the same ids without touching disk.
 public static class TestCatalogs
 {
     public static readonly ResourceKindId Apple = new("apple");
@@ -16,7 +16,7 @@ public static class TestCatalogs
     public static readonly ResourceKindId Wood = new("wood");
     public static readonly ResourceKindId Grass = new("grass");
 
-    // Former terrain decoration, now real ResourceNodes (MapLoader.ScatterDecorations).
+    // Placed by MapLoader.ScatterDecorations.
     public static readonly ResourceKindId ConiferTree = new("conifer_tree");
     public static readonly ResourceKindId DeciduousTree = new("deciduous_tree");
     public static readonly ResourceKindId Bush = new("bush");
@@ -39,9 +39,8 @@ public static class TestCatalogs
     private static readonly SkillTypeId Eating = new("eating");
     private static readonly SkillTypeId Teaching = new("teaching");
 
-    // Never self-taught (see SkillDefinition.BaseTechnique's own doc comment) - the only way
-    // any of these ever end up in a person's KnownTechniques is GrantTechniqueCommand (the
-    // player) or TeachCommand (another person who already knows it).
+    // Never self-taught (see SkillDefinition.BaseTechnique): only GrantTechniqueCommand or
+    // TeachCommand ever puts one of these into a person's KnownTechniques.
     public static readonly TechniqueId BasicForaging = new("basic_foraging");
     public static readonly TechniqueId BasicMushroomForaging = new("basic_mushroom_foraging");
     private static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
@@ -94,9 +93,8 @@ public static class TestCatalogs
     private const int WarmClothingInputAmount = 10;
     private const float FoodHungerRestoredPerUnit = 1f;
 
-    // Mirrors Content/materials/{id}/{id}.json. Weight is a material's density times an item's
-    // volume (ItemCatalog.WeightFor), so these two blocks together reproduce exactly the
-    // weights items used to state for themselves.
+    // Mirrors Content/materials/{id}/{id}.json. Weight is density times volume
+    // (ItemCatalog.WeightFor).
     private const float WoodDensity = 0.5f;
     private const float StoneDensity = 2f;
     private const float PlantFibreDensity = 0.2f;
@@ -111,8 +109,8 @@ public static class TestCatalogs
     private const float AxeVolume = 2.5f;
     private const float WarmClothingVolume = 4f;
 
-    // Basket (wood, carried on the back) and bag (grass, lighter but holds less) - see
-    // WorldState.MaxCarryWeightFor for how CarryCapacityBonus is applied.
+    // Basket (wood) and bag (grass, lighter but holds less); CarryCapacityBonus is applied in
+    // WorldState.MaxCarryWeightFor.
     private const int BasketInputAmount = 8;
     private const float BasketVolume = 4f;
     private const float BasketCarryCapacityBonus = 20f;
@@ -129,23 +127,19 @@ public static class TestCatalogs
     private const float WoodRegenPerTick = 0.5f;
     public const float FellWoodYield = 30f;
 
-    // Former terrain decoration (see ConiferTree etc. above) - regenPerTick 0 for rocks/dead
-    // wood (finite, never regrow) mirrors Content/resources/{kind}/{kind}.json exactly.
+    // Mirrors Content/resources/{kind}/{kind}.json. Rocks, stumps and logs get no regen: finite,
+    // never regrow.
     private const float DecorationWoodRegenPerTick = 0.5f;
     private const float DecorationGroundCoverRegenPerTick = 1f;
 
-    // Felling a standing forest tree leaves both a stump in its own spot (still has some wood
-    // left to gather, but never regrows - a stump doesn't put out new branches) and a fallen
-    // log nearby (the bulk of the trunk's wood, too much for one inventory load to carry off
-    // in one go); felling a bush just leaves an ordinary small wood pile, the same kind a
-    // cleared fruit tree leaves.
+    // Felling a forest tree leaves a stump (some wood, never regrows) and a fallen log (the bulk
+    // of the trunk, more than one load); felling a bush leaves an ordinary wood pile.
     private const float FellTreeStumpYield = 20f;
     private const float FellLogYield = 40f;
     private const float FellBushWoodYield = 30f;
 
-    // Mirrors Content/resources/{kind}/{kind}.json's collisionRadius exactly - see
-    // ResourceDefinition.CollisionRadius's own doc comment for why this is a deliberately
-    // separate axis from the billboard sprite's height.
+    // Mirrors collisionRadius in Content/resources/{kind}/{kind}.json; deliberately independent of
+    // the sprite's height (see ResourceDefinition.CollisionRadius).
     private const float FruitTreeCollisionRadius = 0.35f;
     private const float BushCollisionRadius = 0.3f;
     private const float ForestTreeCollisionRadius = 0.4f;
@@ -153,9 +147,8 @@ public static class TestCatalogs
     private const float RockClusterCollisionRadius = 0.45f;
     private const float RockBoulderCollisionRadius = 0.6f;
 
-    // Carry capacity (see CarryCapacity.BaseWeightFor) ramps up with age - most command tests
-    // don't care about age at all, so they add people old enough to already be at the full
-    // adult baseline rather than a newborn's reduced one.
+    // Carry capacity ramps up with age (CarryCapacity.BaseWeightFor); command tests that don't
+    // care about age spawn people already at the adult baseline.
     public static readonly long AdultAgeTicks = SimulationRules.Default.TicksPerYear * 4;
 
     private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
@@ -217,9 +210,8 @@ public static class TestCatalogs
         new MaterialDefinition(MushroomMaterial, "Mushroom Flesh", FoodDensity),
     });
 
-    // The axe is stone and the warm clothing is hide, even though both are still crafted out of
-    // wood - the single-input recipes are placeholders that the crafting plan's verbs replace,
-    // and describing a hide garment as wooden to match one would have made wood itself warm.
+    // The axe is stone and the warm clothing hide although both are crafted from wood: the
+    // single-input recipes are placeholders, and a wooden garment would make wood itself warm.
     private static ItemCatalog CreateItemCatalog(MaterialCatalog materials) => new(new[]
     {
         new ItemDefinition(WarmClothing, "Warm Clothing", HideMaterial, Garment, WarmClothingVolume),
@@ -252,10 +244,9 @@ public static class TestCatalogs
 
     public static WorldState CreateWorld() => new(CreateConfiguration());
 
-    // A world where everybody's Person.MaxHunger comes out at exactly SimulationRules.MaxHunger.
-    // The shipped game draws one per person, so a test that pins an exact tick of death - or
-    // expects a whole band to go at once - would otherwise be asserting against a draw rather
-    // than against the rule it means to check. Tests about the spread itself use CreateWorld.
+    // Every Person.MaxHunger comes out at exactly SimulationRules.MaxHunger. The shipped game
+    // draws one per person, so a test pinning an exact tick of death would otherwise assert
+    // against a draw. Tests about the spread itself use CreateWorld.
     public static WorldConfiguration CreateConfigurationWithoutHungerVariation() =>
         CreateConfiguration() with { Rules = SimulationRules.Default with { MaxHungerVariation = 0f } };
 

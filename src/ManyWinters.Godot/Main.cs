@@ -47,25 +47,19 @@ public partial class Main : Node3D
     private ChroniclePanel _chronicle = null!;
     private readonly EndingAnnouncements _endingAnnouncements = new();
     private TextureRect _selectionMarkerOverlay = null!;
-    // The selection is the Person itself, not an id - every command and every label wants the
-    // object, and the views hand it over on click (see PersonView), so there's never a lookup
-    // between "clicked" and "acted on".
+    // The Person itself, not an id: commands and labels want the object and PersonView hands it
+    // over on click, so nothing is looked up between "clicked" and "acted on".
     private Person? _selectedPerson;
     private Grave? _selectedGrave;
     private double _tickAccumulator;
 
-    // Captured once, at the one point BandArrival.Of legitimately means "the band has just
-    // arrived" (see _Ready) - TogglePause reads it back much later, when BandArrival.Of is
-    // called again only for its live population counts, never for this.
+    // Captured in _Ready, the one moment BandArrival.Of really means "just arrived"; TogglePause
+    // calls BandArrival.Of again later only for its live population counts.
     private long _bandArrivalTick;
 
-    // Faded in/out every frame in UpdateOcclusionFade depending on whether each one
-    // currently sits between the camera and the selection.
-
-    // A person walking to a resource node they were told to gather from, rather than one
-    // already in range when the order was given. Resolved once they arrive (see
-    // ResolvePendingGathers), so clicking a distant node reads as "go gather that" instead
-    // of silently doing nothing the way a bare out-of-range GatherCommand would.
+    // People walking to a resource node they were told to gather from; ResolvePendingGathers
+    // fires the gather on arrival, so clicking a distant node means "go gather that" instead of
+    // the silent no-op of an out-of-range GatherCommand.
     private readonly Dictionary<Person, ResourceNode> _pendingGathers = new();
 
     public override void _Ready()
@@ -74,13 +68,10 @@ public partial class Main : Node3D
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
 
-        // The band takes its first steps before anyone is watching. Everyone idles for up to
-        // IdleTask.MaxPauseTicks before their first wander leg, and with the prologue holding
-        // the clock the player watches the band's first moment closely - a band that then
-        // stood still for ten more seconds read as stuck. Running those ticks here, before
-        // the views exist, changes nothing about how the world unfolds (it is the same
-        // deterministic world, watched from ten ticks in); it costs the band that many ticks
-        // of hunger before the player can act.
+        // Everyone idles for up to IdleTask.MaxPauseTicks before their first wander leg, and with
+        // the prologue holding the clock a band that then stood still read as stuck. Running those
+        // ticks before the views exist keeps the same deterministic world, watched from a few
+        // ticks in; it costs the band that much hunger before the player can act.
         _world.Advance(IdleTask.MaxPauseTicks + 1);
 
         _exploration = new RevealableExploration(_world.Exploration);
@@ -106,23 +97,15 @@ public partial class Main : Node3D
         ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
-        // A permanent build tag, answering "am I actually running the build I think I'm
-        // running" (a repeated real source of confusion - the editor's own hot-reload, or
-        // forgetting to relaunch, can silently leave an old process running) with a one-line
-        // log check. Derived from the assembly this code is executing out of rather than
-        // hand-written: a string that has to be bumped by hand is only ever as truthful as
-        // the last person who remembered to bump it, and this one had gone stale by dozens
-        // of builds.
+        // Answers "am I running the build I think I am" (a stale process after hot-reload or a
+        // forgotten relaunch) with one log line; derived from the assembly, not bumped by hand.
         GD.Print($"Build tag: {BuildTag.For(AssemblyBuildTimeUtc())}");
     }
 
-    // When the running assembly was last written - the closest thing to a build stamp that
-    // needs no build-time code generation, and one that cannot drift out of date the way the
-    // hand-written tag it replaced did. Built from the directory rather than
-    // Assembly.Location, which is empty here: Godot loads the project assembly from a stream
-    // so the file can be overwritten while the editor still holds it. Null rather than a
-    // guess if there is no such file to stat, which BuildTag renders as an explicit
-    // "unknown" instead of a plausible-looking lie.
+    // Last write time of the running assembly - a build stamp needing no build-time code
+    // generation. Built from BaseDirectory because Assembly.Location is empty here: Godot loads
+    // the assembly from a stream so the file can be overwritten while the editor holds it. Null
+    // when there is nothing to stat; BuildTag renders that as "unknown" rather than a guess.
     private static DateTimeOffset? AssemblyBuildTimeUtc()
     {
         var assemblyPath = Path.Combine(AppContext.BaseDirectory, $"{typeof(Main).Assembly.GetName().Name}.dll");
@@ -135,23 +118,19 @@ public partial class Main : Node3D
     public override void _Process(double delta)
     {
         _cameraRig.HandleInput((float)delta);
-        // Every rendered frame, not gated behind the tick accumulator below - both the
-        // camera and the selected person's interpolated position move continuously between
-        // ticks, so what's currently standing in the way of the view changes continuously too.
+        // Every frame, not per tick: the camera and the selected person's interpolated position
+        // move continuously between ticks, so what stands in the way changes continuously too.
         UpdateOcclusionFade();
         UpdateSelectionMarkerOverlay();
-        // Also every frame: taking hover is driven by mouse movement, but losing it isn't -
-        // a person can simply walk out from under a cursor that never moved (see HoverArbiter).
+        // Also every frame: hover is taken on mouse movement but can be lost without any - a
+        // person can walk out from under a resting cursor (see HoverArbiter).
         _presenter.RevalidateHover();
-        // Also every frame, same reasoning - the mask camera has to track the main
-        // camera's own continuous movement/zoom, not just once per simulation tick.
+        // Also every frame: the mask camera tracks the main camera's continuous movement.
         _cloudFogMask.Update();
 
-        // Time stands still while an inscription is up - the prologue at the start, the
-        // inscription over the band's end later: what it says is true of this moment, and the
-        // player decides when the world moves on from it. At the start this is also the one
-        // moment to look around before hunger starts counting. A pause the player asked for
-        // (see TogglePause) holds the clock the same way.
+        // Time stands still while an inscription is up: what it says is true of this moment, and
+        // the player decides when the world moves on (at the start, a chance to look around before
+        // hunger counts). A pause the player asked for (TogglePause) holds the clock the same way.
         if (_inscriptionOverlay.Visible || _pausePanel.Visible)
         {
             return;
@@ -183,11 +162,9 @@ public partial class Main : Node3D
         foreach (var person in _world.People)
         {
             _presenter.SetPersonAlive(person.Id, person.IsAlive);
-            // A person who dies mid-stride still has their view smoothly tween toward that
-            // tick's (final) position over the next second, same as any other movement - one
-            // last visible step before they stop forever, reading as the corpse still
-            // "sliding" a little. Snapping instead (overSeconds: 0) once dead pins the view
-            // to its exact final position immediately, with nothing left to glide.
+            // A person who dies mid-stride still tweens to that tick's final position over the
+            // next second - one last visible step. Snapping (overSeconds: 0) once dead pins the
+            // corpse there with nothing left to glide.
             _presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)_pacing.TickIntervalSeconds : 0f);
         }
 
@@ -195,9 +172,8 @@ public partial class Main : Node3D
         {
             if (!node.IsAlive)
             {
-                // Catches nodes that withered from climate stress (see WorldState.Advance) -
-                // felling already removes its own view immediately, this is just the passive
-                // per-tick case.
+                // Nodes that withered from climate stress (see WorldState.Advance); felling
+                // removes its own view immediately.
                 _presenter.RemoveResourceNodeView(node.Id);
                 continue;
             }
@@ -217,17 +193,15 @@ public partial class Main : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space })
         {
-            // Space is Godot's own default ui_accept - without eating the event here it goes
-            // on to activate whatever Control last took focus (Chronicle, the "?" help
-            // button, ...), re-triggering that button on top of the pause it just toggled.
+            // Space is Godot's default ui_accept: unless eaten here it also activates whichever
+            // Control last took focus (Chronicle, the "?" button) on top of toggling the pause.
             TogglePause();
             GetViewport().SetInputAsHandled();
         }
 
-        // Checked ahead of Godot's own physics-object-picking (which fires later in the same
-        // input dispatch, from unhandled input) precisely so it can win even when that pick
-        // would have legitimately landed on something opaque standing in front of a person -
-        // see PresentationSettings.PersonClickScreenRadius's own doc comment.
+        // Ahead of Godot's physics picking (which runs later, from unhandled input) so it wins even
+        // when the pick would land on something opaque in front of a person - see
+        // PresentationSettings.PersonClickScreenRadius.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
             && GetViewport().GuiGetHoveredControl() is null
             && FindNearestPersonOnScreen(mouseButton.Position) is { } person)
@@ -237,12 +211,9 @@ public partial class Main : Node3D
         }
     }
 
-    // The already-selected person is deliberately never a candidate: re-selecting them is a
-    // no-op, and the radius around them used to swallow every click on the ground right at
-    // their feet (the very place a player aims a short "step over there" order), so the
-    // person just stood still. With them excluded the click falls through to picking as
-    // usual - their own opaque pixels still re-select them harmlessly, anything else is the
-    // ground or a real neighbour.
+    // The already-selected person is never a candidate: re-selecting is a no-op, and the radius
+    // around them swallowed every "step over there" click on the ground at their feet. Excluded,
+    // the click falls through to picking; their own opaque pixels still re-select them.
     private Person? FindNearestPersonOnScreen(Vector2 screenPosition)
     {
         var camera = _cameraRig.Camera;
@@ -269,12 +240,10 @@ public partial class Main : Node3D
         return nearest;
     }
 
-    // _UnhandledInput, not _Input: _Input fires for every node before Godot's own UI system
-    // gets a look at the event, so wheel/drag over a Control (e.g. scrolling the Inspector)
-    // would zoom/rotate the camera underneath it too. That alone wasn't reliable (a
-    // ScrollContainer with nothing left to scroll doesn't consume the wheel event, letting it
-    // fall through), so this also explicitly bails out whenever the mouse is over any Control
-    // at all - the camera should never react while the cursor is over UI, full stop.
+    // _UnhandledInput, not _Input: _Input fires before the UI gets the event, so wheel/drag over
+    // a Control would also zoom/rotate the camera underneath. That alone is not enough - a
+    // ScrollContainer with nothing left to scroll lets the wheel fall through - so the camera also
+    // ignores everything while the cursor is over any Control at all.
     public override void _UnhandledInput(InputEvent @event)
     {
         if (GetViewport().GuiGetHoveredControl() is not null)
@@ -285,22 +254,17 @@ public partial class Main : Node3D
         _cameraRig.HandleMouseInput(@event);
     }
 
-    // A decoration sprite (tree, rock, ...) between the camera and the selected person
-    // otherwise just silently blocks the view of them with no way to tell where they went.
+    // A decoration sprite between the camera and the selected person would otherwise hide them
+    // with no way to tell where they went.
     private void UpdateOcclusionFade()
     {
         var occluding = ComputeOccludingSprites();
 
-        // Re-applied every frame, not just on first entering the set - ResourceNodeView's
-        // hover highlight writes this exact same sprite's Modulate independently (on every
-        // mouse-move hover-state change, with no idea occlusion fade exists) and would
-        // otherwise silently undo the fade the moment the cursor happens to sit on top of
-        // whatever's currently occluding - easy to hit for a big nearby canopy that already
-        // fills much of the screen (docs/Screenshot 2026-09-01 223350.png). Cheap either
-        // way - the occluding set is a handful of sprites, never the whole scene.
-        // The faded set lives in BillboardSprite, not here, because picking has to consult
-        // it too (see BillboardSprite.OcclusionFadedSprites' doc comment) - this is still
-        // the only place that decides what goes in and out of it.
+        // Re-applied every frame, not only on entering the set: the hover highlight rewrites the
+        // same sprite's Modulate on every hover-state change and would undo the fade whenever the
+        // cursor sits on an occluding canopy. Cheap - the set is a handful of sprites.
+        // The faded set lives in BillboardSprite because picking consults it too (see
+        // BillboardSprite.OcclusionFadedSprites); this is still the only place deciding membership.
         foreach (var sprite in occluding)
         {
             BillboardSprite.SetOcclusionFaded(sprite, true);
@@ -313,13 +277,9 @@ public partial class Main : Node3D
         {
             BillboardSprite.SetOcclusionFaded(sprite, false);
 
-            // A faded sprite's owning view can be freed out from under this tracking set
-            // between frames (e.g. a corpse mid-fade gets buried and its PersonView -
-            // including every layer, not just the one that happened to be occluding -
-            // is queued free) - nothing left to reset the alpha on, and touching it at all
-            // throws (ObjectDisposedException), which previously broke out of _Process
-            // every frame afterward and silently stalled ticks (input events fire through a
-            // separate path, so clicking still worked while nothing else did).
+            // The owning view can be freed between frames (a corpse mid-fade gets buried and its
+            // PersonView queued free); touching a freed sprite throws ObjectDisposedException,
+            // which breaks out of _Process every frame and silently stalls ticks.
             if (IsInstanceValid(sprite))
             {
                 SetSpriteAlpha(sprite, 1f);
@@ -327,18 +287,10 @@ public partial class Main : Node3D
         }
     }
 
-    // Iterates BillboardSprite.LiveSprites (every billboard that currently exists, self
-    // maintained - see its own doc comment) rather than scanning the scene tree - this used
-    // to be a FindChildren("*", nameof(Sprite3D), recursive: true) walk of the *entire* tree,
-    // called every single frame, which was fine back when decorations were a few thousand
-    // purely-visual sprites with no collision/logic attached but became a severe per-frame
-    // cost once they became real ResourceNode entities each with their own Area3D/collision
-    // subtree to also walk past (see MapLoader.ScatterDecorations) - reads to the player as
-    // the occlusion fade (and everything sharing the same _Process frame budget, camera
-    // included) stuttering/blinking rather than as a slow scan. Ground shadow decals need no
-    // exclusion here since they're never billboards to begin with (GroundShadow builds its
-    // own plain Sprite3D, never through BillboardSprite.Create) - only the selection's own
-    // sprites (which sit at the target position itself, not in front of it) still need one.
+    // Walks BillboardSprite.LiveSprites rather than the scene tree: a per-frame FindChildren over
+    // every ResourceNode's Area3D subtree stuttered the whole frame, camera included. Ground
+    // shadows are plain Sprite3Ds (GroundShadow), never billboards, so need no exclusion; only
+    // the selection's own sprites do, since they sit at the target itself.
     private HashSet<Sprite3D> ComputeOccludingSprites()
     {
         var result = new HashSet<Sprite3D>();
@@ -352,9 +304,8 @@ public partial class Main : Node3D
         }
         else
         {
-            // Nobody selected - fall back to wherever the camera is actually looking (its
-            // orbit/pan target), so something standing in front of the view doesn't get to
-            // block it indefinitely just because no one happens to be selected right now.
+            // Nobody selected: fall back to the camera's orbit/pan target, so nothing gets to block
+            // the view indefinitely just because no one is selected.
             targetPosition = _cameraRig.RigGlobalPosition;
         }
 
@@ -370,17 +321,15 @@ public partial class Main : Node3D
                 continue;
             }
 
-            // A tree's trunk layer (see ResourceNodeView) - Camera.png's "trunks stay
-            // solid" rule: it should never fade just because a canopy elsewhere is worth
-            // ghosting, even when it geometrically sits in the way itself.
+            // A tree's trunk layer (see ResourceNodeView): Camera.png's "trunks stay solid" rule,
+            // even when the trunk geometrically sits in the way itself.
             if (BillboardSprite.IsExcludedFromOcclusionFade(sprite))
             {
                 continue;
             }
 
-            // How wide the sprite actually renders, scale included - the same one place that
-            // answers it for pixel-accurate picking (BillboardUv.RenderedSize), rather than
-            // assuming a square canvas at its authored size the way this used to.
+            // Rendered width, scale included - the same answer pixel-accurate picking uses
+            // (BillboardUv.RenderedSize), not the authored canvas size.
             var texture = sprite.Texture!;
             var scale = sprite.GlobalTransform.Basis.Scale;
             var renderedWidth = BillboardUv.RenderedSize(sprite.PixelSize, texture.GetWidth(), texture.GetHeight(), scale.X, scale.Y).X;
@@ -405,10 +354,8 @@ public partial class Main : Node3D
         sprite.Modulate = color;
     }
 
-    // A 2D screen-space overlay, not a 3D billboard - see
-    // PresentationSettings.SelectionMarkerScreenSize's doc comment for why.
-    // Camera3D.UnprojectPosition/IsPositionBehind do the actual perspective math; this just
-    // anchors a plain Control on top of that one projected point.
+    // A 2D overlay, not a 3D billboard (see PresentationSettings.SelectionMarkerScreenSize).
+    // Camera3D.UnprojectPosition/IsPositionBehind do the projection; this anchors a Control on it.
     private void UpdateSelectionMarkerOverlay()
     {
         if (_selectedPerson is not { } person
@@ -427,8 +374,8 @@ public partial class Main : Node3D
             return;
         }
 
-        // SelectionMarkerScreenGap is screen pixels, not world meters - it belongs here,
-        // applied to the projected point, not added to headPosition before projecting.
+        // SelectionMarkerScreenGap is screen pixels, so it applies to the projected point, not to
+        // headPosition before projecting.
         var screenPosition = camera.UnprojectPosition(headPosition);
         _selectionMarkerOverlay.Position = new Vector2(
             screenPosition.X - (_selectionMarkerOverlay.Size.X / 2f),
@@ -497,27 +444,23 @@ public partial class Main : Node3D
     private void SetUpInscriptionOverlay(CanvasLayer canvas)
     {
         _inscriptionOverlay = new InscriptionOverlay();
-        // The clock stood still with the inscription up, so the next tick is due the moment
-        // it comes down - not a full interval later, which read as the world taking a second
-        // to notice that the player had walked on.
+        // The clock stood still, so the next tick is due the moment the inscription comes down -
+        // a full interval later read as the world taking a second to notice.
         _inscriptionOverlay.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         canvas.AddChild(_inscriptionOverlay);
     }
 
-    // Added after the inscription overlay: the two never show at once in practice (ticking,
-    // and with it every death, is on hold whenever either is up), but if that ever changed this
-    // is the one that should draw on top.
+    // After the inscription overlay: the two never show at once today (ticking, and with it every
+    // death, is on hold while either is up), but this is the one that should draw on top.
     private void SetUpPausePanel(CanvasLayer canvas)
     {
         _pausePanel = new PausePanel();
         canvas.AddChild(_pausePanel);
     }
 
-    // Space toggles the clock on and off at the player's own request - ignored while an
-    // inscription already holds it, since that is not the player's to override. Unpausing
-    // primes the tick accumulator the same way dismissing an inscription does (see
-    // SetUpInscriptionOverlay), so the world resumes on the very next frame rather than a full
-    // tick interval later.
+    // Space toggles the clock at the player's request - ignored while an inscription holds it,
+    // which is not the player's to override. Unpausing primes the tick accumulator like an
+    // inscription dismissal does (SetUpInscriptionOverlay), so the world resumes next frame.
     private void TogglePause()
     {
         if (_inscriptionOverlay.Visible)
@@ -577,9 +520,8 @@ public partial class Main : Node3D
         canvas.AddChild(_selectionMarkerOverlay);
     }
 
-    // One floating, collapsible window for both the inspector and the action buttons -
-    // the buttons are contextual to whichever person is selected, so they belong together
-    // rather than in a separate always-open panel.
+    // One collapsible window for both the inspector and the action buttons - the buttons are
+    // contextual to the selected person, so they belong together.
     private void SetUpInspectorWindow(CanvasLayer canvas)
     {
         const float width = 340f;
@@ -588,10 +530,9 @@ public partial class Main : Node3D
         {
             Position = new Vector2(16, 16),
             CustomMinimumSize = new Vector2(width, 0),
-            // A Theme resource cascades its DefaultFontSize down to every descendant Control
-            // that doesn't set its own override - unlike AddThemeFontSizeOverride, which only
-            // affects the single Control it's called on - so this alone shrinks the title,
-            // every label, and every contextual button inside.
+            // A Theme's DefaultFontSize cascades to every descendant Control without its own
+            // override (unlike AddThemeFontSizeOverride, which affects one Control), so this alone
+            // shrinks the title, every label and every button inside.
             Theme = new Theme { DefaultFontSize = _presentation.InspectorFontSize },
         };
         panel.AddThemeStyleboxOverride("panel", PanelChrome.Background());
@@ -609,9 +550,8 @@ public partial class Main : Node3D
         spawnButton.Pressed += OnSpawnButtonPressed;
         panel.Body.AddChild(spawnButton);
 
-        // A development view, not a gameplay one (see RevealableExploration): the whole map
-        // as if fog of war did not exist. Sits with "Spawn Person" rather than in
-        // _contextualActions because it has nothing to do with whoever is selected.
+        // A development view, not a gameplay one (see RevealableExploration): the whole map as if
+        // fog of war did not exist. Sits with "Spawn Person" because it ignores the selection.
         var revealMapToggle = new CheckButton { Text = "Reveal Map" };
         revealMapToggle.Toggled += OnRevealMapToggled;
         panel.Body.AddChild(revealMapToggle);
@@ -895,10 +835,9 @@ public partial class Main : Node3D
             return;
         }
 
-        // Without this, a selected person who is themselves dead-and-unburied reads as their
-        // own nearest deceased (distance 0) - BuryCommand silently no-ops (it requires the
-        // burying person to be alive), but the corpse's view still got removed below as if it
-        // had actually been buried, vanishing with no grave ever created.
+        // A dead-and-unburied selected person would otherwise be their own nearest deceased:
+        // BuryCommand no-ops (the burier must be alive) but the view below would still vanish
+        // with no grave created.
         if (!person.IsAlive)
         {
             _statusBar.Notify("A dead person can't bury anyone.");
@@ -957,10 +896,9 @@ public partial class Main : Node3D
         RefreshInfoLabel();
     }
 
-    // Eats from whatever food kinds are on hand - gathering food only fills the inventory now
-    // (see GatherCommand), so a person never gets fed without this. Tries every kind currently
-    // carried rather than requiring the player to pick one; EatCommand itself no-ops for any
-    // kind that isn't food, so this is safe to call across the whole inventory.
+    // The deliberate meal - gathering feeds a picker only while they are hungry enough (see
+    // GatherCommand). Tries every carried kind rather than asking the player to pick one;
+    // EatCommand no-ops for anything that isn't food.
     private void OnEatButtonPressed()
     {
         if (_selectedPerson is not { } person)
@@ -1020,9 +958,8 @@ public partial class Main : Node3D
     private Position FindFreeBuildingPosition(Position near)
     {
         const float minDistance = 1.5f;
-        // Kept within MaxInteractionDistance's worst-case diagonal (spread/2 * sqrt(2)) so a freshly
-        // picked spot is never too far away to actually construct on, since ConstructCommand itself
-        // now requires proximity.
+        // Kept within MaxInteractionDistance's worst-case diagonal (spread/2 * sqrt(2)) so the
+        // picked spot is never too far to construct on - ConstructCommand requires proximity.
         var spread = _world.Configuration.Rules.MaxInteractionDistance;
 
         return FreePositionSearch.Find(
@@ -1034,10 +971,9 @@ public partial class Main : Node3D
             maxAttempts: 20);
     }
 
-    // The player asking for a child directly, rather than waiting for two people to grow fond
-    // enough of each other on their own (WorldState's own pass). It skips only the fondness:
-    // everything about whether a birth is possible at all is BirthCommand's, and this button
-    // repeats the checks purely so it can say which one stopped it instead of doing nothing.
+    // The player asking for a child directly rather than waiting for fondness (WorldState's own
+    // pass). Only the fondness is skipped: the possibility checks are BirthCommand's, repeated
+    // here purely to say which one stopped it instead of doing nothing.
     private void OnHaveChildButtonPressed()
     {
         if (_selectedPerson is not { } person)
@@ -1081,10 +1017,9 @@ public partial class Main : Node3D
         RefreshInfoLabel();
     }
 
-    // The nearest person this one could actually have a child with: grown, of the other sex,
-    // not close kin, and within reach. Every one of those is BirthCommand's rule rather than
-    // this button's - matching them here is what lets it name the obstacle rather than
-    // silently no-op, the same way the "nearest building" buttons already do.
+    // The nearest person this one could have a child with: grown, of the other sex, not close kin,
+    // within reach. All BirthCommand's rules, matched here so the button can name the obstacle
+    // rather than silently no-op, like the "nearest building" buttons do.
     private Person? FindNearestPartner(Person person) =>
         _world.People
             .Where(p => p != person
@@ -1096,9 +1031,8 @@ public partial class Main : Node3D
             .OrderBy(p => WorldState.Distance(p.Position, person.Position))
             .FirstOrDefault();
 
-    // The handful of people this one is closest to, as the inspector shows them. Bonds nobody
-    // has ever formed are simply absent (see Affections.For), so a loner's line reads "none"
-    // rather than a column of zeroes.
+    // The few people this one is closest to. Bonds never formed are absent (see Affections.For),
+    // so a loner reads "none" rather than a column of zeroes.
     private string BondsText(Person person)
     {
         var namesById = _world.People.ToDictionary(p => p.Id, p => p.Name);
@@ -1174,9 +1108,7 @@ public partial class Main : Node3D
         RefreshInfoLabel();
     }
 
-    // Runs once a person who was walking to a resource node (see OnResourceNodeSelected)
-    // arrives, so clicking a distant node reads as "go gather that" rather than the person
-    // just standing there once they arrive.
+    // Fires the gather once a person walking to a node (see OnResourceNodeSelected) arrives.
     private void ResolvePendingGathers()
     {
         if (_pendingGathers.Count == 0)
@@ -1202,19 +1134,17 @@ public partial class Main : Node3D
         }
     }
 
-    // Depleting a node down to zero doesn't remove its view - the plant/tree is still there,
-    // just fruitless until RegenPerTick brings it back. Only IsAlive turning false (felled or
-    // withered - see FellCommand, WorldState.Advance) means the thing itself is actually gone.
+    // Depleting a node to zero keeps its view - the plant is still there, fruitless until
+    // RegenPerTick refills it. Only IsAlive turning false (felled or withered) removes it.
     private void GatherFrom(Person person, ResourceNode node)
     {
         TeachBaseTechniqueIfNeeded(person, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
         _world.Execute(new GatherCommand(person, node));
     }
 
-    // Nobody starts knowing anything (see SkillDefinition.BaseTechnique) - the player directing
-    // an action at all is how "God" shows a person the way, so every player-driven action that
-    // needs a skill grants its base technique first if the selected person doesn't have it yet,
-    // rather than silently no-oping or requiring a separate "teach" step beforehand.
+    // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): the player directing an
+    // action is how the person is shown the way, so every player-driven action grants its base
+    // technique first rather than silently no-oping.
     private void TeachBaseTechniqueIfNeeded(Person person, SkillTypeId skill)
     {
         var baseTechnique = _world.Configuration.SkillCatalog.Get(skill).BaseTechnique;
@@ -1224,19 +1154,13 @@ public partial class Main : Node3D
         }
     }
 
-    // By the time a view forwards here, it has already tried HoverRescue.TryClickElsewhere
-    // itself - a full re-cast of the same ray, excluding whatever's already been ruled out,
-    // checking every other real candidate actually along it (see that doc comment). Nothing
-    // along the ray panned out, so this genuinely is a ground click (or a click into empty
-    // space with nothing real anywhere near it) - a plain move order is the correct read, not
-    // a guess.
+    // The view has already tried HoverRescue.TryClickElsewhere (a full re-cast of the ray past
+    // everything ruled out) before forwarding here, so this genuinely is a ground click.
     //
-    // The position the view hands over is the ray's hit on the view's own collision box, not
-    // on the ground - a point up in the air on the front face of a tree-sized box, whose X/Z
-    // can be tens of meters off from the ground the cursor is actually over (see GroundPick).
-    // Only the screen position is reused; where the ground really is under it is re-derived.
-    // A click that finds no ground at all (into the sky past the terrain's edge) is dropped
-    // rather than guessed at.
+    // The position handed over is the ray's hit on the view's collision box - up in the air on a
+    // tree-sized box's front face, tens of meters off the ground under the cursor (see
+    // GroundPick) - so only the screen position is reused and the ground re-derived. A click
+    // that finds no ground (sky past the terrain's edge) is dropped rather than guessed.
     private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
         if (camera is not Camera3D camera3D

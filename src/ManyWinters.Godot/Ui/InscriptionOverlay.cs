@@ -3,20 +3,16 @@ using ManyWinters.Core.Continuity;
 
 namespace ManyWinters.Godot.Ui;
 
-// An inscription carved across the whole screen - the band's arrival (Prologue), the end of
-// its line (Epitaph): the title stands alone in the middle of the undimmed world, set in the
-// title page's own face (InscriptionFont) with an ink outline so it reads over whatever the
-// camera happens to show. Only the title: one sentence is what a moment like this can carry,
-// and the lines under it wait in the chronicle (ChroniclePanel). The world behind it is left
-// as it is on purpose - the survivors, or the graves, are what the words are about - and the
-// camera keeps working while it is up; only clicks into the world are swallowed, since a
-// command issued into a stopped clock would land the moment it starts again.
-// Under it, the ways on. "Walk the land" closes it and leaves the world running - the
-// survivors, or the graves, are worth looking at. "Another band comes" is only offered once
-// nobody is left, and is not wired yet: it will bring a new band into this same world
-// (docs/todo/todo.md, permaworld), which is why it is a disabled placeholder here rather than
-// a scene reload that would throw the world away. Never a modal dialog: the player must always
-// be able to get back to the land behind it.
+// An inscription across the whole screen - the band's arrival (Prologue), the end of its line
+// (Epitaph). Only the title, in InscriptionFont's title face with an ink outline so it reads
+// over anything; the lines under it wait in ChroniclePanel. The world is left undimmed - the
+// survivors, or the graves, are what the words are about - and the camera keeps working; only
+// clicks into the world are swallowed, since a command issued into a stopped clock would land
+// the moment it restarts. Never a modal dialog.
+//
+// "Walk the land" dismisses it. "Another band comes" is offered only once nobody is left and
+// stays a disabled placeholder until permaworld lands (docs/todo/todo.md): a new band into this
+// same world, not a scene reload.
 public partial class InscriptionOverlay : Control
 {
     private const int TitleFontSize = 60;

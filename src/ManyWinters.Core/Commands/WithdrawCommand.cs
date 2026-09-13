@@ -19,10 +19,9 @@ public sealed record WithdrawCommand(Person Person, Building Building, ItemKindI
             return;
         }
 
-        // Unlike Deposit (a building's own storage stays uncapped - see
-        // WorldState.MaxCarryWeightFor's own doc comment), withdrawing goes into the person's
-        // limited inventory - whatever doesn't fit goes right back into the building rather
-        // than being destroyed.
+        // Unlike Deposit into a building's uncapped storage, this goes into the person's capped
+        // inventory (see WorldState.MaxCarryWeightFor); what does not fit goes back into the
+        // building.
         var added = Person.Inventory.AddUpToCapacity(Item, Amount, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
         if (added < Amount)
         {

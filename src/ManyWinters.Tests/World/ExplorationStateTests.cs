@@ -69,8 +69,8 @@ public class ExplorationStateTests
     [Fact]
     public void ASourceExploresMoreThanJustItsOwnCell()
     {
-        // Sight radius (15m) is several cells wide (5m each) - a single source should reveal a
-        // small neighborhood around it, not just the one cell it happens to stand in.
+        // A 15m sight radius spans several 2.5m cells, so one source reveals a neighbourhood,
+        // not just its own cell.
         var exploration = new ExplorationState();
 
         exploration.Update([new Position(0, 0)]);
@@ -85,18 +85,15 @@ public class ExplorationStateTests
     [InlineData(2.5, 2.5, 1, 1)]
     public void CellForFloorsTowardNegativeInfinityRatherThanTowardZero(double x, double y, int cellX, int cellY)
     {
-        // A position a hair west of the origin belongs to the cell west of it, not to the
-        // origin's own - truncation would fold the whole band from -2.5 to 2.5 into one cell
-        // twice the width of every other.
+        // Truncation would fold -2.5..2.5 into one cell twice the width of every other.
         Assert.Equal(new ExplorationCell(cellX, cellY), ExplorationState.CellFor(new Position(x, y)));
     }
 
     [Fact]
     public void OneSourceSeesAFixedNumberOfCells()
     {
-        // A 15m sight radius over 2.5m cells, counted by cell centre - exact rather than
-        // "more than one", because the ring bounds and the centre offset are what decide
-        // whether sight reads as a circle or as a coarse diamond.
+        // Exact: the ring bounds and the centre offset decide whether sight reads as a circle
+        // or as a coarse diamond.
         var exploration = new ExplorationState();
 
         exploration.Update([new Position(0, 0)]);
@@ -107,9 +104,8 @@ public class ExplorationStateTests
     [Fact]
     public void TheOutermostRingCountsOnlyWhenTheSourceStandsOffCentreInItsCell()
     {
-        // Six cells out is the furthest the loop reaches. From the origin that ring's centres
-        // fall outside the radius, but a source standing towards the east edge of its own cell
-        // reaches the eastern one - so the loop genuinely needs its last step.
+        // Six cells out is the loop's last step: from the origin that ring's centres fall
+        // outside the radius, but a source near its cell's east edge reaches the eastern one.
         var atOrigin = new ExplorationState();
         var offCentre = new ExplorationState();
 
@@ -123,9 +119,8 @@ public class ExplorationStateTests
     [Fact]
     public void SightHasTheSameShapeWhereverTheSourceStands()
     {
-        // Translating a source by a whole number of cells translates what it sees, unchanged -
-        // the radius test measures from the source to each cell centre, so it must not pick up
-        // any dependence on absolute position.
+        // Translating a source by whole cells translates what it sees; the radius test must not
+        // depend on absolute position.
         var near = new ExplorationState();
         var far = new ExplorationState();
         var offset = new ExplorationCell(100, -150);
@@ -140,9 +135,8 @@ public class ExplorationStateTests
     [Fact]
     public void ACellCountsAsSeenByItsOwnCentreNotByItsNearestCorner()
     {
-        // The cell two steps north-east has its centre 17.7m out - beyond the 15m radius -
-        // even though its nearest corner is well inside. Measuring from the corner would let
-        // sight bulge into a diamond at the diagonals.
+        // Measured by cell centre: (3, 3) is 12.4m out and seen, (5, 5) is 19.4m out and not.
+        // Measuring from the nearest corner would bulge sight into a diamond at the diagonals.
         var exploration = new ExplorationState();
 
         exploration.Update([new Position(0, 0)]);
@@ -154,9 +148,8 @@ public class ExplorationStateTests
     [Fact]
     public void TheOutermostRingCountsOnBothAxesNotJustEastWest()
     {
-        // The north-south sweep has to reach exactly as far as the east-west one, and a cell's
-        // centre has to be measured northward the same way it is eastward - a sign or a bound
-        // wrong on one axis alone would show as sight reaching further one way than the other.
+        // The north-south sweep must reach exactly as far as the east-west one; a sign or bound
+        // wrong on one axis would show as lopsided sight.
         var atOrigin = new ExplorationState();
         var offCentre = new ExplorationState();
 

@@ -2,13 +2,11 @@ using Godot;
 
 namespace ManyWinters.Godot.Ui;
 
-// Shown while Main holds the clock for the player's own reasons rather than a narrative beat
-// (see InscriptionOverlay for that case) - same idea, the world stands still and the camera
-// keeps working, but this carries no verdict to walk away from, just what to come back to: the
-// band's name in the same title face the prologue and epitaph use, and who is left. Sits on its
-// own translucent card (PanelChrome) rather than floating bare over the world the way an
-// inscription does - this is a status screen the player opens and closes at will, not a moment
-// the world is having.
+// Shown while Main holds the clock at the player's request rather than for a narrative beat
+// (InscriptionOverlay): the world stands still, the camera keeps working, and it shows what to
+// come back to - the band's name in the title face, and who is left. On a PanelChrome card
+// rather than bare over the world: a status screen opened at will, not a moment the world is
+// having.
 public partial class PausePanel : Control
 {
     private const int TitleFontSize = 60;
@@ -24,8 +22,7 @@ public partial class PausePanel : Control
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         // Swallows clicks anywhere on screen, not just over the card - same reasoning as
-        // InscriptionOverlay: a command clicked into a stopped clock would land the instant it
-        // starts again.
+        // InscriptionOverlay.
         MouseFilter = MouseFilterEnum.Stop;
         Visible = false;
 

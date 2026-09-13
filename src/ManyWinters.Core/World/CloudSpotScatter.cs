@@ -1,30 +1,24 @@
 namespace ManyWinters.Core.World;
 
-// One candidate spot for a low cloud (GroundCloudCoverage decides whether it currently
-// shows). Roll is the spot's own fixed random number in [0, 1) for that decision;
-// TextureIndex picks which cloud sprite it uses; Lift in [0, 1) is how high the puff
-// rides relative to the ground (the presentation layer maps it onto its own range) - all
-// at one height, they read as stuck into the terrain in a row.
+// One candidate spot for a low cloud; GroundCloudCoverage decides whether it currently shows.
+// Roll is the spot's fixed random number in [0, 1) for that decision, TextureIndex picks the
+// sprite, Lift in [0, 1) is how high the puff rides (the presentation layer maps it onto its
+// own range) - all at one height they read as stuck into the terrain in a row.
 public readonly record struct CloudSpot(float X, float Z, float Size, int TextureIndex, float Roll, float Lift);
 
-// Scatters cloud spots across the map with the irregular, blue-noise look of a Poisson-disc
-// distribution: random candidates are kept only if they clear every already-placed
-// neighbour by a gap derived from both clouds' own sizes, so two puffs never sit glued
-// together yet no grid shows through either. A jittered grid (the first version) kept
-// every spot inside its own cell, which still read as rows once enough of them showed.
+// Scatters cloud spots with the blue-noise look of a Poisson-disc distribution: random
+// candidates are kept only if they clear every placed neighbour by a gap derived from both
+// sizes, so puffs never sit glued together and no grid shows through.
 public static class CloudSpotScatter
 {
-    // Two spots must be at least this fraction of their combined size apart. A cloud's art
-    // spans ~90% of its canvas width, so 0.45 would be edge-to-edge; well under that lets
-    // neighbours overlap by more than half a width - the way puffs in a bank of low cloud
-    // merge - while still stopping two from sitting on the same spot. 0.4, 0.36 and 0.27
-    // all kept the cover a row of separate pillows no matter how many spots were
-    // requested, because the gap itself, not the count, was capping the density.
+    // Two spots must be at least this fraction of their combined size apart. Cloud art spans
+    // ~90% of its canvas, so 0.45 would be edge-to-edge; well under that lets neighbours overlap
+    // by more than half a width, as puffs in a bank of low cloud do. The gap, not the requested
+    // count, is what caps the density.
     private const float MinGapFactor = 0.2f;
 
-    // How many random candidates to try per spot ultimately wanted. Rejection sampling
-    // needs headroom; this saturates the available space in practice without looping for
-    // long over a map that's already full.
+    // Random candidates tried per spot wanted: enough headroom for rejection sampling to
+    // saturate the space without looping long over a full map.
     private const int AttemptsPerTargetSpot = 6;
 
     public static IReadOnlyList<CloudSpot> Generate(float halfExtentMeters, float meanSpacingMeters, float minSize, float maxSize, int textureCount, int seed)
@@ -66,11 +60,9 @@ public static class CloudSpotScatter
     // the clumps and gaps the thinning cover breaks into.
     private const float ClumpScaleMeters = 22f;
 
-    // How much of the roll is spatial grain rather than independent chance. A purely
-    // independent roll thins the cover as an even sprinkle (every spot equally likely to
-    // vanish), which on a Poisson-disc layout still reads as regular; sharing part of the
-    // roll between neighbours makes whole patches drop out together, so the cover tears
-    // into clumps and openings the way real low cloud does.
+    // How much of the roll is spatial grain rather than independent chance. An independent
+    // roll thins the cover as an even sprinkle, which still reads as regular; shared grain
+    // makes whole patches drop out together, so the cover tears into clumps and openings.
     private const float ClumpWeight = 0.6f;
 
     // Blends the spot's own independent chance with smooth value noise sampled at its

@@ -1,9 +1,8 @@
 using ManyWinters.Core.World;
 using ManyWinters.Tools.SimulationRunner;
 
-// The same content the Godot game ships with, so a headless run plays by the same rules.
-// The default assumes the repository root as the working directory, which is how the README
-// invokes it; anything else says where the content lives with --content.
+// The same content the Godot game ships with, so a headless run plays by the same rules. The
+// default assumes the repository root as working directory, as docs/development.md invokes it.
 var contentRoot = "src/ManyWinters.Godot/Content";
 var commands = args;
 if (args.Length >= 2 && args[0] == "--content")

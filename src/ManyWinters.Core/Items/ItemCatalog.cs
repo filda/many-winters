@@ -16,18 +16,15 @@ public sealed class ItemCatalog
 
     public ItemDefinition Get(ItemKindId id) => _definitions[id];
 
-    // Insulation is the material's, not the item's - hide keeps the cold out whatever it has
-    // been made into. An item with no definition, or one made of a material nobody described,
-    // simply insulates nothing, rather than every item needing a content entry.
+    // Insulation is the material's, whatever it was made into. An undescribed item or material
+    // insulates nothing.
     public float InsulationFor(ItemKindId id) =>
         _definitions.TryGetValue(id, out var definition)
             ? _materials.Find(definition.Material)?.Insulation ?? 0f
             : 0f;
 
-    // Density from the material, bulk from the item: the same stone is heavier as a boulder
-    // than as a flake, and the same shape is heavier in stone than in wood. Same "missing
-    // definition = no effect" fallback as InsulationFor, so an undescribed item is weightless
-    // (never gates carry capacity) rather than unusable.
+    // Density from the material, bulk from the item. Same missing-definition fallback as
+    // InsulationFor: an undescribed item is weightless rather than unusable.
     public float WeightFor(ItemKindId id) =>
         _definitions.TryGetValue(id, out var definition)
             ? (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume
@@ -40,8 +37,8 @@ public sealed class ItemCatalog
     public static ItemCatalog LoadFromDirectory(string rootPath, MaterialCatalog materials)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath), materials);
 
-    // Takes documents rather than a path so an exported Godot build, where these live
-    // inside the .pck and only Godot's file access can reach them, can load them too.
+    // Takes documents, not a path: in an exported Godot build only Godot's file access reaches
+    // the content inside the .pck.
     public static ItemCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents, MaterialCatalog materials)
         => new(JsonDefinitions.Parse<ItemDefinition>(documents, "Item"), materials);
 }

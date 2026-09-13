@@ -7,15 +7,11 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
-/// The loop reproduction was built for, end to end and with nobody steering it: a band left
-/// together long enough grows on its own, and what the children born into it end up knowing
-/// comes from the people around them rather than from their parents' blood.
-///
-/// Deliberately a whole-band run rather than a unit test of any one rule (those live in
+/// The loop reproduction was built for, run whole-band with nobody steering: a band left
+/// together grows on its own, and its children learn from the people around them. The numbers
+/// in SimulationRules only mean anything together; the per-rule unit tests live in
 /// <see cref="ManyWinters.Tests.World.WorldStateAffectionTests"/> and
-/// <see cref="ManyWinters.Tests.Commands.BirthCommandTests"/>) - the numbers in
-/// SimulationRules only mean anything together, and it is their combination that decides
-/// whether a band actually survives itself.
+/// <see cref="ManyWinters.Tests.Commands.BirthCommandTests"/>.
 /// </summary>
 public class FamilyMilestoneTests
 {
@@ -32,9 +28,8 @@ public class FamilyMilestoneTests
             initialAgeTicks: world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears,
             sex: sex);
 
-        // Foraging and eating both have to be learned (see SkillDefinition.BaseTechnique);
-        // granted directly, because this test is about what happens to the band over a year,
-        // not about how its founders came by what they know.
+        // Foraging and eating have to be learned (SkillDefinition.BaseTechnique); granted
+        // directly because this test is about the band's year, not how the founders learned.
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         return person;
@@ -63,10 +58,9 @@ public class FamilyMilestoneTests
                 continue;
             }
 
-            // Same shortcut SurvivalMilestoneTests takes: the founders are put back at the
-            // food and fed, because this test is about the family loop rather than about
-            // whether anyone can walk to a tree. Nursing mothers need it more than most - see
-            // SimulationRules.NursingHungerMultiplier.
+            // Founders are put back at the food and fed (as in SurvivalMilestoneTests): the test
+            // is about the family loop, not walking to a tree. Nursing mothers need it most
+            // (SimulationRules.NursingHungerMultiplier).
             foreach (var person in founders)
             {
                 person.Position = node.Position;
@@ -83,18 +77,12 @@ public class FamilyMilestoneTests
         Assert.All(children, child => Assert.Contains(child.Father, founders));
     }
 
-    // The band above is held together by the test itself. This one is the shipped world doing
-    // its own thing: whether the starting camp actually keeps people close enough, for long
-    // enough, while they wander off to forage, for the numbers in SimulationRules to ever come
-    // to anything. Set the affection radius to arm's reach and this is the test that goes red
-    // while every other one stays green - the feature real in Core and invisible in the game.
-    //
-    // Two things are handed to the band that the shipped game expects the player to give it.
-    // Eating and foraging, because nobody is born knowing either (see
-    // SkillDefinition.BaseTechnique) and a band that cannot eat starves inside a hundred ticks
-    // with or without any of this. And two thirds of a year rather than a whole one, because
-    // the first winter kills a band with no warm clothing (see WinterSurvivalMilestoneTests) -
-    // surviving it is preparation, which is a different story from this one.
+    // The shipped world on its own: does the starting camp keep people close enough, for long
+    // enough, while they forage, for the affection numbers to come to anything? Shrink the
+    // affection radius to arm's reach and this is the test that goes red. Eating and foraging
+    // are granted because nobody is born knowing them (SkillDefinition.BaseTechnique); the run
+    // stops before the first winter, which kills a band without warm clothing
+    // (WinterSurvivalMilestoneTests).
     [Fact]
     public void TheShippedStartingBandHasChildrenOfItsOwn()
     {
@@ -118,8 +106,8 @@ public class FamilyMilestoneTests
         Assert.All(born, child => Assert.False(Kinship.AreCloseKin(child.Mother, child.Father)));
     }
 
-    // The point of a child having to stay at its mother's side: it is born knowing nothing,
-    // and being close to somebody who knows things is the only way that ever changes.
+    // A child is born knowing nothing; being close to somebody who knows things is the only way
+    // that changes.
     [Fact]
     public void AChildBornIntoTheBandPicksUpWhatThePeopleAroundItKnow()
     {
@@ -128,8 +116,7 @@ public class FamilyMilestoneTests
         var mother = SpawnAdult(world, "Sela", Sex.Female, camp);
         var father = SpawnAdult(world, "Doran", Sex.Male, camp);
 
-        // Somebody in the band has to know how to teach at all, or nothing can ever spread -
-        // see WorldState.AutoTeachNearbyPeople.
+        // Somebody has to know how to teach, or nothing spreads (WorldState.AutoTeachNearbyPeople).
         mother.KnownTechniques.Add(TestCatalogs.BasicTeaching);
 
         world.Execute(new BirthCommand("Ava", mother, father));

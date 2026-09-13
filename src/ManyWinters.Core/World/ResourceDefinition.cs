@@ -11,23 +11,18 @@ public sealed record ResourceDefinition(
     IReadOnlyList<ClimateYield>? ClimateYields = null,
     float RegenPerTick = 0f,
     bool CanFell = false,
-    // Felling doesn't hand the yield straight to the person's inventory - it leaves behind one
-    // ordinary resource node per entry (typically "wood") that still has to be gathered like
-    // anything else, and stands in for the felled tree so the spot doesn't just go empty. A
-    // tree yields more wood than fits in one inventory at once, hence more than one entry: the
-    // first sits exactly where the tree stood (a stump), any further ones (a fallen log) land
-    // nearby instead of stacking invisibly on top of it - see FellCommand.
+    // Felling does not hand the yield to the inventory: it leaves one ordinary resource node per
+    // entry (typically wood), gathered like anything else, standing in for the tree. The first
+    // sits where the tree stood (a stump), further ones (a fallen log) land nearby - see
+    // FellCommand.
     IReadOnlyList<ResourceDefinition.FellLeaf>? FellLeaves = null,
-    // How many ticks a node can sit in an IsInhospitable climate before it withers (see
-    // WorldState.Advance). float.MaxValue - effectively never - unless a definition opts in
-    // with a finite value; a stray 0-multiplier ClimateYield shouldn't kill something by
-    // accident just because nobody set this.
+    // Ticks a node survives in an IsInhospitable climate (see WorldState.Advance). float.MaxValue
+    // means never, so a stray 0-multiplier ClimateYield cannot kill something by accident.
     float TicksToWither = float.MaxValue,
-    // How solid this resource's real-world footprint is, for WorldState.ResolveCollisions -
-    // 0 (the default) means people can freely walk through it (grass, a mushroom, a tree
-    // stump...). Deliberately independent of the billboard sprite's on-screen height
-    // (ResourceVisualDefinition.WorldHeight, Godot-only): a tall sprite can still be a flat,
-    // walk-through icon, and a short one (a rock pile) can still be genuinely solid.
+    // Footprint radius for WorldState.ResolveCollisions, in metres; 0 means walk-through (grass,
+    // a stump). Independent of the sprite's on-screen height
+    // (ResourceVisualDefinition.WorldHeight): a tall sprite can be a flat icon and a short rock
+    // pile can be solid.
     float CollisionRadius = 0f)
 {
     public sealed record FellLeaf(ResourceKindId Kind, float Amount);
@@ -50,7 +45,6 @@ public sealed record ResourceDefinition(
         return 1f;
     }
 
-    // Conditions the plant doesn't thrive in at all, as opposed to just yielding less - the
-    // set a definition describes positively via ClimateYields, read negatively.
+    // Conditions the plant does not grow in at all, read off ClimateYields.
     public bool IsInhospitable(Climate climate) => YieldMultiplierFor(climate) <= 0f;
 }

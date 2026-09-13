@@ -4,9 +4,8 @@ using ManyWinters.Core.Tasks;
 
 namespace ManyWinters.Godot.Logic;
 
-// The inspector's own prose - the one place simulation state is rendered into English that a
-// player reads. Kept apart from the panel that shows it, so the wording stays a plain function
-// of the state with no widget in the way.
+// The inspector's prose - the one place simulation state is rendered into English for the
+// player. Kept apart from the panel so the wording is a plain function of the state.
 internal static class InspectorText
 {
     internal static string ForTask(Person person) => person.Tasks.Current switch

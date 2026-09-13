@@ -8,8 +8,7 @@ public class BuildTagTests
     [Fact]
     public void TheTagIsTheBuildTimeToTheSecond()
     {
-        // Asserted exactly: two builds a minute apart have to read as different tags, which is
-        // the entire job (the previous hand-bumped tag failed at precisely this).
+        // Asserted exactly: two builds a minute apart have to read as different tags.
         var tag = BuildTag.For(new DateTimeOffset(2026, 9, 8, 14, 22, 7, TimeSpan.Zero));
 
         Assert.Equal("2026-09-08 14:22:07Z", tag);
@@ -18,8 +17,8 @@ public class BuildTagTests
     [Fact]
     public void ABuildTimeFromAnotherTimezoneIsReportedInUtc()
     {
-        // Whoever reads the log back is rarely on the machine that produced it - an offset the
-        // reader has to apply in their head is an offset they will get wrong.
+        // The reader is rarely on the machine that produced the log; an offset applied in the
+        // head is one they will get wrong.
         var tag = BuildTag.For(new DateTimeOffset(2026, 9, 8, 16, 22, 7, TimeSpan.FromHours(2)));
 
         Assert.Equal("2026-09-08 14:22:07Z", tag);
@@ -28,8 +27,8 @@ public class BuildTagTests
     [Fact]
     public void TheTagReadsTheSameWhicheverCultureTheMachineRunsIn()
     {
-        // A machine on a non-Gregorian calendar would otherwise print a date nothing else in
-        // the log or the repository agrees with.
+        // A machine on a non-Gregorian calendar would otherwise print a date nothing else
+        // agrees with.
         var previous = CultureInfo.CurrentCulture;
         try
         {
@@ -46,8 +45,8 @@ public class BuildTagTests
     [Fact]
     public void NoBuildTimeAtAllSaysSoRatherThanInventingOne()
     {
-        // A single-file publish reports no assembly location to stat. Printing today's date
-        // there would answer the question wrongly instead of admitting it can't.
+        // A single-file publish has no assembly location to stat; today's date would be a wrong
+        // answer rather than an honest one.
         Assert.Equal("unknown", BuildTag.For(null));
     }
 }

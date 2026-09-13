@@ -1,91 +1,56 @@
 shader_type spatial;
-// depth_draw_never matters here, not just depth_test_disabled: this quad's own vertex shader
-// writes Z=0.0 (right at the near plane - see vertex() below) across the *entire* screen, and
-// depth_test_disabled only skips testing *against* the existing depth buffer - it doesn't
-// stop this overlay from *writing* to it. Left writable, this overlay silently overwrote the
-// real depth buffer with that near-plane value every frame - anything sampling depth
-// afterward (fog_of_war_remembered.gdshader's own depth_texture read included) saw "the
-// entire screen is one flat surface right at the camera" instead of the real scene, which is
-// what tore the tops off tall billboard sprites (tree canopies) in exactly the height range
-// where the two disagreed.
+// depth_draw_never, not just depth_test_disabled: vertex() writes Z=0.0 over the whole screen,
+// and depth_test_disabled only skips the test, not the write. Left writable, this overlay
+// replaced the depth buffer with the near plane every frame and broke every later depth read
+// (fog_of_war_remembered.gdshader included), tearing the tops off tall billboard sprites.
 render_mode unshaded, depth_test_disabled, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
 
-// A full-screen overlay quad (see FogOfWarRenderer.cs) instead of either real 3D geometry or
-// real volumetric fog - both of those were tried and reverted (see that class's own history):
-// mesh geometry is fundamentally quantized to ExplorationState's coarse grid no matter how
-// much its surface gets dressed up, and physically-based volumetric fog's opacity depends on
-// how much fog a view ray actually crosses, not on whether its *destination* is explored,
-// which blacks out the small explored camp itself the moment the camera drifts outside it.
-// This sidesteps both: every SCREEN pixel's own world position is reconstructed from the
-// depth buffer (the standard Godot recipe - INV_PROJECTION_MATRIX then INV_VIEW_MATRIX, both
-// built into spatial shaders already, no manual matrix uniforms needed) and looked up in
-// FogOfWarRenderer's own exploration texture directly - a per-pixel test, not a per-vertex or
-// per-ray-step one, so the boundary is exactly as smooth as the texture's own bilinear
-// filtering, and there is no "camera is outside the explored area" failure mode at all since
-// nothing is integrated along a ray - only the destination point (what's actually on screen)
-// is tested.
+// The "unknown" tier (never explored) of FogOfWarRenderer.cs's fog of war, as a full-screen
+// overlay quad. Each screen pixel's world position is reconstructed from the depth buffer
+// (INV_PROJECTION_MATRIX, then INV_VIEW_MATRIX) and looked up in the exploration texture, so
+// the boundary is as smooth as the texture's bilinear filter, and only the point on screen is
+// tested - the camera sitting outside the explored area changes nothing. Mesh geometry would
+// be quantized to ExplorationState's grid; volumetric fog would black out the camp as soon as
+// the camera left it.
 //
-// Handles only the "unknown" tier (never explored) - a full opaque replace, alpha-blended.
-// "Remembered" is a second overlay (fog_of_war_remembered.gdshader) using a *multiply* blend
-// instead: an earlier version of this shader tried to desaturate the real pixel here by
-// reading it back via hint_screen_texture, but that automatic screen copy is taken before
-// alpha-tested sprites (every person/tree/resource - AlphaCutMode.OpaquePrepass) are drawn,
-// so it only ever saw whatever was *behind* them - every sprite in view rendered as a flat
-// grey silhouette instead of being desaturated in place. A multiply blend has no such gap:
-// it's a real GPU blend against the actual framebuffer at draw time, which - since this
-// overlay draws dead last (RenderPriority) - already includes everything, sprites included.
+// The "remembered" tier is a second overlay (fog_of_war_remembered.gdshader) with a multiply
+// blend rather than a branch here: hint_screen_texture's screen copy is taken before the
+// alpha-tested sprites (AlphaCutMode.OpaquePrepass) are drawn, so reading the pixel back to
+// desaturate it turned every sprite into a flat grey silhouette. A GPU blend against the
+// framebuffer at draw time (dead last, by RenderPriority) already includes them.
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 uniform sampler2D exploration_texture : filter_linear, repeat_disable;
 uniform vec3 fog_albedo : source_color = vec3(0.70, 0.73, 0.78);
 uniform float half_extent_meters = 500.0;
-// How far the paper mottling below pushes the albedo up or down (a fraction of it). Two
-// octaves: broad blotches at mottle_scale metres, a finer grain at ~6x that frequency.
-// Kept broad and faint - at 12m and 0.10 the blotches read as sand dunes, not paper.
+// How far the paper mottling pushes the albedo up or down (a fraction of it). Two octaves:
+// broad blotches at mottle_scale metres, a finer grain at ~6x that frequency. Kept broad and
+// faint - at 12m and 0.10 the blotches read as sand dunes, not paper.
 uniform float mottle_strength = 0.07;
 uniform float mottle_scale = 22.0;
-// Metres from each map position to the nearest cell the group has ever explored (R, float
-// - see FogOfWarRenderer's own _distanceTexture). The parchment holds for fade_start_meters
-// past the explored boundary, then darkens into far_color by fade_end_meters: concentric
-// rings of party, visible ground, parchment, then darkness. Distance from the explored
-// area is what makes this fog-of-war and not a map vignette - an earlier version faded
-// toward the map's *edge*, which lit the whole middle of the map regardless of whether
-// anyone had been there. far_color is passed in from FogOfWarRenderer.cs as the viewport's
-// own clear colour so the sheet dissolves into the empty sky with no visible seam.
+// Metres from each map position to the nearest cell the band has ever explored (R, float -
+// FogOfWarRenderer._distanceTexture). The parchment holds for fade_start_meters past the
+// explored boundary, then darkens into far_color by fade_end_meters. Distance from the
+// explored area, not from the map's edge - the latter lit the whole middle of the map.
+// far_color is SkyPalette.FogFar (the horizon colour, mostly desaturated), set by
+// FogOfWarRenderer.cs so the sheet dissolves into the sky without a seam.
 uniform sampler2D distance_texture : filter_linear, repeat_disable;
 uniform vec3 far_color : source_color = vec3(0.3, 0.3, 0.3);
 uniform float fade_start_meters = 10.0;
 uniform float fade_end_meters = 70.0;
 
-// CloudScatter.cs's own sky decoration, exempted from fog-of-war - a cloud is atmosphere,
-// not ground content, so fog-of-war (which only ever has an opinion about the *ground*:
-// has this XZ been explored?) has nothing meaningful to say about one. This is a real
-// render (CloudFogMask.cs - a second camera, mirroring the main one every frame) sampled
-// directly by screen position - not an inference from this pixel's own reconstructed
-// world position. Several approaches were tried and rejected before this one - see
-// CloudFogMask's own doc comment for the full history (a world.y height test, two
-// reconstruction-based projection tests, then a cloud-only render with no occluders,
-// each fixing the last failure but introducing a smaller one).
-//
-// A flat, saturated magenta - no natural material in this game's own muted woodcut
-// palette produces anything close - rather than plain alpha: this mask's own camera
-// also renders ordinary scene geometry (terrain, trees, people) so a hill in front of a
-// cloud proxy actually occludes it, and everything ordinary is just as opaque as a
-// cloud proxy is. Color, not alpha, is what actually distinguishes "a cloud was the
-// frontmost surface here" from "something else was" - see cloud_mask_proxy.gdshader's
-// own doc comment.
+// Clouds (CloudScatter.cs) are sky, not ground, so fog-of-war leaves them alone. This is a
+// real render (CloudFogMask.cs: a second camera mirroring the main one) sampled by screen
+// position; inferring "cloud" from this pixel's reconstructed world position failed along
+// grazing view rays. The mask camera also renders ordinary geometry so a hill occludes a cloud
+// proxy, and everything in it is equally opaque - so the flag is a colour, not alpha: the
+// proxies are Sprite3Ds with CloudScatter.MaskFlagModulate (12, 0, 12) as Modulate.
 uniform sampler2D cloud_mask : filter_linear;
 
-// The vertex shader's usual VERTEX * MODEL_VIEW_PROJECTION path is skipped entirely - writing
-// directly to clip space (this quad's own local coordinates, assumed to already span at
-// least [-1, 1] on both axes - see the QuadMesh size FogOfWarRenderer.cs creates it with)
-// makes it cover the full screen regardless of the quad's actual world transform, camera FOV,
-// or projection type (perspective/orthogonal - the T key toggle in FreeCameraRig).
-// Cheap hash-based value noise. The unknown tier is meant to read as the blank part of an
-// old map sheet (docs/ZemanConceptArt.png, "Unknown" panel), and a perfectly flat fill
-// reads as fog or snow no matter what colour it is - real paper has uneven, blotchy tone.
-// Sampled on the reconstructed WORLD position, not SCREEN_UV, so the blotches stay pinned
-// to the ground as the camera pans instead of swimming across it like a screen overlay.
+// Cheap hash-based value noise. The unknown tier is the blank part of an old map sheet
+// (docs/ZemanConceptArt.png, "Unknown" panel), and a flat fill reads as fog or snow whatever
+// its colour. Sampled on the reconstructed WORLD position, not SCREEN_UV, so the blotches stay
+// pinned to the ground as the camera pans.
 float hash21(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
     p += dot(p, p + 45.32);
@@ -101,11 +66,11 @@ float value_noise(vec2 p) {
 }
 
 void vertex() {
-    // Z=1.0 (the far clip boundary exactly) risked landing on the wrong side of hardware
-    // clipping for some of the quad's vertices due to floating-point rounding right at that
-    // edge - each affected triangle then vanished independently, which is exactly the
-    // "only part of the screen is covered" artifact this caused. 0.0 sits safely inside the
-    // valid range instead - depth doesn't matter here regardless (depth_test_disabled above).
+    // Straight to clip space, skipping MODEL_VIEW_PROJECTION: the quad's local coordinates
+    // span at least [-1, 1] (FogOfWarRenderer.OverlayQuadSize), so it covers the screen
+    // whatever the transform, FOV or projection (perspective/orthogonal, T key in Main).
+    // Z=0.0, not 1.0: right on the far clip boundary, rounding dropped whole triangles and
+    // left part of the screen uncovered. Depth is irrelevant here anyway.
     POSITION = vec4(VERTEX.xy, 0.0, 1.0);
 }
 
@@ -113,15 +78,6 @@ void fragment() {
     float depth = texture(depth_texture, SCREEN_UV).r;
     ALBEDO = fog_albedo;
 
-    // The empty sky (nothing drawn there at all) clears to the far plane exactly - dividing
-    // by INV_PROJECTION_MATRIX's own w there lands right on/past a singularity, reconstructing
-    // some wildly out-of-range world.xz. Sampling the exploration texture at that point used
-    // to read as small dark speckles scattered across the sky ("fleky") - repeat_disable
-    // above already clamps the *sample* to the texture's edge instead of wrapping/repeating,
-    // but skipping the fog effect outright here is both cheaper and semantically correct:
-    // there's no terrain out there to hide in the first place. Godot's shading language
-    // doesn't allow an early `return` out of fragment() (unlike plain GLSL), so this has to
-    // stay one big if/else rather than a guard clause.
     vec3 ndc = vec3((SCREEN_UV * 2.0) - 1.0, depth);
 
     vec4 view = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
@@ -130,56 +86,32 @@ void fragment() {
 
     vec2 uv = ((world.xz / half_extent_meters) * 0.5) + 0.5;
 
-    // Real geometry legitimately farther out than the map's own half-extent (background
-    // decoration is scattered across the whole terrain, and the camera can zoom/look well
-    // past it) still needs *some* depth value, and depth buffer precision doesn't stay
-    // perfect all the way to the far plane - a small quantization error there, run back
-    // through the (highly non-linear near the far end) inverse-depth math, becomes a huge
-    // error in the reconstructed world position. That showed up as a dead-flat horizontal
-    // "ceiling" cutting through unrelated, perfectly normal trees at a consistent screen
-    // height - not the boundary's own shape at all, since a bad reconstruction doesn't care
-    // what's actually at that pixel. uv landing well outside the texture's own [0, 1] is the
-    // signal something reconstructed implausibly far: skip the fog effect rather than trust
-    // it, the same as the sky guard below - a real but very distant tree staying unfogged one
-    // tick early beats a nearby one getting a bogus chunk cut out of it.
+    // Depth precision near the far plane is poor, and the inverse-depth math is highly
+    // non-linear there, so distant geometry can reconstruct to a wildly wrong world position -
+    // seen as a flat horizontal "ceiling" cut through normal trees. A uv well outside [0, 1]
+    // is that signal: skip the fog rather than trust it. A distant tree unfogged one tick early
+    // beats a nearby one with a chunk cut out.
     bool implausible = uv.x < -0.1 || uv.x > 1.1 || uv.y < -0.1 || uv.y > 1.1;
-    // Matches cloud_mask_proxy.gdshader's own flat vec3(1.0, 0.0, 1.0) output - loose
-    // thresholds on each channel (rather than an exact equality no float comparison
-    // should ever rely on) still comfortably reject every real material this game's own
-    // muted palette can produce, which has nothing anywhere near this saturated.
-    // Only the green channel is checked - CloudScatter.cs's own proxy Modulate has a
-    // green component of exactly 0, and any color times 0 is exactly 0 regardless of
-    // the source texture's own value there, unlike the red/blue channels (whose >1
-    // multiplied values still visibly differ hatch-to-highlight after the render
-    // pipeline's own tonemapping/clamping - checking those too rejected the proxy's own
-    // darker hatch-line pixels, exactly the same "fog painted over most of the cloud,
-    // a thin sliver of real texture left" symptom as the very first version of this
-    // mask). No real material in this game's own muted palette lands on exactly 0.0
-    // green, so this alone is still a reliable signal.
+    // Matches CloudScatter.MaskFlagModulate (12, 0, 12). Only green is tested: any texel times
+    // 0 is exactly 0, while the >1 red/blue still vary hatch-to-highlight after tonemapping and
+    // testing them rejected the proxy's own hatch pixels. No real material in the game's muted
+    // palette has exactly 0 green.
     vec4 maskSample = texture(cloud_mask, SCREEN_UV);
     bool cloudPixel = maskSample.a > 0.5 && maskSample.g < 0.02;
 
-    // The empty sky (nothing drawn there at all) clears to the far plane exactly - dividing
-    // by INV_PROJECTION_MATRIX's own w there lands right on/past a singularity, reconstructing
-    // some wildly out-of-range world.xz. Sampling the exploration texture at that point used
-    // to read as small dark speckles scattered across the sky ("fleky") - repeat_disable
-    // above already clamps the *sample* to the texture's edge instead of wrapping/repeating,
-    // but skipping the fog effect outright here is both cheaper and semantically correct:
-    // there's no terrain out there to hide in the first place. Godot's shading language
-    // doesn't allow an early `return` out of fragment() (unlike plain GLSL), so this has to
-    // stay one big if/else rather than a guard clause.
+    // Empty sky clears to the far plane exactly; there the divide by w sits on a singularity
+    // and the reconstructed position is garbage (dark speckles across the sky). Nothing to fog
+    // there anyway. Godot's shading language has no early return from fragment(), hence one
+    // if/else rather than a guard clause.
     if (depth >= 0.9999 || implausible || cloudPixel) {
         ALPHA = 0.0;
     } else {
         vec4 state = texture(exploration_texture, uv);
-        // R: exact ("sharp") unexplored mask - re-thresholded back to a hard 0/1 despite
-        // bilinear sampling blending it slightly right at the boundary. B: the same mask,
-        // blurred (see FogOfWarRenderer.RebuildExplorationTexture) - multiplying by the sharp
-        // value confines that blur's softness to genuinely unexplored territory only, so nothing
-        // whose cell is actually already Explored (which - unlike unexplored ground - always
-        // has a real, already-instantiated tree/resource behind it) ever gets a ghost of fog
-        // blended over it just for sitting near the boundary. See fog_of_war_remembered.gdshader
-        // for the G/A (remembered) channels.
+        // R: sharp unexplored mask, re-thresholded to 0/1 after bilinear sampling. B: the same
+        // mask blurred (FogOfWarRenderer.RebuildExplorationTexture). Multiplying by the sharp
+        // value confines the softness to unexplored ground, so an Explored cell - which always
+        // has a real tree/resource on it - never gets a ghost of fog for sitting near the
+        // boundary. G/A (remembered) are read by fog_of_war_remembered.gdshader.
         float unexploredSharp = step(0.5, state.r);
         ALPHA = unexploredSharp * state.b;
 
@@ -188,7 +120,7 @@ void fragment() {
         vec3 paper = fog_albedo * (1.0 + mottle_strength * (blotch + 0.4 * grain));
 
         // The blotch noise nudges the distance so the darkening creeps in unevenly, like a
-        // stain spreading across the sheet, not a clean ring around the explored area.
+        // stain, not a clean ring around the explored area.
         float meters = texture(distance_texture, uv).r + blotch * 0.15 * fade_end_meters;
         float far = smoothstep(fade_start_meters, fade_end_meters, meters);
         ALBEDO = mix(paper, far_color, far * far);

@@ -147,10 +147,8 @@ public class SaveGameServiceTests
         }
     }
 
-    // Sex is saved because somebody may have chosen it; a MaxHunger of one's own never is,
-    // because nobody chooses it - it is redrawn off the id (Person.MaxHunger). This is what says
-    // the id is enough: a loaded band goes on starving at the same numbers it had before the
-    // save rather than all at once on the next tick.
+    // Sex is saved because somebody may have chosen it; MaxHunger is not, being redrawn off the
+    // id (Person.MaxHunger). A loaded band must go on starving at the same numbers as before.
     [Fact]
     public void RoundTripLeavesEveryoneStarvingAtTheSameMaxHungerTheyHadBefore()
     {
@@ -306,10 +304,9 @@ public class SaveGameServiceTests
     [Fact]
     public void LoadRefusesASaveThatNamesAParentItHasNotRestoredYet()
     {
-        // People are restored in file order and wired to their parents by id as they go, so a
-        // child stored ahead of its own mother has nothing to point at when its turn comes.
-        // Better to say so than to silently hand the child an Unknown parent and quietly lose
-        // the lineage on the next save.
+        // People are restored in file order and wired to parents by id as they go, so a child
+        // stored ahead of its mother has nothing to point at. Refusing beats silently losing the
+        // lineage.
         var world = TestCatalogs.CreateWorld();
         var mother = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
         var child = new Person { Name = "Ava", BirthTick = 0, Mother = mother, Father = Person.Unknown, Sex = TestPeople.AnySex };

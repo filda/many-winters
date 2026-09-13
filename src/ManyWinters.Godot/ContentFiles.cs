@@ -5,12 +5,10 @@ using GodotFileAccess = Godot.FileAccess;
 
 namespace ManyWinters.Godot;
 
-// Content sits in a real directory while the editor runs and inside ManyWinters.pck once the
-// game is exported, and System.IO only ever sees the first of those - ProjectSettings.Globalize
-// Path happily hands back a path next to the .exe that does not exist. Everything the game
-// reads as data therefore has to go through Godot's own file access, which resolves res://
-// identically in both cases. Textures and .tres files already do, via the resource loader;
-// this is the equivalent for the plain .json files Core parses itself.
+// Content is a real directory under the editor but sits inside ManyWinters.pck once exported,
+// where System.IO cannot see it (ProjectSettings.GlobalizePath returns a path next to the .exe
+// that does not exist). Godot's own file access resolves res:// in both cases; this is the
+// resource loader's equivalent for the .json files Core parses itself.
 public static class ContentFiles
 {
     // Matches the <root>/<id>/<id>.json layout every catalog directory uses.

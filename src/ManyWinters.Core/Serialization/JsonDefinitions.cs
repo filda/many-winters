@@ -2,13 +2,10 @@ using System.Text.Json;
 
 namespace ManyWinters.Core.Serialization;
 
-// Every content catalog is the same shape on disk - a directory of <id>/<id>.json files - and
-// every one of them has to be loadable two ways. Straight off the filesystem is what the tests
-// and the headless SimulationRunner want. Reading documents someone else already opened is what
-// the Godot build needs: once exported, content lives inside ManyWinters.pck and System.IO
-// cannot see it at all, so only Godot's own file access can reach it. Splitting "find the
-// files" from "parse the files" is what lets Core stay Godot-free while still being usable
-// from inside an exported game.
+// Every content catalog is a directory of <id>/<id>.json files, loadable two ways: off the
+// filesystem (tests, SimulationRunner), or from documents Godot already read, because an
+// exported build keeps content inside ManyWinters.pck where System.IO cannot see it. Splitting
+// "find" from "parse" keeps Core Godot-free.
 public static class JsonDefinitions
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };

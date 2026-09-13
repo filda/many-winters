@@ -5,10 +5,9 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
-/// Roadmap Step 9 ("Seasons and First Winter"): proves winter's pressure is real rather
-/// than a season label with no teeth — someone who was fine all year starves once they
-/// stop gathering right as winter begins, distinct from <see cref="SurvivalMilestoneTests.PeopleStarveWithoutAnyGathering"/>,
-/// which never gathers at all.
+/// Winter's pressure is real, not a label: someone fine all year starves once they stop
+/// gathering as winter begins. Distinct from
+/// <see cref="SurvivalMilestoneTests.PeopleStarveWithoutAnyGathering"/>, which never gathers.
 /// </summary>
 public class WinterSurvivalMilestoneTests
 {
@@ -17,9 +16,8 @@ public class WinterSurvivalMilestoneTests
     [Fact]
     public void PeopleWhoStopGatheringRightAsWinterBeginsStarveDuringIt()
     {
-        // The 50-tick winter window below is sized exactly to this rules set's cold-climate
-        // hunger multiplier, so it needs the one threshold everybody shares rather than a
-        // margin a hardy person's own draw could ride out (Person.HungerToleranceOffset).
+        // The 50-tick winter window is sized to the shared threshold; a hardy person's own
+        // MaxHunger draw (SimulationRules.MaxHungerFor) could ride out the margin.
         var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -31,14 +29,11 @@ public class WinterSurvivalMilestoneTests
             world.Advance(1);
             if (tick % 10 == 0)
             {
-                // IdleTask can wander a person away from the node between manual actions (see
-                // WorldState.Advance) - this test is about the gather/eat/hunger loop, not
-                // about walking back, so it puts them right back at the node rather than
-                // simulating that walk.
+                // IdleTask can wander a person off between manual actions; put them back rather
+                // than simulate the walk.
                 person.Position = node.Position;
 
-                // Gathering only fills the inventory now (see GatherCommand) - eating it back
-                // down is a separate, explicit step, same as a real player would do.
+                // Gathering only fills the inventory (GatherCommand); eating is a separate step.
                 world.Execute(new GatherCommand(person, node));
                 world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
             }
@@ -47,19 +42,12 @@ public class WinterSurvivalMilestoneTests
         Assert.Equal(Season.Winter, world.CurrentSeason);
         Assert.True(person.IsAlive);
 
-        // The gather-more-than-you-need-right-now loop above leaves a leftover stockpile in
-        // the inventory - harmless before WorldState.Advance auto-ate from it every tick (see
-        // TryAutoEat), but that stockpile alone would now keep a person fed through the 50
-        // winter ticks below with no further action at all, which isn't what "stops gathering
-        // right as winter begins" is meant to test. Clearing it models someone who's truly out
-        // of reserves, not just someone who stopped topping them up.
+        // The loop above leaves a stockpile that TryAutoEat would live on through the 50 winter
+        // ticks; clearing it models someone truly out of reserves.
         person.Inventory.Remove(TestCatalogs.AppleItem, person.Inventory.Get(TestCatalogs.AppleItem));
 
-        // Standing right at an all-but-infinite apple node, WorldState.Advance's own idle AI
-        // (DecideIdleTask) would otherwise have them autonomously resume gathering and eating
-        // from it the moment hunger crosses its threshold - correct behavior in the real game,
-        // but it defeats this test's actual premise of nothing being reachable any more.
-        // Moved beyond IdleSearchRadius so no resource node is a candidate.
+        // Next to an all-but-infinite apple node, DecideIdleTask would resume gathering once
+        // hunger crosses its threshold; moved beyond IdleSearchRadius so nothing is reachable.
         person.Position = new Position(10_000, 10_000);
 
         world.Advance(50);

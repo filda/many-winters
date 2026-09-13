@@ -21,8 +21,8 @@ public class BoxBlurTests
     [Fact]
     public void AFlatGridStaysFlat()
     {
-        // Every window averages the same value, edges included - so a constant field is a
-        // fixed point of the blur. Anything else means the edge clamp is losing mass.
+        // A constant field is a fixed point of the blur; anything else means the edge clamp is
+        // losing mass.
         var blurred = BoxBlur.Blur(Grid(7, (_, _) => 0.5f), radius: 2);
 
         for (var y = 0; y < 7; y++)
@@ -47,9 +47,7 @@ public class BoxBlurTests
     [Fact]
     public void ASinglePointSpreadsOverTheWholeWindowInBothDirections()
     {
-        // One lit texel in the middle of a 5x5 grid with radius 1: separable means it becomes
-        // a 3x3 block, each cell 1/9 of the original - the horizontal pass spreads it across
-        // three columns, the vertical across three rows.
+        // Separable: one lit texel with radius 1 becomes a 3x3 block, each cell 1/9 of it.
         var source = new float[5, 5];
         source[2, 2] = 9f;
 
@@ -71,8 +69,8 @@ public class BoxBlurTests
     [Fact]
     public void SamplingPastTheEdgeClampsInsteadOfWrapping()
     {
-        // A bright left column must not bleed into the right-hand edge. Wrapping (which the
-        // fog texture's sampler has disabled) would fold the far side of the map into this one.
+        // Wrapping would fold the far side of the map into this one; the fog shaders sample
+        // with repeat disabled for the same reason.
         var source = Grid(5, (x, _) => x == 0 ? 1f : 0f);
 
         var blurred = BoxBlur.Blur(source, radius: 1);
@@ -84,9 +82,8 @@ public class BoxBlurTests
     [Fact]
     public void ClampingWeightsTheEdgeTowardTheEdgeCellItself()
     {
-        // At x = 0 the window's two off-grid samples clamp back onto column 0, so the corner
-        // keeps three parts of its own value out of the window's three - it does not fade
-        // toward an imaginary zero outside the grid.
+        // Off-grid samples clamp back onto column 0, so the edge keeps its own value rather
+        // than fading toward an imaginary zero outside the grid.
         var source = Grid(3, (x, _) => x == 0 ? 3f : 0f);
 
         var blurred = BoxBlur.Blur(source, radius: 1);

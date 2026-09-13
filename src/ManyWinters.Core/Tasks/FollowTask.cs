@@ -3,24 +3,16 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Tasks;
 
-// "Stay with this person" - walks toward the target whenever the gap opens past `keepWithin`
-// and stands still once inside it. Today's only user is an infant keeping up with its mother
-// (see WorldState.DecideIdleTask), which is also what feeds it and the only reason it is ever
-// close enough to be taught anything (TeachCommand checks reach).
-//
-// Never completes, same as IdleTask and GatherTask: how long following is the right thing to
-// be doing is WorldState.Advance's call, not the task's - it has no idea the child will one
-// day be weaned.
-//
-// Unlike GatherTask's one-off approach to a resource that never moves, the destination is
-// re-aimed every tick, because the mother is walking around too.
+// "Stay with this person": walks toward the target whenever the gap opens past `keepWithin`.
+// Used for an infant keeping up with its mother (WorldState.DecideIdleTask), which is what feeds
+// it and keeps it in teaching reach. Never completes - how long to follow is WorldState.Advance's
+// call - and re-aims every tick because the target moves.
 public sealed class FollowTask(Person target, float keepWithin, float speedPerTick) : PersonTask
 {
     public Person Target { get; } = target;
 
-    // Deliberately a gap, not a point to stand on: arriving exactly on top of the target
-    // would leave the two of them shoving each other apart every tick (see
-    // WorldState.ResolveCollisions) and walking back together the next.
+    // A gap, not a point to stand on: arriving on top of the target would have the two shoved
+    // apart every tick (WorldState.ResolveCollisions) and walking back together the next.
     public float KeepWithin { get; } = keepWithin;
 
     public override bool IsComplete => false;
@@ -32,8 +24,7 @@ public sealed class FollowTask(Person target, float keepWithin, float speedPerTi
             return;
         }
 
-        // A fresh leg every tick rather than a kept MoveTask: its destination is fixed at
-        // construction, and this one moves.
+        // A fresh MoveTask every tick: its destination is fixed at construction, the target moves.
         new MoveTask(Target.Position, speedPerTick).Advance(person);
     }
 }

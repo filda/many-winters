@@ -2,9 +2,8 @@ using System.Globalization;
 
 namespace ManyWinters.Core.Continuity;
 
-// "Nine winters", not "9 winters": a chronicle is written out in words. Up to ninety-nine,
-// which covers any count of winters, children or graves a band realistically leaves behind;
-// past that the digits are the honest choice over a paragraph of hundreds and thousands.
+// "Nine winters", not "9 winters": a chronicle is written in words. Up to ninety-nine, which
+// covers what a band realistically leaves behind; past that digits are the honest choice.
 public static class NumberWords
 {
     private static readonly string[] Units =

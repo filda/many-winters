@@ -3,9 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
 
-// Deterministic per-instance variety: same seed (an entity's stable id, via EntityId.SeedOf)
-// always produces the same tint/scale, so repeated saves/reloads don't reshuffle how things
-// look, but instances of the same kind don't render as identical clones either.
+// Deterministic per-instance variety: the same seed (an entity's id via EntityId.SeedOf) always
+// gives the same tint/scale, so reloads do not reshuffle looks, yet instances of one kind are
+// not identical clones.
 internal static class EntityVisualVariation
 {
     public static Color Tint(Color baseColor, int seed)
@@ -25,20 +25,18 @@ internal static class EntityVisualVariation
         return minScale + ((float)random.NextDouble() * (maxScale - minScale));
     }
 
-    // Like Scale, but for callers that need several independent attributes off the same
-    // seed (e.g. a person's walk-cycle rate and its bob amplitude, all keyed off their
-    // id) - a distinguishing salt per attribute avoids each one just landing on the same
-    // underlying draw, rescaled differently. Also avalanches seed+salt first (Thomas Wang's
-    // 32-bit integer hash): System.Random's legacy algorithm correlates badly on adjacent
-    // small integer seeds, and two ids' seeds can land anywhere, close together included.
+    // Like Scale, but for several independent attributes off one seed (a person's walk rate
+    // and bob amplitude): a salt per attribute keeps them from being the same draw rescaled.
+    // seed+salt is avalanched first because System.Random correlates badly on nearby seeds
+    // (see SeedHash).
     public static float RangeFor(int seed, int salt, float min, float max)
     {
         var random = new Random(Avalanche(seed, salt));
         return min + ((float)random.NextDouble() * (max - min));
     }
 
-    // Same seed+salt avalanche as RangeFor, but for picking one of several discrete
-    // options (a hairstyle, a clothing style, ...) rather than a continuous value.
+    // Same avalanche as RangeFor, for picking one of `count` discrete options (a hairstyle)
+    // rather than a continuous value.
     public static int IndexFor(int seed, int salt, int count)
     {
         var random = new Random(Avalanche(seed, salt));

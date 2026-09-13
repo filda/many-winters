@@ -5,10 +5,9 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-// A person, drawn paper-doll style: a body with a garment and a hairstyle layered on top,
-// each an independent seeded pick, and each swapped for its lying-down counterpart on death.
-// The walk cycle is the only animation any view has, which is why this is the one that keeps
-// processing frames when nothing is fading.
+// A person, drawn paper-doll style: body, garment and hairstyle layered on top, each an
+// independent seeded pick, each swapped for its lying-down counterpart on death. The walk cycle
+// is the only per-frame animation any view has, so this one keeps processing when nothing fades.
 internal partial class PersonView : SpriteEntityView
 {
     public const float Height = 1.8f;
@@ -16,40 +15,35 @@ internal partial class PersonView : SpriteEntityView
     private const float MaxScale = 1.08f;
     private const float ShadowDiameter = 0.9f;
 
-    // A cardboard-cutout-on-a-stick bounce while actually walking, rather than gliding like a
-    // ghost (see WalkCycle). Each person draws their own rate and amplitude once (see Build)
-    // from within these ranges - a shared exact rate is what made everyone's gait read as
-    // synchronized even after IdleTask's paths stopped lining up.
+    // A cardboard-cutout-on-a-stick bounce while walking (see WalkCycle). Each person draws
+    // their own rate and amplitude from these ranges in Build; a shared exact rate reads as a
+    // synchronized gait.
     private const float MinWalkCyclesPerSecond = 8f;
     private const float MaxWalkCyclesPerSecond = 12f;
     private const float MinBobAmplitude = 0.06f;
     private const float MaxBobAmplitude = 0.10f;
 
     // Standing still is not standing frozen (see IdleSway): the walk's own bob, a fifth slower
-    // and at about half the height, so a person at rest keeps the same restless bounce as one
-    // on the move and the two hand over without a change of rhythm. Each person bobs at their
-    // own rate (a fixed share of their own walk rate) from their own starting phase, so a crowd
-    // at rest does not bounce in unison. A slow side-to-side sway was tried first and read as
-    // stalling rather than standing.
+    // and about half as high, so rest and walk hand over without a change of rhythm. Each person
+    // bobs at their own rate from their own phase, so a crowd at rest does not bounce in unison.
     private const float IdleCyclesPerWalkCycle = 0.8f;
     private const float MinIdleBobAmplitude = 0.03f;
     private const float MaxIdleBobAmplitude = 0.05f;
 
-    // A person is only "standing" once they have been still this long. Between two ticks the
-    // interpolation of a step arrives a frame or two before the next target is handed over
-    // (everyone shares Main's single tick accumulator), and treating that gap as standing
-    // made every walking person start to sway and snap back at once, every tick.
+    // A person is "standing" only after being still this long. Between ticks the interpolated
+    // step arrives a frame or two before the next target (everyone shares Main's tick
+    // accumulator), and treating that gap as standing makes the whole crowd sway and snap back
+    // every tick.
     private const float StandingAfterSeconds = 0.3f;
 
-    // How quickly the idle bob fades in once standing and, faster, out again once walking. It
-    // is the bob's weight that eases, not the bob itself - eased directly, an eight-hertz
-    // signal is mostly damped away (see IdleSway). Not a snap either way, which would jolt the
-    // cutout on the first frame of standing or of walking.
+    // How quickly the idle bob fades in once standing and, faster, out once walking. The bob's
+    // weight eases, not the bob itself - eased directly, an eight-hertz signal is mostly damped
+    // away (see IdleSway).
     private const float IdleFadeInSeconds = 0.35f;
     private const float IdleFadeOutSeconds = 0.15f;
 
-    // How quickly the last step's own bob eases away once standing, so a person does not stay
-    // frozen mid-bounce for as long as they stand.
+    // How quickly the last step's bob eases away once standing, so nobody stays frozen
+    // mid-bounce.
     private const float StepSettleSeconds = 0.25f;
 
     private const string BodyMaleTexturePath = "res://Content/people/person_body_male.png";
@@ -57,14 +51,10 @@ internal partial class PersonView : SpriteEntityView
     private const string BodyMaleDeadTexturePath = "res://Content/people/person_body_male_dead.png";
     private const string BodyFemaleDeadTexturePath = "res://Content/people/person_body_female_dead.png";
 
-    // Layered on top of the body, paper-doll style (same renderPriority-ordered compositing
-    // as ResourceNodeView's fruit overlay) - clothing first, hair on top of that. Each is an
-    // independent seeded pick (see the constructor) from these small libraries, recoloured
-    // at runtime rather than baked per-variant, so the combinatorics (body x clothing x hair
-    // x colours) come from a handful of source images. Each "_dead" entry below is that same
-    // layer rotated onto its side and re-seated at ground level (generate_sprites.py's
-    // _lay_down) - index-matched to its standing counterpart so SetAlive can swap to the
-    // *same* hairstyle/clothing lying down, not a generic one.
+    // Layered on the body, paper-doll style: clothing first, hair on top, each an independent
+    // seeded pick recoloured at runtime, so body x clothing x hair x colours come from a handful
+    // of images. Each "_dead" entry is the same layer laid on its side (generate_sprites.py's
+    // _lay_down), index-matched so SetAlive swaps to the *same* hairstyle/clothing lying down.
     private static readonly string[] HairTexturePaths =
     [
         "res://Content/people/hair_short.png",
@@ -110,13 +100,9 @@ internal partial class PersonView : SpriteEntityView
 
     private static readonly Color AliveColor = new(0.9f, 0.7f, 0.5f);
 
-    // Dead keeps this same person's own body/clothing/hair (still who they were), just
-    // drained of colour, rather than swapping to one generic corpse everyone shares.
-    // Modulate can only multiply, not truly desaturate, a multi-toned texture like the
-    // body layer's skin+boots+accents - a flat muted-grey multiply doesn't reduce every
-    // pixel to literal grey, but it darkens and mutes them enough to read as "the life gone
-    // out of it" without needing a custom desaturation shader for what's otherwise a small
-    // polish detail.
+    // Dead keeps this person's own body/clothing/hair, drained of colour, rather than a shared
+    // generic corpse. Modulate can only multiply, not desaturate, but a muted grey darkens the
+    // multi-toned body enough to read as lifeless without a shader.
     private static readonly Color DeadTint = new(0.5f, 0.5f, 0.52f);
 
     private readonly Person _person;
@@ -133,9 +119,8 @@ internal partial class PersonView : SpriteEntityView
     private Color _clothingColor;
     private Color _hairColor;
 
-    // What the body layer looks like alive, kept because SetAlive has to be able to put it
-    // back - it is normally plain white, but a missing texture leaves the fallback colour
-    // here instead, and that is still the honest "in full sight, alive" colour for it.
+    // The body layer's alive colour, so SetAlive can put it back: normally white, but a missing
+    // texture leaves the fallback colour here.
     private Color _aliveBodyModulate;
     private Vector3 _targetPosition;
     private float _interpolationSpeed;
@@ -147,24 +132,20 @@ internal partial class PersonView : SpriteEntityView
     private float _idleWeight;
     private float _standingSeconds;
 
-    // What the layers currently show, as two parts that come and go on their own clocks (see
-    // OnProcess): the walk's bob, exact while walking and easing away once standing, and the
-    // idle bob, whose weight fades in once standing and out again once walking. Kept so the
-    // hand-over between the two is never a jump.
+    // The walk's bob, exact while walking and easing away once standing; ApplyPose adds the
+    // idle bob, whose weight fades the other way, so the hand-over is never a jump.
     private Vector3 _stepOffset;
     private bool _isAlive = true;
 
-    // Internal, like the HoverArbiter it takes: WorldPresenter is the only thing that ever
-    // builds a view, and the hover invariant it hands over is the presentation layer's own
-    // business (see AssemblyInfo).
+    // Internal, like the HoverArbiter it takes: only WorldPresenter builds views, and the hover
+    // invariant is the presentation layer's own business (see AssemblyInfo).
     internal PersonView(Person person, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(Height, hover, onMissedClick)
     {
         _person = person;
         _onClicked = onClicked;
-        // Body gender is its own independent seeded pick (distinct salt, see _Ready for the
-        // rest) - deliberately not derived from the same draw as hairstyle/clothing below,
-        // so gender doesn't end up correlated with them.
+        // Its own salt, distinct from the hairstyle/clothing picks in Build, so gender is not
+        // correlated with them.
         var isMale = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 4, 2) == 0;
         _aliveTexturePath = isMale ? BodyMaleTexturePath : BodyFemaleTexturePath;
         _deadTexturePath = isMale ? BodyMaleDeadTexturePath : BodyFemaleDeadTexturePath;
@@ -172,9 +153,7 @@ internal partial class PersonView : SpriteEntityView
 
     protected override void Build()
     {
-        // Narrow enough a range here (0.92-1.08) that the ground-contact correction goes
-        // unnoticed either way, unlike at ResourceNodeView's much wider tree range - but the
-        // correction is the same one, and it lives in the base class now.
+        // A narrow range, but the ground-contact correction applies all the same.
         var scale = EntityVisualVariation.Scale(_person.Id.Seed, MinScale, MaxScale);
         ScaleAndKeepGroundContact(scale, scale);
         _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
@@ -189,10 +168,10 @@ internal partial class PersonView : SpriteEntityView
         _aliveBodyModulate = body.Modulate;
         _body = Register(body, _aliveTexturePath);
 
-        // Disabled, not the default OpaquePrepass - same reason as ResourceNodeView's fruit
-        // overlay: an overlay sharing the body's exact position/depth needs ordinary alpha
-        // blending to composite on top cleanly, OpaquePrepass has no defined draw order
-        // between two billboards at the same depth.
+        // AlphaCutMode.Disabled, not the default OpaquePrepass: an overlay at the body's exact
+        // position and depth needs ordinary alpha blending to composite cleanly, since
+        // OpaquePrepass has no defined order between two billboards at one depth (as for
+        // ResourceNodeView's fruit overlay).
         var clothingIndex = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 5, ClothingTexturePaths.Length);
         _clothingAliveTexturePath = ClothingTexturePaths[clothingIndex];
         _clothingDeadTexturePath = ClothingDeadTexturePaths[clothingIndex];
@@ -217,10 +196,9 @@ internal partial class PersonView : SpriteEntityView
     // unlike everything else in the world, which only ever takes a left click.
     protected override bool WantsClick(MouseButton button) => true;
 
-    // The walk bob moves the layers' local Position every frame, so the hit-test plane has to
-    // be pinned to this node's own position instead: anchoring it to a sprite that is bobbing
-    // sweeps the sampled pixel across silhouette edges under a cursor that never moved, and
-    // reads as the hover flickering on and off.
+    // The walk bob moves the layers every frame, so the hit-test plane is pinned to this node's
+    // position; anchored to a bobbing sprite, the sampled pixel sweeps across silhouette edges
+    // and the hover flickers.
     protected override Vector3? PixelHitAnchor => GlobalPosition;
 
     protected override bool OnClicked(MouseButton button)
@@ -229,9 +207,8 @@ internal partial class PersonView : SpriteEntityView
         return true;
     }
 
-    // Only the simulation tick moves a person; this just plays that motion back smoothly
-    // between ticks instead of snapping once per tick, so speed always matches how far the
-    // simulation actually moved them over that tick - never guessed or hardcoded.
+    // Only the simulation tick moves a person; this plays that motion back smoothly between
+    // ticks, at whatever speed matches how far the tick actually moved them.
     protected override void OnProcess(double delta)
     {
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
@@ -242,8 +219,8 @@ internal partial class PersonView : SpriteEntityView
             return;
         }
 
-        // The idle bob runs all the time and is only faded in and out, so that whatever weight
-        // it has when a step begins or ends carries on in the same rhythm instead of restarting.
+        // The idle bob runs all the time and is only faded in and out, so a step beginning or
+        // ending carries on in the same rhythm instead of restarting it.
         _idlePhase = WalkCycle.Advanced(_idlePhase, seconds, _walkCyclesPerSecond * IdleCyclesPerWalkCycle);
 
         if (WalkCycle.IsWalking(Position, _targetPosition))
@@ -256,11 +233,10 @@ internal partial class PersonView : SpriteEntityView
             return;
         }
 
-        // The last step's pose is held, not snapped to neutral, for the first moments of not
-        // walking: that gap at the shared tick boundary (see StandingAfterSeconds) used to read
-        // as a synchronized hiccup across the whole crowd when it was snapped. The walk phase
-        // is left where it stopped for the same reason, so phases drift apart on their own
-        // instead of all rewinding together.
+        // The last step's pose is held, not snapped to neutral, through the tick-boundary gap
+        // (see StandingAfterSeconds); snapping reads as a synchronized hiccup across the crowd.
+        // The walk phase stays where it stopped for the same reason, so phases drift apart
+        // instead of rewinding together.
         _standingSeconds += seconds;
         if (_standingSeconds < StandingAfterSeconds)
         {
@@ -294,11 +270,8 @@ internal partial class PersonView : SpriteEntityView
 
     public void SetAlive(bool isAlive)
     {
-        // Main calls this every tick for every person regardless of whether IsAlive actually
-        // changed - without this guard, re-deriving the tint every tick would silently
-        // overwrite the hover tint once a second on every living person, independent of
-        // _isHovered (which never got a chance to notice, since the very next real hover
-        // re-check finds the same, still-true bool and no-ops).
+        // Main calls this every tick for every person whether or not IsAlive changed; without
+        // the guard every living person would be retextured and re-measured once a tick.
         if (isAlive == _isAlive)
         {
             return;
@@ -306,23 +279,19 @@ internal partial class PersonView : SpriteEntityView
 
         _isAlive = isAlive;
 
-        // Each layer swaps to its own matching rotated-onto-its-side variant (see
-        // generate_sprites.py's _lay_down) - the same hairstyle/clothing this person had
-        // standing, not a generic corpse. Retexture carries each layer's new base colour with
-        // it, because BillboardSprite.Apply underneath resets Modulate to white.
+        // Each layer swaps to its own lying-down variant (generate_sprites.py's _lay_down) - the
+        // same hairstyle/clothing this person had standing. Retexture carries the new base
+        // colour, since BillboardSprite.Apply resets Modulate to white.
         Retexture(_body, isAlive ? _aliveTexturePath : _deadTexturePath, isAlive ? _aliveBodyModulate : DeadTint, AliveColor);
         Retexture(_clothing, isAlive ? _clothingAliveTexturePath : _clothingDeadTexturePath, isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint, _clothingColor);
         Retexture(_hair, isAlive ? _hairAliveTexturePath : _hairDeadTexturePath, isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint, _hairColor);
 
-        // Re-painted from the (now updated) base colours rather than skipped while hovered or
-        // mid-fade - otherwise dying while already hovered left the old alive-hover tint
-        // showing until the next real hover state change.
+        // Re-painted from the updated base colours even mid-fade, so the fog tint composes with
+        // the new ones at once.
         ApplyTints();
 
-        // The rotated "lying down" texture already reads as flat on the ground - any
-        // leftover walk bob from mid-stride would lift it off that, so clear it once
-        // there's no more walking to re-derive it each frame (OnProcess neither walks nor
-        // sways the dead).
+        // The lying-down texture already reads as flat on the ground; a leftover bob would lift
+        // it, and OnProcess neither walks nor sways the dead to re-derive it.
         if (!isAlive)
         {
             _stepOffset = Vector3.Zero;
@@ -330,9 +299,8 @@ internal partial class PersonView : SpriteEntityView
             ApplyPose();
         }
 
-        // Dead uses a differently-shaped (wider/shorter, lying down) silhouette - the
-        // collision box and the marker's resting height both read off the layers, so both
-        // follow from re-measuring them.
+        // The lying-down silhouette is wider and shorter; the collision box and the marker's
+        // height both follow from re-measuring the layers.
         RefreshCollisionShape();
     }
 

@@ -1,17 +1,13 @@
 namespace ManyWinters.Core.World;
 
-// Distance from every cell of a grid to the nearest cell flagged true, in cell units - what
-// the presentation layer needs to fade the unknown tier of fog-of-war out with distance from
-// anything the group has ever explored (concentric: party, visible ground, parchment, then
-// darkness), rather than with distance from the map's own centre or edge. A two-pass chamfer
-// transform (forward then backward sweep over the 8-neighbourhood, weights 1 and sqrt 2):
-// linear in cell count, so cheap enough to redo on every fog rebuild, and within a few
-// percent of the true Euclidean distance - more than accurate enough to drive a soft fade.
+// Distance from every cell to the nearest cell flagged true, in cell units - what fades the
+// unknown tier of fog out with distance from explored ground. A two-pass chamfer transform
+// (forward then backward sweep over the 8-neighbourhood, weights 1 and sqrt 2): linear in cell
+// count and within a few percent of Euclidean, enough to drive a soft fade.
 public static class GridDistanceField
 {
-    // Returned for every cell when nothing in the grid is flagged - finite (not
-    // PositiveInfinity) so it survives being written into a float texture and compared with
-    // ordinary smoothstep-style thresholds without special-casing.
+    // Returned when nothing is flagged. Finite rather than PositiveInfinity so it survives a
+    // float texture and ordinary threshold comparisons.
     public const float Unreachable = 1e6f;
 
     private static readonly float Diagonal = MathF.Sqrt(2f);
@@ -30,8 +26,7 @@ public static class GridDistanceField
             }
         }
 
-        // Forward sweep: each cell may be reached from its already-visited neighbours above
-        // and to the left.
+        // Forward sweep: from the already-visited neighbours above and to the left.
         for (var y = 0; y < rows; y++)
         {
             for (var x = 0; x < cols; x++)

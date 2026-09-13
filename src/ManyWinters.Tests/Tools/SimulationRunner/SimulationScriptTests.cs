@@ -197,10 +197,7 @@ public class SimulationScriptTests
         var output = script.Run(["print population"]);
 
         Assert.Contains(output, line => line.Contains("Person 1") && line.Contains("[dead]"));
-        // Not "at Position { X = 0, Y = 0 }" too, unlike before IdleTask made an ordersless
-        // person wander (see WorldState.Advance) instead of staying frozen where they spawned.
-        // A living person gets no status marker at all, not merely a different one - the line
-        // ends at where they are standing.
+        // A living person gets no status marker at all; the line ends at where they are standing.
         var living = Assert.Single(output, line => line.Contains("Person 2", StringComparison.Ordinal));
         Assert.EndsWith(script.World.People[1].Position.ToString(), living, StringComparison.Ordinal);
     }
@@ -262,8 +259,8 @@ public class SimulationScriptTests
 
         var output = script.Run(["print epitaph"]);
 
-        // A title and the lines under it (see Epitaph.Write) - nobody ate, so both starved on
-        // the same tick and neither side of the line closed before the other.
+        // A title and the lines under it (see Epitaph.Write); nobody ate, so both starved on the
+        // same tick and neither side closed first.
         Assert.Equal(7, output.Count);
         Assert.Contains("Sela's people", output[0]);
         Assert.Contains(output, line => line.Contains("the last of them") || line.Contains("The last of them"));
@@ -337,9 +334,8 @@ public class SimulationScriptTests
     [Fact]
     public void SplitIntoCommandsStartsANewCommandAtAVerbEvenPartWayThroughTheArguments()
     {
-        // "generate" appearing first would begin a command whether or not it were recognized
-        // at all, so it has to be tested somewhere it follows another one - otherwise nothing
-        // says the verb list actually knows about it.
+        // A leading "generate" would begin a command whether or not it were recognized, so it is
+        // tested following another one; otherwise nothing proves the verb list knows it.
         var commands = SimulationScript.SplitIntoCommands(["create", "2", "generate", "simulate", "5"]);
 
         Assert.Equal(["create 2", "generate", "simulate 5"], commands);

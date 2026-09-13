@@ -12,9 +12,8 @@ public class InventoryTests
     private static readonly MaterialId Stuff = new("stuff");
     private static readonly FormId Lump = new("lump");
 
-    // These tests are about how an inventory adds weight up, not about where a unit weight
-    // comes from, so the one material here has density 1 and an item's volume reads directly as
-    // its weight.
+    // These tests are about how weight adds up, not where a unit weight comes from: density 1,
+    // so an item's volume reads directly as its weight.
     private static ItemCatalog CatalogOf(params ItemDefinition[] items) =>
         new(items, new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f)]));
 
@@ -152,8 +151,7 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityCountsHowManyUnitsFitRatherThanHowMuchTheyWeigh()
     {
-        // Ten kilos of headroom is five stones, not twenty - what fits is the headroom divided
-        // by the unit weight.
+        // What fits is headroom divided by unit weight: ten kilos is five stones, not twenty.
         var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
 
@@ -166,9 +164,8 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityLeavesNoEmptyEntryBehindWhenNothingFits()
     {
-        // A zero-count entry would show up in Counts as "carrying stone" - to anything walking
-        // the inventory (the UI, HasEdibleFood) that's indistinguishable from actually having
-        // some, so a refused add has to leave no trace at all.
+        // A zero-count entry would read as "carrying stone" to anything walking Counts (the UI,
+        // HasEdibleFood), so a refused add has to leave no trace.
         var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
 
@@ -191,8 +188,8 @@ public class InventoryTests
     [Fact]
     public void HasRoomForIsFalseOnceNotEvenOneUnitFits()
     {
-        // 49 of 50 kilos used: a whole unit weighs 2, so the last kilo of headroom is not room
-        // for anything - the same rounding-down AddUpToCapacity does.
+        // 49 of 50 kilos used and a unit weighs 2: the last kilo is not room, the same rounding
+        // down AddUpToCapacity does.
         var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
         inventory.Add(Stone, 24);

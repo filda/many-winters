@@ -1,21 +1,13 @@
 namespace ManyWinters.Core.Maps;
 
-// Coherent 2D gradient (Perlin) noise: a smooth, continuous field instead of independent
-// randomness per sampled point - lets things like "which biome grows here" or "how the
-// ground rolls" have organic, spatially-correlated shapes rather than picking a center
-// point and drawing an explicit circle around it. A seeded lattice of unit gradient
-// vectors (not scalar values - that would be the simpler "value noise", which this
-// started as) dotted against the offset to each sampled point and blended with Perlin's
-// own quintic fade curve between the four surrounding grid corners. The extra step over
-// value noise matters here: value noise's peaks/valleys sit exactly on lattice points, which
-// reads as a faint grid-aligned "waffle" bias once you know to look for it; gradient
-// noise's extrema fall at arbitrary points inside a cell instead, which is what actually
-// looks natural.
+// Coherent 2D gradient (Perlin) noise: a smooth field instead of independent randomness per
+// point, so biome regions get organic, spatially-correlated shapes. Gradient noise rather than
+// value noise because value noise's extrema sit on lattice points and read as a faint
+// grid-aligned "waffle"; gradient noise's fall anywhere inside a cell.
 public sealed class Noise2D
 {
-    // Perlin's own bound for 2D noise built from unit gradients is |value| <= 1/sqrt(2) -
-    // dividing by it before remapping to [0, 1] uses the full output range instead of only
-    // ever landing in the middle third of it.
+    // Perlin's bound for 2D noise from unit gradients is |value| <= 1/sqrt(2); dividing by it
+    // uses the full [0, 1] range instead of the middle third.
     private const double MaxAmplitude = 0.7071067811865476;
 
     private static readonly (double X, double Y)[] Gradients = BuildGradients();
@@ -70,11 +62,8 @@ public sealed class Noise2D
         return (normalized + 1.0) / 2.0;
     }
 
-    // Fractal Brownian motion: several octaves at doubling frequency and (by default)
-    // halving amplitude, summed together - large-scale shape comes from the low
-    // frequencies, finer local variation layers on top from the higher ones, so a region
-    // reads as organic rather than one uniform blob size. Stays in [0, 1] (every octave
-    // already is, and the weights are normalized by their own sum).
+    // Fractal Brownian motion: octaves at doubling frequency and (by default) halving amplitude.
+    // Stays in [0, 1] because every octave is and the weights are normalized by their sum.
     public double Fbm(double x, double y, int octaves, double frequency, double persistence = 0.5)
     {
         var total = 0.0;
@@ -92,10 +81,9 @@ public sealed class Noise2D
         return total / maxAmplitude;
     }
 
-    // The unit gradient assigned to an integer lattice point, dotted with (dx, dy) - the
-    // offset from that same corner to the sampled point. Bitwise AND (not modulo) so
-    // negative coordinates (this world's origin sits in the middle of the terrain, not a
-    // corner) still index the permutation table correctly.
+    // The lattice point's unit gradient dotted with the offset (dx, dy) to the sampled point.
+    // Bitwise AND, not modulo, so negative coordinates (the origin is mid-terrain) index the
+    // permutation table correctly.
     private double DotGradient(int x, int y, double dx, double dy)
     {
         var h = _permutation[(_permutation[x & 255] + y) & 255];
@@ -103,9 +91,7 @@ public sealed class Noise2D
         return (gx * dx) + (gy * dy);
     }
 
-    // Eight unit vectors, 45 degrees apart - plenty for how coarsely this gets sampled
-    // (biome bands, a terrain bump), without the bookkeeping of Perlin's original
-    // hand-picked 3D-edge-midpoint set (this is 2D noise, that set doesn't apply here).
+    // Eight unit vectors 45 degrees apart - plenty for how coarsely this is sampled.
     private static (double X, double Y)[] BuildGradients()
     {
         var gradients = new (double X, double Y)[8];
@@ -118,9 +104,7 @@ public sealed class Noise2D
         return gradients;
     }
 
-    // Perlin's own quintic fade (6t^5 - 15t^4 + 10t^3) - second-derivative-continuous,
-    // unlike the cheaper 3t^2-2t^3 smoothstep, which matters more for gradient noise than
-    // it did for value noise: a visible facet/crease can show up right at cell boundaries
-    // otherwise, precisely where two cells' independently-oriented gradients disagree most.
+    // Perlin's quintic fade (6t^5 - 15t^4 + 10t^3): second-derivative-continuous, unlike
+    // smoothstep, which shows a crease at cell boundaries where neighbouring gradients disagree.
     private static double Fade(double t) => t * t * t * ((t * ((t * 6.0) - 15.0)) + 10.0);
 }

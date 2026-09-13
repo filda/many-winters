@@ -36,8 +36,8 @@ public class SpatialSpacingIndexTests
     [Fact]
     public void ChecksNeighbouringCellsNotJustTheCandidatesOwnCell()
     {
-        // Cell size 1: (0.9, 0) and (1.1, 0) fall in different cells but are 0.2 apart, well
-        // inside a gap of 1 - only the 3x3 scan around the candidate's own cell catches this.
+        // (0.9, 0) and (1.1, 0) sit in different cells but 0.2 apart; only the 3x3
+        // neighbourhood scan catches this.
         var index = NewIndex(cellSize: 1.0);
         index.Add(new Position(0.9, 0));
 
@@ -69,8 +69,8 @@ public class SpatialSpacingIndexTests
     [Fact]
     public void AddingAnItemDoesNotAffectEarlierQueriesResults()
     {
-        // IsTooClose only ever looks at what has already been Add()-ed - this pins that order,
-        // matching how every caller checks a candidate before deciding whether to keep it.
+        // IsTooClose only sees what has already been added; callers check a candidate before
+        // keeping it.
         var index = NewIndex();
 
         Assert.False(index.IsTooClose(0, 0, _ => 1.0));

@@ -1,11 +1,9 @@
 namespace ManyWinters.Core.World;
 
-// The spatial-hash rejection-sampling shape shared by CloudSpotScatter's blue-noise clouds and
-// MapLoader's decoration/crowd placement (docs/todo/refactoring.md): bucket by a cell at least
-// as wide as the largest gap two items can ever need, so a candidate only ever checks the 3x3
-// cells around it instead of every item placed before it. Coordinates are always widened to
-// double before this runs - a caller working in float loses nothing by that widening, so the
-// same index gives identical answers regardless of which precision the caller itself uses.
+// Spatial-hash rejection sampling shared by CloudSpotScatter and MapLoader's decoration/crowd
+// placement: bucket by a cell at least as wide as the largest gap two items can need, so a
+// candidate checks only the 3x3 cells around it. Coordinates are doubles; a float caller loses
+// nothing by widening, so both get identical answers.
 public sealed class SpatialSpacingIndex<T>
 {
     private readonly double _cellSize;
@@ -13,10 +11,8 @@ public sealed class SpatialSpacingIndex<T>
     private readonly Func<T, double> _z;
     private readonly Dictionary<(int, int), List<T>> _buckets = new();
 
-    // cellSize must be at least as large as the largest gap a caller's requiredGap can ever
-    // return: IsTooClose only ever looks at the candidate's own cell and its 8 neighbours, so an
-    // existing item further away than that - even one requiredGap would reject the candidate
-    // for - is invisible to it.
+    // cellSize must be at least the largest gap requiredGap can return: IsTooClose looks only at
+    // the candidate's cell and its 8 neighbours, so anything further away is invisible to it.
     public SpatialSpacingIndex(double cellSize, Func<T, double> x, Func<T, double> z)
     {
         _cellSize = cellSize;
@@ -24,10 +20,9 @@ public sealed class SpatialSpacingIndex<T>
         _z = z;
     }
 
-    // True if some already-added item sits closer to (x, z) than requiredGap allows. The gap is
-    // asked per neighbour rather than fixed once, so a caller whose minimum spacing depends on
-    // both points (CloudSpotScatter's size-derived gap) and one with a single constant spacing
-    // (MapLoader's decoration/crowd placement) can share this same index.
+    // True if an already-added item sits closer to (x, z) than requiredGap allows. The gap is
+    // asked per neighbour so a size-dependent spacing (CloudSpotScatter) and a constant one
+    // (MapLoader) share the index.
     public bool IsTooClose(double x, double z, Func<T, double> requiredGap)
     {
         var (cellX, cellZ) = CellFor(x, z);

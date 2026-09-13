@@ -24,8 +24,7 @@ public class IdleTaskTests
         var person = NewPerson(new Position(3, 4));
         var task = new IdleTask();
 
-        // A person pauses briefly before setting off (see IdleTask's own MaxPauseTicks) -
-        // enough ticks to clear even the longest possible pause before a leg starts.
+        // Enough ticks to clear even the longest pre-leg pause (IdleTask.MaxPauseTicks).
         for (var i = 0; i < 20; i++)
         {
             task.Advance(person);
@@ -45,9 +44,8 @@ public class IdleTaskTests
         {
             task.Advance(person);
 
-            // Mirrors IdleTask's own private MaxWanderRadius - a generous epsilon covers
-            // floating-point drift, not a looser radius. Each person draws their own radius
-            // somewhere at or under this ceiling (see the "individual radius" test below).
+            // 8f mirrors IdleTask's private MaxWanderRadius; the epsilon covers floating-point
+            // drift only.
             Assert.True(WorldState.Distance(start, person.Position) <= 8f + 0.01f);
         }
     }
@@ -61,8 +59,7 @@ public class IdleTaskTests
         var avaTask = new IdleTask();
         var branTask = new IdleTask();
 
-        // Clears even the longest possible pre-leg pause (see IdleTask's own MaxPauseTicks)
-        // for both of them before comparing positions.
+        // Clears the longest possible pre-leg pause (IdleTask.MaxPauseTicks) for both.
         for (var i = 0; i < 20; i++)
         {
             avaTask.Advance(ava);
@@ -75,10 +72,8 @@ public class IdleTaskTests
     [Fact]
     public void ConsecutivePersonIdsDoNotWanderInLockstep()
     {
-        // Regression guard for System.Random's legacy algorithm correlating badly on nearby
-        // small integer seeds (exactly what sequential person ids are) - without the seed
-        // avalanche in IdleTask.SeedFor, these two would land suspiciously close together on
-        // every single tick, reading as synchronized rather than independent wandering.
+        // Guards the seed avalanche in IdleTask.SeedFor: System.Random correlates badly on nearby
+        // small seeds (sequential person ids), which would read as synchronized wandering.
         var start = new Position(0, 0);
         var ava = new Person { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
         var bran = new Person { Id = TestIds.Person(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
@@ -106,12 +101,9 @@ public class IdleTaskTests
     {
         var start = new Position(0, 0);
 
-        // Each person's own radius stays fixed leg after leg, but which value they each
-        // landed on isn't the same for everyone - the farthest any single one of them ever
-        // gets from their anchor across many legs approximates their individual radius. Those
-        // maxima must not only differ, they have to spread across IdleTask's own 3..8 band:
-        // a homebody who barely leaves the anchor and a roamer out near the ceiling, rather
-        // than everyone clustered at one end of it.
+        // The farthest each person gets from their anchor over many legs approximates their
+        // individual radius. Those maxima must spread across IdleTask's 3..8 band, not cluster
+        // at one end of it.
         var farthestReached = Enumerable.Range(1, 30).Select(id =>
         {
             var person = new Person { Id = TestIds.Person(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
@@ -134,9 +126,8 @@ public class IdleTaskTests
     [Fact]
     public void EveryPauseLastsBetweenThreeAndTenTicks()
     {
-        // Counted before the first leg, where a person is provably standing still because
-        // they haven't been given anywhere to go yet. Over enough people the drawn lengths
-        // have to cover IdleTask's whole documented 3..10 band, endpoints included.
+        // Counted before the first leg, where a person is provably standing still. Over enough
+        // people the pause lengths must cover IdleTask's whole 3..10 band, endpoints included.
         var leadingStillTicks = Enumerable.Range(1, 200).Select(id =>
         {
             var start = new Position(0, 0);
@@ -180,8 +171,7 @@ public class IdleTaskTests
             previous = person.Position;
         }
 
-        // Without the pauses idle reads as restless, constant walking - a person on the move
-        // every single one of 600 ticks.
+        // Without the pauses idle reads as restless, constant walking.
         Assert.True(stillTicks > 50, $"Only {stillTicks} of 600 idle ticks were spent standing still.");
     }
 
@@ -216,12 +206,9 @@ public class IdleTaskTests
     [InlineData(7, 200, 0.24047159116368516, 0.6928283562976543)]
     public void APersonsWanderPathIsFixedByTheirId(int personId, int ticks, double expectedX, double expectedY)
     {
-        // The seed avalanche, the per-person radius, the pause lengths and the destination
-        // math together make one reproducible path per person - the property the whole class
-        // is built around (nothing here is allowed to depend on wall-clock time or on the
-        // order the simulation happens to advance people in). Pinned to six decimals rather
-        // than exactly: the destinations come out of Math.Cos/Sin, whose last bit isn't
-        // guaranteed identical across platforms.
+        // One reproducible path per person is the property the class is built around. Pinned to
+        // six decimals: the destinations come out of Math.Cos/Sin, whose last bit varies across
+        // platforms.
         var person = new Person
         {
             Id = TestIds.Person(personId),

@@ -4,13 +4,9 @@ using ManyWinters.Core.Serialization;
 namespace ManyWinters.Core.Materials;
 
 // The shape a material has been worked into - fibre, stick, lump, wedge, vessel - as opposed to
-// the substance itself (MaterialId). The pair is what an item is: an axe is a wedge of a hard
-// material, cord is a fibrous material twisted into a cord, and a stone lump cannot cut where a
-// stone wedge can.
-//
-// Nothing reads a form yet. It is declared now so that content already says what shape each
-// item is by the time the affordance predicates that ask arrive, rather than every item file
-// needing a second pass then.
+// the substance (MaterialId). An axe is a wedge of a hard material; a stone lump cannot cut
+// where a stone wedge can. Nothing reads a form yet; content declares it now so the affordance
+// predicates that will ask do not need a second pass over every item file.
 [JsonConverter(typeof(FormIdJsonConverter))]
 public readonly record struct FormId(string Value)
 {

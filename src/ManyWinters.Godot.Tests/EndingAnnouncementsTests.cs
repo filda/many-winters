@@ -24,8 +24,7 @@ public class EndingAnnouncementsTests
         Assert.False(announcements.ShouldAnnounce(BandFate.SpearSideEnded));
     }
 
-    // The two inscriptions the design asks for, in the order a band actually meets them: the
-    // spear side closes first, and the last death is its own, second announcement.
+    // The spear side closes first, and the last death is its own, second announcement.
     [Fact]
     public void TheLastDeathIsAnnouncedAfterTheLineEndingWas()
     {
@@ -45,8 +44,7 @@ public class EndingAnnouncementsTests
         Assert.False(announcements.ShouldAnnounce(BandFate.Ended));
     }
 
-    // A line that reopens (an NPC joining, one day) says nothing on screen, but its closing
-    // again is news again rather than a repeat.
+    // A reopened line says nothing on screen, but its closing again is news again.
     [Fact]
     public void AReopenedLineClosingAgainIsAnnouncedAgain()
     {

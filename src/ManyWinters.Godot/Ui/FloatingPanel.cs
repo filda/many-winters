@@ -2,15 +2,14 @@ using Godot;
 
 namespace ManyWinters.Godot.Ui;
 
-// Self-contained window chrome: drag the title bar to move it, click the fold button to
-// collapse the body away and leave just the title bar. Callers add their own content to
-// Body; this class only owns the frame around it.
+// Window chrome: drag the title bar to move it, the fold button collapses the body away.
+// Callers add content to Body; this class owns only the frame.
 public partial class FloatingPanel(string title) : PanelContainer
 {
     private const float TitleBarHeight = 28f;
 
-    // Reserves room below the panel for the status bar (see StatusBar.BarHeight) plus a
-    // little breathing room, so a tall body scrolls instead of drawing over/past it.
+    // Room below the panel for the status bar (StatusBar.BarHeight) plus breathing space, so a
+    // tall body scrolls instead of drawing over it.
     private const float BottomClearance = 56f;
 
     private Button _collapseButton = null!;
@@ -58,9 +57,8 @@ public partial class FloatingPanel(string title) : PanelContainer
         _scroll.AddChild(Body);
     }
 
-    // Keeps the body's height at whatever it naturally needs, capped to whatever room is
-    // left between the panel and the bottom of the screen - so it scrolls internally
-    // instead of drawing past the visible area once it's too tall to fit.
+    // Body height is its natural size, capped to the room left above BottomClearance so an
+    // overlong body scrolls internally.
     public override void _Process(double delta)
     {
         if (_collapsed)

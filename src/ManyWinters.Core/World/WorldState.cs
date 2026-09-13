@@ -23,22 +23,19 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public ExplorationState Exploration { get; } = new();
 
-    // What any two people have come to mean to each other. Unlike People/Graves/... this is
-    // not a list of things in the world but a record about pairs of them, so it has no Add*
-    // of its own and nothing announces a change to the presentation layer - the inspector
-    // reads it when it draws (see Main.cs).
+    // What any two people mean to each other. A record about pairs, not a list of things in the
+    // world, so it has no Add* and announces nothing - the inspector reads it when it draws.
     public Affections Affections { get; } = new();
 
-    // What this world was built from and runs on (catalogs, calendar, tuning numbers) - fixed
-    // for the world's lifetime, unlike everything else here. Not part of a save file.
+    // Catalogs, calendar and tuning numbers - fixed for the world's lifetime and not part of a
+    // save file.
     public WorldConfiguration Configuration { get; } = configuration;
 
     public IReadOnlyList<Person> People => _people;
 
-    // People who died before the story began and only exist to be somebody's mother or father
-    // (see Person.Mother) - full Person objects with names and ids like everyone else, so a
-    // grave's "child of X" and a save file can refer to them like anyone, but never in People:
-    // nothing simulates, draws, counts or clicks them.
+    // People who died before the story began and exist only to be somebody's parent (see
+    // Person.Mother): full Person objects a grave or a save file can refer to, but never in
+    // People - nothing simulates, draws, counts or clicks them.
     public IReadOnlyList<Person> Forebears => _forebears;
 
     public IReadOnlyList<ResourceNode> ResourceNodes => _resourceNodes;
@@ -57,10 +54,9 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public event Action<Grave>? GraveAdded;
 
-    // Add* take a finished object rather than building one - what a person/node/building/grave
-    // is made of is the caller's business (SpawnPersonCommand, BuryCommand, ...), the world's
-    // is only to keep the list and tell the presentation layer. Ids aren't the world's concern
-    // either: an entity draws its own (see EntityId).
+    // Add* take a finished object: what it is made of is the caller's business
+    // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
+    // presentation layer. Ids are drawn by the entity itself (see EntityId).
     public void AddPerson(Person person)
     {
         _people.Add(person);
@@ -68,9 +64,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         RefreshExploration();
     }
 
-    // No PersonAdded, no exploration refresh - a forebear isn't on the map (see Forebears), so
-    // the presentation layer must never hear about one. Being dead is what makes it a forebear
-    // rather than a person; a living one would be a person hidden from the simulation.
+    // No PersonAdded and no exploration refresh: a forebear is not on the map (see Forebears).
+    // A living one would be a person hidden from the simulation, hence the guard.
     public void AddForebear(Person forebear)
     {
         if (forebear.IsAlive)
@@ -108,18 +103,14 @@ public sealed class WorldState(WorldConfiguration configuration)
         return Math.Sqrt((dx * dx) + (dy * dy));
     }
 
-    // The one proximity test every "act on that thing" command shares (gather, fell, bury,
-    // deposit, ...) - exactly at the limit still counts as within reach. `rangeMultiplier`
-    // is for the rare case of a wider-than-normal reach (TeachCommand's efficient teacher).
+    // The one proximity test every "act on that thing" command shares; exactly at the limit still
+    // counts. `rangeMultiplier` serves the rare wider reach (TeachCommand's efficient teacher).
     public bool IsWithinReach(Position a, Position b, float rangeMultiplier = 1f) =>
         Distance(a, b) <= Configuration.Rules.MaxInteractionDistance * rangeMultiplier;
 
-    // Whether a person would sit down and eat right now if they had something on them. The one
-    // "hungry enough to bother" test, shared by the autonomous eating pass below and by
-    // GatherCommand's eating straight from the source, so a bite while picking and a bite from
-    // the pack happen at the same point rather than by two different rules. The player asking
-    // directly (Main's Eat button) is deliberately not routed through it - being told to eat is
-    // not the same as deciding to.
+    // The one "hungry enough to bother" test, shared by TryAutoEat and GatherCommand's eating at
+    // the source. The player's Eat button deliberately bypasses it: being told to eat is not the
+    // same as deciding to.
     public bool IsHungryEnoughToEat(Person person) => person.Needs.Hunger >= Configuration.Rules.HungerEatThreshold;
 
     public long AgeInYears(Person person) => AgeInYearsAt(person, Clock.CurrentTick);
@@ -131,17 +122,12 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public LifeStage LifeStageOf(Person person) => LifeStages.For(AgeInYears(person));
 
-    // Grown enough to have children of their own (BirthCommand). Elders count: this is the
-    // floor on childhood, not a fertility model - a world where the last two people are old
-    // is a world that ends, and that is a story the game should be allowed to tell rather
-    // than a rule to bolt on here.
+    // Grown enough to have children (BirthCommand). Elders count: this is a floor on childhood,
+    // not a fertility model - a world whose last two people are old is a story worth telling.
     public bool IsOldEnoughForChildren(Person person) => AgeInYears(person) >= LifeStages.AdultAgeYears;
 
-    // The infant this person is currently nursing, if any: her own living child, still under
-    // weaning age, and close enough to actually be fed.
-    //
-    // A scan of People per person per tick, same shape as AutoTeachNearbyPeople's own pass -
-    // at this game's population sizes (tens, not thousands) that is not where the time goes.
+    // The infant this person is nursing, if any: her own living child, under weaning age and
+    // within reach. A scan of People per person per tick is fine at tens of people.
     public Person? NursingInfantOf(Person mother)
     {
         foreach (var person in _people)
@@ -155,16 +141,12 @@ public sealed class WorldState(WorldConfiguration configuration)
         return null;
     }
 
-    // Whether this person is an infant being fed right now. Deliberately reads the same three
-    // facts as NursingInfantOf above rather than being told by it: each side of the pair
-    // decides independently, so which of the two Advance happens to reach first within a tick
-    // cannot change what either of them gets.
+    // Reads the same facts as NursingInfantOf independently rather than being told by it, so
+    // which of the pair Advance reaches first within a tick cannot change what either gets.
     public bool IsBeingNursed(Person person) => IsNursedBy(person, person.Mother);
 
-    // How much this specific person can carry right now - varies by age (see CarryCapacity)
-    // plus whatever gear (a basket, a bag, ...) they currently have on them (same "presence,
-    // not count" convention as InsulationFor - carrying five baskets isn't five times the
-    // bonus of carrying one).
+    // Age-based base (see CarryCapacity) plus gear bonuses. Presence, not count, as with
+    // InsulationFor: five baskets are not five times the bonus of one.
     public float MaxCarryWeightFor(Person person)
     {
         var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), Configuration.Rules.MaxLifespanYears);
@@ -197,17 +179,12 @@ public sealed class WorldState(WorldConfiguration configuration)
                 }
 
                 person.Tasks.Advance(person);
-                // Nobody just stands frozen once they run out of orders. An empty queue used
-                // to always mean plain wandering (IdleTask); it now means "go use whatever
-                // skill this person already has, or seek out food if hungry and empty-handed"
-                // (see DecideIdleTask) - falling back to wandering only if neither applies. A
-                // real order (MoveCommand etc.) replaces this the moment one comes in, same as
-                // it would replace any other task - this only ever revisits its own two
-                // autonomous choices (idle/gather), never a player-issued one.
-                // IdleGraceUntilTick (see GrantIdleGraceCommand) can buy a few extra ticks of
-                // standing still first - but never at the cost of starving: the grace is
-                // renewed every tick for as long as a person stays selected, so a hungry one
-                // left standing under the player's gaze would otherwise never set off for food.
+                // An empty queue means "use a known skill, or seek food if hungry and
+                // empty-handed", falling back to wandering (see DecideIdleTask). Only the
+                // autonomous choices are ever revisited, never a player-issued task.
+                // IdleGraceUntilTick (GrantIdleGraceCommand) buys a few ticks of standing still,
+                // but never past urgent hunger: the grace is renewed every tick while a person
+                // is selected, so a hungry one would otherwise never set off for food.
                 var idleGraceHolds = currentTick < person.IdleGraceUntilTick && !NeedsToSeekFoodUrgently(person);
                 if (!idleGraceHolds && ShouldReconsiderIdleTask(person))
                 {
@@ -218,20 +195,16 @@ public sealed class WorldState(WorldConfiguration configuration)
                     }
                 }
 
-                // Attempted every tick a gather order is active, not just once on arrival -
-                // GatherTask only knows how to walk (see its own doc comment), so the actual
-                // harvest happens here; GatherCommand's own distance check silently no-ops
-                // this while still en route.
+                // Every tick a gather order is active, not once on arrival: GatherTask only
+                // walks, the harvest happens here, and GatherCommand no-ops while out of reach.
                 if (person.Tasks.Current is GatherTask activeGather)
                 {
                     new GatherCommand(person, activeGather.Target).Execute(this);
                 }
 
-                // An infant at its mother's side is simply not hungry - it is being fed. It
-                // has no inventory, no techniques and no way to forage, so hunger on it would
-                // be nothing but a countdown to starving; what the feeding costs turns up on
-                // her side of this same loop instead, as NursingHungerMultiplier below. The
-                // moment she dies or is left behind, this stops and the countdown is real.
+                // An infant at its mother's side is fed and not hungry; the cost lands on her
+                // as NursingHungerMultiplier below. Once she dies or leaves it behind, the
+                // countdown is real.
                 if (IsBeingNursed(person))
                 {
                     person.Needs.Hunger = 0f;
@@ -300,32 +273,25 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // Only ever revisits the two autonomous choices (idle/gather) - a player-issued task
-    // (MoveTask from a direct MoveCommand, say) is left alone; IdleTask always gets a second
-    // look (something better might now apply); GatherTask normally only when its own target
-    // has stopped being worth working (dead, drained until it regenerates, or nothing this
-    // person could take from it any more - see IsWorthGathering), rather than
-    // every tick - that would otherwise re-plan (and so re-approach) the same resource
-    // continuously - *except* when hunger has become an emergency (see NeedsToSeekFoodUrgently):
-    // a person who set off gathering wood far from camp, then ran out of food along the way,
-    // has to be allowed to change their mind and go find something to eat instead of walking
-    // the rest of that original errand while starving to death.
+    // Only autonomous tasks are revisited; a player-issued one (MoveTask from MoveCommand) is
+    // left alone. IdleTask always gets a second look. GatherTask only once its target stops
+    // being worth working (see IsWorthGathering) - re-planning every tick would re-approach the
+    // same resource forever - or when hunger becomes urgent (see NeedsToSeekFoodUrgently), so a
+    // wood run far from camp can be abandoned for food.
     private bool ShouldReconsiderIdleTask(Person person) => person.Tasks.Current switch
     {
         null => true,
         IdleTask => true,
-        // Without this, an infant would follow its mother for the rest of its life:
-        // FollowTask never completes, so nothing else would ever notice it had been weaned.
+        // FollowTask never completes, so this is what notices an infant has been weaned.
         FollowTask => true,
         GatherTask gather => !IsWorthGathering(person, gather.Target) || NeedsToSeekFoodUrgently(person),
         _ => false,
     };
 
-    // Whether the freshly decided autonomous task is the one already running, in which case it
-    // is dropped rather than installed. IdleTask carries per-instance state (anchor, current
-    // leg, pause countdown between legs) that replacing it every tick would silently throw
-    // away even though nothing changed; FollowTask carries none, but churning one a tick for
-    // the same mother is pointless. Genuinely switching task type always interrupts.
+    // Whether the freshly decided autonomous task is the one already running, so it is dropped
+    // rather than installed. IdleTask carries per-instance state (anchor, leg, pause) that
+    // replacing it every tick would throw away; churning a FollowTask for the same mother is
+    // pointless. A change of task type always interrupts.
     private static bool KeepsCurrentTask(PersonTask? current, PersonTask decided) => (current, decided) switch
     {
         (IdleTask, IdleTask) => true,
@@ -344,11 +310,9 @@ public sealed class WorldState(WorldConfiguration configuration)
     private bool IsWorthGathering(Person person, ResourceNode node) =>
         node is { IsAlive: true, RemainingAmount: > 0f } && CanTakeAnythingFrom(person, Configuration.ResourceCatalog.Get(node.Kind));
 
-    // Whether a gather at this resource would come away with anything at all, mirroring what
-    // GatherCommand can actually do with the harvest: eat it on the spot (a hungry person who
-    // knows how, at a food source) or pocket it (room in the backpack for at least one unit).
-    // A person with a backpack full of grass standing at a pear tree they don't know how to eat
-    // from would otherwise gather nothing there, tick after tick, until they starved.
+    // Whether a gather here would come away with anything, mirroring GatherCommand: eat on the
+    // spot (hungry, knows how, food source) or pocket at least one unit. Otherwise a person with
+    // a full pack would stand at a source gathering nothing until they starved.
     private bool CanTakeAnythingFrom(Person person, ResourceDefinition definition)
     {
         if (definition.YieldsItem is not { } item)
@@ -360,31 +324,25 @@ public sealed class WorldState(WorldConfiguration configuration)
         return canEatOnTheSpot || person.Inventory.HasRoomFor(item, Configuration.ItemCatalog, MaxCarryWeightFor(person));
     }
 
-    // "Idle" now means "put whatever skill this person already has to use, or go find food if
-    // hungry and empty-handed" (todo: "Pokud už má osoba v idle nějaký skill, tak by ho měl
-    // použít") - plain wandering (IdleTask) is only the fallback once neither applies. Hunger
-    // takes priority over an already-known skill (see SimulationRules.HungerSeekFoodThreshold).
+    // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
+    // (IdleTask) is the fallback. Hunger wins over a known skill (see
+    // SimulationRules.HungerSeekFoodThreshold).
     private PersonTask DecideIdleTask(Person person)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
 
-        // An infant has no skill to put to use and nothing it could gather, so every branch
-        // below would end in it wandering off alone to starve. It keeps up with its mother
-        // instead - which is what feeds it (see the nursing branch in Advance) and the only
-        // reason it is ever close enough to be taught anything at all (TeachCommand checks
-        // reach). An orphaned one falls through and wanders like anybody else with no skill:
-        // nothing here saves a child whose mother is gone, and nothing should.
+        // An infant has no skill and nothing to gather, so it keeps up with its mother instead -
+        // that is what feeds it (see Advance) and what keeps it within teaching reach. An orphan
+        // falls through and wanders like anybody else; nothing here saves it, and nothing should.
         if (LifeStageOf(person) == LifeStage.Infant && person.Mother.IsAlive)
         {
             return new FollowTask(person.Mother, reachDistance, Configuration.Rules.InfantFollowSpeedPerTick);
         }
-        // Knowing how to eat is what makes seeking food worth prioritizing over whatever else
-        // this person knows - without it, gathering more food wouldn't help them anyway (see
-        // EatCommand's own gate), so this falls through to the general search below.
+        // Without knowing how to eat, gathering food would not help (see EatCommand), so this
+        // falls through to the general search below.
         if (NeedsToSeekFoodUrgently(person))
         {
-            // Being edible alone isn't enough - a resource this person never learned to gather
-            // (foraging, say) is exactly as unreachable to them as one that doesn't exist.
+            // A food resource this person never learned to gather is as unreachable as none.
             var foodNode = FindNearestGatherableResourceNode(person, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
             if (foodNode is not null)
             {
@@ -392,12 +350,8 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
         }
 
-        // Nearest wins regardless of which known skill it needs - a closer resource this
-        // person already knows how to work beats a farther one just because it happens to be
-        // for a skill they've practiced more. IsKnownSkill checks against SkillDefinition's
-        // BaseTechnique (see its own doc comment) - not against KnownTechniques directly,
-        // since that set holds arbitrary techniques (eating/teaching included) rather than
-        // being keyed by skill.
+        // Nearest wins regardless of which known skill it needs. IsKnownSkill checks the skill's
+        // BaseTechnique, since KnownTechniques holds arbitrary techniques rather than skills.
         var node = FindNearestGatherableResourceNode(person, definition => IsKnownSkill(person, definition.Skill));
         if (node is not null)
         {
@@ -426,11 +380,9 @@ public sealed class WorldState(WorldConfiguration configuration)
     private bool HasEdibleFood(Person person) =>
         person.Inventory.Counts.Any(kv => kv.Value > 0 && Configuration.ItemCatalog.HungerRestoredPerUnitFor(kv.Key) > 0f);
 
-    // Depleted-but-alive nodes (RemainingAmount 0, still regenerating) are skipped rather than
-    // sent to and stood next to - with thousands of decoration-turned-resource nodes usually
-    // nearby (see MapLoader.ScatterDecorations), a fuller one of the same kind is normally
-    // right there too. So is anything this particular person couldn't take from anyway (see
-    // CanTakeAnythingFrom) - nobody walks to a source only to stand there gathering nothing.
+    // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
+    // the same kind is normally nearby - and so is anything this person could not take from
+    // (see CanTakeAnythingFrom): nobody walks to a source to gather nothing.
     private ResourceNode? FindNearestGatherableResourceNode(Person person, Func<ResourceDefinition, bool> matches)
     {
         ResourceNode? nearest = null;
@@ -453,20 +405,15 @@ public sealed class WorldState(WorldConfiguration configuration)
         return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
     }
 
-    // "Later they teach each other" - once at least one person knows something (and knows how
-    // to teach - see TeachCommand), anyone else nearby who doesn't know it yet may pick some of
-    // it up automatically, no player action needed ("tichá pošta" - see
-    // SimulationRules.CasualTeachingChancePerTick for why it's a per-tick roll). Every alive
-    // pair is checked every tick - with the population sizes this game actually has (tens, not
-    // thousands, of people), an O(n^2) pass here is negligible next to the resource-node work
-    // Advance already does elsewhere.
+    // Once somebody knows a technique and how to teach (see TeachCommand), anyone nearby may
+    // pick it up without a player action; SimulationRules.CasualTeachingChancePerTick says why
+    // it is a per-tick roll. Every living pair every tick: O(n^2) is negligible at tens of people.
     private void AutoTeachNearbyPeople(long currentTick)
     {
         var skillCatalog = Configuration.SkillCatalog;
         var rules = Configuration.Rules;
 
-        // Find, not Get - a catalog that never registered "teaching" (most unit tests, a
-        // deliberately minimal world) just means nobody could possibly teach anyone anything,
+        // Find, not Get: a catalog without "teaching" (most unit tests) means nobody can teach,
         // not a crash.
         if (skillCatalog.Find(TeachCommand.TeachingSkill) is not { } teachingDefinition)
         {
@@ -518,13 +465,9 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // Time spent together is the whole of what grows a bond, and time apart is what loses it
-    // (docs/todo/todo.md, "zvyšuje se, když spolu dělají věci nebo spolu tráví čas"). Every
-    // living pair, every tick - the same O(n^2) shape as AutoTeachNearbyPeople above, and
-    // negligible for the same reason: this game has tens of people, not thousands.
-    //
-    // Pairs involving the dead are skipped rather than decayed, so what someone meant to the
-    // people around them is still there to read after they are gone.
+    // Time together grows a bond, time apart loses it, for every living pair every tick (O(n^2),
+    // negligible at tens of people). Pairs involving the dead are skipped rather than decayed,
+    // so what someone meant to others is still there to read after they are gone.
     private void AdvanceAffections()
     {
         var rules = Configuration.Rules;
@@ -551,12 +494,10 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // Where children come from when nobody asks for one. Whether a birth is *possible* is
-    // BirthCommand's business and is not repeated here; all this pass adds is that the two of
-    // them have come to mean enough to each other (SimulationRules.AffectionNeededToHaveAChild).
-    //
-    // Iterates a snapshot, because BirthCommand adds to _people: a child must not be able to
-    // turn up as a candidate parent on the very tick it is born.
+    // Where children come from when nobody asks. Whether a birth is possible is BirthCommand's
+    // business; this pass adds only the bond threshold
+    // (SimulationRules.AffectionNeededToHaveAChild). Iterates a snapshot because BirthCommand
+    // adds to _people: a child must not become a candidate parent on the tick it is born.
     private void StartFamilies(long currentTick)
     {
         var threshold = Configuration.Rules.AffectionNeededToHaveAChild;
@@ -576,18 +517,16 @@ public sealed class WorldState(WorldConfiguration configuration)
                 var mother = first.Sex == Sex.Female ? first : second;
                 var father = ReferenceEquals(mother, first) ? second : first;
 
-                // Everything else - both of them alive and grown, one of each sex, not close
-                // kin, within reach, the mother not already nursing - is checked inside, and
-                // silently declines like every other command that cannot do what it was asked.
+                // Alive, grown, one of each sex, not kin, within reach, mother not nursing - all
+                // checked inside; it declines silently like any other command.
                 new BirthCommand(NameForNewborn(mother, father, currentTick), mother, father).Execute(this);
             }
         }
     }
 
-    // A newborn's name, drawn from the same pool the starting band and the player's own "Spawn
-    // Person" button use, deterministically from its parents and the moment - so a world
-    // replayed from the same save names the same children. Repeats within a band are possible
-    // and left alone; richer naming is its own item (docs/todo/todo.md).
+    // Drawn from the shared name pool deterministically from the parents and the tick, so a
+    // replayed world names the same children. Repeats are possible and left alone; richer
+    // naming is a todo item (docs/todo/todo.md).
     private static string NameForNewborn(Person mother, Person father, long tick)
     {
         var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ (uint)(father.Id.Seed * 19349663) ^ ((uint)tick * 2654435761u));
@@ -595,9 +534,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         return PersonNames.Pool[index];
     }
 
-    // Deterministic from the ids (their seeds - see EntityId.SeedOf) and the tick alone (same
-    // seeded-randomness style as IdleTask.SeedFor) rather than a shared mutable Random -
-    // reproducible from the same starting state without depending on call order between people.
+    // Deterministic from the ids' seeds (EntityId.SeedOf) and the tick, as IdleTask.SeedFor is,
+    // rather than a shared Random: reproducible and independent of call order between people.
     private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick, float chance)
     {
         var seed = CasualTeachingSeed(teacherId.Seed, studentId.Seed, technique.Value, tick);
@@ -609,15 +547,13 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private static int CasualTeachingSeed(int teacherSeed, int studentSeed, string technique, long tick)
     {
-        // One value out of the pair, the technique and the tick, spread apart by SeedHash so
-        // adjacent ids and consecutive ticks don't roll alike.
+        // Spread by SeedHash so adjacent ids and consecutive ticks do not roll alike.
         var mixed = unchecked((uint)(teacherSeed * 73856093) ^ (uint)(studentSeed * 19349663) ^ (uint)(StableStringHash(technique) * 83492791) ^ ((uint)tick * 2654435761u));
 
         return SeedHash.Avalanche(mixed);
     }
 
-    // Not string.GetHashCode() - .NET randomizes that per process, which would make this roll
-    // come out differently every run instead of being a stable property of this pair.
+    // Not string.GetHashCode(): .NET randomizes it per process, and this roll must be stable.
     private static int StableStringHash(string value)
     {
         var hash = 5381;
@@ -629,16 +565,12 @@ public sealed class WorldState(WorldConfiguration configuration)
         return hash;
     }
 
-    // Mirrors Main.cs's own manual "Eat" button (OnEatButtonPressed) - eats through whatever
-    // food is on hand until no longer hungry or nothing edible is left, rather than requiring
-    // a specific item to be named. Runs every tick regardless of what task is active (even a
-    // player-issued one) - a starving person shouldn't have to wait for a free moment to eat
-    // out of their own backpack.
+    // Same behaviour as Main's Eat button (OnEatButtonPressed): eats through whatever food is on
+    // hand until no longer hungry. Runs every tick whatever task is active, even a player-issued
+    // one - a starving person should not wait for a free moment to eat from their own pack.
     private void TryAutoEat(Person person)
     {
-        // A meal, not a nibble: nothing is touched until hunger has actually built up, and
-        // EatCommand then eats down to zero, so a person carrying food eats every so often
-        // instead of taking one bite per tick forever.
+        // A meal, not a nibble: nothing until hunger has built up, then EatCommand eats to zero.
         if (!IsHungryEnoughToEat(person))
         {
             return;
@@ -646,7 +578,6 @@ public sealed class WorldState(WorldConfiguration configuration)
 
         foreach (var kind in person.Inventory.Counts.Keys.ToList())
         {
-            // Stops walking the rest of the inventory once there's nothing left to satisfy.
             // Stryker disable once Equality,Statement,Block: EatCommand no-ops at zero hunger anyway, so this only saves the remaining calls
             if (person.Needs.Hunger <= 0f)
             {
@@ -657,13 +588,11 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // MoveTask/IdleTask only ever aim at a destination, with no awareness of who/what else is
-    // already there, so this untangles whatever overlap that produced after the fact, every
-    // tick - same O(n^2)-over-people precedent as AutoTeachNearbyPeople. Every separation this
-    // tick is computed against positions as they stood at the start of it (not updated
-    // mid-pass) and summed into one push per person, only applied - clamped (see
-    // SimulationRules.MaxCollisionPushPerTick) - at the end, so the order overlaps happen to be
-    // discovered in can't itself bias the result.
+    // MoveTask/IdleTask aim at a destination with no awareness of what else is there, so this
+    // untangles the overlap afterwards, every tick (O(n^2), as AutoTeachNearbyPeople).
+    // Separations are computed against start-of-tick positions and summed into one clamped push
+    // per person (SimulationRules.MaxCollisionPushPerTick), so discovery order cannot bias the
+    // result.
     private void ResolveCollisions()
     {
         var personCollisionRadius = Configuration.Rules.PersonCollisionRadius;
@@ -738,10 +667,9 @@ public sealed class WorldState(WorldConfiguration configuration)
         person.Position = new Position(person.Position.X + pushX, person.Position.Y + pushY);
     }
 
-    // A positive result moves `a` away from `b` by (pushX, pushY) - `b` moves by the negation
-    // of it, wherever the caller wants that applied. False (no push) once they're already far
-    // enough apart. Exactly-coincident positions (distance zero, division would be undefined)
-    // fall back to a fixed direction rather than leaving two things permanently stuck together.
+    // A true result moves `a` away from `b` by (pushX, pushY); `b` gets the negation, wherever
+    // the caller applies it. False once far enough apart. Coincident positions fall back to a
+    // fixed direction rather than staying stuck together.
     private static bool TrySeparation(Position a, Position b, float minDistance, out double pushX, out double pushY)
     {
         var dx = a.X - b.X;

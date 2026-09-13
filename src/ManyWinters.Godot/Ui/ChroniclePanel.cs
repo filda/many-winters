@@ -3,11 +3,10 @@ using ManyWinters.Core.Continuity;
 
 namespace ManyWinters.Godot.Ui;
 
-// Where the inscriptions go once they have been shown: the prologue, then whatever ends the
-// band, in order, whole - the overlay only ever shows a title (see InscriptionOverlay), and
-// this is where the rest of each is read. The first, session-only form of the chronicle
-// docs/chronicles-and-memory-architecture.md describes; the real one will be a view over
-// graves and written records rather than a list kept here.
+// Where inscriptions go once shown, in order and whole - the overlay carries only the title
+// (InscriptionOverlay). The session-only first form of the chronicle in
+// docs/chronicles-and-memory-architecture.md; the real one will be a view over graves and
+// written records.
 public partial class ChroniclePanel : FloatingPanel
 {
     private const float Width = 460f;

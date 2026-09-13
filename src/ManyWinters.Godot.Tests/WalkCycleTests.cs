@@ -10,8 +10,7 @@ public class WalkCycleTests
     [Fact]
     public void TheSpeedCoversTheDistanceInExactlyTheTimeGiven()
     {
-        // Arriving as the next tick hands over a new target is the point: too fast stutters,
-        // too slow lags a step behind the simulation.
+        // Arriving as the next tick hands over a new target: too fast stutters, too slow lags.
         Assert.Equal(2.5f, WalkCycle.InterpolationSpeed(5f, 2f), 5);
     }
 

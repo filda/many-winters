@@ -4,38 +4,30 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Passing a technique on to another person, face to face - either the player invoking this
-// directly (Main.cs's right-click "teach") or WorldState.Advance's own autonomous version of
-// the same thing between any two people who happen to be near each other. Teaching is itself a
-// skill (see SkillDefinition.BaseTechnique) - the teacher has to know how to teach, not just
-// know the thing being taught, the same way knowing woodcutting doesn't make someone a clear
-// explainer of it. Teaching the "teaching" base technique itself is the one case where those
-// two requirements collapse into the same check - there's no separate bootstrap for it, it has
-// to spread the same way everything else past the player's own initial lessons does.
+// Passing a technique on face to face - the player's teach action (Main.cs) or WorldState's
+// autonomous pass between neighbours. Teaching is itself a skill (see
+// SkillDefinition.BaseTechnique): the teacher has to know how to teach, not just the thing
+// taught. The "teaching" base technique spreads the same way; there is no separate bootstrap.
 public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Technique) : ICommand
 {
-    // Public, not private - WorldState.Advance's own autonomous teaching pass
-    // (AutoTeachNearbyPeople) needs it too, to skip a teacher who can't teach at all before
-    // looping their known techniques looking for something to pass on; so does the Godot layer
-    // (Main.cs), to grant it the first time the player directs a person to teach at all.
+    // Public: WorldState.AutoTeachNearbyPeople skips teachers who cannot teach, and Main.cs
+    // grants it the first time the player directs someone to teach.
     public static readonly SkillTypeId TeachingSkill = new("teaching");
 
     private const float SkillGainPerLesson = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
-    // stated as the number of tries it stands for rather than as a level.
+    // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
-    // A teacher who's gotten good at teaching (efficient_teaching) can instruct someone a
-    // little further off - reads as a lesson to a small nearby group, not a whisper that only
-    // works pressed shoulder to shoulder.
+    // A teacher who knows the efficient technique reaches a little further - a lesson to a
+    // small group, not a whisper.
     private const float EfficientTeachingRangeMultiplier = 2f;
 
     public void Execute(WorldState world)
     {
-        // Find, not Get - a caller with no "teaching" skill registered at all (a minimal test
-        // world, say) just means nobody could possibly teach anything, not a crash.
+        // Find, not Get: a catalog without "teaching" (a minimal test world) means nobody can
+        // teach.
         if (!Teacher.IsAlive
             || !Student.IsAlive
             || !Teacher.KnownTechniques.Contains(Technique)

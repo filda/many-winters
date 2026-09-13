@@ -4,11 +4,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// An unmarked grave (IsMarked: false) deliberately carries no identity - a burial performed
-// without the practiced technique doesn't preserve who the person was, only that someone was
-// laid to rest here. Everything below stays null/empty for an unmarked grave - name, age, and
-// lineage are name/value snapshots taken at burial time, not live references, so the record
-// stays meaningful even after a referenced parent is later buried themselves.
+// An unmarked grave (IsMarked: false) carries no identity: a burial without the practiced
+// technique preserves only that someone lies here. Name, age and lineage are snapshots taken
+// at burial, not live references, so the record outlives the people it names.
 public sealed class Grave
 {
     public GraveId Id { get; init; } = GraveId.New();

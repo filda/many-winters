@@ -2,16 +2,16 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
 
-// The exact, unblurred record of where the fog boundary is, one value per texel of the grid the
-// shaders sample. Kept apart from the textures it ends up in (FogOfWarRenderer) because what
-// goes in each channel is a decision about the two fog tiers, not about how to fill an Image:
+// The exact, unblurred record of the fog boundary, one value per texel of the grid the shaders
+// sample. Kept apart from the textures (FogOfWarRenderer) because what goes in each channel is
+// a decision about the two fog tiers, not about filling an Image:
 //
-//   Unexplored - 1 where that point's cell has never been seen, else 0.
-//   Remembered - 1 where it has been seen but nobody has it in sight right now, else 0.
+//   Unexplored - 1 where the cell has never been seen, else 0.
+//   Remembered - 1 where it has been seen but nobody has it in sight now, else 0.
 //   Explored   - the same boundary as a flag, for the distance field to measure out from.
 //
-// A blurred copy of the first two is what carries the soft falloff a fog edge should have; the
-// shaders multiply sharp by blurred so the softness can only ever show on the unexplored side.
+// The shaders multiply these by a blurred copy, so the soft falloff only ever shows on the
+// unexplored side.
 internal static class ExplorationMasks
 {
     internal sealed record Masks(float[,] Unexplored, float[,] Remembered, bool[,] Explored);
@@ -32,8 +32,8 @@ internal static class ExplorationMasks
                 var seen = exploration.IsExplored(cell);
 
                 unexplored[ty, tx] = seen ? 0f : 1f;
-                // Explored but out of sight - the two tiers are exclusive, so somewhere
-                // currently visible is neither unknown nor remembered.
+                // The two tiers are exclusive: somewhere currently visible is neither unknown
+                // nor remembered.
                 remembered[ty, tx] = seen && !exploration.IsVisible(cell) ? 1f : 0f;
                 explored[ty, tx] = seen;
             }

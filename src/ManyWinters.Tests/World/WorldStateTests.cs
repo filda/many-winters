@@ -90,8 +90,7 @@ public class WorldStateTests
 
         var ex = Assert.Throws<ArgumentException>(() => world.AddForebear(alive));
 
-        // A forebear is defined by having died before the story began; a living one would be a
-        // person hidden from the simulation, so the refusal says which of the two it wanted.
+        // A living forebear would be a person hidden from the simulation, so the refusal says so.
         Assert.Contains("forebear died before the story began", ex.Message, StringComparison.Ordinal);
         Assert.Equal("forebear", ex.ParamName);
         Assert.Empty(world.Forebears);
@@ -342,9 +341,8 @@ public class WorldStateTests
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         world.SpawnResourceNode(TestCatalogs.Wood, new Position(10, 0), 100f);
 
-        // First tick only assigns the GatherTask (same one-tick lag as IdleTask itself - see
-        // AdvanceGivesAPersonWithNoOrdersAnIdleTaskInsteadOfLeavingThemFrozen); it needs a
-        // second tick to actually advance the walk.
+        // The first tick only assigns the GatherTask (same one-tick lag as IdleTask); the second
+        // advances the walk.
         world.Advance(2);
 
         Assert.IsType<GatherTask>(person.Tasks.Current);
@@ -404,21 +402,16 @@ public class WorldStateTests
     }
 
     [Theory]
-    // Exactly at the threshold counts as hungry enough - the meal that reaches it is the one
-    // that gets eaten, not the one after. One short of it is still not worth interrupting
-    // anything for.
+    // Exactly at the threshold counts as hungry enough; one short of it is not.
     [InlineData(24f, false)]
     [InlineData(25f, true)]
     public void AdvanceOnlyEatsFromInventoryOnceHungerHasActuallyBuiltUp(float hunger, bool expectAMeal)
     {
-        // A person carrying food used to take one bite per tick, since hunger rises by one
-        // every tick and any hunger at all was reason enough to eat. That made every tick a
-        // meal, and so a practice of eating (docs/todo/todo.md).
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
-        // Advance adds a tick's worth of hunger before anyone eats, so this is set to land
-        // exactly on the tested value at the moment the decision is made.
+        // Advance adds a tick of hunger before anyone eats, so this lands exactly on the tested
+        // value when the decision is made.
         person.Needs.Hunger = hunger - SimulationRules.Default.HungerPerTick;
         person.Inventory.Add(TestCatalogs.AppleItem, 50);
 
@@ -474,8 +467,8 @@ public class WorldStateTests
         world.Advance(1);
         Assert.Equal(farWood.Id, ((GatherTask)person.Tasks.Current!).Target.Id);
 
-        // A closer food source only becomes relevant once hunger turns urgent - otherwise
-        // she'd have gone for it from the very start instead of the (nearer, at the time) wood.
+        // A closer food source only matters once hunger turns urgent; otherwise she would have
+        // gone for it from the start.
         var nearbyFood = world.SpawnResourceNode(TestCatalogs.Apple, new Position(1, 0), 100f);
         person.Needs.Hunger = 90f;
         world.Advance(1);
@@ -487,8 +480,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceReconsidersAnIdlePersonOnceSomethingWorthGatheringTurnsUp()
     {
-        // Idle is the one autonomous choice that always gets a second look - something better
-        // might now apply that didn't when they started wandering.
+        // Idle is the one autonomous choice that always gets a second look.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
@@ -515,8 +507,8 @@ public class WorldStateTests
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Needs.Hunger = hunger;
 
-        // Wood is much the nearer of the two, so it wins on distance alone right up until
-        // hunger turns urgent and food starts being sought ahead of everything else.
+        // Wood is much nearer, so it wins on distance until hunger turns urgent and food comes
+        // first.
         var wood = world.SpawnResourceNode(TestCatalogs.Wood, new Position(1, 0), 100f);
         var food = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), 100f);
 
@@ -614,8 +606,8 @@ public class WorldStateTests
     [Fact]
     public void AdvanceLeavesAPersonWanderingWhenTheOnlyResourceAroundNeedsASkillTheCatalogNeverHeardOf()
     {
-        // Find, not Get, all the way down: a resource pointing at a skill nobody registered
-        // just means nobody can work it, not a crash mid-tick.
+        // Find, not Get: a resource pointing at an unregistered skill means nobody can work it,
+        // not a crash mid-tick.
         var unknownSkillResource = new ResourceKindId("moon_rock");
         var configuration = TestCatalogs.CreateConfiguration() with
         {
@@ -634,8 +626,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceSendsAnIdlePersonToTheFirstOfTwoEquallyDistantResources()
     {
-        // Nothing about a tie makes the later node the better pick, and picking one of them
-        // consistently is what keeps a world reproducible from the same starting state.
+        // Picking the first consistently on a tie keeps a world reproducible from the same start.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
@@ -741,10 +732,8 @@ public class WorldStateTests
     [Fact]
     public void AdvanceNeverPushesAPersonFartherThanOneTicksWorthOfWalkingEvenWhenSurroundedByManyTrees()
     {
-        // A person standing in a dense thicket could be overlapping several trees' trunks at
-        // once. Summing every one of those separations unclamped would shove them noticeably
-        // farther in a single tick than their own walk speed - reading as their move order
-        // having been hijacked toward some unrelated direction rather than a gentle nudge.
+        // Summing every trunk's separation unclamped would shove someone farther than their walk
+        // speed in one tick, reading as a hijacked move order rather than a nudge.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         for (var i = 0; i < 8; i++)
@@ -760,9 +749,8 @@ public class WorldStateTests
     [Fact]
     public void AdvancePushesAPersonFartherOutOfABiggerRockThanASmallerOne()
     {
-        // A rock's real-world footprint - not just whether it happens to be fellable - is
-        // what decides how solid it is; a boulder should shove someone out farther than a
-        // loose pile of rocks with the same starting overlap.
+        // A rock's footprint decides how solid it is: a boulder shoves farther than a loose pile
+        // with the same overlap.
         var pileWorld = TestCatalogs.CreateWorld();
         var personNearPile = pileWorld.SpawnPerson("Ava", new Position(0, 0));
         pileWorld.SpawnResourceNode(TestCatalogs.RockPile, new Position(0, 0), 100f);
@@ -785,12 +773,10 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleRollsTheSameWayEveryRunForAGivenPairAndTick(
         int peopleBefore, int expectedTeachingTick, int expectedWoodcuttingTick)
     {
-        // The roll is derived from the teacher's and student's id seeds, the technique and the
-        // tick alone - no shared mutable Random, so the same starting state always plays out
-        // the same way regardless of the order people happen to be advanced in. Pinning the
-        // exact ticks is what actually holds that: a hash that quietly changed would still look
-        // random, just not the same random. The seeds are chosen (see TestIds) - a randomly
-        // drawn id would make the pinned ticks meaningless.
+        // The roll derives from the two ids' seeds, the technique and the tick alone - no shared
+        // Random - so the same start always plays out the same way. Exact ticks pin that: a
+        // changed hash would still look random. Ids are chosen (TestIds) so the ticks mean
+        // something.
         var world = TestCatalogs.CreateWorld();
         for (var i = 0; i < peopleBefore; i++)
         {
@@ -950,8 +936,7 @@ public class WorldStateTests
         Assert.True(person.IsAlive);
     }
 
-    // A short life on a short calendar (SimulationRules) - old age arrives after a handful of
-    // ticks instead of the shipped 3000, so these tests don't have to simulate a whole decade.
+    // A short calendar, so old age arrives after a handful of ticks instead of 3000.
     private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2, MaxLifespanYears = 3 };
 
     private static WorldState CreateWorld(SimulationRules rules) =>
@@ -964,8 +949,7 @@ public class WorldStateTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var lifespanTicks = ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears;
 
-        // Feed the person back to zero after every tick so only old age - never hunger - can
-        // be responsible for their death.
+        // Fed back to zero every tick so only old age can be the cause of death.
         for (var tick = 0; tick < lifespanTicks - 1; tick++)
         {
             world.Advance(1);
@@ -983,8 +967,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceUsesTheShippedLifespanWhenNoRulesAreOverridden()
     {
-        // Pins the default calendar: 4 seasons of 75 ticks, 10 years - a person born at tick 0
-        // is still alive on tick 2999 and dead on tick 3000.
+        // Pins the default calendar: 4 x 75 ticks, 10 years - alive on tick 2999, dead on 3000.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
@@ -1008,8 +991,7 @@ public class WorldStateTests
         Assert.Equal(DeathCause.Hunger, person.CauseOfDeath);
     }
 
-    // What a MaxHunger of one's own exists for: a band that runs out of food does not keel over
-    // in one synchronised heap.
+    // Why MaxHunger is per person: a starving band does not die in one synchronised heap.
     [Fact]
     public void AStarvingBandDiesOffOverSeveralTicksRatherThanAllOnTheSameOne()
     {
@@ -1028,8 +1010,7 @@ public class WorldStateTests
             $"Expected a band to starve over a spread of ticks, got {deathTicks.Min()}..{deathTicks.Max()}.");
     }
 
-    // The other half of the same rule: a world that switches the variation off gets the plain
-    // shared threshold back, which is what every test pinning an exact tick relies on.
+    // Switching the variation off restores the shared threshold every exact-tick test relies on.
     [Fact]
     public void WithoutHungerVariationAWholeBandStarvesOnTheSameTick()
     {
@@ -1510,8 +1491,8 @@ public class WorldStateTests
             "Frost-Intolerant Plant",
             new SkillTypeId("test"),
             ClimateYields: [new ClimateYield(Climate.Cold, 0f)],
-            // Well above the ~75 Cold ticks this test advances through, so the node survives
-            // to see the climate turn hospitable rather than withering first.
+            // Well above the ~75 Cold ticks advanced through, so the node survives to see the
+            // climate turn.
             TicksToWither: 1000f);
         var world = new WorldState(new WorldConfiguration { ResourceCatalog = new ResourceCatalog([definition]) });
         world.Advance(225);
@@ -1519,9 +1500,8 @@ public class WorldStateTests
         world.Advance(2);
         Assert.Equal(2f, node.ColdStress);
 
-        // Each Advance-loop iteration uses the season at its *start* tick, so seeing a
-        // hospitable climate requires processing tick 300 itself (Spring), one past the
-        // 227-299 range that's still Winter/Cold.
+        // Each loop iteration uses the season at its start tick, so the hospitable climate needs
+        // tick 300 itself (Spring) processed.
         world.Advance(74);
 
         Assert.Equal(Season.Spring, world.CurrentSeason);
@@ -1544,8 +1524,8 @@ public class WorldStateTests
         var node = world.SpawnResourceNode(kind, new Position(0, 0), 200);
         node.RemainingAmount = 50;
 
-        // World starts in Spring (Mild) - inhospitable for this definition despite the
-        // otherwise-nonzero global regen multiplier for that climate.
+        // Spring (Mild) is inhospitable for this definition despite the nonzero global regen
+        // multiplier.
         world.Advance(10);
 
         Assert.Equal(Season.Spring, world.CurrentSeason);
@@ -1582,8 +1562,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceRefreshesExplorationFromWhereEveryoneNowStands()
     {
-        // Exploration is recomputed every tick, not only when someone is added - otherwise a
-        // group could walk clean across the map without the fog ever opening ahead of them.
+        // Recomputed every tick, or a group could cross the map without the fog opening ahead.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), TestCatalogs.AdultAgeTicks);
         world.Execute(new GrantIdleGraceCommand(person, 1000));
@@ -1600,8 +1579,7 @@ public class WorldStateTests
     [Fact]
     public void AGathererGivesUpOnANodeWithNothingLeftInIt()
     {
-        // Nothing left is not the same as "nearly empty" - a node sitting at exactly zero is
-        // finished, and standing over it forever waiting for it to refill is not work.
+        // A node at exactly zero is finished; waiting over it for a refill is not work.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -1616,8 +1594,8 @@ public class WorldStateTests
     [Fact]
     public void AGathererStaysOnANodeThatStillHasSomethingInIt()
     {
-        // The other half of giving up on an empty one: a node still worth working must not be
-        // re-planned every tick, or the walk there restarts before anyone ever arrives.
+        // A node still worth working must not be re-planned every tick, or the walk restarts
+        // before arrival.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -1633,8 +1611,7 @@ public class WorldStateTests
     [Fact]
     public void AGathererGivesUpOnANodeTheyCouldNotTakeAnythingFrom()
     {
-        // The tree is full, but so is the backpack, and the person isn't hungry - nothing they
-        // could do there, so the order is dropped rather than walked to and stood at.
+        // Full tree, full backpack, no hunger: nothing to do there, so the order is dropped.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -1681,8 +1658,7 @@ public class WorldStateTests
     [Fact]
     public void AdvanceDoesNotSendAHungryPersonWithAFullBackpackWhoCannotEatToFoodTheyCouldNotTake()
     {
-        // Without knowing how to eat, the only thing to do with an apple is pocket it - and
-        // there's no room, so the tree is as useless to them as one that isn't there.
+        // Without eating, an apple can only be pocketed, and there is no room.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -1698,9 +1674,8 @@ public class WorldStateTests
     [Fact]
     public void UrgentHungerSendsAPersonForFoodEvenWhileTheirIdleGraceIsStillRunning()
     {
-        // The grace is renewed every tick while a person stays selected (see Main's per-tick
-        // GrantIdleGraceCommand), so if it held against hunger too, a selected person would
-        // starve standing still under the player's gaze.
+        // The grace is renewed every tick while a person is selected (Main), so if it held
+        // against hunger a selected person would starve standing still.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
@@ -1734,10 +1709,9 @@ public class WorldStateTests
     [Fact]
     public void AForagerWhoKnowsHowToEatDoesNotStarveAmongGrassNextToAFruitTree()
     {
-        // The original failure: knowing foraging means picking grass too, so the backpack fills
-        // with it within a few ticks; then hunger sends the person to the tree, where nothing
-        // more fits - and, before eating on the spot existed, they stood there gathering
-        // nothing until they died on tick 100.
+        // Foraging picks grass too, so the backpack fills within a few ticks; hunger then sends
+        // the person to the tree, where nothing more fits - without eating on the spot they
+        // would starve there.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
@@ -1760,8 +1734,8 @@ public class WorldStateTests
     [Fact]
     public void AResourceThatYieldsNoItemIsAlwaysWorthWalkingTo()
     {
-        // Grazed on the spot rather than pocketed (see GatherCommand), so a full backpack is
-        // no reason to pass it by - there is nothing to put anywhere.
+        // Grazed on the spot, not pocketed (GatherCommand), so a full backpack is no reason to
+        // pass it by.
         var grazing = new ResourceKindId("grazing");
         var configuration = TestCatalogs.CreateConfiguration() with
         {
@@ -1781,9 +1755,8 @@ public class WorldStateTests
     [Fact]
     public void AFullBackpackAndNoHungerMeansAFoodSourceHasNothingLeftToOffer()
     {
-        // Eating on the spot is what makes a food source worth visiting with a full pack - and
-        // that only counts while there is actual hunger to spend it on. At zero hunger with
-        // nowhere to put the harvest, standing over it would be work with no outcome.
+        // Eating on the spot makes a food source worth visiting with a full pack only while
+        // there is hunger to spend it on.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);

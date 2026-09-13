@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """
-Generates a seamless, tileable woodcut-style ground texture - same hand-inked
-crosshatch philosophy as generate_sprites.py (line density/mark density carries
-tone, not a blended gradient) but every mark is placed with wrap-around
-coordinates so the result tiles edge-to-edge with no visible seam, and there's
-no single lit subject to shade a diagonal light gradient across the way
-hatch_fill does for an object sprite - a directional gradient repeated across
-many tiles would read as an obvious macro-banding "wallpaper" artifact, so this
-uses uniform-density ink marks instead.
+Generates a seamless woodcut-style ground tile: the same ink-mark philosophy as
+generate_sprites.py (mark density carries tone), but every mark wraps around the tile
+edges, and there is no diagonal light gradient - one repeated across many tiles reads as
+wallpaper banding - so the ink density is uniform.
 
 Run:  python3 generate_terrain_texture.py <output_path> [seed]
 """
@@ -17,29 +13,22 @@ import os
 import numpy as np
 from PIL import Image
 
-S = 256  # matches generate_sprites.py's canvas resolution (SCALE * 64)
+S = 256  # matches generate_sprites.py's canvas (SCALE * 64)
 
-BASE = np.array([0.32, 0.40, 0.18]) * 255           # meadow green-olive (grass.py's own palette)
-BASE_VARIANT = np.array([0.26, 0.33, 0.15]) * 255   # a second, darker green (shadow between blades)
-HIGHLIGHT = np.array([0.52, 0.58, 0.28]) * 255       # a lit blade-tip green (lighten(BASE, ~0.4))
+BASE = np.array([0.32, 0.40, 0.18]) * 255           # meadow green-olive, near generate_sprites.py's grass
+BASE_VARIANT = np.array([0.26, 0.33, 0.15]) * 255   # darker green, shadow between blades
+HIGHLIGHT = np.array([0.52, 0.58, 0.28]) * 255       # lit blade tip
 INK = np.array([0.14, 0.10, 0.08]) * 255            # same INK as generate_sprites.py
 
-# Deliberately NOT drawing any large macro shape (a dirt patch, a distinct blob) anywhere
-# on this tile: with only a handful of them fitting on one tile, the eye locks onto their
-# exact silhouette repeating in a perfect grid the moment the terrain mesh tiles this
-# texture across any real distance - the same "stamped, not natural" failure the forest
-# scatter's hard-edged disks had (see Main.cs's ScatterClump). Fine, dense, small-scale ink
-# marks read as uniform noise instead - statistically impossible for the eye to notice
-# where one tile's copy ends and the next begins.
+# No large macro shape (a dirt patch, a distinct blob) anywhere on the tile: the eye locks onto
+# a silhouette repeating in a grid as soon as the mesh tiles this over any distance. Fine, dense
+# marks read as uniform noise and the seams vanish.
 
 
 def _blade_dash(rgb, cx, cy, rng, color, length_range):
-    """A tiny hand-inked dash, one of several angles - the same discrete-mark
-    idea as generate_sprites.py's hatch lines (tone/texture from many short
-    strokes), just isotropic here instead of following one lit-from-upper-left
-    gradient. Used for both the dark ink shadow strokes and the lit highlight
-    strokes - a real grass blade has both a shaded side and a lit edge, and a
-    ground texture with only the dark half read as flat/lifeless in review."""
+    """A tiny hand-inked dash at one of several angles - the same discrete-mark idea as
+    generate_sprites.py's hatch lines, but isotropic. Used for both dark shadow strokes and
+    lit highlight strokes; dark strokes alone read as flat."""
     length = rng.integers(*length_range)
     direction = rng.choice([(1, -1), (1, 1), (1, 0), (0, 1)])
     dx_step, dy_step = direction
@@ -49,10 +38,8 @@ def _blade_dash(rgb, cx, cy, rng, color, length_range):
 
 
 def _shade_blob(rgb, cx, cy, rng, color):
-    """A soft 2-3px cluster (not a single pixel) of the given colour - reads as
-    a small patch of shadow/undergrowth between blades rather than a faint
-    speckle, while still far too small to be individually recognisable once
-    tiled (see the note above _blade_dash)."""
+    """A 2-3 px cluster, not a single pixel: reads as shadow between blades rather than a
+    speckle, and is still too small to recognise once tiled."""
     for _ in range(rng.integers(2, 4)):
         dy, dx = rng.integers(-1, 2), rng.integers(-1, 2)
         y, x = (cy + dy) % S, (cx + dx) % S
@@ -69,10 +56,8 @@ def main():
     shade = BASE_VARIANT.clip(0, 255).astype(np.uint8)
     highlight = HIGHLIGHT.clip(0, 255).astype(np.uint8)
 
-    # Layered darkest-to-lightest (shadow blobs, then ink shadow strokes, then lit
-    # highlight strokes on top) - dense enough that no accidental macro shape near a
-    # tile's own edges becomes a visible repeating pattern once tiled at scale
-    # (checked below by rendering a tiled preview alongside the real output).
+    # Darkest to lightest: shadow blobs, ink strokes, then highlight strokes. Dense enough that
+    # no accidental shape near a tile edge repeats visibly (see the tiled preview written below).
     for _ in range(1400):
         cx, cy = int(rng.integers(0, S)), int(rng.integers(0, S))
         _shade_blob(rgb, cx, cy, rng, shade)

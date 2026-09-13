@@ -3,44 +3,32 @@ using ManyWinters.Godot.Views;
 
 namespace ManyWinters.Godot.Interaction;
 
-// Godot's physics picking only ever delivers an input event to the single nearest collider
-// along the ray - whichever entity's broad-phase bounding box happens to be closest to the
-// camera there, not necessarily whichever sprite the cursor visually looks like it's over (two
-// nearby entities' boxes overlapping is common now that decorations are real, densely-packed
-// ResourceNodes - see MapLoader.ScatterDecorations). When that nearest collider's own
-// pixel-perfect check comes back negative, the cursor might still genuinely be over some
-// *other* nearby entity's opaque pixels - a person standing right behind a mushroom, or a
-// resource behind another resource - so this re-casts the same ray, excluding whatever's
-// already been ruled out, until something actually opaque is found or there's nothing left to
-// check. Used for both hover (TryHoverElsewhere) and clicks (TryClickElsewhere) - they used to
-// have two different, inconsistent fallbacks (this one for hover, a plain world-space nearby
-// search in Main.OnMissedClick for clicks); one shared mechanism means a click and a hover at
-// the exact same point always agree on what's actually there.
+// Godot's picking delivers an input event only to the nearest collider on the ray - whichever
+// broad-phase box is closest, not necessarily the sprite the cursor is visually over (boxes of
+// densely packed ResourceNodes overlap constantly, see MapLoader.ScatterDecorations). When that
+// collider's pixel check fails, the cursor may still be over another entity's opaque pixels, so
+// this re-casts the same ray, excluding what has been ruled out, until something opaque is found
+// or nothing is left. Shared by hover (TryHoverElsewhere) and clicks (TryClickElsewhere) so both
+// agree on what is at a given point.
 //
-// The re-cast runs the full length of the camera's view, not just a step past the original
-// miss - it used to end 1 m behind the first box's front face, and a tree's box is as deep
-// as its canopy is wide, so anything standing behind it (and the ground itself) was out of
-// reach and the whole rescue silently came back empty. The ground is where it stops: the
-// terrain's StaticBody3D is the only body-type collider in the scene, and nothing behind the
-// ground can be what the cursor is over.
+// The re-cast runs the full length of the view, not a step past the miss: a tree's box is as
+// deep as its canopy is wide, so a short step never reaches what stands behind it. The ground
+// stops it - the terrain's StaticBody3D is the only body-type collider, and nothing behind the
+// ground can be under the cursor.
 public static class HoverRescue
 {
-    // Only ever a handful of real candidates plausibly overlap at one exact screen point -
-    // this is just a safety cap against an unexpected pathological stack, not a tuned budget.
+    // A safety cap against a pathological stack, not a tuned budget; a handful overlap at most.
     private const int MaxAttempts = 8;
 
-    // Returns whether anything along the ray beyond the original miss turned out to be under
-    // the cursor for real (and has taken the highlight). False means there is nothing here at
-    // all - bare ground - which is the caller's cue to put out whatever was still lit.
+    // True if something beyond the original miss is really under the cursor (and now holds the
+    // highlight); false means bare ground, the caller's cue to put out whatever is still lit.
     public static bool TryHoverElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition) =>
         TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) =>
             view is SpriteEntityView entity && entity.TryHoverAt(cam, pos));
 
-    // Returns true if something along the ray beyond the original miss turned out to actually
-    // be there (and has already had its own click handler invoked) - the caller only needs to
-    // fall back to a plain ground-click order when this comes back false.
-    // Which buttons a given kind of entity answers to is its own business (SpriteEntityView's
-    // WantsClick), not something this has to know per view type.
+    // True if something beyond the original miss is really there (its click handler has already
+    // run); the caller falls back to a ground-click order only on false. Which buttons a view
+    // answers is its own business (SpriteEntityView.WantsClick).
     public static bool TryClickElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition, MouseButton button) =>
         TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) =>
             view is SpriteEntityView entity && entity.TryClickAt(cam, pos, button));
@@ -48,9 +36,8 @@ public static class HoverRescue
     private static bool TryElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition, Func<CollisionObject3D, Camera3D, Vector3, bool> tryHandle)
     {
         var spaceState = missedCollider.GetWorld3D().DirectSpaceState;
-        // Back through the screen, not straight from the camera's own position toward the
-        // miss - that only describes a perspective camera's pick ray. Projecting from the
-        // miss's screen point stays right after FreeCameraRig.ToggleProjection too.
+        // Re-projected through the miss's screen point, not cast from the camera position toward
+        // the miss: that only describes a perspective pick ray (FreeCameraRig.ToggleProjection).
         var screenPosition = camera.UnprojectPosition(missedPosition);
         var origin = camera.ProjectRayOrigin(screenPosition);
         var direction = camera.ProjectRayNormal(screenPosition);

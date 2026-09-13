@@ -2,9 +2,8 @@ using Godot;
 
 namespace ManyWinters.Godot.Ui;
 
-// The same translucent card every floating panel over the game world sits on - the inspector,
-// the chronicle, and the pause panel - so they read as one UI language instead of each
-// inventing its own frame.
+// The translucent card every panel over the game world sits on - inspector, chronicle, pause
+// panel, status bar - so they read as one UI language.
 public static class PanelChrome
 {
     public static StyleBoxFlat Background() => new()

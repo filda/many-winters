@@ -28,9 +28,8 @@ public class SkillsTests
     [Fact]
     public void EachFurtherPracticeTeachesLessThanTheOneBeforeIt()
     {
-        // The whole point of the curve: repetition is cheap, so the tenth repetition must not
-        // be worth as much as the second. Compared as three steps of the same size rather than
-        // against fixed numbers, so this stays true of any curve that actually diminishes.
+        // Compared as three steps of the same size rather than against fixed numbers, so this
+        // holds for any curve that actually diminishes.
         var skills = new Skills();
 
         skills.Increase(Foraging, 1f);
@@ -48,8 +47,7 @@ public class SkillsTests
     [Fact]
     public void ABiggerPracticeIsStillWorthMoreThanASmallerOneAtTheSameLevel()
     {
-        // The curve discounts by how much is already known, not by how much is being done -
-        // otherwise a proper day's work and a token effort would be worth the same.
+        // The curve discounts by how much is already known, not by how much is being done.
         var small = new Skills();
         var large = new Skills();
 
@@ -72,9 +70,9 @@ public class SkillsTests
     [Fact]
     public void FivePracticesLandOnTheLevelTheDiscoveryThresholdsAreWrittenAgainst()
     {
-        // 1 + 1/2 + 1/2.5 + 1/2.9 + 1/3.2448. Asserted as a number rather than against
-        // LevelAfter, which would only prove the curve agrees with itself - every command's
-        // discovery threshold is five practices' worth of exactly this.
+        // 1 + 1/2 + 1/2.5 + 1/2.9 + 1/3.2448. Asserted as a number rather than against LevelAfter,
+        // which would only prove the curve agrees with itself; every discovery threshold is five
+        // practices' worth of this.
         var skills = new Skills();
         for (var practice = 0; practice < 5; practice++)
         {
@@ -87,9 +85,8 @@ public class SkillsTests
     [Fact]
     public void LevelAfterAgreesWithActuallyPracticingThatManyTimes()
     {
-        // Discovery thresholds are compared against a level built up one practice at a time,
-        // so "five tries' worth" has to be the same number to the last bit, not merely close -
-        // a hair too high and the fifth try would miss the threshold it is meant to reach.
+        // Discovery thresholds are compared against a level built up one practice at a time, so
+        // LevelAfter has to match to the last bit or the fifth try would miss the threshold.
         var skills = new Skills();
         for (var practice = 0; practice < 7; practice++)
         {
@@ -108,9 +105,8 @@ public class SkillsTests
     [Fact]
     public void RestoringASavedLevelPutsItBackExactlyRatherThanRunningItThroughTheCurve()
     {
-        // What a save holds is a level that already has the curve baked into it. Treating it
-        // as practice on load (Increase(20) from nothing) would be re-deriving a number that
-        // was already derived.
+        // A saved level already has the curve baked in; running it through Increase on load
+        // would re-derive it.
         var skills = new Skills();
 
         skills.Restore(Foraging, 20f);

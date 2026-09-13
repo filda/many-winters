@@ -3,27 +3,22 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Tasks;
 
-// Idle no longer means standing frozen in place - a small aimless walk near wherever the
-// person happened to end up, one leg at a time via an internal MoveTask. Never completes;
-// a real order (MoveCommand etc.) replaces it via PersonTaskQueue.Interrupt the moment one
-// comes in, same as it would replace any other task.
+// A small aimless walk near wherever the person ended up, one leg at a time via an internal
+// MoveTask. Never completes; a real order replaces it via PersonTaskQueue.Interrupt.
 public sealed class IdleTask : PersonTask
 {
     private const float MinWanderRadius = 3f;
     private const float MaxWanderRadius = 8f;
     private const float SpeedPerTick = 0.15f;
 
-    // A person stands still for a bit between wander legs (and before the very first one)
-    // instead of immediately setting off again the instant one ends - without this, idle
-    // reads as restless, constant walking rather than someone occasionally wandering. The
-    // ceiling is public because the game lets a fresh band run for that long before anyone is
-    // watching (see Main._Ready), so that the first thing the player sees is a band already
-    // on the move rather than one standing about for up to ten ticks.
+    // A pause between wander legs (and before the first), or idle reads as restless constant
+    // walking. The ceiling is public because Main._Ready runs the world that long before the
+    // player sees it, so the band is already on the move.
     private const int MinPauseTicks = 3;
     public const int MaxPauseTicks = 10;
 
-    // Seeded from the person, not shared/time-based, so a given person's wander path is
-    // reproducible from a given start tick rather than depending on simulation order.
+    // Seeded from the person, so a wander path is reproducible from a start tick regardless of
+    // simulation order.
     private Random? _rng;
     private Position? _anchor;
     private float _wanderRadius;
@@ -38,8 +33,7 @@ public sealed class IdleTask : PersonTask
         {
             _rng = new Random(SeedFor(person.Id.Seed));
             _anchor = person.Position;
-            // Drawn once per person, not per leg - a personal "how far this one tends to
-            // roam" rather than everyone sharing the same perimeter.
+            // Drawn once per person, not per leg: how far this one tends to roam.
             _wanderRadius = MinWanderRadius + ((float)_rng.NextDouble() * (MaxWanderRadius - MinWanderRadius));
             _pauseTicksRemaining = NextPauseTicks();
         }
@@ -65,9 +59,8 @@ public sealed class IdleTask : PersonTask
 
     private int NextPauseTicks() => MinPauseTicks + _rng!.Next(MaxPauseTicks - MinPauseTicks + 1);
 
-    // Uniform over the disk's area, not its bounding square - same math as MapLoader's
-    // starting-crowd scatter (sampling angle and radius independently and uniformly would
-    // bunch samples near the anchor instead).
+    // Uniform over the disk's area, as MapLoader's crowd scatter: independent uniform angle and
+    // radius would bunch samples near the anchor.
     private Position NextWanderDestination(Position anchor)
     {
         var angle = _rng!.NextDouble() * Math.Tau;
@@ -75,8 +68,7 @@ public sealed class IdleTask : PersonTask
         return new Position(anchor.X + (distance * Math.Cos(angle)), anchor.Y + (distance * Math.Sin(angle)));
     }
 
-    // Two people whose id seeds (see EntityId.SeedOf) happen to sit close together would
-    // otherwise have their first few draws land eerily close, reading as synchronized
-    // wandering rather than independent people - see SeedHash for why.
+    // Close id seeds (EntityId.SeedOf) would otherwise land their first draws close together,
+    // reading as synchronized wandering - see SeedHash.
     private static int SeedFor(int personSeed) => SeedHash.Avalanche(unchecked((uint)personSeed));
 }

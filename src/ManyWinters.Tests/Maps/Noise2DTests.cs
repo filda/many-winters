@@ -4,12 +4,11 @@ namespace ManyWinters.Tests.Maps;
 
 public class Noise2DTests
 {
-    // MapLoader's own biome-field seed, so the golden values below pin the exact field the
-    // default map is generated from rather than an arbitrary one.
+    // MapLoader's biome-field seed, so the golden values pin the field the default map uses.
     private const int Seed = 7;
 
-    // Coordinates spread across several lattice cells, including negative ones (this world's
-    // origin sits in the middle of the terrain, not at a corner) and a pair far from it.
+    // Several lattice cells, negative ones included (the origin sits mid-terrain), and a pair
+    // far out.
     private static readonly (double X, double Y)[] Samples =
     [
         (0.25, 0.75), (0.5, 0.5), (12.8, -7.35), (-45.2, 91.7), (1000.4, -1000.6),
@@ -29,11 +28,9 @@ public class Noise2DTests
     [Fact]
     public void ValueAtKeepsItsExactShapeForAGivenSeed()
     {
-        // The default map's whole layout (biome bands, where anything grows at all) is a
-        // function of this field, so a change in the noise silently reshapes everyone's world.
-        // Pinned to twelve decimals rather than exactly: the gradients come out of Math.Cos/Sin,
-        // whose last bit isn't guaranteed identical across platforms, and no plausible change to
-        // the algorithm hides that far down.
+        // The default map's layout is a function of this field, so a change silently reshapes
+        // every world. Twelve decimals rather than exact: Math.Cos/Sin's last bit is not
+        // identical across platforms.
         var noise = new Noise2D(Seed);
 
         var expected = new[]
@@ -77,9 +74,8 @@ public class Noise2DTests
     [Fact]
     public void DifferentSeedsProduceDifferentFields()
     {
-        // MapLoader runs two independent fields (density and biome) side by side and expects
-        // them to disagree - one field used twice would tie "does anything grow here" to
-        // "what grows here", which is exactly the correlation the two seeds exist to avoid.
+        // MapLoader runs two fields (density and biome) side by side; one field used twice would
+        // tie "does anything grow here" to "what grows here".
         var first = new Noise2D(Seed);
         var second = new Noise2D(Seed + 1);
 
@@ -101,9 +97,8 @@ public class Noise2DTests
     [Fact]
     public void ValueAtUsesTheWholeRangeInsteadOfBunchingInTheMiddle()
     {
-        // Perlin's 2D bound (1/sqrt(2)) is what the raw value gets divided by before the
-        // remap - normalizing by anything larger would leave every sample stuck near 0.5,
-        // and biome bands drawn over such a field would never reach their outer thresholds.
+        // The raw value is divided by Perlin's 2D bound (1/sqrt(2)) before the remap; a larger
+        // divisor would leave every sample near 0.5 and biome bands short of their thresholds.
         var noise = new Noise2D(Seed);
         var values = Grid().Select(p => noise.ValueAt(p.X, p.Y)).ToList();
 
@@ -128,10 +123,9 @@ public class Noise2DTests
     [Fact]
     public void ValueAtIsExactlyOneHalfOnEveryLatticePoint()
     {
-        // Gradient noise (unlike the value noise this started as) has all four corner dot
-        // products fall to zero on a lattice point, so the field crosses its midpoint there.
-        // This is the property that keeps the extrema at arbitrary points inside a cell
-        // instead of grid-aligned on the lattice, which is what would read as a waffle bias.
+        // Gradient noise has all four corner dot products zero on a lattice point, so the field
+        // crosses its midpoint there; extrema fall inside cells rather than grid-aligned, which
+        // is what avoids a waffle bias.
         var noise = new Noise2D(Seed);
 
         for (var x = -5; x <= 5; x++)
@@ -146,9 +140,8 @@ public class Noise2DTests
     [Fact]
     public void ValueAtChangesGraduallyBetweenNeighbouringPoints()
     {
-        // Coherence is the whole point of this over independent per-point randomness: a walk
-        // across several cells - crossing cell boundaries, where two cells' independently
-        // oriented gradients disagree most - must not jump.
+        // Coherence is the point: a walk across cell boundaries, where neighbouring gradients
+        // disagree most, must not jump.
         var noise = new Noise2D(Seed);
         var previous = noise.ValueAt(-20, 0.3);
 

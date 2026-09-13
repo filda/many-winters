@@ -2,12 +2,10 @@ namespace ManyWinters.Core.World;
 
 public readonly record struct Position(double X, double Y)
 {
-    // A destination short of `to` by `standoffDistance`, on the straight line back toward
-    // `from` - so whoever walks there ends up standing next to the thing rather than on top
-    // of (and, on screen, visually covering) it. Shared by the player-directed gather-walk
-    // (Main) and the autonomous one (GatherTask), so both approaches read the same. Already
-    // within the standoff - including standing exactly on `to`, where there's no direction to
-    // back off along - means there's nowhere closer worth walking to, so `from` itself.
+    // A destination `standoffDistance` short of `to`, on the line back toward `from`, so the
+    // walker stands next to the thing rather than on top of it. Shared by the player-directed
+    // gather walk (Main) and the autonomous one (GatherTask). Already within the standoff
+    // (including exactly on `to`, where there is no direction) returns `from`.
     public static Position Approach(Position from, Position to, double standoffDistance)
     {
         var dx = from.X - to.X;

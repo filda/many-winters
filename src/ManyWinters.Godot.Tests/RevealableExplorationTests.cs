@@ -46,8 +46,7 @@ public class RevealableExplorationTests
     [Fact]
     public void SwitchingTheRevealOffRestoresTheRealState()
     {
-        // The reveal must not leak into ExplorationState itself - that would mark the whole
-        // map as visited for good, and the fog could never come back.
+        // The reveal must not leak into ExplorationState itself, or the fog could never come back.
         var lens = new RevealableExploration(ExploredAroundTheOrigin()) { RevealAll = true };
 
         lens.RevealAll = false;

@@ -19,9 +19,8 @@ public class PersonNamesTests
     [MemberData(nameof(BothPools))]
     public void EveryNameIsSomethingAPersonCouldActuallyBeCalled(string name)
     {
-        // A blank entry would surface as a nameless person in the UI and as "child of  and
-        // Hesk" on a grave - each entry is content, so each one is asserted rather than only
-        // the pools' shapes.
+        // A blank entry would surface as a nameless person and as "child of  and Hesk" on a grave,
+        // so each entry is asserted, not only the pools' shapes.
         Assert.False(string.IsNullOrWhiteSpace(name));
     }
 

@@ -3,21 +3,17 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Ui;
 
-// Bottom-of-screen bar: transient notifications (left, auto-clearing), tick/season (right),
-// and a help popup - the reference text that used to permanently occupy screen space now
-// only shows up when asked for.
+// Bottom-of-screen bar: transient notifications (left, auto-clearing), the chronicle button,
+// performance and tick/season (right), and a help popup with the controls reference.
 public partial class StatusBar : PanelContainer
 {
-    // Tall enough to give the "?" button (which drives its own theme minimum height) and
-    // a centered line of text room inside PanelChrome's 10px top/bottom margins -
-    // 36f left only 16px of interior, so content was being squeezed past the panel edge.
+    // Room for the "?" button (which drives its own theme minimum height) and a centred line
+    // of text inside PanelChrome's 10px top/bottom margins.
     private const float BarHeight = 48f;
     private const float NotificationSeconds = 4f;
 
-    // Engine.GetFramesPerSecond only changes once a second itself, so re-reading it a few
-    // times a second catches every new value without rewriting the label on every frame.
-    // The render monitors do change every frame, but at this cadence they still show what
-    // the current view costs without turning the label into a flicker of digits.
+    // Engine.GetFramesPerSecond only changes once a second; a few reads a second catch every
+    // value, and the per-frame render monitors stay readable rather than a flicker of digits.
     private const double PerformanceRefreshSeconds = 0.25;
 
     private const string HelpText =
@@ -37,10 +33,8 @@ public partial class StatusBar : PanelContainer
 
     public override void _Ready()
     {
-        // Anchored to the bottom edge with both top and bottom anchors at 1 (not
-        // SetAnchorsPreset - with no explicit offsets it collapses the rect to zero
-        // height), then pulled up by a fixed BarHeight via OffsetTop so it actually has a
-        // visible height and stays pinned to the bottom across viewport resizes.
+        // Both vertical anchors at 1 and OffsetTop = -BarHeight: SetAnchorsPreset without
+        // offsets would collapse the rect to zero height.
         AnchorLeft = 0f;
         AnchorRight = 1f;
         AnchorTop = 1f;
@@ -60,18 +54,15 @@ public partial class StatusBar : PanelContainer
         };
         row.AddChild(_notificationLabel);
 
-        // Opens the chronicle (ChroniclePanel), where every inscription shown so far can be
-        // read whole - the overlay only ever carries a title. Hidden until there is one.
+        // Opens ChroniclePanel, where each inscription can be read whole - the overlay only
+        // carries the title. Hidden until there is one.
         _chronicleButton = new Button { Text = "Chronicle", Visible = false };
         _chronicleButton.Pressed += () => ChronicleRequested?.Invoke();
         row.AddChild(_chronicleButton);
         row.AddChild(new VSeparator());
 
-        // Rendering cost is what the reveal-map toggle and the decoration-scale scene are
-        // most likely to run into, so the frame rate sits permanently next to the tick
-        // rather than behind a debug key - together with how many objects and draw calls
-        // the frame took, which is what says whether a low number is the scene's size or
-        // something else entirely.
+        // Frame rate sits permanently next to the tick rather than behind a debug key, with
+        // object and draw-call counts to tell whether a low number is the scene's size.
         _performanceLabel = new Label { VerticalAlignment = VerticalAlignment.Center };
         row.AddChild(_performanceLabel);
         row.AddChild(new VSeparator());
@@ -97,15 +88,15 @@ public partial class StatusBar : PanelContainer
         }
 
         _sincePerformanceRefresh = 0;
-        // Objects: instances the renderer actually drew this frame, after frustum culling
-        // - so the count reflects what the camera can see, not what exists in the scene.
+        // Objects counts what the renderer drew after frustum culling - what the camera sees,
+        // not what exists.
         var objects = Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame);
         var drawCalls = Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame);
         _performanceLabel.Text = $"FPS: {Engine.GetFramesPerSecond():0}  Objects: {objects:0}  Draw calls: {drawCalls:0}";
     }
 
-    // Transient feedback ("select a person first", "too far away", ...) - separate from
-    // the inspector, which only ever shows the current selection's actual persistent state.
+    // Transient feedback ("select a person first", "too far away"); the inspector shows only
+    // the selection's persistent state.
     public void Notify(string message)
     {
         _notificationLabel.Text = message;

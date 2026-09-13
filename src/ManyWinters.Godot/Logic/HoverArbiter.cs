@@ -1,9 +1,8 @@
 namespace ManyWinters.Godot.Logic;
 
-// Anything the cursor can light up - a person, a resource node. Deliberately free of engine
-// types (so this file can live in Logic/ and be unit-tested at all): asking "is the cursor
-// still on me" is the implementor's own job, since only it knows which sprite layers and
-// which texture the answer depends on.
+// Anything the cursor can light up. Free of engine types so it can live in Logic/ and be unit
+// tested; "is the cursor still on me" is the implementor's job, since only it knows which
+// sprite layers and texture the answer depends on.
 internal interface IHoverable
 {
     void ShowHovered(bool hovered);
@@ -11,22 +10,12 @@ internal interface IHoverable
     bool IsStillUnderCursor();
 }
 
-// There is one cursor, so at most one thing can be hovered - but nothing in the scene used to
-// enforce that. Each view tracked its own hover flag and cleared it on Godot's own
-// MouseExited, which only ever reaches the single collider Godot's picking chose. Two ways
-// that left a sprite lit forever, both of them everyday (the stuck-highlight bug this was
-// written for - a crowd of people still tinted yellow long after the cursor left them):
-//
-//   - A view highlighted through HoverRescue - the cursor is genuinely over its opaque pixels,
-//     but some other entity's broad-phase box won the pick - never received Godot's
-//     mouse_entered either, so no mouse_exited was ever coming for it.
-//   - A person who simply walked out from under a resting cursor. Picking is driven by mouse
-//     movement; the mouse never moved, so nothing told them they were no longer under it.
-//
-// Both are fixed by taking the invariant away from the individual views: this owns the single
-// hovered target (handing over clears the previous one), and Revalidate - called once a frame,
-// see Main._Process - asks whoever is currently lit whether the cursor is still on them, which
-// no longer depends on an engine event arriving at all.
+// One cursor, so at most one thing is hovered - and this owns that invariant instead of each
+// view tracking its own flag. Godot's mouse_exited only reaches the collider its picking chose,
+// so it never arrives for a view lit through HoverRescue, and picking runs on mouse movement,
+// so a person walking out from under a resting cursor is never told either. Revalidate, called
+// once a frame from Main._Process, asks the lit view whether the cursor is still on it and
+// depends on no engine event.
 internal sealed class HoverArbiter
 {
     private IHoverable? _hovered;
@@ -35,8 +24,8 @@ internal sealed class HoverArbiter
     {
         if (!hovered)
         {
-            // Only if it is the one actually showing the highlight: a view that isn't current
-            // has nothing to turn off, and clearing here would drop someone else's hover.
+            // Only the view actually lit has anything to turn off; clearing here otherwise
+            // would drop someone else's hover.
             if (ReferenceEquals(_hovered, target))
             {
                 Clear();
@@ -62,8 +51,8 @@ internal sealed class HoverArbiter
             return;
         }
 
-        // Cleared before the call, not after: ShowHovered is free to route back here (a view
-        // reacting to losing hover) without finding itself still listed as current.
+        // Cleared before the call: ShowHovered may route back here without finding itself
+        // still listed as current.
         _hovered = null;
         previous.ShowHovered(false);
     }
@@ -76,9 +65,8 @@ internal sealed class HoverArbiter
         }
     }
 
-    // A view leaving the scene (a felled tree, a removed person) drops out of here without
-    // being called back into - QueueFree has already been asked for, and touching a freed
-    // node is a crash rather than a stale highlight.
+    // A view leaving the scene drops out without being called back: QueueFree is already
+    // pending, and touching a freed node crashes.
     public void Forget(IHoverable target)
     {
         if (ReferenceEquals(_hovered, target))

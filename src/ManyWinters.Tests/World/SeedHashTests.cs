@@ -12,18 +12,16 @@ public class SeedHashTests
     [InlineData(uint.MaxValue, 539527247)]
     public void AvalancheIsAFixedFunctionOfItsInput(uint value, int expected)
     {
-        // A saved world has to look and behave the same when reloaded, on any runtime, so
-        // what this produces is behaviour rather than an implementation detail. Regenerate
-        // these deliberately if the hash is meant to change; don't relax them.
+        // A saved world must reload identically on any runtime, so the output is behaviour.
+        // Regenerate deliberately if the hash changes; don't relax.
         Assert.Equal(expected, SeedHash.Avalanche(value));
     }
 
     [Fact]
     public void AdjacentSeedsComeOutFarApart()
     {
-        // The whole point: System.Random on neighbouring small seeds draws eerily similar
-        // first values, which reads as people wandering in step. Spread apart, consecutive
-        // seeds have nothing to do with one another.
+        // System.Random on neighbouring small seeds draws similar first values, which reads as
+        // people wandering in step.
         var first = SeedHash.Avalanche(1);
         var second = SeedHash.Avalanche(2);
         var third = SeedHash.Avalanche(3);

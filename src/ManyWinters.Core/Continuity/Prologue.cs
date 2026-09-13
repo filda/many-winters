@@ -3,10 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// Writes the inscription shown when a band arrives (see BandArrival for the facts) - the
-// opening page of the chronicle whose last page Epitaph writes, in the same voice and drawn
-// the same way: every sentence with more than one wording is picked by a seed, here the
-// eldest member's own, so the same band always arrives with the same words.
+// Writes the inscription shown when a band arrives (facts: BandArrival), in Epitaph's voice and
+// drawn the same way, seeded from the eldest member so the same band always arrives with the
+// same words.
 public static class Prologue
 {
     private const uint SaltStride = 0x9E3779B9;
@@ -52,8 +51,8 @@ public static class Prologue
             $"They came in the {season}, {count} in all: {groups}.");
     }
 
-    // "six men, six women and three children" - a group nobody is in is left out rather than
-    // written as "no children", so a band of grown men reads as one.
+    // "six men, six women and three children" - an empty group is left out, not written as "no
+    // children".
     private static string Groups(BandArrival arrival)
     {
         var parts = new List<string>();

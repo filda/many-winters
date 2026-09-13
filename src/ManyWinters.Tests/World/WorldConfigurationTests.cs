@@ -58,8 +58,7 @@ public class WorldConfigurationTests
         Assert.Equal(5, configuration.RecipeCatalog.Get(new ItemKindId("axe")).InputAmount);
         Assert.Equal(20, configuration.BuildingCatalog.Get(new BuildingKindId("storage_hut")).RequiredAmount);
         Assert.Equal(2f, configuration.MaterialCatalog.Find(new MaterialId("stone"))?.Density);
-        // Derived, not stated: stone's density times the axe's volume is the weight the axe
-        // file used to carry itself.
+        // Derived, not stated: stone's density times the axe's volume.
         Assert.Equal(5f, configuration.ItemCatalog.WeightFor(new ItemKindId("axe")));
         Assert.Same(SeasonParameters.Default, configuration.SeasonParameters);
         Assert.Same(SimulationRules.Default, configuration.Rules);

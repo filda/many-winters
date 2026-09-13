@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Fetches real waterway geometry (rivers/streams/canals) from OpenStreetMap for the
-same patch fetch_terrain.py covers, and writes it as local-meter polylines the game
-loads statically - no network access at runtime.
+Fetches waterway geometry (rivers, streams, canals) from OpenStreetMap for the patch
+fetch_terrain.py covers and writes it as local-metre polylines the game loads statically -
+no network access at runtime.
 
-Source: OpenStreetMap contributors, via the public Overpass API (ODbL license).
-Tunnel/culverted segments are dropped - they aren't a visible surface feature.
+Source: OpenStreetMap contributors via the public Overpass API (ODbL). Tunnelled segments
+are dropped; they are not a visible surface feature.
 
 Run:  python3 fetch_stream.py <center_lat> <center_lon> <half_size_m> <output_dir>
 """

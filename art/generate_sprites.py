@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 """
-Generates woodcut-style sprites for the ManyWinters Godot prototype: hand-inked
-crosshatch shading (line density carries tone, not a blended gradient) plus base
-silhouettes built from more than one primitive, in the vein of Karel Zeman's engraved
-paper-cutout dioramas (see docs/ZemanConceptArt.png, docs/ZemanSprites.png and
-art/zeman-sprite-prompts.md for the target look).
+Woodcut-style sprites for the Godot prototype: crosshatch shading where line density carries
+tone (never a blended gradient) over silhouettes built from several primitives, after Karel
+Zeman's engraved paper cut-outs (docs/ZemanConceptArt.png, docs/ZemanSprites.png,
+art/zeman-sprite-prompts.md).
 
-Drawn at 4x the old 64x64 grid (see SCALE) so the hatch lines are actually visible
-rather than single hard pixels - BillboardSprite.cs already renders with mipmapped
-linear filtering in anticipation of exactly this kind of fine engraved detail, so no
-engine change is needed to drop in a higher-resolution texture.
+Drawn at 4x the 64-unit authoring grid (SCALE) so the hatch lines survive BillboardSprite.cs's
+mipmapped linear filtering instead of collapsing into single pixels.
 
 Run:  python3 generate_sprites.py <output_dir>
 """
@@ -23,15 +20,11 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 SCALE = 4
-S = 64 * SCALE  # canvas size; shape coordinates below are still authored on the old 64-unit grid
+S = 64 * SCALE  # canvas size; shape coordinates are authored on the 64-unit grid
 
-# Where every ground-standing shape's lowest point (trunk, stem, base ellipse...) should sit -
-# close to the canvas's own bottom edge (64), not comfortably above it. The engine positions
-# each sprite's shadow at the sprite's nominal canvas-bottom = true ground level (see
-# TerrainRenderer.ScatterDecoration's own comment on why it doesn't try to compensate for a
-# margin here instead - that needs the sprite's own *billboard-local* Y, which doesn't equal a
-# real world-space Y from an oblique camera). A base authored well above the canvas edge (the
-# original 58 many of these used) reads as the object floating above its own shadow instead.
+# Where every ground-standing shape's lowest point sits. The engine treats the canvas bottom
+# (64) as ground level and places the shadow there (BillboardSprite, GroundShadow), so a base
+# authored well above the edge reads as floating above its own shadow.
 GROUND_CONTACT_Y = 63
 
 
@@ -54,8 +47,7 @@ def darken(c, t):
 
 
 def seed_for(name):
-    """Stable seed derived from the sprite's own name, so re-running the generator
-    always reproduces the same output instead of depending on hash randomisation."""
+    """Stable per-sprite seed, so re-running the generator reproduces the same output."""
     return zlib.crc32(name.encode()) & 0xFFFF
 
 
@@ -115,13 +107,10 @@ def erode(mask, r=1):
 
 
 # ---------------------------------------------------------------- jagged shapes
-# Turns a clean vector polygon into a hand-cut/torn-paper edge. Deliberately NOT used
-# on shapes that are already built from several unioned primitives (apple, potato,
-# grave mounds, rock piles, fruit-tree canopies) - stacking edge noise on top of a
-# union-of-blobs is what made an early tree prototype look "gnawed by mice" rather than
-# hand-drawn. For those, the lopsidedness comes from off-centre primitives instead, and
-# rough_outline() (which works on the final raster silhouette regardless of how it was
-# built) supplies the hand-inked edge on top.
+# Turns a clean polygon into a hand-cut edge. Not used on shapes already unioned from several
+# primitives (apple, potato, grave mounds, rock piles, fruit-tree canopies): edge noise on a
+# union of blobs reads as gnawed, not drawn. Those get their lopsidedness from off-centre
+# primitives and their inked edge from rough_outline(), which works on the final raster.
 
 def jagged_poly(points, rng, amp=1.6, segments_per_edge=5, smooth_passes=2):
     n = len(points)
@@ -145,10 +134,9 @@ def jagged_poly(points, rng, amp=1.6, segments_per_edge=5, smooth_passes=2):
 
 
 def lobe_cluster_mask(apex, base_left, base_right, rng, rows=3):
-    """A cluster of small pointed sprigs scattered across a triangle's footprint and
-    unioned/closed together - reads as a clump of branches, not a geometric cone.
-    Tuned conservatively (few, big, heavily-overlapping lobes; strong closing) after an
-    earlier pass with many small sharp lobes looked chewed-on rather than clumped."""
+    """Small pointed sprigs scattered over a triangle's footprint, unioned and closed - a clump
+    of branches, not a cone. Few big overlapping lobes and strong closing; many small sharp
+    lobes looked chewed."""
     apex_x, apex_y = apex
     base_y = base_left[1]
     base_cx = (base_left[0] + base_right[0]) / 2.0
@@ -178,10 +166,8 @@ def lobe_cluster_mask(apex, base_left, base_right, rng, rows=3):
 
 
 # ---------------------------------------------------------------- hand-drawn hatching
-# Each hatch line gets its own stable seeded "personality" (lateral offset, curvature,
-# thickness, and mid-stroke breaks) instead of every line reacting to one shared noise
-# field - a shared field made every line bend in lockstep, which read as corrugated
-# sheet metal rather than a hand-ruled crosshatch.
+# Each hatch line has its own seeded personality (lateral offset, curvature, thickness,
+# pen-lift breaks). One shared noise field bent every line in lockstep: corrugated sheet metal.
 
 _YY, _XX = np.mgrid[0:S, 0:S]
 INK = rgb(0.14, 0.10, 0.08)
@@ -205,8 +191,7 @@ def _hatch_direction(diag_coord, along_coord, tone, density_scale, tone_offset, 
     curve = np.sin(along_coord * freq + phase) * curve_amp
     wobbled = (diag_coord - lateral - curve) % PERIOD
 
-    # a hand-ruled hatch doesn't run edge-to-edge unbroken - chop into segments and
-    # randomly skip some, like a pen lifting mid-stroke
+    # chop into segments and randomly skip some, like a pen lifting mid-stroke
     seg_len = 10.0
     seg_idx = np.floor(along_coord / seg_len).astype(np.int64)
     combined = raw_idx * np.int64(100003) + seg_idx
@@ -217,17 +202,15 @@ def _hatch_direction(diag_coord, along_coord, tone, density_scale, tone_offset, 
 
 
 def hatch_fill(mask, base_color, seed):
-    """Fills mask with base_color plus ink crosshatching whose density follows a
-    diagonal light gradient (upper-left lit, lower-right shadowed) - tone comes from
-    line density, not a blended/painterly gradient (the woodcut style explicitly rules
-    painterly gradients out)."""
+    """Fills mask with base_color plus ink crosshatch whose density follows a diagonal light
+    gradient (upper-left lit, lower-right shadowed): tone from line density, never a painterly
+    gradient."""
     ys, xs = np.nonzero(mask)
     if len(xs) == 0:
         return np.zeros((S, S, 3), dtype=np.uint8)
     x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
     diag = max((x1 - x0) + (y1 - y0), 1)
-    # capped short of 1.0 so the darkest corner still shows a hint of base colour
-    # instead of crushing to solid ink
+    # capped short of 1.0 so the darkest corner keeps a hint of base colour
     tone = np.clip(((_XX - x0) + (_YY - y0)) / diag, 0.0, 1.0) * 0.86
 
     salt = (seed % 97) * 11
@@ -248,27 +231,23 @@ class Canvas:
         self.alpha = np.zeros((S, S), dtype=bool)
 
     def fill(self, mask, base_color):
-        """Base colour plus hand-drawn crosshatch shading - use for anything with
-        enough area to show tone."""
+        """Base colour plus crosshatch shading, for anything with enough area to show tone."""
         out_rgb = hatch_fill(mask, base_color, self.seed)
         self.rgb[mask] = out_rgb[mask]
         self.alpha |= mask
 
     def flat(self, mask, color):
-        """Plain flat fill, no hatching - for accents too small for line density to
-        read (a glint, a seam, a rune mark)."""
+        """Flat fill, no hatching, for accents too small for line density to read."""
         self.rgb[mask] = color
         self.alpha |= mask
 
     def ink(self, mask):
-        """Hand-drawn ink linework on top of an existing fill - for marks that aren't
-        part of the crosshatch grid itself (a cloud's curl, an outline tick)."""
+        """Ink linework over an existing fill, for marks outside the crosshatch grid."""
         self.rgb[mask] = INK
         self.alpha |= mask
 
     def rough_outline(self, width=2):
-        """A hand-inked contour: an uneven ring that thins and thickens in patches,
-        not a uniform machine-drawn outline."""
+        """A hand-inked contour: an uneven ring that thins and thickens in patches."""
         ring = dilate(self.alpha, width) & ~self.alpha
         idx = np.floor((_XX + _YY) / 3).astype(np.int64)
         keep = _line_hash(idx, self.seed * 13 + 7) > 0.22
@@ -283,22 +262,16 @@ class Canvas:
 
 
 # ---------------------------------------------------------------- trunk/canopy split
-# A tree's trunk needs to stay fully solid when the camera's occlusion fade ghosts
-# whatever's standing between the camera and the selected person, while its canopy is
-# exactly what should fade (see docs/Camera.png and Main.UpdateOcclusionFade). Building
-# one combined, hand-inked Canvas exactly as before and then partitioning its *final*
-# pixels between two layers - rather than inking each layer separately - keeps the
-# split a pure rendering-time concern: stacking both layers back together reproduces
-# today's single flattened tree image pixel-for-pixel.
+# The occlusion fade (Main.UpdateOcclusionFade, docs/Camera.png) ghosts a tree's canopy but
+# must keep its trunk solid. The tree is inked as one Canvas and its final pixels are then
+# partitioned into two layers, so stacking the layers reproduces the single image exactly.
 _tree_split_cache = {}
 
 
 def split_trunk_canopy(name, trunk_mask, canopy_masks, trunk_color, canopy_color):
-    """canopy_masks: one or more pieces filled in order (each its own Canvas.fill call),
-    not pre-unioned - a conifer's tiers each need their own hatch tone gradient computed
-    across their own footprint rather than one gradient across the whole canopy's
-    bounding box (see hatch_fill), exactly like the original single-Canvas conifer_tree
-    did. A tree with just one canopy piece (the fruit trees) passes a single-item list."""
+    """canopy_masks: pieces filled in order, each with its own Canvas.fill, not pre-unioned -
+    a conifer's tiers each need their own hatch gradient (see hatch_fill). Fruit trees pass a
+    single-item list."""
     if name in _tree_split_cache:
         return _tree_split_cache[name]
 
@@ -312,12 +285,9 @@ def split_trunk_canopy(name, trunk_mask, canopy_masks, trunk_color, canopy_color
         canopy_mask |= mask
     combined.rough_outline(width=outline_width)
 
-    # Canopy is filled second above, so it already wins any genuine geometric overlap
-    # (e.g. a low canopy lobe overhanging the trunk's top) - trunk keeps only what
-    # canopy never touches. rough_outline's added ink ring is split the same way: a
-    # ring pixel counts as trunk's own edge only if it's near the trunk silhouette and
-    # NOT also near canopy - an ambiguous seam pixel goes to canopy, since that's what
-    # visually sits on top there.
+    # Canopy is filled second, so it wins any overlap; trunk keeps only what canopy never
+    # touches. The outline ring is split the same way: a ring pixel is trunk's only if it is
+    # near the trunk and not near the canopy - an ambiguous seam pixel goes to the canopy on top.
     trunk_only = trunk_mask & ~canopy_mask
     ring = combined.alpha & ~(trunk_mask | canopy_mask)
     trunk_ring = ring & dilate(trunk_mask, outline_width) & ~dilate(canopy_mask, outline_width)
@@ -338,19 +308,14 @@ def split_trunk_canopy(name, trunk_mask, canopy_masks, trunk_color, canopy_color
 
 
 # ---------------------------------------------------------------- richer base shapes
-# (person) - a nipped-waist, scalloped-hem robe; a tapered bent arm; a hood with an
-# actual cowl point; a boot with a heel and a toe - built as multi-point silhouettes
-# instead of a trapezoid/quad/ellipse-ring/rectangle before any jagging is applied.
+# Person parts (robe, arm, hood, boot) are multi-point silhouettes, not primitives jagged
+# after the fact.
 
-# Three hand-authored robe silhouettes, all 13 points walked in the same order
-# (shoulder_L, shoulder_R, arm_notch_R, waist_R, hip_R, hem_R1, hem_R2, hem_center,
-# hem_L2, hem_L1, hip_L, waist_L, arm_notch_L). Each is a deliberately different,
-# asymmetric drape - not mirror-symmetric, not a formula - the way cloth actually
-# falls unevenly, rather than noise jittered onto a symmetric trapezoid (which read as
-# "primitive with texture" no matter how smooth/jagged its edge was - see
-# project_sprite_woodcut_texture_library memory for the wireframe test that ruled out
-# edge smoothness as the cause). Blending between these per instance keeps the
-# per-seed variety while keeping each result built from a genuinely asymmetric shape.
+# Three hand-authored robe silhouettes, 13 points each in the same walk order (shoulder_L,
+# shoulder_R, arm_notch_R, waist_R, hip_R, hem_R1, hem_R2, hem_center, hem_L2, hem_L1, hip_L,
+# waist_L, arm_notch_L). Each is a different asymmetric drape: noise jittered onto a symmetric
+# trapezoid read as "primitive with texture" however smooth or jagged its edge. Blending them
+# per instance keeps per-seed variety while every result stays genuinely asymmetric.
 _ROBE_VARIANT_A = [
     (25, 19), (39, 21), (43, 26), (41, 36), (46, 45),
     (45, 53), (38, 50), (31, 55), (24, 49), (19, 52),
@@ -377,9 +342,8 @@ def robe_silhouette(rng, sx, sy):
 
 
 def arm_points(side, elbow_bulge):
-    """Points listed walking the perimeter in order, so the polygon stays simple
-    (non-self-crossing) - a generic mirror-by-multiplier version of this tangled the
-    inner/outer edges into a self-intersecting bowtie."""
+    """Perimeter order, so the polygon stays simple - mirroring by a multiplier tangled the
+    inner and outer edges into a bowtie."""
     if side == "l":
         shoulder_outer, shoulder_inner = 22, 26
         wrist_inner, wrist_outer = 24, 19
@@ -407,10 +371,7 @@ def cowled_hood_mask(rng):
     return (base | peak) & ~face_hole
 
 
-# the left boot's silhouette: a cuff, a toe box, and a heel that sticks out past the
-# ankle, instead of a flat-bottomed rectangle. The right boot mirrors around x=32
-# (64-x), which lines up exactly because the old rect boots (24-31 and 33-40) were
-# already symmetric around that centre.
+# The left boot: cuff, toe box and a heel past the ankle. The right boot mirrors around x=32.
 LEFT_BOOT_PTS = [(25, 55), (30, 55), (31, 57), (29, 59), (22, 58), (23, 56)]
 RIGHT_BOOT_PTS = [(64 - x, y) for x, y in LEFT_BOOT_PTS]
 
@@ -442,16 +403,14 @@ def person(seed=None):
     def sy(y, top=20):
         return top + (y - top) * build_h
 
-    # legs stay simple rects (thin, identity-critical, jag would just muddy them) but
-    # feet get an actual boot silhouette - a heel and a toe, not a flat-bottomed box
+    # legs stay simple rects (thin, identity-critical; jag would muddy them), feet get a boot
+    # silhouette with heel and toe
     c.fill(rect(26, 46, 30, 56) | rect(34, 46, 38, 56), BOOT)
     boot_l = poly(jagged_poly(LEFT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
     boot_r = poly(jagged_poly(RIGHT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
     c.fill(boot_l | boot_r, darken(BOOT, 0.25))
 
-    # cloak: an authored asymmetric drape (see ROBE_VARIANTS), lightly jagged on top
-    # for hand-cut texture - less noise needed now that the base shape itself is
-    # genuinely asymmetric, not a symmetric formula
+    # cloak: an authored asymmetric drape (ROBE_VARIANTS), lightly jagged for hand-cut texture
     body_pts = robe_silhouette(rng, sx, sy)
     body = poly(jagged_poly(body_pts, rng, amp=1.0, segments_per_edge=3, smooth_passes=2))
     c.fill(body, cloak)
@@ -483,11 +442,8 @@ def person(seed=None):
 
 
 def person_dead():
-    """Literally the living sprite: rotated onto its side and drained of colour.
-
-    Reusing the same silhouette is deliberate - at a glance it has to read as
-    "that person, but down", not as a separate entity.
-    """
+    """The living sprite rotated onto its side and drained of colour: it has to read as "that
+    person, but down", not as a separate entity."""
     seed = seed_for("person_dead")
     arr = np.array(person().image()).astype(np.float32)
     lum = arr[..., :3] @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
@@ -508,25 +464,18 @@ def person_dead():
 
 
 # ---------------------------------------------------------------- layered person parts
-# (different-looking party members) - person()/person_dead() above stay exactly as they
-# were (person_dead() still renders off of person()'s single flat image, unchanged) and
-# keep shipping person.png/person_dead.png; these are new, separate layers PersonView
-# composites at runtime instead - a bare body plus a swappable hair layer and a
-# swappable clothing layer, each drawn in a light neutral tone so Modulate can recolour
-# it at runtime (multiplying a light grey by a colour approximates that colour while the
-# dark ink hatching stays dark regardless - the same principle BillboardSprite's own
-# fallback-colour tinting already relies on, just applied to real baked art instead of a
-# flat quad).
+# Separate layers PersonView composites at runtime: a bare body plus swappable hair and
+# clothing, each drawn in a light neutral tone so Modulate can recolour it - a light grey times
+# a colour approximates that colour while the dark ink hatching stays dark. person() and
+# person_dead() remain the single flat sprites.
 
 BODY_UNDERCLOTHES = rgb(0.55, 0.50, 0.45)
 NEUTRAL_RECOLOURABLE = rgb(0.82, 0.80, 0.78)
 
 
 def _body_layer(gender):
-    """Boots, hands, head and a plain covered torso/legs - meant to sit almost entirely
-    hidden under a clothing layer, so kept simple rather than elaborately detailed.
-    Only the hip width actually differs by gender; everything else about this figure
-    already ends up covered by clothing/hair on top of it."""
+    """Boots, hands, head and a plain covered torso/legs, kept simple since clothing and hair
+    cover nearly all of it. Only the hip width differs by gender."""
     seed = seed_for(f"body_{gender}")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -571,8 +520,7 @@ def person_body_female():
 
 
 def hair_short():
-    """A simple close-cropped cap - the same top-of-head patch person() used when its
-    hood was down, just on its own transparent layer."""
+    """A close-cropped cap on its own transparent layer."""
     seed = seed_for("hair_short")
     c = Canvas(seed)
     mask = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
@@ -614,9 +562,8 @@ def hair_tied():
 
 
 def _clothing_layer(variant_index):
-    """One of the three hand-authored robe drapes (see ROBE_VARIANTS) used directly, not
-    blended - a discrete "type" of clothing to pick between at runtime rather than
-    person()'s continuous per-instance blend."""
+    """One of the ROBE_VARIANTS used directly, not blended: a discrete clothing type to pick
+    at runtime."""
     seed = seed_for(f"clothing_{variant_index}")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -641,23 +588,17 @@ def clothing_cloak():
 
 
 def _dead_layer_drop():
-    """Ground-contact reference shared by every "_dead" layer variant below - computed
-    from the body (whose boots define where "ground" is), not recomputed separately per
-    layer, so hair/clothing end up shifted by the exact same amount as whichever body
-    they're paired with at runtime. Each layer's own lowest opaque pixel differs (boots
-    reach lower than a hairline) - using that per layer would misalign them once
-    composited on their side."""
+    """Ground-contact drop shared by every _dead layer, computed from the body (whose boots
+    define the ground) so hair and clothing shift by exactly as much as the body they are
+    paired with. Each layer's own lowest pixel differs and would misalign them."""
     alpha = np.array(person_body_male().image())[..., 3] > 127
     rows = np.flatnonzero(np.rot90(alpha, k=1).any(axis=1))
     return (S - 6 * SCALE) - rows.max() if len(rows) else 0
 
 
 def _lay_down(image, seed):
-    """Rotates a standing cutout 90 degrees onto its side and re-seats it at the shared
-    ground line (see _dead_layer_drop) - the same "collapsed sideways" transform
-    person_dead() already used for the old single-sprite figure, generalised so every
-    composited layer (body, hair, clothing) gets its own matching variant instead of
-    everyone falling back to one shared corpse once they're down."""
+    """Rotates a standing cutout 90 degrees onto its side and re-seats it at the shared ground
+    line (_dead_layer_drop), so every composited layer gets a matching dead variant."""
     arr = np.array(image).astype(np.uint8)
     rot = np.rot90(arr, k=1)
     c = Canvas(seed)
@@ -703,10 +644,8 @@ def clothing_cloak_dead():
 
 
 def _wood_log(canvas, cx, cy, rx, ry, bark_color, core_color, seed):
-    """A log end: crosshatch shading (kept, not replaced) plus concentric growth rings,
-    a couple of radiating checking-cracks, and short bark dashes around the rim - the
-    literal thing a cut log shows, layered on top of the shading rather than replacing
-    it (a flat-colour version of this read as "MS Paint flat" in review)."""
+    """A log end: crosshatch shading kept underneath, with concentric growth rings, a few
+    radiating cracks and short bark dashes on the rim. A flat-colour version read as MS Paint."""
     rng = random.Random(seed)
     bark_mask = ellipse(cx, cy, rx, ry) & ~ellipse(cx, cy, rx * 0.86, ry * 0.86)
     core_mask = ellipse(cx, cy, rx * 0.86, ry * 0.86)
@@ -715,8 +654,7 @@ def _wood_log(canvas, cx, cy, rx, ry, bark_color, core_color, seed):
 
     ring_img = Image.new("L", (S, S), 0)
     draw = ImageDraw.Draw(ring_img)
-    n_rings = rng.randint(7, 10)  # fine/numerous - a handful of bold bands read as a
-    # target, not an engraved cross-section
+    n_rings = rng.randint(7, 10)  # fine and numerous; a few bold bands read as a target
     for i in range(1, n_rings + 1):
         frac = (i / (n_rings + 1)) * rng.uniform(0.92, 1.0)
         wob = rng.uniform(-0.3, 0.3)
@@ -745,8 +683,7 @@ def _wood_log(canvas, cx, cy, rx, ry, bark_color, core_color, seed):
 
 
 def _rope_tie(canvas, p0, p1, rope_color, seed, width=2.6):
-    """A wrapped-cord band across the stack, drawn on top - called for in the original
-    brief ("tied with a rope") but never actually implemented."""
+    """A wrapped-cord band across the stack, drawn on top."""
     rng = random.Random(seed)
     x0, y0 = p0
     x1, y1 = p1
@@ -783,8 +720,8 @@ def _rope_tie(canvas, p0, p1, rope_color, seed, width=2.6):
 
 
 def _ground_shadow_dashes(canvas, cx, cy, half_w, seed, n=14):
-    """Sparse hatch dashes grounding the object, instead of it floating with no contact
-    shadow at all - a small thing the reference sprites never skip."""
+    """Sparse hatch dashes grounding the object - the reference sprites never skip a contact
+    shadow."""
     rng = random.Random(seed)
     img = Image.new("L", (S, S), 0)
     draw = ImageDraw.Draw(img)
@@ -819,9 +756,8 @@ STEM = rgb(0.32, 0.24, 0.15)
 
 
 def apple():
-    """Deliberately not jagged on the body edge (that's what shredded an early tree
-    prototype) - the lopsidedness comes from unioning off-centre ellipses instead, and
-    rough_outline (raster, not shape-aware) supplies the hand-inked edge on top."""
+    """Body edge not jagged (see the jagged shapes note): lopsidedness from off-centre
+    ellipses, inked edge from rough_outline."""
     seed = seed_for("apple")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -859,7 +795,7 @@ def apple():
 def pear():
     seed = seed_for("pear")
     c = Canvas(seed)
-    skin = rgb(0.62, 0.68, 0.20)  # muted towards the earthy palette; old value was neon-bright
+    skin = rgb(0.62, 0.68, 0.20)  # muted towards the earthy palette
     body = ellipse(32, 44, 18, 16) | ellipse(32, 28, 11, 12)
     c.fill(body, skin)
     c.flat(ellipse(25, 38, 4, 5), lighten(skin, 0.55))
@@ -909,8 +845,8 @@ DOOR = rgb(0.22, 0.16, 0.11)
 
 
 def thatch_fringe_mask(x0, x1, y, rng, droop_range=(2.0, 4.5)):
-    """A row of small pointed straw-bundle drips hanging off the eave - what makes a
-    roof read as *thatched* rather than a clean triangular plane."""
+    """Small pointed straw drips along the eave - what makes a roof read as thatched rather
+    than a plain triangle."""
     mask = np.zeros((S, S), dtype=bool)
     n = max(4, round((x1 - x0) / 3.2))
     xs = np.linspace(x0, x1, n)
@@ -946,8 +882,8 @@ def storage_hut():
     roof_apex = (32 + rng.uniform(-1.5, 1.5), 6 + rng.uniform(-1, 1))
     roof_pts = [roof_apex, (58, 32), (6, 32)]
     roof_body = poly(jagged_poly(roof_pts, rng, amp=1.1, segments_per_edge=5, smooth_passes=2))
-    # kept inset from the triangle's own corners, which taper to a sliver too thin to
-    # reliably fuse with a fringe drip even after closing
+    # inset from the triangle's corners, which taper too thin to fuse with a drip even after
+    # closing
     fringe = thatch_fringe_mask(11, 53, 32, rng)
     close_r = max(3, SCALE * 2)
     roof_mask = erode(dilate(roof_body | fringe, close_r), close_r)
@@ -1001,32 +937,19 @@ def grave_marked():
 
 
 def random_conifer_tiers(rng):
-    """A pine as an irregular stack of 3-5 branch tiers instead of 3 identical
-    triangles: tier count, width, vertical spacing and horizontal drift all vary."""
+    """A pine as an irregular stack of 3-5 tiers: count, width, spacing and drift all vary."""
     tier_count = rng.randint(3, 5)
-    # 14, not the original 2: this is where lobe_cluster_mask draws its own topmost row
-    # (a single tapered sprig, not the raw apex point itself) - that sprig's own tip
-    # extends roughly 1.4x its own radius *above* this y, and that radius scales with the
-    # tier's half_width below (~9-12 at the very top tier), so the true topmost drawn
-    # pixel can sit 10+ units above whatever's passed in here. The original 2-8 range
-    # left far too little headroom - worst-case rolls put that sprig tip above the
-    # canvas's own y=0, hard-clipped flat by the canvas boundary during rasterization
-    # instead of coming to its natural point (visible in-game as a "cut off" tree top).
+    # Headroom for lobe_cluster_mask's topmost sprig, whose tip reaches ~1.4x its radius (which
+    # scales with the top tier's half_width) above this y. With less, worst-case rolls clip the
+    # tip flat against the canvas top.
     apex_y = rng.uniform(14, 20)
     apex_x = 32 + rng.uniform(-2, 2)
     half_width = rng.uniform(9, 12)
 
-    # Drawn up front (not inside the stacking loop below) so the raw, unscaled stack's
-    # own final base_y - and the *width* it ends up reaching, which is what actually
-    # controls how far past it lobe_cluster_mask's bottom-row sprigs (and their own
-    # closing dilation) draw real pixels - can be projected before anything is actually
-    # placed. A tree with several tall, wide tiers (tier_count up to 5, half_width
-    # growing every tier) can run this well past the canvas's own bottom edge, hard-
-    # clipped flat during rasterization the same way an under-margined apex clipped at
-    # the top. Scaling every tier's own height down uniformly (never up - a stack that
-    # already fits is left untouched) keeps tiers' relative proportions intact, unlike
-    # clamping each tier's base_y individually, which would bunch every overflowing tier
-    # onto one flat line.
+    # Rolled up front so the unscaled stack's final base_y and width can be projected before
+    # anything is placed: a tall, wide stack runs past the canvas bottom and clips flat. Tier
+    # heights are then scaled down uniformly (never up), keeping proportions; clamping each
+    # base_y would bunch overflowing tiers onto one line.
     raw_heights = [rng.uniform(11, 15) for _ in range(tier_count)]
     gap_fracs = [rng.uniform(0.28, 0.4) for _ in range(tier_count)]
     width_growths = [rng.uniform(3.0, 5.0) for _ in range(tier_count - 1)]
@@ -1038,13 +961,9 @@ def random_conifer_tiers(rng):
         cur_y = base_y - tier_h * gap_frac
     projected_last_base_y = base_y
 
-    # lobe_cluster_mask's own last row sits at roughly t=0.87 of the way from that
-    # tier's apex to its base_y, with a lobe radius of up to ~(half_width * t) - worst
-    # case (its n_lobes floor of 2) - and each sprig's own bottom vertices reach a
-    # further 0.7x that radius past the row itself. 0.75 approximates that whole chain
-    # (0.87 * 1.0 * 0.7 ~= 0.6, plus dilate's own close_r and rounding slack) as one
-    # fraction of final_half_width, without duplicating lobe_cluster_mask's exact math
-    # here - this only has to be a safe overestimate, not a precise one.
+    # Safe overestimate of how far lobe_cluster_mask's bottom row reaches past base_y (last row
+    # at ~0.87 of the tier, sprig bottoms 0.7x the lobe radius below it, plus closing), as a
+    # fraction of final_half_width.
     required_margin = (final_half_width * 0.75) + 3
     max_base_y = 63 - required_margin
     if projected_last_base_y > max_base_y:
@@ -1069,9 +988,8 @@ def random_conifer_tiers(rng):
 
 
 def _conifer_split(name, variant=0):
-    # Already procedurally randomised (tiers, trunk lean) rather than a fixed silhouette
-    # like the fruit-tree family - a variant is simply a different roll of the same dice,
-    # via a distinct seed, no separate hand-authored shape needed.
+    # Already procedurally randomised (tiers, trunk lean), so a variant is another roll of the
+    # same dice via a distinct seed.
     split_name = _variant_name(name, variant)
     seed = seed_for(split_name)
     rng = random.Random(seed)
@@ -1123,11 +1041,10 @@ def conifer_tree_canopy_v2():
     return _conifer_split("conifer_tree", 2)[2]
 
 
-# Three hand-authored angular boulder outlines (8 points each, same walk order: top-
-# left facet, top, top-right facet, right, bottom-right facet, bottom, bottom-left
-# facet, left), unit-scaled around the origin. Real stones read as a handful of flat
-# facets meeting at sharp-ish corners, not a smooth round blob - three overlapping
-# ellipses was the single most "still just a circle" shape in the whole roster.
+# Three hand-authored boulder outlines (8 points each, same walk order: top-left facet, top,
+# top-right facet, right, bottom-right facet, bottom, bottom-left facet, left), unit-scaled
+# around the origin. Stones read as flat facets meeting at corners; overlapping ellipses read
+# as a circle.
 _ROCK_VARIANT_A = [
     (-0.55, -0.85), (0.05, -1.0), (0.75, -0.6), (1.0, 0.05),
     (0.6, 0.75), (-0.1, 0.95), (-0.85, 0.55), (-0.95, -0.25),
@@ -1151,10 +1068,8 @@ def _blended_rock_points(rng, cx, cy, rx, ry):
 
 
 def _stone_facets(mask, seed, n=3):
-    """A couple of irregular crack lines per stone - real rock surfaces show a handful
-    of distinct fracture lines, not a repeated micro-pattern (see
-    project_sprite_woodcut_texture_library memory: few large marks, not many small
-    identical ones, is what kept this from reading as a stamped pattern)."""
+    """A few irregular crack lines per stone: a handful of distinct fracture lines, not a
+    repeated micro-pattern, which reads as stamped."""
     rng = random.Random(seed)
     ys, xs = np.nonzero(mask)
     if len(xs) == 0:
@@ -1193,10 +1108,8 @@ def _weather_pits(mask, seed, n=4):
 
 
 def _stone(canvas, cx, cy, rx, ry, color, seed, rng):
-    """One faceted stone: blended boulder silhouette, crosshatch shading, a couple of
-    crack facets and weather pits. Factored out of rock_pile so rock_boulder/rock_cluster
-    can reuse the exact same per-stone construction at different counts/sizes instead of
-    duplicating it."""
+    """One faceted stone: blended boulder silhouette, crosshatch shading, a couple of cracks
+    and weather pits. Shared by rock_pile, rock_boulder and rock_cluster."""
     pts = _blended_rock_points(rng, cx, cy, rx, ry)
     mask = poly(jagged_poly(pts, rng, amp=0.7, segments_per_edge=3, smooth_passes=1))
     out_rgb = hatch_fill(mask, color, seed)
@@ -1209,9 +1122,7 @@ def _stone(canvas, cx, cy, rx, ry, color, seed, rng):
 
 
 def rock_pile():
-    """Three medium stones leant together - the original rock shape, kept as the
-    "medium" member of the family now that rock_boulder/rock_cluster exist alongside it
-    (todo #4: rocks need more than one shape/size, not just a random scale on one)."""
+    """Three medium stones leant together - the "medium" member of the rock family."""
     seed = seed_for("rock_pile")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -1262,35 +1173,28 @@ def rock_cluster():
     return c
 
 
-# Three hand-varied lobe arrangements per fruit-tree canopy (main, left, right, top -
-# each (cx, cy, rx, ry)) - same "four overlapping ellipses" formula every time (keeps the
-# silhouette identity readable as "this kind of tree"), but genuinely different
-# proportions/positions per variant, not just different hatch noise. Variant 0 is the
-# original, unchanged shape.
-# Each lobe's own (cy - ry) must stay a couple of pixels clear of the canvas top (y=0) -
-# an ellipse whose top edge touches or crosses it gets hard-clipped flat by the canvas
-# boundary during rasterization, replacing that lobe's naturally round top with a
-# perfectly straight, sharp-cornered line (visible in-game as a "cut off" canopy). The
-# top lobe in variants 0 and 1 originally clipped this way (cy-ry of 0 and -2
-# respectively) - ry alone is trimmed here, not cx/cy, since _APPLE_FRUIT_SPOT_VARIANTS'
-# own per-variant fruit dot for this same lobe is positioned at its exact (cx, cy) and
-# would otherwise need to move too.
+# Three lobe arrangements per fruit-tree canopy (main, left, right, top - each (cx, cy, rx,
+# ry)): the same four-ellipse formula keeps the silhouette readable as one kind of tree, but
+# the proportions genuinely differ per variant, not just the hatch noise.
+# Each lobe's top (cy - ry) must stay a couple of pixels below the canvas top (y=0), or
+# rasterization clips it to a straight line (a "cut off" canopy in-game). Trim ry, not cy: the
+# fruit dots in _APPLE_FRUIT_SPOT_VARIANTS sit at each lobe's (cx, cy).
 _FRUIT_TREE_CANOPY_VARIANTS = [
     [(32, 26, 22, 17), (18, 30, 13, 12), (46, 30, 13, 12), (32, 12, 15, 10)],
     [(34, 24, 20, 19), (16, 34, 12, 11), (47, 26, 15, 13), (30, 9, 13, 7)],
     [(31, 29, 24, 15), (14, 28, 14, 13), (49, 32, 12, 11), (33, 15, 17, 10)],
 ]
 
-# Matching trunk quads (4 corner points each) - a plain quad, not jagged, same as the
-# original (see _fruit_tree_bare's own note on why the canopy isn't jagged either).
+# Matching trunk quads (4 corners each) - plain, not jagged, like the canopy (see
+# _fruit_tree_bare).
 _FRUIT_TREE_TRUNK_VARIANTS = [
     [(29, 44), (35, 44), (35, GROUND_CONTACT_Y), (29, GROUND_CONTACT_Y)],
     [(27, 44), (32, 44), (35, GROUND_CONTACT_Y), (30, GROUND_CONTACT_Y)],
     [(30, 45), (37, 45), (34, GROUND_CONTACT_Y), (27, GROUND_CONTACT_Y)],
 ]
 
-# Fruit spot positions matched to each canopy variant above (same lobe centers, so the
-# dots still land inside the canopy regardless of which variant is showing).
+# Fruit spots per canopy variant (same lobe centres, so the dots land inside whichever canopy
+# shows).
 _APPLE_FRUIT_SPOT_VARIANTS = [
     ((22, 24, 3), (40, 20, 3), (30, 34, 3), (46, 32, 2), (18, 38, 2)),
     ((34, 24, 3), (16, 34, 3), (47, 26, 3), (30, 9, 2), (38, 30, 2)),
@@ -1302,22 +1206,16 @@ _PEAR_FRUIT_SPOT_VARIANTS = [
     ((28, 30, 3), (17, 30, 3), (46, 34, 3), (35, 17, 2), (36, 36, 2)),
 ]
 
-# Branches radiate from the canopy's own centre (like every other lobe-ish shape here),
-# not from the trunk specifically - a real deciduous tree's bare branch tips poke out
-# anywhere around the crown, not only right above the trunk. The canopy union is close
-# to convex (four heavily-overlapping ellipses, no deep notches between lobes), so most
-# angles need almost the same ~20-32 unit reach to clear it (measured by hand by probing
-# every 10 degrees) - two twigs per branch-variant, angles chosen to land in different
-# *places* on the crown per variant (low near the trunk seam, or up near a "shoulder"
-# where the top lobe meets a side lobe) rather than all ending up in the same spot with
-# different noise. Screen-space angles (0 = right, 90 = down, 180 = left, 270 = up,
-# clockwise), from BRANCH_ORIGIN.
+# Branches radiate from the canopy's centre, not the trunk: bare twig tips poke out anywhere
+# around a real crown. The canopy union is nearly convex, so most angles need about the same
+# 20-32 unit reach to clear it; two twigs per variant, at angles that land in different places
+# on the crown. Screen-space degrees (0 = right, 90 = down, 180 = left, 270 = up, clockwise)
+# from BRANCH_ORIGIN.
 BRANCH_ORIGIN = (32, 24)
 _BRANCH_ANGLE_VARIANTS = [
     [70, 110],   # low, near the trunk seam
     [210, 330],  # up near the shoulders, poking out of the crown itself
-    [110, 210],  # one of each, asymmetric - avoid 90/270 (dead centre, right behind the
-                 # trunk's own silhouette - technically drawn, but invisible against it)
+    [110, 210],  # one of each, asymmetric; 90/270 would sit behind the trunk, invisible
 ]
 
 
@@ -1342,13 +1240,10 @@ def _fruit_tree_split(name, variant=0):
 
 
 # ---------------------------------------------------------------- branches (own layer)
-# A branch drawn as a single stick mostly vanishes: the canopy lobes very nearly reach
-# the trunk top already (see _FRUIT_TREE_CANOPY_VARIANTS), so anything routed to stay
-# under them reads as a tiny stub, not a branch. Instead, branches live entirely outside
-# every canopy variant's footprint - like the bare twig tips a real deciduous tree shows
-# poking a little past its own leaf mass - composited on top, never carved against
-# canopy, so no combination of trunk/canopy/branch variant can ever draw one across the
-# leaves.
+# A branch routed under the canopy reads as a stub, since the lobes nearly reach the trunk top
+# (_FRUIT_TREE_CANOPY_VARIANTS). Branches therefore live entirely outside every canopy
+# variant's footprint, like the twig tips past a real tree's leaf mass, composited on top - no
+# trunk/canopy/branch combination can draw one across the leaves.
 
 def _canopy_variant_union():
     mask = None
@@ -1359,13 +1254,10 @@ def _canopy_variant_union():
 
 
 def _twig_anchor(origin, angle_deg, union_mask, margin=2, max_radius=40):
-    """Walks outward from origin at angle_deg (in the 64-unit authored grid) and returns
-    a point margin units past the last radius still inside union_mask - clear of every
-    canopy variant's footprint no matter which one this branch layer ends up paired with
-    at runtime, even when origin itself already sits right at the edge of one of them
-    (the seam by the trunk top, where this is always called from, is exactly such a
-    place). union_mask itself is a full S-by-S array (see ellipse/rect/poly), so each
-    probed point needs scaling up before it can index into it."""
+    """Walks outward from origin at angle_deg (64-unit grid) and returns a point margin units
+    past the last radius still inside union_mask, so the twig clears every canopy variant even
+    when origin sits at the edge of one. union_mask is S-by-S, so probes are scaled up before
+    indexing."""
     ox, oy = origin
     rad = math.radians(angle_deg)
     dx, dy = math.cos(rad), math.sin(rad)
@@ -1379,8 +1271,7 @@ def _twig_anchor(origin, angle_deg, union_mask, margin=2, max_radius=40):
 
 
 def _twig_tuft(anchor_x, anchor_y, angle_deg, spread_deg, length, width, rng):
-    """A small two-pronged twig - two thin diverging strokes from one anchor point,
-    reading more clearly as "a small branch" than a single stick would."""
+    """A two-pronged twig - reads as a branch where a single stick would not."""
     mask = None
     for sign in (-1, 1):
         rad = math.radians(angle_deg + (sign * spread_deg / 2))
@@ -1398,11 +1289,9 @@ def _twig_tuft(anchor_x, anchor_y, angle_deg, spread_deg, length, width, rng):
 
 
 def _generic_tree_branch_layer(branch_variant):
-    """Generic, kind-independent: one branches.png (plus _v1/_v2) shared by every kind
-    that uses the fruit-tree canopy shape (apple, pear, deciduous_tree - see
-    ResourceNodeView.BranchesTexturePathFor), rather than a separate, near-duplicate copy
-    baked per kind. Seeded off a fixed name, not any particular kind's, since the whole
-    point is that it belongs to none of them in particular."""
+    """One branches.png (plus _v1/_v2) shared by every kind with the fruit-tree canopy (apple,
+    pear, deciduous_tree - ResourceNodeView.BranchesTexturePathFor). Seeded off a fixed name,
+    since it belongs to no kind."""
     split_name = _variant_name("tree_branches", branch_variant)
     seed = seed_for(split_name)
     rng = random.Random(seed)
@@ -1422,21 +1311,18 @@ def _generic_tree_branch_layer(branch_variant):
 
 
 def _fruit_tree_bare(name, variant=0):
-    """Shared deciduous canopy for the fruit-tree sprites - only the fruit color/
-    placement differs between kinds, so the two trees stay readable as "the same kind
-    of tree" at a glance. The canopy is a union of ellipses, not jagged (see the note
-    above jagged_poly) - rough_outline alone carries the hand-inked edge.
+    """Shared deciduous canopy for the fruit trees - only the fruit differs, so both read as the
+    same kind of tree. A union of ellipses, not jagged (see the jagged shapes note);
+    rough_outline carries the inked edge.
 
-    This is the WHOLE tree - a picked-clean node renders exactly this, with no fruit.
-    _fruit_overlay is a second, separately composited layer (see ResourceNodeView) so a
-    node with no stock left doesn't need its own distinct "bare" texture asset."""
+    This is the whole tree: a picked-clean node renders exactly this. _fruit_overlay is a
+    separate layer (ResourceNodeView), so no bare texture per kind is needed."""
     return _fruit_tree_split(name, variant)[0]
 
 
 def _fruit_overlay(name, fruit_color, fruit_spots, variant=0):
-    """Just the fruit dots, on an otherwise-transparent canvas, masked to the same
-    canopy footprint _fruit_tree_bare fills - no outline of its own, since it's always
-    composited on top of the bare tree's already-outlined canopy, never shown alone."""
+    """Only the fruit dots, masked to the canopy footprint; no outline, since it is always
+    composited over the bare tree."""
     seed = seed_for(_variant_name(name, variant))
     c = Canvas(seed)
     canopy = _fruit_tree_canopy(variant)
@@ -1526,9 +1412,8 @@ def pear_tree_fruit_v2():
 
 
 def deciduous_tree():
-    """Same bare-canopy shape and construction as the fruit trees (see _fruit_tree_bare) -
-    purely decorative background filler (TerrainRenderer.ScatterDecoration), not a gameplay
-    resource, so it never needs a fruit overlay."""
+    """The fruit-tree canopy (_fruit_tree_bare) as a wood resource (MapLoader): nothing to
+    pick, so no fruit overlay."""
     return _fruit_tree_bare("deciduous_tree")
 
 
@@ -1569,8 +1454,7 @@ def tree_branches_v2():
 
 
 def bush():
-    """A low, trunkless clump - the same union-of-ellipses construction as the tree
-    canopies, just wider and closer to the ground."""
+    """A low, trunkless clump - the tree canopies' union of ellipses, wider and lower."""
     seed = seed_for("bush")
     c = Canvas(seed)
     foliage = rgb(0.26, 0.36, 0.18)
@@ -1582,8 +1466,8 @@ def bush():
 
 
 def grass():
-    """A handful of jagged blades of varying height and lean - thin enough that
-    rough_outline's ring, not crosshatch density, carries most of the shape's read."""
+    """A few jagged blades of varying height and lean - thin enough that rough_outline's ring,
+    not crosshatch density, carries the read."""
     seed = seed_for("grass")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -1601,8 +1485,7 @@ def grass():
 
 
 def wild_grass():
-    """A denser, wider clump than the terrain-decoration `grass` tuft - reads as a patch
-    worth gathering rather than a stray blade underfoot."""
+    """Denser and wider than the `grass` tuft - a patch worth gathering, not a stray blade."""
     seed = seed_for("wild_grass")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -1620,8 +1503,8 @@ def wild_grass():
 
 
 def _bark_dashes_along(c, bark, x0, x1, ys, rng):
-    """Long broken dashes running the length of a lying trunk - bark grain follows the
-    axis of the wood (this is what the reference log barrels show), not a crosshatch."""
+    """Long broken dashes along a lying trunk - bark grain follows the wood's axis, as in the
+    reference logs, not a crosshatch."""
     for y in ys:
         x = x0 + rng.uniform(0, 3)
         while x < x1:
@@ -1638,9 +1521,8 @@ def _log_knot(c, cx, cy, bark, rng):
 
 
 def tree_stump():
-    """A cut stump: bark rind around a short, slightly flared drum with roots splaying at
-    the base, topped by a foreshortened cut face - a stump is broken/cut, not machined, so
-    it also carries a torn-off splinter at the rim."""
+    """A cut stump: bark rind around a short flared drum with splayed roots, a foreshortened
+    cut face and a torn splinter at the rim - broken, not machined."""
     seed = seed_for("tree_stump")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -1669,9 +1551,8 @@ def tree_stump():
 
 
 def fallen_log():
-    """A log lying on its side - a barrel thick at one end tapering to the other, a
-    snapped branch stub, and the cut end seen obliquely as a narrow upright ellipse (not
-    a full front-facing disc)."""
+    """A lying log: a barrel tapering from one end to the other, a snapped branch stub, and the
+    cut end seen obliquely as a narrow upright ellipse."""
     seed = seed_for("fallen_log")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -1698,8 +1579,7 @@ def fallen_log():
 
 
 def fern():
-    """A low fan of arched fronds radiating from one base point - a fuller forest-floor
-    spray than grass's simple upright tuft."""
+    """A low fan of arched fronds from one base point - fuller than grass's upright tuft."""
     seed = seed_for("fern")
     rng = random.Random(seed)
     c = Canvas(seed)
@@ -1723,9 +1603,8 @@ def fern():
 
 
 def flower():
-    """A short stem topped with a ring of petals around a bright center - the one spot of
-    saturated color the muted palette (docs/Many Winters visual plan, "art constraints")
-    allows, since it's a tiny accent rather than a large area."""
+    """A stem with a ring of petals round a bright centre - the one spot of saturated colour
+    the palette allows (visual plan, "Art constraints"), being a tiny accent."""
     seed = seed_for("flower")
     c = Canvas(seed)
     stem = rgb(0.30, 0.40, 0.20)
@@ -1741,14 +1620,11 @@ def flower():
 
 
 # ---------------------------------------------------------------- clouds
-# The engraved-cloud convention in docs/ZemanConceptArt.png (the sky above the mountains,
-# and the "Unknown" visibility panel) is three things at once, none of which the generic
-# hatch_fill supplies: each round lobe's rim rolls inward into a volute (the curl IS the
-# edge, it doesn't float in the middle of the puff), the shading lines run parallel to
-# the lobe's contour rather than as a diagonal grid, and the whole clump is sheared off
-# flat along its underside. (The reference's trailing wisp tails were tried and dropped -
-# at sprite scale they read as a plate the cloud sat on.) A first pass that just dropped
-# free-standing spirals onto the existing diagonal hatch read as doodles on a rain cloud.
+# The engraved-cloud convention in docs/ZemanConceptArt.png (sky above the mountains, "Unknown"
+# panel) is three things hatch_fill does not supply: each lobe's rim rolls inward into a volute
+# (the curl is the edge, not a doodle in the middle), the shading lines follow the lobe's
+# contour rather than a diagonal grid, and the clump is sheared flat along its underside. The
+# reference's trailing wisp tails read as a plate under the cloud at sprite scale.
 
 
 def _circle_points(cx, cy, r, n=12):
@@ -1757,9 +1633,8 @@ def _circle_points(cx, cy, r, n=12):
 
 
 def _polyline_mask(points, widths):
-    """Rasterise a polyline whose stroke width varies along its length (one width per
-    segment, in grid units) - PIL's line() takes a single width, so it's drawn per
-    segment with round joints."""
+    """A polyline with a per-segment stroke width (grid units); PIL's line() takes one width,
+    so it is drawn per segment with round joints."""
     img = _blank()
     draw = ImageDraw.Draw(img)
     for (x0, y0), (x1, y1), w in zip(points, points[1:], widths):
@@ -1769,11 +1644,10 @@ def _polyline_mask(points, widths):
 
 
 def _cloud_volute(lobe, rim_angle, rng):
-    """One rim curl on a lobe: an inward spiral whose outermost point sits on the lobe's
-    rim at rim_angle, so the outline ink runs straight into it - like a wave crest rolling
-    over. Always rolls 'up and over' first (the way every curl in the reference does),
-    which in y-down screen coordinates means increasing angle on the left side of a lobe
-    and decreasing on the right. Returns (ink_mask, (center_x, center_y, radius))."""
+    """One rim curl: an inward spiral whose outermost point sits on the lobe's rim at rim_angle,
+    so the outline ink runs into it like a wave crest. Always rolls up and over first, which in
+    y-down coordinates means increasing angle on a lobe's left, decreasing on its right.
+    Returns (ink_mask, (center_x, center_y, radius))."""
     cx, cy, r = lobe
     rs = r * rng.uniform(0.38, 0.50)
     ccx = cx + math.cos(rim_angle) * (r - rs - 0.4)
@@ -1794,13 +1668,10 @@ def _cloud_volute(lobe, rim_angle, rng):
 
 
 def _cloud_shade(mask, lobes, volutes, base_color, seed):
-    """Contour hatching for a cloud: every pixel belongs to its nearest lobe and its
-    hatch lines run concentric to that lobe (so they wrap around each puff), dense on the
-    lobe's underside and toward the flat base, sparse on the lit top. Inside a volute the
-    lines run concentric to the spiral instead and darken toward its core, which is what
-    the reference does - the spiral's own turns are its shading. Reuses _hatch_direction's
-    per-line personality (wobble, pen lifts) with polar coordinates in place of the
-    diagonal ones, so the line quality matches every other sprite."""
+    """Contour hatching: each pixel belongs to its nearest lobe and its lines run concentric to
+    it, dense on the underside and toward the base, sparse on the lit top. Inside a volute the
+    lines run concentric to the spiral and darken toward its core. Reuses _hatch_direction with
+    polar coordinates, so the line quality matches every other sprite."""
     ys, xs = np.nonzero(mask)
     if len(xs) == 0:
         return np.zeros((S, S, 3), dtype=np.uint8)
@@ -1825,15 +1696,14 @@ def _cloud_shade(mask, lobes, volutes, base_color, seed):
         rel_x = np.where(sel, dx / r, rel_x)
         rel_y = np.where(sel, dy / r, rel_y)
 
-    # Each lobe is clean paper from its crown down to just past its equator, then the
-    # contour lines gather along its underside - a puff, not a target. The whole clump
-    # darkens only gently toward the shelf it sits on.
+    # Clean paper from crown to just past the equator, then contour lines gather on the
+    # underside - a puff, not a target. The clump darkens only gently toward its shelf.
     t_glob = np.clip((_YY - y0) / max(y1 - y0, 1), 0.0, 1.0)
     t_lobe = np.clip((rel_y + 0.05) / 0.95, 0.0, 1.0)
     tone = 0.10 + 0.32 * t_lobe ** 1.4 + 0.06 * np.clip(rel_x, 0.0, 1.0) * t_lobe + 0.10 * t_glob ** 2
 
-    # inside a volute the spiral's own turns do the drawing - paper between them, a
-    # tight dark knot only at the very core
+    # inside a volute the spiral's turns do the drawing: paper between them, a dark knot at the
+    # core
     in_volute = np.zeros((S, S), dtype=bool)
     for ccx, ccy, rs in volutes:
         dx, dy = px - ccx, py - ccy
@@ -1847,16 +1717,14 @@ def _cloud_shade(mask, lobes, volutes, base_color, seed):
 
     tone = np.clip(tone, 0.0, 0.86)
     salt = (seed % 97) * 11
-    # thinner than hatch_fill's 1.3 - contour lines that thicken into bands stop reading
-    # as separate pen strokes wrapping the puff
+    # thinner than hatch_fill's 1.3: contour lines that thicken into bands stop reading as pen
+    # strokes
     line_a = _hatch_direction(contour, along, tone, 0.95, 0.12, salt + 1)
     line_b = _hatch_direction(_XX + _YY, _XX - _YY, tone, 2.0, 0.60, salt + 11)
 
-    # hatch_fill's own diagonal crosshatch (upper-left lit, lower-right shadowed) laid
-    # over the contour lines - the same tone-by-line-density that every other sprite
-    # carries, so the clouds sit in the same drawing. Kept out of the volute discs so the
-    # spirals stay legible, and a touch lighter than hatch_fill's full 0.86 since the
-    # contour lines already add ink on the undersides.
+    # hatch_fill's diagonal crosshatch over the contour lines, so the clouds sit in the same
+    # drawing as every other sprite. Kept out of the volute discs, and lighter than
+    # hatch_fill's 0.86 since the contour lines already ink the undersides.
     diag = max((x1 - x0) + (y1 - y0), 1)
     diag_tone = np.clip(((_XX - x0) + (_YY - y0)) / diag, 0.0, 1.0) * 0.58
     line_c = _hatch_direction(_XX - _YY, _XX + _YY, diag_tone, 1.3, 0.12, salt + 21)
@@ -1872,10 +1740,9 @@ def _cloud_shade(mask, lobes, volutes, base_color, seed):
 
 
 def _cloud(name, lobes, base_y, rng):
-    """A clump of round lobes (cx, cy, r) sheared off flat along base_y, each lobe's outer
-    rim rolling into a volute (see the section comment above). Not grounded - CloudScatter.cs floats
-    these at a fixed height band well above the terrain. Kept deliberately muted/cool
-    (not white) - a flat white read as snow instead of cloud once it had shading."""
+    """Round lobes (cx, cy, r) sheared flat along base_y, outer rims rolling into volutes. Not
+    grounded: CloudScatter.cs floats these well above the terrain. Muted and cool, not white -
+    shaded white read as snow."""
     seed = seed_for(name)
     c = Canvas(seed)
     paper = rgb(0.70, 0.73, 0.78)
@@ -1884,22 +1751,21 @@ def _cloud(name, lobes, base_y, rng):
     for cx, cy, r in lobes:
         mask |= poly(jagged_poly(_circle_points(cx, cy, r), rng, amp=r * 0.07,
                                  segments_per_edge=3, smooth_passes=2))
-    # flat, slightly wavy underside - the reference clouds sit on a shelf, they aren't
-    # round all the way around
+    # flat, slightly wavy underside - the reference clouds sit on a shelf
     wave = 0.7 * np.sin(_XX / SCALE * 0.55 + rng.uniform(0, 6.28))
     mask &= (_YY / SCALE) <= base_y + wave
 
     cloud_cx = sum(cx for cx, _, _ in lobes) / len(lobes)
     volutes, ink = [], np.zeros((S, S), dtype=bool)
     for i, (cx, cy, r) in enumerate(lobes):
-        # curls sit on each lobe's OUTER upper flank (away from the cloud's middle), the
-        # side the wind would roll; the biggest lobe always gets one, the rest usually
+        # curls sit on each lobe's outer upper flank, the side the wind would roll; the biggest
+        # lobe always gets one, the rest usually
         biggest = r == max(l[2] for l in lobes)
         if not biggest and rng.random() > 0.8:
             continue
         outward_left = cx < cloud_cx - 2 or (abs(cx - cloud_cx) <= 2 and rng.random() < 0.5)
-        # a rim point buried inside a neighbouring lobe can't roll - try a few spots
-        # along the outer flank, then the other flank, before giving up on this lobe
+        # a rim point buried inside a neighbouring lobe cannot roll - try the outer flank, then
+        # the other, before giving up on this lobe
         rim_angle = None
         for attempt in range(8):
             left = outward_left if attempt < 4 else not outward_left
@@ -1923,9 +1789,8 @@ def _cloud(name, lobes, base_y, rng):
     return c
 
 
-# Three independent lobe layouts (not one shape re-scaled) so a scatter of these reads as
-# a genuinely varied sky rather than the same puff resized - same "distinct hand-authored
-# variants, blended per instance" reasoning as the robe silhouettes above.
+# Three independent lobe layouts, not one shape rescaled, so a scatter reads as a varied sky -
+# the same reasoning as ROBE_VARIANTS.
 def cloud_1():
     rng = random.Random(seed_for("cloud_1"))
     return _cloud("cloud_1", [(31, 31, 13), (17, 38, 9), (45, 35, 10), (55, 41, 6)],
@@ -1945,9 +1810,8 @@ def cloud_3():
 
 
 def selection_marker():
-    """A bright downward-pointing marker floated above a selected unit's head - a flat
-    engraved emblem, not a physical object, so it keeps a clean triangle (only a whisper
-    of jag) rather than a hand-cut/organic edge."""
+    """A downward-pointing marker above a selected unit's head - a flat engraved emblem, so a
+    clean triangle with only a whisper of jag."""
     seed = seed_for("selection_marker")
     rng = random.Random(seed)
     c = Canvas(seed)

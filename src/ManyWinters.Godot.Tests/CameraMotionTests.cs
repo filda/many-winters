@@ -12,16 +12,14 @@ public class CameraMotionTests
     [Fact]
     public void HoldingZoomForASecondMultipliesTheDistanceByTheRate()
     {
-        // Multiplicative, not additive: a second of zoom out is 2.5x further away, wherever it
-        // started. Ten metres becomes twenty-five, not twelve and a half.
+        // Multiplicative, not additive: ten metres becomes twenty-five, not twelve and a half.
         Assert.Equal(25f, CameraMotion.Zoomed(10f, 1f, Rate, MinZoom, MaxZoom), 4);
     }
 
     [Fact]
     public void ZoomingInIsTheExactInverseOfZoomingOut()
     {
-        // A second out then a second in has to land back where it started, or repeated
-        // wheel-up/wheel-down would drift.
+        // Out then in has to land back where it started, or repeated wheel use would drift.
         var out1 = CameraMotion.Zoomed(10f, 1f, Rate, MinZoom, MaxZoom);
 
         Assert.Equal(10f, CameraMotion.Zoomed(out1, -1f, Rate, MinZoom, MaxZoom), 4);
@@ -43,8 +41,7 @@ public class CameraMotionTests
     [Fact]
     public void ASmallStepZoomsBySmallerThanTheFullRate()
     {
-        // A mouse notch is a fraction of a second's worth of the held-key rate, so it lands
-        // between "no change" and a full second of zoom.
+        // A mouse notch is a fraction of a second's worth of the held-key rate.
         var notch = CameraMotion.Zoomed(10f, 0.05f, Rate, MinZoom, MaxZoom);
 
         Assert.True(notch > 10f);
@@ -62,8 +59,8 @@ public class CameraMotionTests
     [Fact]
     public void TheOffsetDirectionSplitsIntoHeightAndDistanceByTheTiltAngle()
     {
-        // Thirty degrees deliberately, not forty-five: there sine and cosine are equal, so
-        // swapping the two components would go unnoticed.
+        // Thirty degrees, not forty-five: there sine and cosine are equal and a swap would go
+        // unnoticed.
         var direction = CameraMotion.OffsetDirection(30f);
 
         Assert.Equal(0f, direction.X, 5);
@@ -83,8 +80,7 @@ public class CameraMotionTests
     [Fact]
     public void ALowerTiltSitsLowerAndFurtherBack()
     {
-        // Height and horizontal distance come off the same angle, so they trade against each
-        // other - dropping the tilt has to do both at once, not just one.
+        // Height and horizontal distance come off the same angle, so dropping the tilt does both.
         var low = CameraMotion.OffsetDirection(20f);
         var high = CameraMotion.OffsetDirection(60f);
 
@@ -103,9 +99,7 @@ public class CameraMotionTests
     [Fact]
     public void PanFollowsTheRigWhenItHasBeenRotated()
     {
-        // The point of using the rig's basis at all: after turning the view a quarter turn,
-        // "forward" is a different world direction, and panning has to follow the view rather
-        // than the world's axes.
+        // After a quarter turn "forward" is a different world direction; panning follows the view.
         var turned = new Basis(Vector3.Up, Mathf.DegToRad(90f));
 
         var velocity = CameraMotion.PanVelocity(turned, new Vector2(0f, 1f), 10f);
@@ -152,8 +146,8 @@ public class CameraMotionTests
     [Fact]
     public void EasingClosesAboutTwoThirdsOfTheGapInOneTimeConstant()
     {
-        // 1/easeRate is the time constant, so a tenth of a second at rate 10 should close
-        // 1 - 1/e of the way - the property the comment on the constant claims.
+        // 1/easeRate is the time constant, so a tenth of a second at rate 10 closes 1 - 1/e of
+        // the gap.
         var eased = CameraMotion.Eased(Vector3.Zero, new Vector3(10f, 0f, 0f), 10f, 0.1f);
 
         Assert.Equal(6.3212056f, eased.X, 4);
@@ -189,8 +183,7 @@ public class CameraMotionTests
     [Fact]
     public void ACameraInsideABumpIsLiftedToTheClearanceAboveIt()
     {
-        // Only a little: the point is to stop the view ending up under the terrain, not to
-        // shove the camera away from it.
+        // Only a little: the point is to keep the view above the terrain, not shove it away.
         Assert.Equal(2.3f, CameraMotion.ClearedHeight(2.1f, 2f, 0.3f), 5);
     }
 

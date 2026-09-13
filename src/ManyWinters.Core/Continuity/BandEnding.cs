@@ -3,55 +3,48 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// The facts an inscription over a band's end is written from (see Epitaph) - what ended, when,
-// who died last, who is left, what they left in the ground. A snapshot computed from the
-// world's own people and graves, never stored: the record of a band is its graves (see
-// docs/chronicles-and-memory-architecture.md), and this only reads them.
+// The facts an epitaph is written from (see Epitaph): what ended, when, who died last, who is
+// left, what lies in the ground. Computed from the world's people and graves, never stored
+// (see docs/chronicles-and-memory-architecture.md).
 public sealed record BandEnding
 {
-    // The band arrived with the world. When a later band arrives into a world an earlier one
-    // died in (the permaworld item in docs/todo/todo.md), this becomes that band's own
-    // arrival tick instead of a constant.
+    // When a later band arrives into a world an earlier one died in (docs/todo/todo.md,
+    // "Another band comes"), this becomes that band's own arrival tick.
     private const long FoundingTick = 0;
 
-    // Never Living: a band whose line can still go on has no ending to write about, and Of
-    // says so with null rather than with a record full of blanks.
+    // Never Living: Of returns null for a band whose line can still go on.
     public required BandFate Fate { get; init; }
 
     public required string BandName { get; init; }
 
-    // Whose death ended the line: the last man for SpearSideEnded, the last woman for
-    // SpindleSideEnded, the last of everyone for Ended. Null only when nobody of that sex ever
-    // belonged to the band, so there was no death to end it - a line that was never open.
+    // The last man for SpearSideEnded, the last woman for SpindleSideEnded, the last of everyone
+    // for Ended. Null only when nobody of that sex ever belonged to the band.
     public required Person? LastToDie { get; init; }
 
     public required long EndingTick { get; init; }
 
     public required Season SeasonOfEnding { get; init; }
 
-    // Winters that began between the band's arrival and its ending, inclusive of one it died
-    // in - "nine winters they saw" counts the one that killed them.
+    // Winters that began between arrival and ending, including the one the band died in.
     public required int WintersSeen { get; init; }
 
     public required int Survivors { get; init; }
 
-    // Children born into the band, as opposed to the people it arrived with.
+    // Children born into the band, not the people it arrived with.
     public required int Born { get; init; }
 
     public required int Graves { get; init; }
 
     public required int MarkedGraves { get; init; }
 
-    // Dead who lie where they fell. At least one whenever the band has Ended: the last to die
-    // had nobody left to bury them.
+    // Dead who lie where they fell. At least one when the band has Ended: nobody buried the last.
     public required int Unburied { get; init; }
 
-    // For a band that has Ended: which of its two lines closed first, or null when both closed
-    // at once (a last couple dying the same tick). Null too while only one of them has.
+    // Which line closed first. Null unless the band has Ended, and null when both lines closed
+    // the same tick.
     public required BandFate? SideThatEndedFirst { get; init; }
 
-    // Winters that began after that first line closed and before the band ended - how long the
-    // survivors of one sex kept going with no child to hope for.
+    // Winters that began after the first line closed and before the band ended.
     public required int WintersKeptAfterwards { get; init; }
 
     public static BandFate FateOf(IEnumerable<Person> people)
@@ -131,9 +124,8 @@ public sealed record BandEnding
         };
     }
 
-    // The most recent death among these people, or null when none of them is dead. Two who
-    // died the same tick are told apart by name and then id, as BandName does, so the answer
-    // does not depend on list order.
+    // The most recent death, or null when nobody is dead. Same-tick deaths are ordered by name
+    // then id, as BandName does, so the answer does not depend on list order.
     // Stryker disable Linq: which of two same-named ids wins the tie is arbitrary; only that the
     // same one wins from either list order matters
     private static Person? LastToDieAmong(IEnumerable<Person> people) =>
@@ -148,10 +140,8 @@ public sealed record BandEnding
 
     private static long? DeathTickOf(Person? person) => person?.DeathTick;
 
-    // How many winters began in the closed tick range [from, to]: the season that starts at
-    // each multiple of TicksPerSeason inside it, counted when it is Winter. A loop over season
-    // starts rather than a closed form - a band lives a few hundred seasons at most, and the
-    // arithmetic of "which quarter-years fall in here" is easier to get wrong than to run.
+    // Winters that began in the closed tick range [from, to]; seasons start at multiples of
+    // TicksPerSeason. A loop rather than a closed form: a band lives a few hundred seasons at most.
     private static int WintersBegunWithin(SimulationRules rules, long from, long to)
     {
         var winters = 0;

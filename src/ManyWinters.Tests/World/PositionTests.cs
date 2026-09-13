@@ -59,8 +59,8 @@ public class PositionTests
     [Fact]
     public void ApproachStaysPutWhenExactlyAtTheStandoff()
     {
-        // Exactly the standoff away is already the destination - walking there would be a
-        // zero-length move, so it's the start itself, not a recomputed copy of it.
+        // Exactly the standoff away is already the destination: the start itself, not a
+        // recomputed copy of it.
         var from = new Position(Target.X + 1.2, Target.Y);
 
         Assert.Equal(from, Position.Approach(from, Target, 1.2));
@@ -69,8 +69,7 @@ public class PositionTests
     [Fact]
     public void ApproachStaysPutWhenStandingOnTheTarget()
     {
-        // Distance zero has no direction to back off along - rather than dividing by it, the
-        // walker simply stays where they are.
+        // Distance zero has no direction to back off along; stay put rather than divide by it.
         var approach = Position.Approach(Target, Target, 1.2);
 
         Assert.Equal(Target, approach);

@@ -3,9 +3,8 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// Per-instance variety keyed off an entity's stable id. The values are behaviour, not
-// implementation detail: a saved world has to look the same when reloaded, so regenerate these
-// deliberately if the variation is meant to change rather than relaxing them.
+// Per-instance variety keyed off an entity's stable id. The fixed values are behaviour: a saved
+// world has to look the same when reloaded, so regenerate them deliberately rather than relaxing.
 public class EntityVisualVariationTests
 {
     [Fact]
@@ -21,8 +20,7 @@ public class EntityVisualVariationTests
     [Fact]
     public void TintLeavesSaturationAndAlphaAlone()
     {
-        // Only hue and brightness are varied - touching saturation would drift a kind's colour
-        // identity, and touching alpha would fight the occlusion fade.
+        // Saturation would drift a kind's colour identity; alpha would fight the occlusion fade.
         var baseColor = Color.FromHsv(0.3f, 0.6f, 0.5f, 0.75f);
 
         var tinted = EntityVisualVariation.Tint(baseColor, seed: 42);
@@ -34,9 +32,8 @@ public class EntityVisualVariationTests
     [Fact]
     public void AHueShiftedPastTheEndOfTheWheelWrapsAroundInsteadOfSaturating()
     {
-        // Base hue 0.995 plus this seed's positive shift lands past 1. Hue is a wheel, so it
-        // has to come back round to just above 0 - clamping instead would pin every red-ish
-        // entity to the exact same hue.
+        // Base hue 0.995 plus this seed's positive shift passes 1; hue is a wheel, so it wraps
+        // rather than clamps.
         var tinted = EntityVisualVariation.Tint(Color.FromHsv(0.995f, 0.6f, 0.5f), seed: 42);
 
         Assert.Equal(0.0084486f, tinted.H, 5);
@@ -78,8 +75,8 @@ public class EntityVisualVariationTests
     [Fact]
     public void ARangeWithNoWidthGivesExactlyThatValue()
     {
-        // Degenerate but reachable from content: min and max equal means no variety at all,
-        // not a value drifting off one end.
+        // Reachable from content: equal min and max means no variety, not a value drifting off
+        // one end.
         Assert.Equal(0.9f, EntityVisualVariation.Scale(42, 0.9f, 0.9f), 5);
     }
 
@@ -89,18 +86,16 @@ public class EntityVisualVariationTests
     [InlineData(3, 0.7406873f)]
     public void EachSaltDrawsItsOwnValueFromTheSameSeed(int salt, float expected)
     {
-        // A person's walk rate, bob and rock all come off one id - without a per-attribute
-        // salt they would be the same underlying draw, just rescaled, so the three would move
-        // in lockstep.
+        // A person's walk rate, bob and idle bob all come off one id; without a per-attribute
+        // salt they would be the same draw rescaled and move in lockstep.
         Assert.Equal(expected, EntityVisualVariation.RangeFor(42, salt, 0f, 1f), 5);
     }
 
     [Fact]
     public void AdjacentSeedsComeOutFarApartRatherThanNearlyIdentical()
     {
-        // The whole reason for avalanching seed and salt first: System.Random on neighbouring
-        // small seeds draws eerily similar first values, and two entity ids can land next to
-        // each other. Without it, two trees spawned in a row would look like copies.
+        // Seed and salt are avalanched first: System.Random on neighbouring small seeds draws
+        // near-identical first values, and adjacent entity ids would look like copies.
         var first = EntityVisualVariation.RangeFor(1, 0, 0f, 1f);
         var second = EntityVisualVariation.RangeFor(2, 0, 0f, 1f);
 
@@ -110,9 +105,8 @@ public class EntityVisualVariationTests
     [Fact]
     public void RangeForScalesTheDrawAcrossTheWidthAndOffsetsItByTheMinimum()
     {
-        // Deliberately not 0..1, where the width is 1 and the offset 0 - there, multiplying by
-        // the width, dividing by it, and using max + min instead all give the same answer, so
-        // the arithmetic goes untested. Two to six is the same draw (0.538) placed at 4.152.
+        // Not 0..1, where width 1 and offset 0 let several wrong formulas give the right answer.
+        // Two to six is the same draw (0.538) placed at 4.152.
         Assert.Equal(4.1521986f, EntityVisualVariation.RangeFor(42, 1, 2f, 6f), 5);
     }
 
@@ -139,8 +133,8 @@ public class EntityVisualVariationTests
     [Fact]
     public void EveryOptionGetsPickedBySomeSeedAndNoneOutOfRange()
     {
-        // A hairstyle or clothing option nobody ever draws is content that never appears in
-        // the game, and one past the end is an index out of range on the array it selects from.
+        // An option no seed ever draws is content that never appears; one past the end is an
+        // index out of range.
         var seen = new HashSet<int>();
         for (var seed = 0; seed < 500; seed++)
         {

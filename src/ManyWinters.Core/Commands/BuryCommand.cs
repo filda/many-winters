@@ -10,8 +10,7 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
     private const float SkillGainPerBurial = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
-    // stated as the number of tries it stands for rather than as a level.
+    // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     private static readonly SkillTypeId BurialSkill = new("burial");

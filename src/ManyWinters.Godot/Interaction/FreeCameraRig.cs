@@ -4,17 +4,13 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Interaction;
 
-// Free pan/zoom/rotate camera (visual plan "Confirmed design decisions: Camera"). Shared by
-// TerrainSandbox.cs and Main.cs so both get identical camera behavior over real terrain.
-// Perspective is the default projection (settled by direct comparison in the sandbox, see
-// docs/terrain-and-world-scale-architecture.md); orthographic stays available via ToggleProjection
-// for future comparison.
+// Free pan/zoom/rotate camera shared by TerrainSandbox and Main. Perspective is the default
+// projection (compared directly in the sandbox, see docs/terrain-and-world-scale-architecture.md);
+// orthographic stays available via ToggleProjection.
 public sealed class FreeCameraRig
 {
-    // Pan speed scales with the current zoom distance rather than being a fixed
-    // units/second value - the zoom range here spans 3 to 2000 (a ~700x range), so a fixed
-    // speed feels glacial zoomed out and wildly oversized zoomed in, the same reason zoom
-    // itself is multiplicative rather than additive.
+    // Pan speed scales with zoom distance: the zoom range spans 3 to 2000, so a fixed speed is
+    // glacial zoomed out and wild zoomed in - the same reason zoom is multiplicative.
     private const float PanSpeedPerZoomUnit = 1f;
     // How fast velocity eases toward its target - higher = snappier, lower = floatier.
     // 1/PanEaseRate is roughly the time constant (seconds) to close ~63% of the gap.
@@ -28,25 +24,16 @@ public sealed class FreeCameraRig
     private const float MouseRotateRadiansPerPixel = 0.005f;
     private const float MouseTiltDegreesPerPixel = 0.15f;
 
-    // Degrees of elevation above the rig's horizontal plane. Height above ground and
-    // horizontal distance from the target both derive from this same angle and ZoomDistance
-    // (height = zoomDistance * sin, distance = zoomDistance * cos) - lowering it from the
-    // original 45 (matching the old fixed Vector3(0, 1, 1) direction) is what drops the
-    // default view's height while pushing its horizontal distance out a little, since sin
-    // falls and cos rises together as the angle shrinks. The clamp keeps the view from ever
-    // going fully overhead or fully edge-on, both of which break the billboard/cutout
-    // illusion. The upper bound matters more now that every sprite uses FixedY billboarding
-    // (see BillboardSprite.cs): that mode only ever yaws to face the camera's *horizontal*
-    // direction, so looking straight down (90 deg) leaves nothing to yaw toward - every
-    // sprite would render edge-on and vanish. 70 keeps a comfortable margin below that
-    // degenerate case.
+    // Degrees of elevation above the rig's plane; height = zoom * sin, distance = zoom * cos.
+    // The clamp keeps the view from going fully overhead or edge-on, both of which break the
+    // cutout illusion. The upper bound matters most: FixedY billboards (see BillboardSprite) only
+    // yaw toward the camera's horizontal direction, so at 90 deg every sprite renders edge-on.
     private const float DefaultTiltDegrees = 20f;
     private const float MinTiltDegrees = 12f;
     private const float MaxTiltDegrees = 70f;
     private const float TiltSpeedDegreesPerSecond = 45f;
 
-    // Minimum clearance the camera itself keeps above the ground directly under it - see
-    // UpdateCamera's own doc comment.
+    // Minimum clearance the camera keeps above the ground directly under it - see UpdateCamera.
     private const float MinCameraGroundClearance = 0.3f;
 
     private readonly Node3D _rig;
@@ -63,24 +50,17 @@ public sealed class FreeCameraRig
 
     public Vector3 CameraGlobalPosition => _camera.GlobalPosition;
 
-    // Where the camera is actually looking (its orbit/pan target) - a fallback line-of-sight
-    // target for Main's occlusion fade when nothing is selected to check occlusion against
-    // instead.
+    // The orbit/pan target - Main's fallback line-of-sight target for the occlusion fade when
+    // nothing is selected.
     public Vector3 RigGlobalPosition => _rig.GlobalPosition;
 
-    // For screen-space projection (Main's selection marker overlay) - UnprojectPosition/
-    // IsPositionBehind aren't exposed any other way.
+    // For screen-space projection (Main's selection marker, click radius) - UnprojectPosition and
+    // IsPositionBehind are not exposed any other way.
     public Camera3D Camera => _camera;
 
     // sampleHeight: the same ground-height function everything else on the ground uses
-    // (TerrainRenderer.SampleHeight) - the rig only ever moves in Main's/TerrainSandbox's
-    // XZ plane on its own (panning), so without this its own Y stays frozen at wherever it
-    // started forever, drifting away from the real terrain height under it as soon as it
-    // pans anywhere the ground isn't at exactly that same height. Harmless-looking on the
-    // old, gentle real elevation (drifts slowly over a large distance); a lot more obvious
-    // once the ground itself got a deliberately short-wavelength bump on top (todo:
-    // "použít Perlinův šum na lehkou modifikaci terénu") - the camera could end up visibly
-    // under a nearby bump after nothing more than ordinary panning.
+    // (TerrainRenderer.SampleHeight). Panning only moves the rig in XZ, so without it the rig's Y
+    // stays frozen where it started and the camera ends up under a nearby bump after panning.
     public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom, Func<float, float, float> sampleHeight)
     {
         _minZoom = minZoom;
@@ -92,20 +72,13 @@ public sealed class FreeCameraRig
         _rig = new Node3D { Position = initialPosition };
         parent.AddChild(_rig);
 
-        // Near matters as much as Far for depth buffer precision - it's the Far/Near *ratio*
-        // that determines how much of the buffer's precision actually lands in the distances
-        // gameplay cares about (tens to a couple hundred meters), not Far alone. The engine
-        // default Near (0.05) against this Far gave a 100,000:1 ratio - so little precision
-        // remained by the time a background tree's own depth got encoded that
-        // FogOfWarRenderer's depth-reconstruction shaders (fog_of_war_screen.gdshader,
-        // fog_of_war_remembered.gdshader) recovered visibly wrong world positions for some of
-        // its pixels, cutting a flat "ceiling" through unrelated tree canopies at a roughly
-        // consistent height. 0.5 cuts that ratio by 10x - nothing in this game is ever
-        // legitimately closer to the camera than that anyway.
-        // CullMask excludes CloudFogMask.CloudLayerBit - that layer holds only
-        // CloudScatter's mask-only proxies (cloud_mask_proxy.gdshader's flat flag-color
-        // stand-ins), never meant to be seen directly; the default cull mask (every bit
-        // set) would otherwise render them right on top of each real cloud sprite.
+        // Depth precision depends on the Far/Near ratio, not Far alone. The engine default Near
+        // (0.05) against this Far gave 100,000:1 - so little precision remained at background-tree
+        // depths that FogOfWarRenderer's depth-reconstruction shaders (fog_of_war_screen.gdshader,
+        // fog_of_war_remembered.gdshader) cut a flat "ceiling" through unrelated canopies. 0.5 cuts
+        // the ratio 10x; nothing is ever legitimately closer to the camera than that.
+        // CullMask excludes CloudFogMask.CloudLayerBit: that layer holds only CloudScatter's
+        // mask-only cloud proxies, which the default mask would draw on top of each real cloud.
         _camera = new Camera3D { Far = 5000f, Near = 0.5f, CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit };
         _rig.AddChild(_camera);
         UpdateCamera();
@@ -146,11 +119,8 @@ public sealed class FreeCameraRig
         _panVelocity = CameraMotion.Eased(_panVelocity, targetPanVelocity, PanEaseRate, delta);
         _rig.Position += _panVelocity * delta;
 
-        // Every frame, not just while a pan key is actually held - the cheapest way to
-        // guarantee the rig's own Y never drifts from the real ground height under it,
-        // regardless of how it got to its current (X, Z) (also self-heals a rig that
-        // somehow started off already wrong, rather than only ever getting it right on the
-        // next pan).
+        // Every frame, not only while a pan key is held: the rig's Y never drifts from the ground
+        // under it however it got to this (X, Z), and a rig that started wrong self-heals.
         var rigPosition = _rig.Position;
         rigPosition.Y = _sampleHeight(rigPosition.X, rigPosition.Z);
         _rig.Position = rigPosition;
@@ -203,18 +173,14 @@ public sealed class FreeCameraRig
             _tiltDegrees = CameraMotion.Tilted(_tiltDegrees, tiltDirection * TiltSpeedDegreesPerSecond * delta, MinTiltDegrees, MaxTiltDegrees);
         }
 
-        // Unconditional, every frame - not just when zoom/tilt actually changed this frame.
-        // UpdateCamera repositions the camera relative to the rig AND re-checks its own
-        // ground clearance (see its own doc comment) - while that clamp only ran on zoom/
-        // tilt input, ordinary WASD panning could carry the camera briefly *into* a bump
-        // between one of those and the next, with nothing there to catch and correct it
-        // until the player happened to also zoom or tilt.
+        // Unconditional: UpdateCamera also re-checks the camera's ground clearance, and while that
+        // ran only on zoom/tilt input, WASD panning could carry the camera into a bump with nothing
+        // to correct it until the player happened to zoom or tilt.
         UpdateCamera();
     }
 
-    // Mouse-driven camera control: right-drag rotates/tilts, wheel zooms. Callers forward
-    // their raw _Input/_UnhandledInput events here so both Main.cs and TerrainSandbox.cs get
-    // identical mouse behavior alongside HandleInput's keyboard handling.
+    // Right-drag rotates/tilts, wheel zooms. Callers forward raw _Input/_UnhandledInput events so
+    // Main and TerrainSandbox get identical mouse behavior alongside HandleInput's keyboard.
     public void HandleMouseInput(InputEvent @event)
     {
         switch (@event)
@@ -268,11 +234,8 @@ public sealed class FreeCameraRig
         _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
         _camera.Size = _orthographicSize;
 
-        // Belt-and-suspenders on top of HandleInput's own rig ground-following above - the
-        // camera sits at an offset from the rig (elevated, pulled back), so it's normally
-        // well clear of the ground even where the rig itself sits right at it, but a close,
-        // low tilt angle can still put the camera's own (X, Z) over a nearby bump the rig
-        // isn't directly on top of.
+        // Belt-and-suspenders on top of HandleInput's rig ground-following: the camera sits offset
+        // from the rig, and a close, low tilt can put its own (X, Z) over a bump the rig is not on.
         var globalPosition = _camera.GlobalPosition;
         var cleared = CameraMotion.ClearedHeight(globalPosition.Y, _sampleHeight(globalPosition.X, globalPosition.Z), MinCameraGroundClearance);
         if (cleared > globalPosition.Y)

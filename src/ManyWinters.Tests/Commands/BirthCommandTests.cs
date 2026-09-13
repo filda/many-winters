@@ -37,9 +37,8 @@ public class BirthCommandTests
         var world = TestCatalogs.CreateWorld();
         var mother = SpawnMother(world, new Position(0, 0));
         var father = SpawnFather(world, new Position(1, 0));
-        // The clock alone, not a full Advance: fifty simulated ticks would also have the two
-        // of them wander apart, and the birth would then be refused for being out of reach -
-        // which is DoesNothingWhenTheParentsAreNotStandingTogether's job, not this one's.
+        // The clock alone, not a full Advance: fifty ticks would also have the parents wander
+        // apart, and the birth would then be refused for being out of reach (another test's job).
         world.Clock.Advance(50);
 
         world.Execute(new BirthCommand("Bran", mother, father));
@@ -159,8 +158,7 @@ public class BirthCommandTests
         Assert.Equal(2, world.People.Count);
     }
 
-    // The gate is a floor on childhood, not a fertility model - see
-    // WorldState.IsOldEnoughForChildren.
+    // A floor on childhood, not a fertility model - see WorldState.IsOldEnoughForChildren.
     [Fact]
     public void EldersCanStillHaveChildren()
     {
@@ -214,9 +212,8 @@ public class BirthCommandTests
         Assert.Equal(4, world.People.Count);
     }
 
-    // The gate is "can this mother feed someone right now", not "has she ever given birth" - a
-    // mother whose infant has ended up out of reach is a mother whose infant is already
-    // starving, and BirthCommand is not the place that notices.
+    // The gate is "can this mother feed someone right now", not "has she ever given birth"; an
+    // infant out of reach is already starving, and BirthCommand is not where that is noticed.
     [Fact]
     public void AllowsAnotherChildWhileTheFirstIsOutOfReach()
     {

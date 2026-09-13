@@ -32,17 +32,15 @@ public sealed record PersonSaveData(
     long? DeathTick,
     DeathCause? CauseOfDeath,
     bool IsBuried,
-    // Guid.Empty is Person.Unknown - the only id a Person can carry without being in People
-    // or Forebears (see Person.Unknown).
+    // Guid.Empty is Person.Unknown, the only Person outside People and Forebears.
     Guid MotherId,
     Guid FatherId,
-    // Stored rather than re-derived from the id on load: it usually would come out the same
-    // (see Person.Sex), but MapLoader pins it for the starting band, and a pinned sex has to
-    // survive a reload.
+    // Stored, not re-derived from the id: MapLoader pins the starting band's sex, and a pinned
+    // sex has to survive a reload (see Person.Sex).
     Sex Sex);
 
-// One bond, written once per pair rather than once per direction - Affections is symmetric,
-// and which of the two ids is A is whatever order it happened to store them in.
+// One bond per pair, not per direction - Affections is symmetric; which id is A is storage
+// order.
 public sealed record AffectionSaveData(Guid PersonA, Guid PersonB, float Value);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);

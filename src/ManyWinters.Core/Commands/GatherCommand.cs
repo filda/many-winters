@@ -10,8 +10,7 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
     private const float SkillGainPerGather = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
-    // stated as the number of tries it stands for rather than as a level.
+    // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     public void Execute(WorldState world)
@@ -25,8 +24,8 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
         var skill = resource.Skill;
         var skillDefinition = world.Configuration.SkillCatalog.Get(skill);
-        // Never self-taught, unlike the efficient technique below - has to come from the
-        // player or another person first (see SkillDefinition.BaseTechnique's own doc comment).
+        // Never self-taught, unlike the efficient technique: it has to be taught first
+        // (see SkillDefinition.BaseTechnique).
         if (!Person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
         {
             return;
@@ -47,20 +46,14 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
 
         if (resource.YieldsItem is { } item)
         {
-            // A hungry picker eats as they go ("straight into the mouth") before pocketing
-            // anything - the one way someone whose backpack is already full of something else
-            // still gets fed at a food source. Only what actually got eaten or fits in the
-            // inventory comes off the node - a full backpack leaves the rest standing to
-            // gather later, rather than the excess vanishing.
-            // Same "hungry enough to bother" test the autonomous pass uses (see
-            // WorldState.IsHungryEnoughToEat) - otherwise a picker standing at a food source
-            // eats one unit off it every tick, which is both an odd way to eat and a way to
-            // practice gathering and eating forever without moving.
+            // A hungry picker eats as they go before pocketing anything - how someone with a full
+            // pack still gets fed. Only what was eaten or fits comes off the node; the rest stays
+            // for later. Same hunger test as the autonomous pass (WorldState.IsHungryEnoughToEat),
+            // or a picker at a food source would eat one unit every tick and practice forever.
             var eaten = world.IsHungryEnoughToEat(Person) ? EatCommand.Eat(world, Person, item, (int)potentialConsumed) : 0;
             var added = Person.Inventory.AddUpToCapacity(item, (int)potentialConsumed - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
             var taken = eaten + added;
-            // Coming away from a node with nothing is not gathering - it earns no practice, so
-            // a full backpack can't grind a technique out of thin air.
+            // Coming away with nothing earns no practice, so a full pack cannot grind a technique.
             if (taken <= 0)
             {
                 return;

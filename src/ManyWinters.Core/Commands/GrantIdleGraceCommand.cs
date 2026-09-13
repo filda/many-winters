@@ -3,11 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// A presentation-layer hint, not a player action - lets whoever's driving the simulation
-// (the currently-selected person, say) buy someone a few more ticks of standing still before
-// WorldState.Advance would otherwise drop them into an IdleTask (see Person.IdleGraceUntilTick).
-// Calling it every tick while a person stays selected keeps extending the window, so they never
-// wander off mid-attention; the grace simply runs out a few ticks after they stop being renewed.
+// A presentation-layer hint, not a player action: buys someone a few ticks of standing still
+// before WorldState.Advance drops them into an IdleTask (see Person.IdleGraceUntilTick).
+// Renewed every tick while a person stays selected, so they do not wander off mid-attention.
 public sealed record GrantIdleGraceCommand(Person Person, long GraceTicks) : ICommand
 {
     public void Execute(WorldState world)

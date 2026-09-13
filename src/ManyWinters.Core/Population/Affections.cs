@@ -2,28 +2,22 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Population;
 
-// How much any two people have come to mean to each other - the first thing in this game that
-// remembers something about a *pair* rather than about a person. Casual teaching already looks
-// at pairs (WorldState.AutoTeachNearbyPeople) but deliberately keeps no state: its roll is a
-// pure function of the two ids and the tick. This is the opposite, and has to be saved.
-//
-// Symmetric, and stored once per pair rather than once per direction. Real fondness is not
-// mutual, but the thing being modelled here is time spent together, which is - and one number
-// per pair instead of two is also half the state to grow, decay and write to disk.
+// How much two people have come to mean to each other - the only pair-level state in the game
+// (casual teaching also looks at pairs but keeps no state). Symmetric and stored once per pair:
+// what is modelled is time spent together, which is mutual, and it halves the state to grow,
+// decay and save.
 public sealed class Affections
 {
     private readonly Dictionary<(Guid Lower, Guid Higher), float> _byPair = new();
 
-    // Every pair the world knows about, in no particular order - for saving, and for anything
-    // that wants to look across all of them at once.
+    // Every pair the world knows about, in no particular order - for saving.
     public IEnumerable<(PersonId A, PersonId B, float Value)> All =>
         _byPair.Select(entry => (new PersonId(entry.Key.Lower), new PersonId(entry.Key.Higher), entry.Value));
 
     public float Between(PersonId a, PersonId b) => _byPair.GetValueOrDefault(PairOf(a, b));
 
-    // Everyone this person has any bond with at all, strongest first. Pairs nobody has ever
-    // been near are simply absent rather than present at zero, so this is the short list of
-    // people who actually matter to them, not a row per inhabitant.
+    // Everyone this person has any bond with, strongest first. Pairs that never met are absent
+    // rather than zero, so this is the short list of people who matter to them.
     public IEnumerable<(PersonId Other, float Value)> For(PersonId person) =>
         _byPair
             .Where(entry => entry.Key.Lower == person.Value || entry.Key.Higher == person.Value)
@@ -40,9 +34,8 @@ public sealed class Affections
         _byPair[PairOf(a, b)] = value;
     }
 
-    // Moves a bond by `delta`, keeping it inside [0, max]. A bond that would fall to nothing is
-    // dropped rather than kept at zero, so All and For stay the short list of pairs that ever
-    // actually met (see For) instead of growing to every pair that once passed each other.
+    // Moves a bond by `delta` within [0, max]. A bond that falls to nothing is dropped, not kept
+    // at zero, so All and For stay the short list of pairs that ever met.
     public void Change(PersonId a, PersonId b, float delta, float max)
     {
         var value = Math.Clamp(Between(a, b) + delta, 0f, max);
@@ -55,8 +48,7 @@ public sealed class Affections
         Set(a, b, value);
     }
 
-    // One key per unordered pair: the two ids sorted, so Between(a, b) and Between(b, a) reach
-    // the same entry rather than two that can drift apart.
+    // One key per unordered pair, so Between(a, b) and Between(b, a) reach the same entry.
     private static (Guid Lower, Guid Higher) PairOf(PersonId a, PersonId b) =>
         a.Value.CompareTo(b.Value) <= 0 ? (a.Value, b.Value) : (b.Value, a.Value);
 }

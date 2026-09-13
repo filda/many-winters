@@ -6,15 +6,13 @@ using ManyWinters.Godot.Sprites;
 namespace ManyWinters.Godot.Views;
 
 // The one view nothing can point at or click yet: the inspector has no page for a hut (see
-// docs/todo/todo.md's note about a real player menu), so it is built inert - no hover arbiter
-// and no missed-click handler, which is what makes SpriteEntityView skip the collision shape
-// and ray picking altogether. Everything else a world sprite does, it does: seeded size
-// variation, a ground shadow, and dimming when the group walks away from its camp.
+// docs/todo/todo.md on a player menu), so it takes no hover arbiter and no missed-click
+// handler, which makes SpriteEntityView skip the collision shape and ray picking. Everything
+// else a world sprite does - seeded size, ground shadow, fog dimming - it does.
 internal partial class BuildingView : SpriteEntityView
 {
-    // Was 1.2 - shorter than PersonView.Height (1.8), reading as knee-high next to a person
-    // despite the art depicting a door someone could actually walk through. A modest one-room
-    // hut should clear a person's head with some roof to spare.
+    // A one-room hut should clear a person's head (PersonView.Height) with some roof to spare;
+    // shorter reads as knee-high despite the door in the art.
     public const float Size = 2.8f;
     private const float MinScale = 0.9f;
     private const float MaxScale = 1.1f;
@@ -41,10 +39,9 @@ internal partial class BuildingView : SpriteEntityView
         Register(BillboardSprite.Create(texturePath, Size, fallbackColor), texturePath);
     }
 
-    // Cached per kind, not reloaded per building - the same reasoning (and the same C#-bridge
-    // crash under repeated ResourceLoader.Load of one path) as ResourceNodeView's own
-    // definition cache. A camp is a handful of huts today, so this is about keeping the two
-    // halves of one concern behaving alike rather than about the load itself.
+    // Cached per kind for the same reason (and the same C#-bridge crash under repeated
+    // ResourceLoader.Load) as ResourceNodeView.VisualDefinitionCache; a camp is a handful of
+    // huts, so this is about the two halves of one concern behaving alike.
     private static readonly Dictionary<BuildingKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
 
     private static Color ColorFor(BuildingKindId kind)

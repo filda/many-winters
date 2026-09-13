@@ -6,52 +6,37 @@ namespace ManyWinters.Core.Maps;
 
 public static class MapLoader
 {
-    // North of the real terrain patch's center (docs/terrain-and-world-scale-architecture.md) -
-    // the actual Rokytka waterway runs well south of here (see art/fetch_stream.py's output),
-    // so the camp sits on dry ground rather than in the middle of a real river.
+    // North of the terrain patch's center: the real Rokytka runs well south of here, so the camp
+    // sits on dry ground.
     private static readonly Position CampCenter = new(5, 250);
 
-    // A small band's age spread (winters) rather than fifteen newborns or fifteen near-identical
-    // ages - mostly young/middle, with a couple of elders (MaxLifespanYears is 10). Fixed, not
-    // randomized, for the same determinism reason as EntityVisualVariation's seeding.
+    // Age spread in winters, mostly young/middle with a couple of elders (MaxLifespanYears is
+    // 10). Fixed rather than randomized so a new game is the same world twice.
     private static readonly long[] StartingAgesInWinters = [2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5];
 
-    // Indices (0-based, into the arrays above) of each starting person's mother/father, or null
-    // for someone with no recorded parent. Three couples with children, plus a few people with no
-    // recorded family - basic family relationships. Every tie made after the story begins comes
-    // from BirthCommand instead; this is only how the crowd that was already standing here when
-    // it began came by theirs.
+    // 0-based indices into the arrays above of each starting person's mother/father; null means
+    // no recorded parent. Only the starting crowd gets family this way - every later tie comes
+    // from BirthCommand.
     private static readonly int?[] StartingMotherIndex =
         [10, null, null, null, 2, 8, null, 10, null, null, null, null, null, 8, 2];
 
     private static readonly int?[] StartingFatherIndex =
         [1, null, null, null, 6, 11, null, 1, null, null, null, null, null, 11, 6];
 
-    // A grid reads as soldiers on parade, not a family standing around camp - disk-uniform
-    // scatter (same technique as TerrainRenderer.ScatterDecoration) with a minimum-spacing
-    // rejection reads as a loosely gathered crowd instead. Seeded, not time-based, for the
-    // same reproducibility reason the ages/family ties above are a fixed array rather than
-    // randomized.
+    // Disk-uniform scatter with minimum spacing reads as a loosely gathered crowd; a grid reads
+    // as soldiers on parade. Seeded for reproducibility.
     private const int CrowdPlacementSeed = 1;
 
-    // Ids are otherwise an entity's own random draw (see EntityId) - the starting map names
-    // them from this one seeded generator instead, so a new game is the same world twice,
-    // down to every tree's variant and every person's hairstyle (both keyed off the id's
-    // seed). Its own generator, not the placement ones: drawing 16 bytes per entity from
-    // those would shift every position that follows.
+    // Entities normally draw their own random id (see EntityId); the starting map draws them
+    // from this one seeded generator so a new game is the same world twice, down to every
+    // variant keyed off an id's seed. Separate from the placement generators: 16 bytes per
+    // entity drawn from those would shift every position that follows.
     private const int EntityIdSeed = 3;
     private const float CrowdRadius = 4f;
     private const float CrowdMinSpacing = 1f;
 
-    // What used to be TerrainSetup.cs's purely-visual scattered decoration (background
-    // conifer/deciduous trees, bushes, ground cover, rocks, stumps, fallen logs) is now real,
-    // clickable, gatherable ResourceNodes (the since-completed "všechny dekorace... mají časem
-    // být skutečné klikatelné ResourceNode" item) - so this is where they're spawned instead, using the
-    // same counts/radii TerrainSetup used to keep the world looking as dense/varied as before.
-    // Half the real terrain patch's extent (heightmap.json: gridSize=41, cellSizeMeters=25 ->
-    // (41-1)*25/2 = 500) - hardcoded rather than read from the heightmap, since MapLoader
-    // (Core) has no dependency on Godot content; TerrainSetup itself hardcodes its own
-    // decoration radii relative to the same value for the same reason.
+    // Half the terrain patch's extent (heightmap.json: (gridSize 41 - 1) * cellSizeMeters 25 / 2),
+    // hardcoded because Core has no dependency on Godot content.
     private const float TerrainHalfMeters = 500f;
     private const float DecorationRadius = 110f;
     private const float GroveRadius = 65f;
@@ -83,50 +68,34 @@ public static class MapLoader
     private const int GroveFallenLogCount = 4;
     private const int GroveMushroomCount = 6;
 
-    // The band didn't camp just anywhere: these are the wild food plants growing right where
-    // it settled, and they replace the five hand-placed fruit/mushroom/potato nodes that used
-    // to sit at fixed offsets around camp. Scattered like every other kind (same rejection
-    // sampling, same spacing), only over a radius small enough that the starting crowd still
-    // has food within a short walk the way those fixed nodes guaranteed - the open world's own
-    // food (see ScatterOpenWorldBiomes) is spread far too thin to count on in the first winter.
+    // Wild food growing right where the band settled, scattered over a radius small enough that
+    // the starting crowd has food within a short walk - the open world's food
+    // (ScatterOpenWorldBiomes) is far too thin to count on in the first winter.
     private const float CampFoodRadius = 12f;
     private const int CampAppleCount = 2;
     private const int CampPearCount = 2;
     private const int CampMushroomCount = 2;
     private const int CampPotatoCount = 2;
 
-    // Beyond the dense zone and the (still-forest-shaped) groves above, the rest of the
-    // terrain used to get only a very thin, uniform "wide pass" - at those counts spread
-    // across the whole terrain radius, that read as basically empty most places. A first
-    // fix scattered a couple dozen hand-picked circular patches (a meadow disk here, a
-    // rocky disk there) instead - visibly better, but still "randomly placed circles", not
-    // organic (the "vyšlapané cestičky" / reforestation item in docs/todo/todo.md is its own
-    // follow-up). This instead samples two independent, coherent
-    // noise fields (see Noise2D) per candidate point across the whole open terrain: one
-    // decides how likely anything grows there at all, so genuine soft-edged clearings and
-    // barren stretches emerge instead of just "less of everything everywhere"; the other
-    // decides which biome band a surviving point falls into. Neighboring points naturally
-    // sample similar noise values, so they cluster into soft, irregularly-shaped regions of
-    // the same kind on their own - no explicit "draw a circle here" step at all.
+    // The open terrain beyond the dense zone and groves samples two coherent noise fields
+    // (Noise2D) per candidate point: one decides how likely anything grows there, so soft-edged
+    // clearings and barren stretches emerge; the other decides which biome band a surviving
+    // point falls into. Neighbouring points sample similar values, so regions cluster on their
+    // own without any explicit shape being drawn.
     private const int OpenWorldBiomeNoiseSeed = 7;
     private const int OpenWorldDensityNoiseSeed = 8;
     private const double BiomeNoiseFrequency = 1.0 / 220.0;
     private const double DensityNoiseFrequency = 1.0 / 140.0;
     private const int OpenWorldCandidateCount = 16000;
 
-    // Band thresholds over the biome noise's [0, 1] range. Forest is the rarest/densest
-    // band (there's already plenty of forest from the dense zone/groves above; the open
-    // world's own forest patches are a bonus, not the main event) - rocky, the most common,
-    // is everything below MeadowBandMin.
+    // Thresholds over the biome noise's [0, 1] range. Forest is the rarest band (the dense zone
+    // and groves already supply plenty); rocky, the most common, is everything below MeadowBandMin.
     private const double ForestBandMin = 0.72;
     private const double ThicketBandMin = 0.56;
     private const double MeadowBandMin = 0.38;
 
-    // Renewable ground cover/canopy (regenPerTick > 0) gets an amount in line with the
-    // hand-placed wood pile below; the finite ones (rock/stump/log, regenPerTick = 0) get a
-    // smaller one-shot amount since they never come back once spent. Food-bearing plants keep
-    // the 200 the five hand-placed ones carried before they were scattered like everything
-    // else, so a camp's worth of food is the same amount of food it always was.
+    // Renewable kinds (RegenPerTick > 0) get more than the finite ones (rock, stump, log), which
+    // never come back once spent.
     private const float WoodAmount = 200f;
     private const float FoodAmount = 200f;
     private const float GroundCoverAmount = 100f;
@@ -158,9 +127,8 @@ public static class MapLoader
 
         SpawnStartingCrowd(world, idRng);
 
-        // What's left hand-placed is the band's starting stock, not scenery: a pile of wood and
-        // a cut patch of grass it brought to the spot. Everything that grows - food included -
-        // is scattered by ScatterDecorations below.
+        // The band's starting stock, not scenery. Everything that grows - food included - is
+        // scattered by ScatterDecorations.
         world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("wood"), Offset(0f, 5f), 300f));
         world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("grass"), Offset(10f, 0f), 200f));
 
@@ -169,13 +137,10 @@ public static class MapLoader
         return new LoadedMap(world, CampCenter);
     }
 
-    // Parents before children: a Person is built around its Mother and Father (see
-    // Person.Mother), so a child whose parent sits later in the arrays above has to wait for
-    // that parent to exist first - hence the recursion, rather than one pass in array order.
-    // Positions are still drawn in array order first, so who stands where doesn't depend on
-    // who happens to be whose parent. A starting person with no parent recorded gets a
-    // forebear instead (see SpawnForebear) - never Person.Unknown directly, so every grave in
-    // camp can name real parents.
+    // Parents before children: a Person is built around its Mother and Father, so a child recurses
+    // into a parent that sits later in the arrays. Positions are drawn in array order beforehand,
+    // so who stands where doesn't depend on parentage. Anyone with no recorded parent gets a
+    // forebear (SpawnForebear), never Person.Unknown, so every grave in camp can name real parents.
     private static void SpawnStartingCrowd(WorldState world, Random idRng)
     {
         var rules = world.Configuration.Rules;
@@ -193,9 +158,8 @@ public static class MapLoader
 
         Person SpawnForebear(Sex sex)
         {
-            // Died the winter before the story began, after a full life - old enough to have
-            // raised anyone in the starting crowd, gone for long enough that nobody expects to
-            // find them lying around camp.
+            // Died the winter before the story began, after a full life: old enough to have raised
+            // anyone in the crowd, gone long enough to be buried rather than lying around camp.
             var deathTick = -rules.TicksPerYear;
             var id = PersonId.New(idRng);
             var forebear = new Person
@@ -236,8 +200,8 @@ public static class MapLoader
                 initialAgeTicks,
                 StartingSexFor(index)));
 
-            // The command doesn't hand the person back (commands are plain data - see
-            // ICommand); the one it just added is the newest in People.
+            // Commands are plain data (ICommand) and return nothing; the person just added is the
+            // newest in People.
             var person = world.People[^1];
             spawned[index] = person;
             return person;
@@ -249,9 +213,8 @@ public static class MapLoader
         }
     }
 
-    // Anyone the family table above already names as somebody's mother or father has had
-    // their sex settled by it; their own id does not get a say (see Person.Sex), or the table
-    // could hand a man a child to have borne. Everybody else is left to the id.
+    // Anyone the family table names as a mother or father has their sex settled by it, not by
+    // their id (see Person.Sex), or the table could hand a man a child to have borne.
     private static Sex? StartingSexFor(int index)
     {
         if (StartingMotherIndex.Contains(index))
@@ -269,9 +232,8 @@ public static class MapLoader
 
     private static Position Offset(double x, double y) => new(CampCenter.X + x, CampCenter.Y + y);
 
-    // Ported from TerrainSetup.cs's dense-zone/wide-pass/grove decoration scatter, which used
-    // to spawn purely-visual sprites - now spawns real ResourceNodes instead, at the same
-    // counts/radii, so the world reads exactly as dense/varied as it did as pure decoration.
+    // Spawns the scattered decoration - trees, bushes, ground cover, rocks, stumps, logs - as
+    // real gatherable ResourceNodes: a dense zone around camp, several groves, then the open world.
     private static void ScatterDecorations(WorldState world, Random idRng)
     {
         var rng = new Random(DecorationScatterSeed);
@@ -296,10 +258,9 @@ public static class MapLoader
             }
         }
 
-        // Same clumped-forest shape as TerrainSetup's own ScatterClump: several smaller,
-        // jittered, overlapping sub-disks instead of one perfect circle - see that method's
-        // doc comment for why. Ground cover isn't part of the clump; it scatters once over
-        // the whole disk, called separately right after, same as before.
+        // Several jittered, overlapping sub-disks instead of one perfect circle, so a forest has
+        // an irregular outline. Ground cover isn't part of the clump; it scatters once over the
+        // whole disk, right after.
         void ScatterClump(
             double centerX, double centerY, float radius, int subClusters,
             int treeCount, int deciduousCount, int bushCount, int rockCount, int stumpCount, int fallenLogCount, int mushroomCount)
@@ -319,16 +280,13 @@ public static class MapLoader
                 SpawnKind(TreeStumpKind, stumpCount / subClusters, DeadWoodAmount, subX, subY, subRadius);
                 SpawnKind(FallenLogKind, fallenLogCount / subClusters, DeadWoodAmount, subX, subY, subRadius);
 
-                // Mushrooms belong to the shade of a real stand of trees, so they're scattered
-                // with the clump rather than left to the open world's forest band - that band
-                // is the rarest of the four and grows only a few dozen trees in total, which
-                // would have made mushrooms a curiosity nobody ever walks past.
+                // Mushrooms grow in the shade of a real stand of trees, not in the open world's
+                // forest band, which is too rare to grow more than a few dozen trees.
                 SpawnKind(MushroomKind, mushroomCount / subClusters, FoodAmount, subX, subY, subRadius);
             }
         }
 
-        // Before the dense zone, so camp's own food gets the open ground closest to the crowd
-        // rather than whatever the forest leaves over.
+        // Before the dense zone, so camp's food gets the open ground closest to the crowd.
         SpawnKind(AppleKind, CampAppleCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
         SpawnKind(PearKind, CampPearCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
         SpawnKind(MushroomKind, CampMushroomCount, FoodAmount, CampCenter.X, CampCenter.Y, CampFoodRadius);
@@ -354,26 +312,20 @@ public static class MapLoader
         ScatterOpenWorldBiomes(world, rng, idRng, occupied);
     }
 
-    // See OpenWorldCandidateCount's own doc comment for the overall approach. Each
-    // candidate is one independent (x, y) sample across the whole terrain - not a center
-    // point for a cluster - so the two noise fields alone decide both whether it survives
-    // and what grows there; any clustering the result shows is the noise's own spatial
-    // coherence, not code drawing a shape.
+    // Approach described at OpenWorldBiomeNoiseSeed. Each candidate is one independent (x, y)
+    // sample, not a cluster center: the noise fields alone decide whether it survives and what
+    // grows there, so any clustering is the noise's own spatial coherence.
     private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Random idRng, SpatialSpacingIndex<Position> occupied)
     {
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
         var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
 
-        // Two of the bands grow a little food among their own plants, so the open world is worth
-        // foraging through rather than only worth looking at: wild fruit trees in the scrub at
-        // the forest's edge, roots out in the meadow (mushrooms come with the forest clumps
-        // instead - see ScatterClump). Both are rare tails on their band's roll: a band that
-        // has to walk this far for a meal is already in trouble, and the food around camp is
-        // what the first winter runs on.
+        // Two bands grow a little food so the open world is worth foraging: wild fruit trees in
+        // the thicket, roots in the meadow (mushrooms come with ScatterClump). Both are rare tails
+        // on the roll - the food around camp is what the first winter runs on.
 
         // Stryker disable Equality: every threshold here is compared against a continuous
-        // NextDouble(), which lands exactly on one of them with probability zero - < and <=
-        // pick the same kind
+        // NextDouble(), which lands exactly on one with probability zero, so < and <= agree
         (ResourceKindId Kind, float Amount) PickMeadowKind()
         {
             var roll = rng.NextDouble();
@@ -407,8 +359,7 @@ public static class MapLoader
                 return (FernKind, GroundCoverAmount);
             }
 
-            // Which of the two fruit trees grows here is its own coin flip, so a stand of wild
-            // fruit comes out mixed rather than every thicket being an apple thicket.
+            // A separate coin flip, so a stand of wild fruit comes out mixed rather than all apple.
             return rng.NextDouble() < 0.5 ? (AppleKind, FoodAmount) : (PearKind, FoodAmount);
         }
 
@@ -420,8 +371,7 @@ public static class MapLoader
             var x = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
             var y = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
 
-            // A roll against the density field, not a hard threshold - points near a
-            // region's edge fade out gradually rather than stopping dead at a boundary.
+            // A roll against the density field, not a hard threshold, so region edges fade out.
             var density = densityNoise.Fbm(x, y, 3, DensityNoiseFrequency);
 
             // Stryker disable once Equality: a draw landing exactly on the density value has
@@ -456,18 +406,14 @@ public static class MapLoader
         }
     }
 
-    // Backed by SpatialSpacingIndex (docs/todo/refactoring.md), the same shared type
-    // CloudSpotScatter uses for its own blue-noise clouds - independent instance per
-    // ScatterDecorations call, since each call is its own placement pass. TerrainRenderer keeps
-    // its own separate copy of this rejection sampling; it only ever serves TerrainSandbox's
-    // preview scatter, not the shipped game.
+    // Rejection sampling over a shared SpatialSpacingIndex, one instance per ScatterDecorations
+    // pass. TerrainRenderer keeps its own copy of this sampling for TerrainSandbox's preview only.
     private static Position NextDecorationPosition(Random rng, SpatialSpacingIndex<Position> occupied, double centerX, double centerY, double radius)
     {
         var position = new Position(centerX, centerY);
 
-        // Stryker disable once Equality,Update: the attempt cap is a give-up guard, and at
-        // these densities a free spot always turns up long before it - how many attempts it
-        // allows, or whether the counter moves at all, changes nothing that gets placed
+        // Stryker disable once Equality,Update: the attempt cap is a give-up guard that a free spot
+        // always turns up well before, so its value or the counter moving changes nothing placed
         for (var attempt = 0; attempt < MaxDecorationPlacementAttempts; attempt++)
         {
             var angle = rng.NextDouble() * Math.Tau;
@@ -483,10 +429,8 @@ public static class MapLoader
         return position;
     }
 
-    // Rejects a candidate too close to an already-placed person, so the crowd doesn't stack
-    // two people exactly on top of each other. Fifteen people in a four-metre disk always fit
-    // well inside the attempt budget, so FreePositionSearch's giving up never decides anything
-    // here.
+    // Rejects a candidate too close to an already-placed person. Fifteen people in a four-metre
+    // disk always fit well inside the attempt budget, so FreePositionSearch never gives up here.
     private static Position NextCrowdPosition(Random rng, List<Position> placed) =>
         FreePositionSearch.Find(
             () => RandomDiskPosition(rng),
@@ -495,9 +439,8 @@ public static class MapLoader
             candidate => placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing),
             maxAttempts: 30);
 
-    // Uniform over the disk's area, not its bounding square (see TerrainRenderer's own
-    // ScatterDecoration for the same math) - sampling angle and radius independently and
-    // uniformly would bunch samples near the center instead.
+    // Uniform over the disk's area: sampling angle and radius independently and uniformly would
+    // bunch samples near the center.
     private static Position RandomDiskPosition(Random rng)
     {
         var angle = rng.NextDouble() * Math.Tau;

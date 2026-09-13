@@ -9,9 +9,8 @@ public class MapLoaderTests
 {
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
 
-    // The family table settles who bore whom before any id gets a say (see Person.Sex and
-    // MapLoader.StartingSexFor) - without that pinning, the table could hand a man a child to
-    // have borne.
+    // The family table settles who bore whom before any id gets a say
+    // (MapLoader.StartingSexFor).
     [Fact]
     public void EveryStartingMotherIsAWomanAndEveryStartingFatherIsAMan()
     {
@@ -32,8 +31,8 @@ public class MapLoaderTests
         }
     }
 
-    // Not everybody is somebody's parent, and those people are left to their id - a band of
-    // fifteen that came out all one sex would mean the pinning had swallowed the draw.
+    // Those who are nobody's parent are left to their id; all one sex would mean the pinning
+    // swallowed the draw.
     [Fact]
     public void TheStartingBandIsNotAllOneSex()
     {
@@ -96,8 +95,7 @@ public class MapLoaderTests
             }
         }
 
-        // Not a grid: no two starting people share an X or a Z (a 5-column grid stacked
-        // several people on each of five X values and each of three Z values).
+        // Not a grid: no two starting people share an X or a Y.
         Assert.Equal(positions.Count, positions.Select(p => p.X).Distinct().Count());
         Assert.Equal(positions.Count, positions.Select(p => p.Y).Distinct().Count());
     }
@@ -207,10 +205,9 @@ public class MapLoaderTests
     [Fact]
     public void LoadDefaultGivesEveryEntityTheSameIdOnEveryNewGame()
     {
-        // Ids are normally an entity's own random draw; the starting map names them from a
-        // seeded generator instead (see MapLoader.EntityIdSeed), so everything keyed off an
-        // id's seed - a tree's variant, a person's hairstyle, their wander path - is the same
-        // world twice rather than a reshuffle per new game.
+        // The starting map names ids from a seeded generator (MapLoader.EntityIdSeed), so
+        // everything keyed off an id's seed - tree variant, hairstyle, wander path - is the
+        // same world twice.
         var first = LoadDefault().World;
         var second = LoadDefault().World;
 
@@ -235,9 +232,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // All that is still hand-placed is the stock the band brought with it - a wood pile and
-        // a patch of cut grass. It is spawned before ScatterDecorations runs, so these are
-        // always the first 2 nodes regardless of how many procedural nodes follow them.
+        // The hand-placed stock the band brought is spawned before ScatterDecorations, so it is
+        // always the first two nodes.
         var expectedFirstTwo = new[]
         {
             (TestCatalogs.Wood, new Position(5f, 255f), 300f),
@@ -252,10 +248,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // The five fruit/mushroom/potato nodes that used to sit at fixed offsets around camp
-        // are scattered now, but what they guaranteed still has to hold: the starting crowd can
-        // reach every kind of food without leaving camp. Anything further out is the open
-        // world's own, far too thin to survive a first winter on.
+        // Every kind of food must be reachable without leaving camp; the open world is far too
+        // thin to survive a first winter on.
         var foodKinds = new[] { TestCatalogs.Apple, TestCatalogs.Pear, TestCatalogs.Mushroom, TestCatalogs.Potato };
 
         var nearCamp = map.World.ResourceNodes
@@ -271,9 +265,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Former terrain decoration - every kind that used to be a purely-visual
-        // sprite must now be a real, individually-gatherable ResourceNode, in the thousands
-        // (dense zone + wide pass + several groves), not just a handful.
+        // Each decoration kind is an individually gatherable ResourceNode, in the thousands
+        // (dense zone + wide pass + groves).
         var decorationKinds = new[]
         {
             TestCatalogs.ConiferTree, TestCatalogs.DeciduousTree, TestCatalogs.Bush,
@@ -306,9 +299,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Sampled rather than an exhaustive O(n^2) check (thousands of nodes) - a spot check
-        // against MapLoader's own spatial-hash rejection sampling (MinDecorationSpacing) is
-        // enough to catch a regression in that mechanism without a slow all-pairs test.
+        // Sampled, not all-pairs over thousands of nodes; enough to catch a regression in
+        // MapLoader's spacing rejection (MinDecorationSpacing).
         var positions = map.World.ResourceNodes.Skip(2).Select(n => n.Position).Take(500).ToList();
         for (var i = 0; i < positions.Count; i++)
         {
@@ -324,10 +316,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // The scatter is seeded, not time-based, so the band starts every new game standing in
-        // the same spots - the same reason the ages and family ties are fixed arrays. Pinned to
-        // six decimals rather than exactly: the positions come out of Math.Cos/Sin, whose last
-        // bit isn't guaranteed identical across platforms.
+        // Seeded, so every new game starts the band in the same spots. Six decimals rather than
+        // exact: Math.Cos/Sin's last bit is not identical across platforms.
         var expected = new[]
         {
             (5.011135470528585, 251.3310821297698), (1.5615704747456682, 250.72309636440173),
@@ -357,11 +347,9 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Every count here is decided by MapLoader alone: the fixed dense-zone/grove counts,
-        // and - for everything the open-world pass adds on top - the seeded noise fields and
-        // the placement rejection. Which makes this the one place a change in world generation
-        // shows up as a number rather than as "the world looks a bit different now". Update it
-        // deliberately when the generation is retuned; a surprise change here is a bug.
+        // Every count is decided by MapLoader alone (fixed counts, seeded noise, placement
+        // rejection), so a change in generation shows up here as a number. Update deliberately
+        // when retuning; a surprise change is a bug.
         var expected = new Dictionary<ResourceKindId, int>
         {
             [TestCatalogs.Grass] = 7262,
@@ -393,11 +381,9 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Renewable canopy/ground cover and every food-bearing plant get the same amount the
-        // hand-placed fruit trees used to carry; the finite ones (rock, stump, log) get a
-        // smaller one-shot amount because they never come back once spent. The hand-placed
-        // grass node near camp is the one scattered kind that also exists at its own larger
-        // starting amount.
+        // Renewable cover and food plants share one amount; finite kinds (rock, stump, log) get
+        // a smaller one-shot amount. The hand-placed grass node is the one scattered kind that
+        // also exists at a larger amount.
         var amountsByKind = map.World.ResourceNodes
             .GroupBy(n => n.Kind)
             .ToDictionary(g => g.Key, g => g.Select(n => n.RemainingAmount).Distinct().OrderBy(a => a).ToArray());
@@ -429,10 +415,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // The open world scatters across the real terrain patch's half-extent (500 m); a grove
-        // whose center lands right at that edge reaches one grove radius (65 m) further out,
-        // and nothing at all belongs beyond that - a node off the heightmap has no ground under
-        // it to stand on.
+        // The open world scatters across the terrain half-extent (500 m); a grove centred at the
+        // edge reaches one grove radius (65 m) further. Beyond that a node has no ground under it.
         const double limit = 500 + 65;
 
         Assert.All(map.World.ResourceNodes, n =>
@@ -453,10 +437,9 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Well beyond the dense zone (110 m) and further out than any grove reaches from camp,
-        // so what's left is the open-world noise pass alone. Each of its four bands has to have
-        // actually produced something: forest, thicket, meadow, and the rocky ground everything
-        // below the meadow threshold falls back to.
+        // Beyond the dense zone (110 m) and any grove only the open-world noise pass remains;
+        // each of its four bands (forest, thicket, meadow, rocky fallback) must have produced
+        // something.
         var outThere = map.World.ResourceNodes
             .Where(n => WorldState.Distance(n.Position, map.CampCenter) > 200)
             .GroupBy(n => n.Kind)
@@ -479,10 +462,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // The density field is what makes soft-edged clearings and barren stretches emerge at
-        // all: only part of the candidate points survive their roll against it. Every candidate
-        // surviving would be a uniform sprinkle over the whole terrain instead, and none
-        // surviving would leave the open world bare.
+        // Only part of the candidates survive their roll against the density field: all would
+        // be a uniform sprinkle, none would leave the open world bare.
         var openWorldNodes = map.World.ResourceNodes.Count(n => WorldState.Distance(n.Position, map.CampCenter) > 200);
 
         Assert.InRange(openWorldNodes, 1, 15999);

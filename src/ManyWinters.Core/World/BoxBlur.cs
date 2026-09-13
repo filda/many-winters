@@ -1,18 +1,11 @@
 namespace ManyWinters.Core.World;
 
-// Separable box blur over a square grid (horizontal pass, then vertical) - what the
-// presentation layer softens the fog-of-war boundary with, so a fog edge fades rather than
-// cutting across the ground as a hard line. Separable means two 1D passes instead of one 2D
-// kernel: the same result for a box kernel, at a fraction of the samples.
-//
-// Samples past the grid's own edge clamp to the nearest real cell rather than wrapping, which
-// matches how the fog texture is sampled (repeat disabled) - wrapping would bleed the far side
-// of the map into this one.
+// Separable box blur over a square grid (horizontal pass, then vertical) - the presentation
+// layer softens the fog-of-war edge with it. Samples past the edge clamp to the nearest cell
+// rather than wrapping, matching a fog texture sampled with repeat disabled.
 public static class BoxBlur
 {
-    // The grid is square and its size comes from the array itself rather than a parameter
-    // alongside it: a size that disagreed with the array it describes is a bug with nowhere
-    // useful to fail.
+    // Square grid; the size comes from the array itself, so it can never disagree with it.
     public static float[,] Blur(float[,] source, int radius)
     {
         var size = source.GetLength(0);

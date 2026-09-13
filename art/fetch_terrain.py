@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-Fetches a real elevation grid for one small patch of Europe and writes it as a
-static JSON heightmap the game loads locally - no network access at runtime.
+Fetches a real elevation grid for one small patch of Europe and writes it as a static JSON
+heightmap the game loads locally - no network access at runtime. A one-time data-prep step.
 
-Source: EU-DEM v1.1 (25 m, EPSG:3035 native) via the public OpenTopoData API,
-per docs/terrain-and-world-scale-architecture.md. This script is a one-time
-data-prep step, the same role art/generate_sprites.py plays for pixel art.
+Source: EU-DEM v1.1 (25 m) via the public OpenTopoData API; see
+docs/terrain-and-world-scale-architecture.md.
 
 Run:  python3 fetch_terrain.py <center_lat> <center_lon> <output_dir> [size_m] [cell_m]
 """

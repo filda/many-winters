@@ -1,14 +1,10 @@
 namespace ManyWinters.Core.World;
 
-// The tunable numbers the simulation runs on - how long a season is, how fast hunger climbs,
-// how close two things have to be to interact. Configuration, not state: nothing here changes
-// while a world runs, and SaveGameService never stores it (it's handed back in on load, same as
-// the catalogs). Default is what the shipped game uses; a test world shrinks whichever of these
-// it needs (a one-tick season, a one-year lifespan) instead of simulating thousands of ticks.
-// Only the rules some test actually overrides have an `init` setter - the rest are get-only
-// until one does (InspectCode's dead-code gate treats an unused setter as dead, see
-// docs/development.md "Inspections"); turning one into `init` when a test needs it is the
-// whole change.
+// The tunable numbers the simulation runs on. Configuration, not state: nothing here changes
+// while a world runs and no save file stores it. Default is what the shipped game uses; tests
+// shrink whichever rule they need instead of simulating thousands of ticks. Only rules a test
+// overrides have an `init` setter - InspectCode's dead-code gate flags an unused one (see
+// docs/development.md, "Inspections").
 public sealed record SimulationRules
 {
     public static SimulationRules Default { get; } = new();
@@ -20,30 +16,22 @@ public sealed record SimulationRules
 
     public float HungerPerTick { get; init; } = 1f;
 
-    // The hunger an average person dies at. Nobody in a world is exactly average, though - each
-    // one gets their own out of this (see MaxHungerFor), which is the number that actually
-    // kills them, so this is the middle of a range rather than a ceiling on Needs.Hunger.
+    // Hunger an average person dies at. Each person gets their own value around it (see
+    // MaxHungerFor), so this is the middle of a range, not a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;
 
-    // How far one person's own MaxHunger can sit from the average one, as a fraction of it
-    // either way - so a famine thins a band one by one instead of every last person keeling
-    // over on the exact same tick, which reads as a scripted die-off rather than a winter.
-    //
-    // It stretches the warning as well as the ending: HungerEatThreshold and
-    // HungerSeekFoodThreshold are fixed numbers, so someone who dies early has noticeably fewer
-    // ticks between setting off for food and dying than someone who lasts. That costing twice
-    // is the point, not a side effect - but it is why this stays a fraction well under half.
+    // Fraction of MaxHunger a person's own value may sit above or below it, so a famine thins a
+    // band one by one instead of on a single tick. HungerEatThreshold and HungerSeekFoodThreshold
+    // are fixed, so a low draw also shortens the warning before death; keep this well under half.
     public float MaxHungerVariation { get; init; } = 0.2f;
 
-    // One new person's own MaxHunger, drawn when they are created and carried on them from then
-    // on (see Person.MaxHunger). Taken from their own id and spread by SeedHash the way every
-    // other per-entity draw in this game is (Person.SexOf, an idle wander, a casual-teaching
-    // roll) rather than from a random number: it comes out the same on every reload without
-    // anybody having to save it, and does not depend on what order people were created in.
+    // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
+    // draw (see Person.MaxHunger): the same on every reload without being saved, and independent
+    // of creation order.
     public float MaxHungerFor(PersonId id)
     {
-        // Bit 0 of this spread is the bit Person.SexOf reads. Everything above it is untouched,
-        // so how long somebody lasts says nothing about who they are.
+        // Bit 0 of the spread is what Person.SexOf reads; skipping it keeps hunger tolerance
+        // independent of sex.
         var spread = unchecked((uint)SeedHash.Avalanche(unchecked((uint)id.Seed))) >> 1;
         var fraction = ((spread / (float)(uint.MaxValue >> 1)) * 2f) - 1f;
 
@@ -52,115 +40,81 @@ public sealed record SimulationRules
 
     public long MaxLifespanYears { get; init; } = 10;
 
-    // Nobody eats a bite a minute. Below this a person leaves what they are carrying alone,
-    // and once they do eat they eat down to nothing (see EatCommand), so meals are occasional
-    // events rather than a continuous trickle - which is what a body actually does, and also
-    // what stops "stand next to food" from being a way to practice eating every single tick
-    // (docs/todo/todo.md). Deliberately well below HungerSeekFoodThreshold: someone with food
-    // on them eats long before hunger is bad enough to send anyone out looking for more.
+    // Below this a person leaves the food they carry alone; once they eat, EatCommand eats down
+    // to zero, so meals are occasional events, not a bite per tick. Well below
+    // HungerSeekFoodThreshold: someone carrying food eats long before anyone goes looking for it.
     public float HungerEatThreshold { get; init; } = 25f;
 
-    // "Idle" means "put whatever skill this person already has to use, or go find food if
-    // hungry and empty-handed" (see WorldState.DecideIdleTask) - this is where "hungry" starts.
-    // Hunger takes priority over an already-known skill: a hungry woodcutter with no food on
-    // hand goes looking for something to eat before going back to chopping wood.
+    // Where "hungry" starts for the idle AI (WorldState.DecideIdleTask): a hungry, empty-handed
+    // person seeks food before putting a known skill to use.
     public float HungerSeekFoodThreshold { get; } = 50f;
 
-    // What feeding an infant costs the mother. A nursing mother gets hungry faster; the
-    // infant itself doesn't get hungry at all while she is alive and beside it (see
-    // WorldState.Advance). Deliberately a cost on her rather than a transfer between the two:
-    // a transfer would depend on which of the pair Advance happened to reach first that tick,
-    // and both halves of this read the same two facts independently instead.
+    // A nursing mother gets hungry this much faster; the infant beside her does not get hungry
+    // at all (see WorldState.Advance). A cost on her rather than a transfer, so the result does
+    // not depend on which of the pair Advance reaches first.
     public float NursingHungerMultiplier { get; } = 1.5f;
 
-    // How fast an infant toddles after its mother (see FollowTask). Faster than her own
-    // autonomous wandering (IdleTask) and slower than a walk with somewhere to be, so a child
-    // trails behind but never actually loses her.
+    // Metres per tick an infant follows its mother at (FollowTask): faster than her idle wander,
+    // slower than a purposeful walk, so it trails behind but never loses her.
     public float InfantFollowSpeedPerTick { get; } = 0.25f;
 
-    // What two people are worth to each other at most (see Affections). A ceiling rather than
-    // an open-ended tally, for the reason Skills.Increase has diminishing returns: without one,
-    // a bond becomes a count of ticks spent in the same clearing, and ticks are cheap.
+    // Ceiling on what two people are worth to each other (see Affections); without one a bond is
+    // just a count of ticks spent in the same clearing.
     public float MaxAffection { get; } = 100f;
 
-    // A bond grows while two people are together and fades while they are not - both of them
-    // the same one number, moved up or down (see Affections). Deliberately an order of
-    // magnitude apart: a friendship is made faster than it is lost, so someone away on a long
-    // errand comes back to the people they knew rather than to strangers, while a person who
-    // genuinely leaves the group does drift out of it.
+    // A bond grows while two people are together and fades apart, on one number (see
+    // Affections). An order of magnitude apart on purpose: a friendship is made faster than it
+    // is lost, so someone back from a long errand still knows the band, while a person who
+    // leaves for good drifts out of it.
     public float AffectionGainedPerTickTogether { get; } = 0.5f;
 
     public float AffectionLostPerTickApart { get; } = 0.05f;
 
-    // What the two above mean by "together": standing around each other, not at arm's length.
-    // Deliberately wider than MaxInteractionDistance, because handing something to somebody is
-    // an act that needs reach whereas spending the day near them is not. Wide enough to cover
-    // the starting camp (MapLoader.CrowdRadius is 4m) without reaching across the map, so a
-    // band that stays home grows close and somebody who leaves for good drifts out of it.
-    // FamilyMilestoneTests.TheShippedStartingBandHasChildrenOfItsOwn is what keeps this
-    // honest: set too tight, the numbers here stay theory and no child is ever born in the
-    // actual game.
+    // Metres within which the two above count as "together". Wider than MaxInteractionDistance
+    // (spending a day near somebody needs no reach) and wide enough to cover the starting camp
+    // (MapLoader.CrowdRadius is 4m). Set too tight, no child is ever born in the shipped game -
+    // FamilyMilestoneTests.TheShippedStartingBandHasChildrenOfItsOwn guards that.
     public float TogetherDistance { get; } = 5f;
 
-    // The value a newborn's bond with each of its parents is written at (docs/todo/todo.md, "u
-    // potomku automaticky vyšší") - a starting point on the same scale as everything else
-    // here, not a bond of some separate kind. Well above nothing and well below the threshold
-    // below: a child is close to its parents from its first day, and closeness to family is
-    // never what makes more of it. Nothing enforces that by value, because it cannot - a grown
-    // child living beside its mother sails past the threshold on its own. Kinship is a
-    // structural check on the family tree for exactly that reason.
+    // A newborn's bond with each parent, on the same scale as every other bond. Below
+    // AffectionNeededToHaveAChild so a child starts close to its parents, but nothing enforces
+    // that by value - a grown child beside its mother passes the threshold on its own, which is
+    // why Kinship is a structural check on the family tree.
     public float StartingAffectionWithParents { get; } = 50f;
 
-    // The point on that same scale past which a child follows without the player asking for
-    // one (see WorldState.Advance). Reachable from nothing in a couple of hundred ticks of
-    // company, so a band left alone for a year does grow.
+    // Bond past which a child follows without the player asking (see WorldState.Advance).
+    // Reachable from nothing in a couple of hundred ticks of company.
     public float AffectionNeededToHaveAChild { get; } = 60f;
 
     public float ConditionDecayPerTick { get; init; } = 0.05f;
 
-    // Nobody autonomously treks halfway across a real ~1km terrain patch (see
-    // MapLoader.ScatterDecorations) for one distant resource - a search this wide only ever
-    // matters in a sparse/test world; the real game's decoration density means a genuinely
-    // reachable match is normally well within it anyway.
+    // Metres the idle AI searches for a resource to work, so nobody treks across the ~1km map
+    // for one distant node. In the shipped world a match is normally much closer; this only
+    // matters in sparse test worlds.
     public float IdleSearchRadius { get; } = 60f;
 
-    // A lesson someone actually sat down to give (TeachFromSelectedPersonTo's right-click, a
-    // deliberate full transfer) is a different thing from picking something up just from being
-    // around someone - "tichá pošta": only ever the base technique, never the harder-earned
-    // efficient one riding on top of it, and even that isn't guaranteed on any given tick
-    // (rolled fresh each tick, not a permanent per-pair verdict - once someone picks something
-    // up they can just as easily become a further relay for it, so a low per-tick chance,
-    // not a one-time coin flip, is what actually keeps the spread gradual and partial).
+    // Per-tick chance that someone nearby picks up a technique just from being around a teacher,
+    // as opposed to a deliberate lesson (TeachFromSelectedPersonTo). Only ever the base
+    // technique, never the efficient one. Rolled fresh each tick rather than once per pair, so
+    // the spread stays gradual and partial.
     public float CasualTeachingChancePerTick { get; } = 0.05f;
 
-    // Eating (and teaching itself, the one thing every other casual lesson depends on - see
-    // WorldState.AutoTeachNearbyPeople) are different from a specialised craft skill: everyone's
-    // watched someone else eat and copying it comes far more naturally than picking up
-    // woodcutting from proximity alone, and the whole casual-teaching chain can't even start in
-    // a population until at least one person knows how to teach at all. A much higher chance
-    // for these two specifically keeps that bootstrap from being the bottleneck it would
-    // otherwise be.
+    // Higher chance for eating and teaching itself (see WorldState.AutoTeachNearbyPeople): both
+    // come naturally by watching, and no casual teaching can start until somebody knows how to
+    // teach at all, so that bootstrap must not be the bottleneck.
     public float CasualTeachingChancePerTickForCriticalSkills { get; } = 0.3f;
 
-    // How close a person has to be to a thing (a resource node, a building, another person)
-    // to act on it - every command that needs proximity checks against this one number, via
-    // WorldState.IsWithinReach.
+    // Metres within which a person can act on a thing (a node, a building, another person);
+    // every proximity check goes through WorldState.IsWithinReach.
     public float MaxInteractionDistance { get; init; } = 2f;
 
-    // A person's own footprint half-width for collision purposes - deliberately smaller than
-    // PersonView's rendered sprite, this only needs to keep people from visibly overlapping,
-    // not match their exact silhouette.
+    // Half-width of a person's footprint for collisions, in metres. Smaller than the rendered
+    // sprite: it only needs to keep people from visibly overlapping.
     public float PersonCollisionRadius { get; } = 0.35f;
 
-    // Caps how far a single tick's worth of untangling can shove someone, regardless of how
-    // many things they happen to be overlapping at once (a person standing in a dense thicket
-    // could otherwise be touching several trees' trunks simultaneously, and summing every one
-    // of those separations unclamped could shove them noticeably farther in one tick than
-    // their own MoveTask/IdleTask step - reading as the person's walk order having been
-    // silently hijacked toward some unrelated direction rather than a gentle nudge out of the
-    // way). Same order of magnitude as MoveCommand's own walking speed, so being untangled
-    // never outpaces an intentional step; a person still deeply stuck simply takes a couple of
-    // extra ticks to fully clear, spread out rather than dumped in one lurch.
+    // Cap on how far one tick of collision untangling may move a person, in metres, however
+    // many things they overlap at once. Same order as a walking step, so a push never reads as
+    // a hijacked walk order; someone deeply stuck clears over a few ticks instead.
     public float MaxCollisionPushPerTick { get; } = 1f;
 
     public long TicksPerYear => TicksPerSeason * SeasonsPerYear;

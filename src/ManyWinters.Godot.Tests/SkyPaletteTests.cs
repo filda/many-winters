@@ -5,8 +5,8 @@ namespace ManyWinters.Godot.Tests;
 
 public class SkyPaletteTests
 {
-    // Deliberately lopsided - a colour whose channels are far apart and whose average (0.4)
-    // is nowhere near any of them, so nothing below passes by arithmetic coincidence.
+    // Channels far apart and an average (0.4) near none of them, so nothing below passes by
+    // arithmetic coincidence.
     private static readonly Color Lopsided = new(0.1f, 0.3f, 0.8f);
 
     [Fact]
@@ -32,8 +32,7 @@ public class SkyPaletteTests
     [Fact]
     public void PartialDesaturationMovesEachChannelThatFractionOfTheWayToTheGrey()
     {
-        // 0.1 -> 0.25, 0.3 -> 0.35, 0.8 -> 0.6: each channel half of its own distance to 0.4,
-        // which is three different distances in two different directions.
+        // 0.1 -> 0.25, 0.3 -> 0.35, 0.8 -> 0.6: half of each channel's own distance to 0.4.
         var result = SkyPalette.Desaturated(Lopsided, 0.5f);
 
         Assert.Equal(0.25f, result.R, 5);
@@ -44,8 +43,7 @@ public class SkyPaletteTests
     [Fact]
     public void DesaturatingLeavesAlphaAlone()
     {
-        // The fog sheet's own alpha comes from how unexplored the ground is, never from the
-        // colour it fades toward.
+        // The fog sheet's alpha comes from how unexplored the ground is, never from the colour.
         var result = SkyPalette.Desaturated(new Color(0.1f, 0.3f, 0.8f, 0.5f), 1f);
 
         Assert.Equal(0.5f, result.A, 5);
@@ -54,8 +52,8 @@ public class SkyPaletteTests
     [Fact]
     public void TheFogFadesToSomethingAsBrightAsTheSkylineItMeets()
     {
-        // The two are drawn side by side along the horizon, so a step in brightness there
-        // would draw a line across the whole map.
+        // Drawn side by side along the horizon, so a brightness step would draw a line across
+        // the map.
         var fog = SkyPalette.FogFar;
         var horizon = SkyPalette.Horizon;
 
@@ -68,8 +66,7 @@ public class SkyPaletteTests
     [Fact]
     public void TheFogKeepsMuchLessOfTheSkysColourThanTheSkyItself()
     {
-        // The point of desaturating it at all: unexplored ground that is as blue as the air
-        // above it stops reading as ground.
+        // Unexplored ground as blue as the air above it stops reading as ground.
         var fogSpread = SkyPalette.FogFar.B - SkyPalette.FogFar.R;
         var skySpread = SkyPalette.Horizon.B - SkyPalette.Horizon.R;
 
@@ -80,7 +77,6 @@ public class SkyPaletteTests
     [Fact]
     public void TheSkyGetsDarkerAndBluerTheHigherItGoes()
     {
-        // The whole point of having a gradient rather than one flat colour.
         Assert.True(SkyPalette.Zenith.R < SkyPalette.Horizon.R);
         Assert.True(SkyPalette.Zenith.B - SkyPalette.Zenith.R > SkyPalette.Horizon.B - SkyPalette.Horizon.R);
     }
@@ -88,7 +84,7 @@ public class SkyPaletteTests
     [Fact]
     public void TheStreaksAreLighterThanTheSkyTheyLieOn()
     {
-        // They are wisps catching the light, not shadows - see the shader's own doc comment.
+        // Wisps catching the light, not shadows.
         Assert.True(SkyPalette.Streak.R > SkyPalette.Horizon.R);
         Assert.True(SkyPalette.Streak.G > SkyPalette.Horizon.G);
         Assert.True(SkyPalette.Streak.B > SkyPalette.Horizon.B);

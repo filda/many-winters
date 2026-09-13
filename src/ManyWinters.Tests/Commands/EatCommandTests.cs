@@ -93,8 +93,7 @@ public class EatCommandTests
 
         world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
 
-        // All 20 units get eaten either way (not enough to fully satisfy 100 hunger even at
-        // the efficient rate) - the bonus shows up in how much hunger that same 20 relieves.
+        // All 20 units get eaten either way; the bonus shows in how much hunger they relieve.
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
         Assert.Equal(76f, person.Needs.Hunger);
     }
@@ -110,8 +109,7 @@ public class EatCommandTests
         world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
 
         Assert.Equal(50f, person.Needs.Hunger);
-        // Nor does miming a meal count as practice - going through the motions with an empty
-        // pack must not train anyone toward the efficient technique.
+        // Miming a meal with an empty pack must not count as practice toward the technique.
         Assert.Equal(0f, person.Skills.Get(EatCommand.Skill));
         Assert.DoesNotContain(TestCatalogs.EfficientEating, person.KnownTechniques);
     }
@@ -121,8 +119,8 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        // Without this the meal is refused for not knowing how to eat, and the branch this
-        // test is named after is never reached at all.
+        // Without this the meal is refused for not knowing how to eat and the branch under test
+        // is never reached.
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 50;
         person.Inventory.Add(TestCatalogs.WoodItem, 20);
@@ -138,8 +136,7 @@ public class EatCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        // Every other reason to refuse is removed - they know how, they are hungry, and the
-        // food is in hand - so being dead is on its own what stops the meal.
+        // Every other reason to refuse is removed, so being dead is on its own what stops the meal.
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.IsAlive = false;
         person.Needs.Hunger = 50;
@@ -154,9 +151,8 @@ public class EatCommandTests
     [Fact]
     public void MoreFillingFoodMeansFewerUnitsEatenToSatisfyTheSameHunger()
     {
-        // Everything shipped restores exactly 1 per unit, which hides whether hunger is
-        // divided by that rate or multiplied by it - both give the same answer at 1. Stew
-        // restoring 4 tells them apart: ten hunger needs three units, not forty.
+        // Everything shipped restores 1 per unit, which cannot tell dividing hunger by the rate
+        // from multiplying by it. Stew restoring 4 does: ten hunger needs three units, not forty.
         var stew = new ItemKindId("stew");
         var materials = new MaterialCatalog([new MaterialDefinition(new MaterialId("stew"), "Stew", Density: 1f)]);
         var configuration = TestCatalogs.CreateConfiguration() with
@@ -181,8 +177,7 @@ public class EatCommandTests
     [Fact]
     public void EnoughPracticeDiscoversTheEfficientTechnique()
     {
-        // Five meals is exactly the threshold - the meal that reaches it is the one that
-        // teaches, not the one after.
+        // Five meals is exactly the threshold: the meal that reaches it is the one that teaches.
         var world = TestCatalogs.CreateWorld();
         var person = EaterWithFood(world);
 
@@ -192,9 +187,8 @@ public class EatCommandTests
             world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
         }
 
-        // Five meals, but not five levels: practice has diminishing returns (see
-        // Skills.Increase), so the fifth meal leaves the skill just over 2.5 - where the
-        // threshold sits, being written as "five meals' worth".
+        // Practice has diminishing returns (Skills.Increase): five meals leave the skill just over
+        // 2.5, where the threshold sits.
         Assert.Equal(2.553f, person.Skills.Get(EatCommand.Skill), 3);
         Assert.Contains(TestCatalogs.EfficientEating, person.KnownTechniques);
     }
@@ -211,8 +205,7 @@ public class EatCommandTests
             world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
         }
 
-        // Four meals along the same curve - short of the fifth meal's 2.553, and so short of
-        // the threshold.
+        // Four meals fall short of the fifth meal's 2.553, and so of the threshold.
         Assert.Equal(2.245f, person.Skills.Get(EatCommand.Skill), 3);
         Assert.DoesNotContain(TestCatalogs.EfficientEating, person.KnownTechniques);
     }

@@ -5,9 +5,9 @@ using ManyWinters.Godot.Views;
 
 namespace ManyWinters.Godot.Prototypes;
 
-// Visual/camera prototype sandbox (docs/terrain-and-world-scale-architecture.md, "first
-// implementable slice"). Deliberately not wired into Main.cs/WorldState - this only proves
-// out real elevation data + camera behavior, per conventions.md's prototype/production split.
+// Visual/camera prototype sandbox (docs/terrain-and-world-scale-architecture.md, "First
+// implementable slice"). Not wired into Main/WorldState: it only proves out real elevation data
+// and camera behavior, per conventions.md's prototype/production split.
 public partial class TerrainSandbox : Node3D
 {
     private const string HeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
@@ -39,9 +39,8 @@ public partial class TerrainSandbox : Node3D
     private const float PropMaxScale = 1.3f;
     private const int PropScatterSeed = 1;
 
-    // Sized for this heightmap's real scale (1000 m across, ~80 m of relief) - not the tiny
-    // 20-unit test map Main.cs uses. A camera at the default (test-map-sized) distance would
-    // sit inside the terrain itself here; the zoom bounds themselves are the shared ones.
+    // Sized to take in the whole 1000 m heightmap patch at once rather than Main's close camp
+    // view; the zoom bounds are the shared ones.
     private static readonly PresentationSettings Presentation = PresentationSettings.Default with { InitialZoomDistance = 700f };
 
     private static readonly Color TreeFallbackColor = new(0.20f, 0.32f, 0.18f);
@@ -63,9 +62,8 @@ public partial class TerrainSandbox : Node3D
         _terrain.BuildTerrainMesh(this);
         _terrain.BuildWaterways(this);
 
-        // Scattered across the whole loaded patch (radius = _terrain.Half), unlike Main.cs's
-        // camp-centered radius - this scene is specifically for eyeballing decoration over
-        // real terrain at full scale, not a small playable area around a camp.
+        // Scattered across the whole loaded patch (radius = _terrain.Half), not a camp-centered
+        // radius: this scene is for eyeballing decoration over real terrain at full scale.
         var rng = new Random(PropScatterSeed);
         _terrain.ScatterDecoration(this, rng, TreeCount, new[] { ConiferTreePath }, TreeHeightMeters, TreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
         _terrain.ScatterDecoration(this, rng, DeciduousTreeCount, new[] { DeciduousTreePath }, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
@@ -98,9 +96,8 @@ public partial class TerrainSandbox : Node3D
         }
     }
 
-    // See Main.cs's _UnhandledInput for why this isn't in _Input, and why it also checks
-    // GuiGetHoveredControl (this scene has no UI today, but keeps the same guard for when
-    // it does rather than silently losing it if one gets added here later).
+    // See Main._UnhandledInput for why this isn't _Input and checks GuiGetHoveredControl; this
+    // scene has no UI yet, but keeps the guard for when one is added.
     public override void _UnhandledInput(InputEvent @event)
     {
         if (GetViewport().GuiGetHoveredControl() is not null)

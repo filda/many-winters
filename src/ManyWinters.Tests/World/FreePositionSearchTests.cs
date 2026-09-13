@@ -4,8 +4,7 @@ namespace ManyWinters.Tests.World;
 
 public class FreePositionSearchTests
 {
-    // A generator handing out 0, 1, 2, ... on the X axis, so a test can say which draw a
-    // returned position came from just by reading its X.
+    // Hands out (0, 0), (1, 0), (2, 0), ... so a returned position's X says which draw it was.
     private static Func<Position> Counting(List<Position> drawn) =>
         () =>
         {

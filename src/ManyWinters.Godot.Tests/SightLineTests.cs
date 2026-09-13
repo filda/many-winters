@@ -57,8 +57,7 @@ public class SightLineTests
     [Fact]
     public void AWiderThingBlocksFromFurtherOff()
     {
-        // The whole reason the reach is a parameter: a broad canopy is in the way from much
-        // further aside than a blade of grass at the same spot.
+        // A broad canopy is in the way from further aside than a blade of grass at the same spot.
         var beside = Beside(0.5f, 2.5f);
         var line = Line();
 
@@ -86,16 +85,15 @@ public class SightLineTests
     [Fact]
     public void SomethingBeyondTheTargetIsNotInTheWayEither()
     {
-        // Only what sits strictly between the two counts - a tree behind the person you are
-        // watching is not blocking the view of them.
+        // Only what sits between the two counts; a tree behind the watched person is not blocking.
         Assert.False(Line().IsBlockedBy(Beside(1.5f, 0f), radius: 5f, margin: 1f, lengthTolerance: 1f));
     }
 
     [Fact]
     public void TheToleranceExtendsOnlyTheFarEndOfTheLine()
     {
-        // Something level with the target, or a little past it, is not what the view needs
-        // cleared - but the slack must not also reach back behind the camera.
+        // Something level with or a little past the target still counts, but the slack must not
+        // also reach back behind the camera.
         var line = Line();
         var justPastTarget = line.Origin + (line.Direction * (line.Length + 0.5f));
         var justBehindCamera = line.Origin - (line.Direction * 0.5f);
@@ -108,8 +106,8 @@ public class SightLineTests
     [Fact]
     public void DistanceAlongTheLineIsNotConfusedWithDistanceAsideFromIt()
     {
-        // A thing right next to the camera but far off to the side is close in a straight line
-        // and nowhere near the view - measuring the wrong one of the two would fade it.
+        // Close to the camera in a straight line but nowhere near the view; measuring the wrong
+        // distance would fade it.
         var line = Line();
         var nearButAside = line.Origin + (line.Direction * 2f) + (line.Direction.Cross(Vector3.Up).Normalized() * 6f);
 
@@ -119,8 +117,7 @@ public class SightLineTests
     [Fact]
     public void BlockingIsJudgedInThreeDimensionsNotJustOnTheGroundPlane()
     {
-        // The camera looks down at the world, so "aside from the line" includes above and
-        // below it. Something directly over the line by more than its reach is clear.
+        // The camera looks down, so "aside from the line" includes above and below it.
         var line = Line();
         var onLine = line.Origin + (line.Direction * (line.Length * 0.5f));
 

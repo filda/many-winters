@@ -5,9 +5,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// Separation is the only thing allowed to move anyone here: every person is granted a long
-// idle grace (see GrantIdleGraceCommand) so WorldState.Advance never drops them into an
-// IdleTask and wanders them off, which is what makes exact positions assertable at all.
+// Every person gets a long idle grace (GrantIdleGraceCommand) so Advance never wanders them
+// off; separation is the only thing moving anyone, which makes exact positions assertable.
 public class WorldStateCollisionTests
 {
     private const float PersonRadius = 0.35f;
@@ -29,8 +28,7 @@ public class WorldStateCollisionTests
     [Fact]
     public void ThePushRunsAlongTheLineBetweenThemRatherThanOnOneAxis()
     {
-        // A 3-4-5 overlap: the same 0.2m of overlap, but split between X and Y in proportion
-        // to the offset, so nobody gets shoved sideways off the line they actually overlap on.
+        // A 3-4-5 offset: the same 0.2m overlap, split between X and Y in proportion to it.
         var world = WorldWithPeople(new Position(0, 0), new Position(0.3, 0.4), out var a, out var b);
 
         world.Advance(1);
@@ -53,8 +51,7 @@ public class WorldStateCollisionTests
     [Fact]
     public void TwoPeopleStandingOnExactlyTheSameSpotStillComeApart()
     {
-        // No direction to separate along, so rather than dividing by a zero distance (or
-        // leaving them permanently fused) they take a fixed axis and get unstuck.
+        // No direction to separate along; a fixed axis is used rather than dividing by zero.
         var world = WorldWithPeople(new Position(3, 3), new Position(3, 3), out var a, out var b);
 
         world.Advance(1);
@@ -75,9 +72,8 @@ public class WorldStateCollisionTests
     [Fact]
     public void APushBiggerThanOneTickAllowsIsClampedWithoutChangingItsDirection()
     {
-        // Boxed in on one side by three boulders at once, the summed push runs well past what
-        // a single tick may move someone. It gets scaled back to exactly the cap, and both
-        // components have to be scaled by the same factor or the shove would come out crooked.
+        // Three boulders at once sum to a push past the per-tick cap; it is scaled to exactly
+        // the cap, both components by the same factor so the direction holds.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), TestCatalogs.AdultAgeTicks);
         world.Execute(new GrantIdleGraceCommand(person, 1000));
@@ -119,10 +115,8 @@ public class WorldStateCollisionTests
         return world;
     }
 
-    // Six places, not more: the minimum distance is computed in float (PersonCollisionRadius
-    // is a float, so twice it is 0.69999998, not 0.7), which shows up in the seventh place of
-    // every push derived from it. Still orders of magnitude tighter than any change to the
-    // arithmetic itself would produce.
+    // Six places: the minimum distance is computed in float (2 * 0.35f = 0.69999998), which
+    // shows in the seventh place of every push derived from it.
     private static void AssertPosition(double expectedX, double expectedY, Position actual)
     {
         Assert.Equal(expectedX, actual.X, precision: 6);

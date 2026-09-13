@@ -1,34 +1,24 @@
 shader_type spatial;
-// depth_draw_never matters here, not just depth_test_disabled - see
-// fog_of_war_screen.gdshader's own doc comment on why leaving this overlay's own near-plane
-// depth writable corrupted every later depth read this frame, itself included.
+// depth_draw_never, not just depth_test_disabled - see fog_of_war_screen.gdshader: a writable
+// near-plane depth from this overlay corrupts every later depth read, its own included.
 render_mode unshaded, depth_test_disabled, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled, blend_mul;
 
 // The "remembered" tier (explored, not currently in sight) of FogOfWarRenderer.cs's fog of
-// war - see fog_of_war_screen.gdshader's own doc comment for why this had to be a *second*
-// overlay with its own (multiply) blend mode rather than one more branch in that shader: a
-// first attempt read the already-rendered pixel back via hint_screen_texture to desaturate it
-// in place, but that automatic screen copy is taken before alpha-tested sprites (every
-// person/tree/resource) are drawn, so every sprite in view rendered as a flat grey silhouette
-// instead of being muted in place - it was reading whatever was *behind* them.
-//
-// A multiply blend sidesteps that: it's a real GPU blend against the actual framebuffer at
-// the moment this overlay draws (dead last, via RenderPriority - see FogOfWarRenderer.cs),
-// which by then already includes every sprite. Output near-white (1,1,1) leaves a pixel
-// unchanged under multiply (x * 1 = x); output the muted tint instead to darken/greY it
-// toward that tint - no need to know or read the pixel's own original color at all.
+// war. A separate overlay with a multiply blend, because reading the rendered pixel back via
+// hint_screen_texture misses the alpha-tested sprites (see fog_of_war_screen.gdshader). Under
+// multiply, white (1,1,1) leaves a pixel unchanged and the tint darkens it toward itself - no
+// need to know the pixel's own colour.
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 uniform sampler2D exploration_texture : filter_linear, repeat_disable;
 uniform vec3 remembered_tint : source_color = vec3(0.80, 0.74, 0.64);
 uniform float half_extent_meters = 500.0;
 
-// See fog_of_war_screen.gdshader's own doc comment on cloud_mask for the full reasoning.
+// See fog_of_war_screen.gdshader's cloud_mask.
 uniform sampler2D cloud_mask : filter_linear;
 
 void vertex() {
-    // See fog_of_war_screen.gdshader's own doc comment on why Z=0.0 (not 1.0) and why the
-    // vertex transform is skipped entirely - same full-screen-quad trick, same reasoning.
+    // Same full-screen-quad trick as fog_of_war_screen.gdshader, Z=0.0 for the same reason.
     POSITION = vec4(VERTEX.xy, 0.0, 1.0);
 }
 
@@ -43,32 +33,20 @@ void fragment() {
 
     vec2 uv = ((world.xz / half_extent_meters) * 0.5) + 0.5;
 
-    // See fog_of_war_screen.gdshader's own doc comment on the flat "ceiling" this guards
-    // against - a legitimately distant tree's own depth losing enough precision to
-    // reconstruct an implausible world position, multiplying whatever fog-tint state the
-    // texture's clamped edge happens to hold into an unrelated, perfectly normal tree.
+    // Same three guards as fog_of_war_screen.gdshader (far-plane sky, implausible distant
+    // reconstruction, cloud pixel by green channel). White is multiply's no-op. No early
+    // return from fragment() in Godot's shading language, hence the if/else.
     bool implausible = uv.x < -0.1 || uv.x > 1.1 || uv.y < -0.1 || uv.y > 1.1;
-    // See fog_of_war_screen.gdshader's own doc comment on why this checks color, not
-    // just alpha.
-    // See fog_of_war_screen.gdshader's own doc comment on why only the green channel is
-    // checked.
     vec4 maskSample = texture(cloud_mask, SCREEN_UV);
     bool cloudPixel = maskSample.a > 0.5 && maskSample.g < 0.02;
 
-    // See fog_of_war_screen.gdshader's own doc comment on "fleky" - the empty sky reconstructs
-    // to a wildly out-of-range world position, and multiplying by a stray sampled value there
-    // is exactly as visible as alpha-blending one. White (1,1,1) is multiply's own no-op.
-    // Godot's shading language doesn't allow an early `return` out of fragment() (unlike plain
-    // GLSL), so this has to stay one big if/else rather than a guard clause.
     if (depth >= 0.9999 || implausible || cloudPixel) {
         ALBEDO = vec3(1.0);
     } else {
         vec4 state = texture(exploration_texture, uv);
-        // G: exact ("sharp") remembered mask, re-thresholded. A: the same mask, blurred - see
-        // fog_of_war_screen.gdshader's own doc comment on why gating the blur by the sharp
-        // value (rather than using the blur alone) matters: it keeps this tint from bleeding
-        // onto anything whose cell is actually still currently Visible. See that shader for
-        // the R/B (unexplored) channels.
+        // G: sharp remembered mask, re-thresholded. A: the same mask blurred. Gating the blur by
+        // the sharp value keeps the tint off cells that are still Visible; R/B (unexplored) are
+        // read by fog_of_war_screen.gdshader.
         float rememberedSharp = step(0.5, state.g);
         float remembered = rememberedSharp * state.a;
 

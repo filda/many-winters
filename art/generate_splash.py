@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-Generates the boot-splash title page for the Godot build: an engraved landscape plate in
-the vein of Karel Zeman's paper dioramas (see docs/ZemanConceptArt.png for the target
-look - the top-left title block of that sheet is what this reproduces at game size).
+Generates the boot-splash title page: an engraved landscape plate after Karel Zeman's paper
+dioramas, reproducing the top-left title block of docs/ZemanConceptArt.png at game size.
 
-Same drawing rules as generate_sprites.py: tone comes from the density of hand-ruled
-crosshatch lines, never from a blended gradient; every shape gets an uneven ink contour;
-the palette is the concept sheet's own swatch row. The generator is self-contained rather
-than importing generate_sprites.py because that module hard-wires a 256x256 sprite canvas.
+Same drawing rules as generate_sprites.py (tone from crosshatch density, uneven ink contours,
+the concept sheet's palette); self-contained because that module hard-wires a 256x256 canvas.
 
 Run:  python3 generate_splash.py <output.png>
 """
@@ -93,8 +90,8 @@ def _dilate_local(m):
 
 
 def dilate(mask, r=1):
-    """Works on the mask's own bounding box only - a full-plate morphology per shape made
-    the ~150-shape scene take minutes."""
+    """Bounding box only - full-plate morphology per shape made the ~150-shape scene take
+    minutes."""
     box = _bbox(mask, pad=r + 1)
     if box is None:
         return mask.copy()
@@ -140,8 +137,7 @@ def jagged(points, rng, amp=6.0, segments_per_edge=6):
 
 # ---------------------------------------------------------------- hatching
 # Line density follows a per-shape tone array (0 = lit, 1 = shadow). Each line has its own
-# seeded lateral offset, curvature, thickness and pen-lift breaks - see generate_sprites.py
-# for why a shared noise field was rejected (it read as corrugated sheet metal).
+# seeded offset, curvature, thickness and pen-lift breaks (see generate_sprites.py's hatching).
 
 PERIOD = 5
 
@@ -502,10 +498,9 @@ FONTS = Path(__file__).resolve().parent.parent / "src" / "ManyWinters.Godot" / "
 def text_block(plate):
     img = plate.image()
     draw = ImageDraw.Draw(img)
-    # The game's own faces (see src/ManyWinters.Godot/Ui/InscriptionFont.cs), read from the
-    # repository rather than from the system, so the title page is set in the same type as
-    # every inscription inside the game and renders the same on any machine. IM Fell English
-    # has one weight; the stroke below gives the title the heft a bold would.
+    # The game's own faces (Ui/InscriptionFont.cs), read from the repository so the title
+    # renders the same on any machine. IM Fell English has one weight; the stroke gives the
+    # title the heft a bold would.
     title_font = ImageFont.truetype(str(FONTS / "im-fell-english" / "IMFeENrm28P.ttf"), 124)
     over_font = ImageFont.truetype(str(FONTS / "im-fell-english" / "IMFeENrm28P.ttf"), 54)
     sub_font = ImageFont.truetype(str(FONTS / "vollkorn" / "Vollkorn-Italic.ttf"), 32)

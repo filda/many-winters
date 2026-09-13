@@ -58,9 +58,8 @@ public class EpitaphTests
 
     private static IEnumerable<string> AllText(Inscription inscription) => inscription.Lines.Prepend(inscription.Title);
 
-    // What every carved sentence has to look like, whichever variant was drawn: a sentence.
-    // An empty phrase slotted into a template leaves a double space or a dangling comma, so
-    // this is also what catches a variant that says nothing.
+    // Every carved line has to read as a sentence. An empty phrase slotted into a template leaves
+    // a double space or a dangling comma, so this also catches a variant that says nothing.
     private static void AssertReadsAsASentence(string line)
     {
         Assert.False(string.IsNullOrWhiteSpace(line));

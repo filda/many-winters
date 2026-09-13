@@ -6,9 +6,8 @@ using ManyWinters.Core.Serialization;
 
 namespace ManyWinters.Core.World;
 
-// Everything a WorldState is built from but never changes while it runs: the content catalogs
-// (what exists), the calendar-to-climate mapping, and the simulation's tuning numbers (Rules).
-// A save file stores none of this - it's handed back in on load.
+// Everything a WorldState is built from but never changes while it runs: catalogs, the
+// calendar-to-climate mapping and the tuning numbers (Rules). A save file stores none of it.
 public sealed record WorldConfiguration(
     ResourceCatalog ResourceCatalog,
     SkillCatalog SkillCatalog,
@@ -19,29 +18,25 @@ public sealed record WorldConfiguration(
     SeasonParameters SeasonParameters,
     SimulationRules Rules)
 {
-    // Nothing defined at all, on the default calendar and rules - what
-    // `new WorldConfiguration { X = ... }` starts from when a caller only cares about one or two
-    // of the catalogs. The item catalog gets an empty material catalog of its own: with no items
-    // defined either, there is nothing whose weight could differ between the two.
+    // Nothing defined, default calendar and rules - what `new WorldConfiguration { X = ... }`
+    // starts from when a caller cares about one or two catalogs. The item catalog gets its own
+    // empty material catalog; with no items there is nothing whose weight could differ.
     public WorldConfiguration()
         : this(new([]), new([]), new([]), new([]), new([]), new([], new([])), SeasonParameters.Default, SimulationRules.Default)
     {
     }
 
-    // The shipped content folder, read straight off the filesystem - what the headless
-    // SimulationRunner does. The Godot build can't (see JsonDefinitions), so it goes through
-    // LoadFromJson below with its own reader instead.
+    // The shipped content folder off the filesystem (the headless SimulationRunner). The Godot
+    // build cannot (see JsonDefinitions) and goes through LoadFromJson with its own reader.
     public static WorldConfiguration LoadFromDirectory(string contentRoot) =>
         LoadFromJson(catalog => JsonDefinitions.ReadDirectory(Path.Combine(contentRoot, catalog)));
 
-    // `readCatalog` is handed the name of one catalog's folder under the content root
-    // ("resources", "skills", ...) and returns the JSON documents found in it - so the folder
-    // names live here, once, no matter who does the reading.
+    // `readCatalog` gets one catalog folder name under the content root ("resources", "skills",
+    // ...) and returns its JSON documents, so the folder names live here once.
     public static WorldConfiguration LoadFromJson(Func<string, IEnumerable<(string Source, string Json)>> readCatalog)
     {
-        // Materials first, and named rather than inlined: items derive their weight and
-        // insulation from them, so the item catalog needs the same instance rather than a
-        // second reading of the same folder.
+        // Materials first and named: items derive weight and insulation from them, so the item
+        // catalog needs the same instance rather than a second reading.
         var materials = MaterialCatalog.LoadFromJson(readCatalog("materials"));
 
         return new(

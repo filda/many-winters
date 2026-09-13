@@ -4,93 +4,56 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Fog;
 
-// Renders both non-"currently visible" fog-of-war tiers as a single full-screen
-// post-process overlay (Content/effects/fog_of_war_screen.gdshader - see its own doc comment
-// for the technique, and this class's git history for two earlier approaches - a polygon
-// mesh ceiling and real volumetric fog - that were tried and reverted):
-//   - "Unknown" cells (never explored) get replaced with a flat fog color.
-//   - "Remembered" cells (explored, but nobody currently has them in sight) get the actual
-//     already-rendered pixel desaturated/dimmed in place, not a flat color blended over it -
-//     an earlier mesh-based version of this tier used a flat sepia wash, which read as "the
-//     ground turned to sand" rather than "this same ground, dimly remembered".
-// Both tiers are driven by one small bitmap (RebuildExplorationTexture) that the shader
-// samples using each screen pixel's own reconstructed world position - the per-pixel test
-// (not per-vertex, not per-ray-step) is what keeps the explored camp visible regardless of
-// the camera's own distance from it. That bitmap carries both an exact ("sharp") record of
-// the boundary and a blurred copy of it - see RebuildExplorationTexture's own doc comment for
-// why a boundary that's soft everywhere ended up visibly fogging trees whose cell was
-// actually already Explored.
+// Renders both non-visible fog-of-war tiers as one full-screen post-process overlay
+// (Content/effects/fog_of_war_screen.gdshader has the technique):
+//   - "Unknown" cells (never explored) are replaced with a flat fog colour.
+//   - "Remembered" cells (explored, nobody has them in sight) get the already-rendered pixel
+//     desaturated in place - a flat wash read as "ground turned to sand", not dim memory.
+// Both tiers sample one small bitmap (RebuildExplorationTexture) by each screen pixel's own
+// reconstructed world position, so the explored camp stays visible whatever the camera's
+// distance. The bitmap holds a sharp and a blurred copy of the boundary; see that method.
 public sealed class FogOfWarRenderer
 {
-    // The same muted cool grey the cloud sprites are painted in (art/generate_sprites.py's
-    // _cloud), so the unknown sheet and the low clouds GroundClouds lays over it read as one
-    // bank of cloud. A warm parchment (docs/ZemanConceptArt.png's "Unknown" panel) was tried
-    // in several shades first; with the clouds on top it clashed rather than framed them.
-    // The mottling in fog_of_war_screen.gdshader and GroundClouds' low cover are what keep
-    // this from reading as flat fog or snow, not the hue (a world-space hatch over the sheet
-    // was tried too and dropped - it read as a ploughed field).
+    // The same muted cool grey the cloud sprites use (art/generate_sprites.py, _cloud), so the
+    // unknown sheet and GroundClouds' low cover read as one bank of cloud; warm parchment clashed
+    // with the clouds. The shader's mottling and the low cover, not the hue, keep this from
+    // reading as flat fog or snow.
     private static readonly Color UnknownColor = new(0.70f, 0.73f, 0.78f);
     private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
 
-    // Resolution of the *sharp* channels (R/B below) - one texel per ExplorationState cell
-    // (computed in the constructor from halfExtentMeters and CellSizeMeters), not some
-    // independent fixed value. A fixed 200 (Half=500 -> 5m/texel) used to be coarser than
-    // CellSizeMeters (2.5m): one texel then covered *two* actual cells, so
-    // RebuildExplorationTexture's single sample at that texel's center could land on the
-    // explored side of the true cell boundary while a tree just past it, in the same texel but
-    // the still-unexplored cell, was already real, already-instantiated geometry (WorldPresenter
-    // only creates a ResourceNodeView once its own cell is Explored) - the shader then fogged
-    // part of that already-Explored tree's own canopy, screen pixels of the same object
-    // reconstructing to world positions on both sides of one oversized texel. One texel per
-    // cell removes that mismatch entirely: every texel's sampled cell is the same cell any
-    // instantiated object in it belongs to, so there is no boundary for a single object's own
-    // geometry to straddle.
-
-    // Widening the sharp boundary itself (lowering ExplorationTextureResolution) was tried
-    // first to fix canopies getting sliced by a too-narrow transition - it did, but a soft
-    // blur has no notion of "which side of the true boundary this position is actually on":
-    // it also bled a visible ghost of fog onto trees whose cell genuinely *is* already
-    // Explored (confirmed - see "ale to nemá bejt uřízlý vůbec" and the two-trees screenshot:
-    // the farther one still showing a partial silhouette meant it was already real, already-
-    // instantiated geometry, since an unexplored cell has no ResourceNodeView to show at all).
-    // Blurring a *separate* copy instead, then gating it by the exact sharp test
-    // (`unexploredSharp * unexploredBlurred` in the shader), keeps that impossible: a
-    // genuinely Explored position always multiplies its own blur contribution by zero, no
-    // matter how much nearby unexplored fog bleeds toward it. The softness only ever shows on
-    // the unexplored side, fading deeper the further past the true edge it goes.
+    // One texel per ExplorationState cell (TexelGrid.Covering). A coarser texel straddled two
+    // cells, so the shader fogged part of an already-instantiated tree's canopy (WorldPresenter
+    // only creates a ResourceNodeView once its own cell is Explored).
+    //
+    // The blur is applied to a separate copy and gated by the sharp mask in the shader
+    // (`unexploredSharp * unexploredBlurred`): a genuinely Explored position multiplies its blur
+    // contribution by zero, so softness only ever shows on the unexplored side. Blurring the
+    // boundary itself bled a visible ghost of fog onto Explored trees.
     private const int BlurRadiusTexels = 3;
 
     private const string UnknownShaderPath = "res://Content/effects/fog_of_war_screen.gdshader";
     private const string RememberedShaderPath = "res://Content/effects/fog_of_war_remembered.gdshader";
 
-    // Local-space size of the overlay quad - the shader's own vertex() override writes
-    // straight to clip space ignoring the quad's actual world transform/size, so this only
-    // has to safely cover the [-1, 1] clip-space range on both axes (2x2), never less.
+    // The shader's vertex() writes straight to clip space and ignores the quad's real size; this
+    // only has to cover the [-1, 1] clip range (2x2), never less.
     private const float OverlayQuadSize = 4f;
 
-    // One below the maximum, deliberately. These two sheets have to cover every piece of world
-    // content there is, which is what the priority is for (see BuildOverlays: the quad sits at
-    // the near plane, so distance sorting alone would not settle it), but they must not cover the
-    // hover rim: that answers "what is your cursor on", and a remembered tree is a perfectly good
-    // thing to point at. Leaving 127 free is what lets HoverOutline draw over the fog rather than
-    // under it - without it, the rim dimmed and brightened as the fog boundary drifted past
-    // whatever was hovered, which reads as the line changing weight rather than changing colour.
+    // One below Godot's maximum: the sheets must draw over every piece of world content (see the
+    // constructor - the quad sits at the near plane, so distance sorting alone would not settle
+    // it), but under the hover rim, which HoverOutline draws at 127 - a remembered tree is still
+    // a valid thing to point at.
     private const int OverlayRenderPriority = 126;
 
     private readonly RevealableExploration _exploration;
     private readonly TexelGrid _grid;
     private readonly ImageTexture _explorationTexture;
 
-    // Metres from each texel to the nearest ever-explored cell (GridDistanceField), one float
-    // per texel - what lets the unknown shader fade its parchment out into darkness with
-    // distance from where the group has actually been, not from some fixed map landmark:
-    // concentric rings of party, visible ground, parchment, then nothing. Kept as its own
-    // texture rather than squeezed into a spare channel of _explorationTexture because that
-    // one is Rgba8 (0..1 per channel) and all four channels are already spoken for.
+    // Metres from each texel to the nearest ever-explored cell (GridDistanceField), so the unknown
+    // shader fades out with distance from where the band has actually been. Its own Rf texture
+    // because _explorationTexture's four Rgba8 channels are all taken.
     private readonly ImageTexture _distanceTexture;
 
-    // The same field on the CPU side, kept from the last rebuild for GroundClouds to query
-    // per candidate spot - one lookup into an already-computed grid, not a second transform.
+    // The same field on the CPU side, from the last rebuild, for GroundClouds to query.
     private float[,] _distanceCells;
 
     public FogOfWarRenderer(RevealableExploration exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
@@ -104,37 +67,22 @@ public sealed class FogOfWarRenderer
         var initialDistance = Image.CreateEmpty(_grid.Size, _grid.Size, false, Image.Format.Rf);
         _distanceTexture = ImageTexture.CreateFromImage(initialDistance);
 
-        // Two reconstruction-based ways to exempt CloudScatter's sprites from fog-of-war
-        // were tried and rejected first - see CloudFogMask's own doc comment for the full
-        // history (a world.y height test, then two variants of projecting each cloud's
-        // own known position into screen/view space and comparing against the pixel's
-        // reconstructed one). Both failed for the same underlying reason: reconstructing
-        // *this pixel's own* position from the depth buffer is only reliable along a
-        // steep view ray, and any real play zoom routinely looks close enough to the
-        // horizon to break that badly. cloudFogMask sidesteps the whole problem - it's a
-        // real render of just the cloud sprites, so "is this pixel a cloud" is a direct
-        // lookup, never an inference from an unreliable reconstructed position.
+        // A real render of just the cloud sprites (see CloudFogMask): "is this pixel a cloud" is a
+        // direct lookup, never inferred from the depth-reconstructed position, which is unreliable
+        // along the grazing view rays any play zoom produces.
         var cloudMaskTexture = cloudFogMask.Texture;
 
-        // Using ALPHA/a blend mode at all puts a material in the transparent render pass,
-        // sorted by distance among everything else transparent there - including
-        // person/resource sprites (their own AlphaCutMode.OpaquePrepass still counts), which
-        // that sort otherwise put on top of these overlays despite them sitting closer to the
-        // camera than anything else in the scene. RenderPriority sidesteps distance sorting
-        // entirely: within the transparent pass, a higher value always draws later (on top),
-        // regardless of depth - Godot's actual max (127) guarantees both overlays are among
-        // the last things composited, every frame (order between the two doesn't matter - see
-        // their own shaders: a cell is never both unexplored and remembered at once, so they
-        // never compete over the same pixel).
+        // An alpha blend mode puts a material in the transparent pass, distance-sorted against the
+        // person/resource sprites (OpaquePrepass still counts), which then drew on top of these
+        // overlays. RenderPriority bypasses that sort: higher draws later regardless of depth. The
+        // two overlays never compete for a pixel - a cell is never both unexplored and remembered.
         var unknownMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(UnknownShaderPath), RenderPriority = OverlayRenderPriority };
         unknownMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         unknownMaterial.SetShaderParameter("fog_albedo", UnknownColor);
         unknownMaterial.SetShaderParameter("distance_texture", _distanceTexture);
-        // The sheet fades out into the skyline it meets, so it dissolves rather than stopping
-        // at a visible seam; see the shader's own far_color comment. That used to be the
-        // viewport's flat clear colour, back when the background was one flat colour
-        // everywhere - it now tracks the painted sky instead, minus most of its blue (see
-        // SkyPalette.FogFar: a sheet as blue as the air above it stops reading as ground).
+        // The sheet dissolves into the skyline instead of stopping at a seam, so it tracks the
+        // painted sky minus most of its blue (SkyPalette.FogFar - a sheet as blue as the air stops
+        // reading as ground).
         unknownMaterial.SetShaderParameter("far_color", SkyPalette.FogFar);
         unknownMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         unknownMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
@@ -145,19 +93,14 @@ public sealed class FogOfWarRenderer
         rememberedMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         rememberedMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
 
-        // Both parented directly to the camera, just in front of it - their vertex shaders
-        // ignore this transform for where they actually draw (always full-screen, see
-        // fog_of_war_screen.gdshader's own doc comment), but each still needs *a* transform
-        // close to the camera so Godot's ordinary frustum culling (evaluated before the
-        // vertex override runs, on the mesh's real bounding box) doesn't cull it out as "off
-        // in the distance". Must sit beyond the camera's own Near (FreeCameraRig.cs, 0.5) or
-        // that same culling would discard it as "behind the near plane" instead.
+        // Parented to the camera, just in front of it: the vertex shaders ignore this transform
+        // (always full-screen), but frustum culling runs on the mesh's real bounding box before the
+        // vertex override, so it needs a transform inside the frustum - beyond Near (FreeCameraRig,
+        // 0.5) or it is culled as behind the near plane.
         const float overlayLocalZ = -1f;
         var quadMesh = new QuadMesh { Size = new Vector2(OverlayQuadSize, OverlayQuadSize) };
-        // Layers = CloudFogMask.FogOverlayLayerBit, not the default - see that constant's
-        // own doc comment on why these two quads must be invisible to the mask camera
-        // specifically (main camera's own cull mask has no exclusions besides
-        // CloudFogMask.CloudLayerBit, so this doesn't affect the real, composited view).
+        // Not the default layer: the mask camera must not render these quads (see
+        // CloudFogMask.FogOverlayLayerBit). The main camera's cull mask includes this layer.
         camera.AddChild(new MeshInstance3D
         {
             Mesh = quadMesh,
@@ -178,21 +121,16 @@ public sealed class FogOfWarRenderer
 
     public void Refresh() => RebuildExplorationTexture();
 
-    // Metres from a world position to the nearest ever-explored cell, as of the last
-    // Refresh - the same mapping from world to texel RebuildExplorationTexture uses.
+    // Metres from a world position to the nearest ever-explored cell, as of the last Refresh.
     public float DistanceToExploredMeters(float worldX, float worldZ) =>
         _distanceCells[_grid.TexelAt(worldZ), _grid.TexelAt(worldX)] * _grid.MetresPerTexel;
 
-    // One texel per (worldX, worldZ) sample across the whole map, in two layers:
-    //   R/G: the *sharp* (exact, unblurred) state - R: 1 where that point's cell has never
-    //   been explored, else 0. G: 1 where it's explored but not in anyone's current sight
-    //   (the "remembered" tier), else 0. Both shaders re-threshold these back to a hard 0/1
-    //   (step(0.5, ...)) even though bilinear sampling blends them a little right at the
-    //   boundary - that's what lets them gate the blurred channels below without ever letting
-    //   blur bleed across the true edge.
-    //   B/A: the same two masks, *blurred* (BoxBlur) - these are what actually carry the
-    //   soft falloff a fog boundary should have. Multiplying sharp*blurred in the shader is
-    //   what confines that softness to the unexplored/not-visible side only.
+    // One texel per (worldX, worldZ) sample, two layers:
+    //   R/G: sharp masks - R: 1 where the cell was never explored, G: 1 where it is explored but
+    //   out of everyone's sight. The shaders re-threshold these to hard 0/1 (step(0.5, ...))
+    //   despite bilinear sampling, so they can gate the blurred channels without bleed.
+    //   B/A: the same two masks blurred (BoxBlur) - the soft falloff, confined to the unexplored
+    //   or not-visible side by the sharp*blurred product in the shader.
     private void RebuildExplorationTexture()
     {
         var size = _grid.Size;

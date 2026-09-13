@@ -14,10 +14,8 @@ public sealed record LootCommand(Person LootingPerson, Person Deceased) : IComma
             return;
         }
 
-        // Only what fits comes off the corpse - a looter who's already full leaves the rest
-        // behind (still lootable later, e.g. by someone else) rather than it vanishing.
-        // Recomputed every iteration, not hoisted: looting a capacity-boosting item (a
-        // basket) partway through should raise the room left for whatever's looted next.
+        // Only what fits comes off the corpse; the rest stays lootable. Capacity is recomputed
+        // per iteration: looting a basket partway through raises the room for what follows.
         foreach (var (item, count) in Deceased.Inventory.Counts.ToList())
         {
             var taken = LootingPerson.Inventory.AddUpToCapacity(item, count, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(LootingPerson));

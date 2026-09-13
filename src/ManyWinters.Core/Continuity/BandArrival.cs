@@ -3,10 +3,8 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// The facts the inscription over a band's beginning is written from (see Prologue): who came,
-// how many, in what season, led in years by whom, and whether they knew anything at all. Read
-// off the world the moment the band is there, never stored - like BandEnding, it is a snapshot
-// of people, not a record kept beside them.
+// The facts the prologue is written from (see Prologue): who came, how many, in what season,
+// led in years by whom, and whether they knew anything. A snapshot of the world, never stored.
 public sealed record BandArrival
 {
     public required string BandName { get; init; }
@@ -17,8 +15,8 @@ public sealed record BandArrival
 
     public required int People { get; init; }
 
-    // Grown men and women (LifeStages.AdultAgeYears and up); everyone younger is a child,
-    // whichever sex, so the three always add up to People.
+    // Adults (LifeStages.AdultAgeYears and up); everyone younger is a child, so the three sum
+    // to People.
     public required int Men { get; init; }
 
     public required int Women { get; init; }
@@ -30,9 +28,8 @@ public sealed record BandArrival
 
     public required int EldestWinters { get; init; }
 
-    // Whether anyone in the band knows a single technique. The shipped starting band knows
-    // none - nobody is born knowing how to eat - and the prologue says so plainly, because
-    // teaching them is the game.
+    // Whether anyone knows a single technique. The shipped starting band knows none, and the
+    // prologue says so: teaching them is the game.
     public required bool KnowsAnything { get; init; }
 
     public static BandArrival Of(WorldState world)

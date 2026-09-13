@@ -1,10 +1,9 @@
 namespace ManyWinters.Godot.Logic;
 
-// The line under the pause panel's title (see PausePanel) - who is here to come back to,
-// counted the same three ways Prologue and Epitaph already break a band down by (adults of
-// each sex, everyone younger as a child), but in plain digits rather than drawn prose: this is
-// a status readout, glanced at while paused, not a chronicle entry. A group nobody is in is
-// left out rather than written as "0 children", same reasoning as Prologue's own Groups.
+// The line under the pause panel's title (PausePanel): the band counted the same three ways
+// Prologue and Epitaph break it down (adults of each sex, everyone younger a child), in plain
+// digits rather than prose. An empty group is left out rather than written as "0 children",
+// as in Prologue.Groups.
 internal static class PopulationSummary
 {
     public static string Of(int people, int men, int women, int children)

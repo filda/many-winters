@@ -5,8 +5,7 @@ namespace ManyWinters.Godot.Tests;
 
 public class ExplorationMasksTests
 {
-    // Small enough to reason about cell by cell: 8 texels across a 20m map, so one texel per
-    // 2.5m exploration cell.
+    // 8 texels across a 20m map: one texel per 2.5m exploration cell.
     private static readonly TexelGrid Grid = new(Size: 8, HalfExtentMeters: 10f);
 
     private static RevealableExploration WithSightAt(params Position[] sources)
@@ -36,8 +35,8 @@ public class ExplorationMasksTests
     [Fact]
     public void GroundSomeoneIsStandingOnIsNeitherUnknownNorRemembered()
     {
-        // The two tiers are exclusive: what is in sight right now is plain visible, so both
-        // masks read zero there even though it is explored.
+        // The two tiers are exclusive: ground in sight right now is plain visible, so both masks
+        // read zero even though it is explored.
         var masks = ExplorationMasks.Build(WithSightAt(new Position(0, 0)), Grid);
         var centre = Grid.TexelAt(0f);
 
@@ -63,8 +62,7 @@ public class ExplorationMasksTests
     [Fact]
     public void RevealingTheMapMakesEverythingReadAsSeenAndInSight()
     {
-        // The inspector's debugging toggle: the whole map counts as explored *and* visible, so
-        // neither fog tier shows anywhere.
+        // The inspector's debugging toggle: the whole map counts as explored and visible.
         var exploration = WithSightAt();
         exploration.RevealAll = true;
 
@@ -84,8 +82,8 @@ public class ExplorationMasksTests
     [Fact]
     public void TheExploredFlagIsTheExactComplementOfTheUnknownMask()
     {
-        // The distance field measures out from this flag, so a boundary that disagreed with
-        // the mask the shader gates on would fade from the wrong edge.
+        // The distance field measures out from this flag; disagreeing with the mask the shader
+        // gates on would fade from the wrong edge.
         var masks = ExplorationMasks.Build(WithSightAt(new Position(0, 0)), Grid);
 
         for (var ty = 0; ty < Grid.Size; ty++)
@@ -100,9 +98,8 @@ public class ExplorationMasksTests
     [Fact]
     public void TheMasksAreIndexedRowThenColumnSoAnOffCentreSightSourceLandsWhereItShould()
     {
-        // Deliberately asymmetric: sight far along one axis only. Swapping the two indices
-        // anywhere in the build would mirror the fog across the diagonal, which a square map
-        // with a centred source would never reveal.
+        // Sight far along one axis only: swapped indices would mirror the fog across the
+        // diagonal, which a centred source never reveals.
         var masks = ExplorationMasks.Build(WithSightAt(new Position(8f, -8f)), Grid);
         var tx = Grid.TexelAt(8f);
         var ty = Grid.TexelAt(-8f);

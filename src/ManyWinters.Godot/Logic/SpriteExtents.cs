@@ -2,26 +2,19 @@ using Godot;
 
 namespace ManyWinters.Godot.Logic;
 
-// What part of a sprite's square canvas actually has ink on it, in world metres. Every texture
-// here leaves real content occupying only part of its canvas - a canopy does not fill the
-// corners, a standing figure does not fill the full height - so a collision shape or an anchor
-// sized off the nominal canvas reads as an oversized, misaligned box rather than a
-// pixel-accurate one.
-//
-// Reading the used rect off an image needs the engine (SpriteVisibleExtent does that and
-// caches it); turning one into metres, and merging the extents of a sprite drawn in layers,
-// does not.
+// The part of a sprite's square canvas that actually has ink on it, in world metres. Content
+// never fills the whole canvas, so a collision shape or anchor sized off the nominal canvas is
+// an oversized, misaligned box. Reading the used rect needs the engine (SpriteVisibleExtent,
+// which caches it); converting to metres and merging layers does not.
 internal static class SpriteExtents
 {
-    // CenterXOffset/CenterYOffset are how far the visible content's own centre sits to the side
-    // of (+X = right) and above (+Y = up) the sprite node's origin - content is not always
-    // centred in its canvas (a tree's canopy sits higher than its trunk's midpoint, and a
-    // figure's silhouette need not be centred left to right), so a caller placing a collision
-    // shape or an anchor off "the sprite's centre" needs this and not just the size.
+    // CenterXOffset/CenterYOffset: how far the visible content's centre sits right (+X) of and
+    // above (+Y) the sprite node's origin. Content is not always centred in its canvas, so a
+    // caller placing a shape off "the sprite's centre" needs these, not just the size.
     internal readonly record struct Extent(float Width, float Height, float CenterXOffset, float CenterYOffset);
 
-    // `worldHeight` is what the sprite was created at (see BillboardSprite.Create), so the
-    // whole canvas height maps to it and everything else scales from there.
+    // `worldHeight` is what the sprite was created at (BillboardSprite.Create): the whole
+    // canvas height maps to it and everything else scales from there.
     internal static Extent From(Vector2 usedPosition, Vector2 usedSize, Vector2 canvasSize, float worldHeight)
     {
         var metresPerPixel = worldHeight / canvasSize.Y;
@@ -31,36 +24,27 @@ internal static class SpriteExtents
         return new Extent(
             usedSize.X * metresPerPixel,
             usedSize.Y * metresPerPixel,
-            // Image columns count rightward, the same direction as the sprite's own local
-            // right, so this needs no sign flip - unlike rows, which do.
+            // Image columns count rightward, like the sprite's local right: no sign flip.
             (usedCentre.X - canvasCentre.X) * metresPerPixel,
-            // Image rows count downward and the sprite's local up is the opposite, so content
-            // whose centre sits below the canvas centre really is below the node's origin.
+            // Image rows count downward and the sprite's local up is the opposite, hence the flip.
             (canvasCentre.Y - usedCentre.Y) * metresPerPixel);
     }
 
-    // The same extent as the sprite is actually rendering right now. From() answers for the
-    // height the sprite was *created* at, which is what SpriteVisibleExtent caches per texture
-    // and is therefore blind to any scale applied since - and entities are scaled: every person
-    // and tree draws its own size from its seed (EntityVisualVariation). Left unscaled, an
-    // anchor derived from the nominal extent floats above a short person's head and sinks into
-    // a tall one's, and any per-layer scale would put a collision box out of step with the
-    // pixels on screen.
+    // The extent as rendered right now. From() answers for the creation height, which is what
+    // SpriteVisibleExtent caches per texture, so it is blind to any scale applied since - and
+    // every person and tree is scaled from its seed (EntityVisualVariation). Unscaled, an
+    // anchor floats above a short person and sinks into a tall one.
     //
-    // This is deliberately the same arithmetic as BillboardUv.RenderedSize, and the two agree
-    // by construction rather than by coincidence: BillboardSprite.Apply sets
-    // PixelSize = worldHeight / canvasHeight, so a texture's own pixels times PixelSize times
-    // scale is the same metres From() derives from worldHeight and then this multiplies by the
-    // same scale. SpriteExtentsTests pins that they do not drift apart.
+    // Same arithmetic as BillboardUv.RenderedSize by construction: BillboardSprite.Apply sets
+    // PixelSize = worldHeight / canvasHeight. SpriteExtentsTests pins that they agree.
     internal static Extent Scaled(Extent extent, float scaleX, float scaleY) => new(
         extent.Width * scaleX,
         extent.Height * scaleY,
         extent.CenterXOffset * scaleX,
         extent.CenterYOffset * scaleY);
 
-    // The true silhouette of a split tree is the union of its trunk's and canopy's own visible
-    // extents - equivalent to what a single combined image's extent already was, since the two
-    // are an exact partition of it (see split_trunk_canopy).
+    // The silhouette of a split tree is the union of its trunk's and canopy's extents - the
+    // same as a single combined image's, since the two partition it (see split_trunk_canopy).
     internal static Extent Combine(Extent a, Extent b)
     {
         var minX = Math.Min(a.CenterXOffset - (a.Width / 2f), b.CenterXOffset - (b.Width / 2f));

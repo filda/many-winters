@@ -10,33 +10,19 @@ public static class BillboardSprite
 
     private static ImageTexture? _placeholder;
 
-    // Every billboard ever created, live right now - lets Main.cs's occlusion-fade check
-    // (ComputeOccludingSprites) iterate a plain flat list instead of a recursive
-    // FindChildren("*", ...) scan of the *entire* scene tree every single frame. With
-    // thousands of decoration-turned-ResourceNode entities now in the tree (see
-    // MapLoader.ScatterDecorations), that scan was easily the most expensive thing happening
-    // per frame - a self-maintaining registry here is O(live billboards) instead of O(every
-    // node of every kind in the whole scene). Self-cleaning via TreeExited, not a caller-side
-    // responsibility - a sprite is only ever removed from the scene by its owning view being
-    // freed, never by some other code reaching in and detaching just the sprite.
+    // Every live billboard, so Main.ComputeOccludingSprites iterates a flat list each frame
+    // instead of scanning the whole scene tree. Self-cleaning via TreeExited: a sprite only
+    // leaves the tree when its owning view is freed.
     private static readonly HashSet<Sprite3D> _liveSprites = new();
 
-    // A tree's trunk layer (see ResourceNodeView) must never fade under occlusion - see
-    // Camera.png's "trunks stay solid" rule - even though it's still a normal member of
-    // LiveSprites otherwise. Tracked separately rather than skipping registration
-    // entirely, since LiveSprites' contract is "every billboard that exists", not
-    // "every billboard eligible for occlusion fade".
+    // Tree trunk and branch layers (ResourceNodeView) never fade under occlusion yet remain in
+    // LiveSprites: its contract is "every billboard that exists", not "every fadeable one".
     private static readonly HashSet<Sprite3D> _excludedFromOcclusionFade = new();
 
-    // Which billboards Main's occlusion fade is currently ghosting (drawn at
-    // PresentationSettings.OcclusionFadedAlpha because they stand between the camera and the
-    // selection). Kept here, not read back off each sprite's live Modulate alpha, for two
-    // reasons: SpritePixelHit has to know it - what the player can see through, they can
-    // click and hover through too, or a ghosted canopy keeps swallowing every click on the
-    // mushroom plainly visible behind it - and Modulate itself is unreliable as a record:
-    // ResourceNodeView/PersonView's hover tint rewrites it (alpha back to 1) on every
-    // hover-state change, with Main only re-applying the fade once per frame, so between the
-    // two a faded sprite briefly reads as solid.
+    // Billboards Main's occlusion fade is currently ghosting. A set rather than a read of
+    // Modulate.A: SpritePixelHit needs it (what the player sees through, they click through),
+    // and Modulate is written by the fade and the views' tinting alike, so it is not a
+    // reliable record.
     private static readonly HashSet<Sprite3D> _occlusionFaded = new();
 
     public static IReadOnlyCollection<Sprite3D> LiveSprites => _liveSprites;
@@ -59,24 +45,17 @@ public static class BillboardSprite
         }
     }
 
-    // Creates a billboarded sprite whose on-screen height matches worldHeight. When the
-    // texture is missing the sprite falls back to a flat quad tinted with fallbackColor, so
-    // a kind without art is still visible and clickable.
+    // Creates a billboarded sprite whose on-screen height matches worldHeight; a missing
+    // texture falls back to a flat quad tinted fallbackColor so the kind stays visible and
+    // clickable.
     //
-    // alphaCut/renderPriority default to the normal single-sprite case (opaque, depth-sorted
-    // like any other 3D object). A layer meant to composite on top of another sprite at the
-    // same position - e.g. ResourceNodeView's fruit overlay - has no defined draw order
-    // against it under OpaquePrepass (both are at the same depth), so it needs standard alpha
-    // blending (Disabled) plus a higher renderPriority to reliably draw second/on top.
+    // A layer composited over another sprite at the same position (ResourceNodeView's fruit
+    // overlay, PersonView's clothing and hair) has no defined draw order under OpaquePrepass;
+    // it needs alphaCut Disabled plus a higher renderPriority to draw on top.
     //
-    // FixedY, not Enabled (full/spherical): Enabled reorients local up to the *camera's* own
-    // up vector, not world up, so at this game's oblique camera tilt a sprite's own vertical
-    // extent renders shorter in true world-space than its nominal height (short by a factor of
-    // 1-cos(tilt) of its own half-height) - a trunk/base authored to reach the very bottom of
-    // its canvas still visibly floats above the ground. FixedY keeps local up pinned to world
-    // up regardless of camera pitch, so a sprite's own bottom edge always lands at its real
-    // world-space height. Used uniformly (not just for decoration) so ground contact holds the
-    // same way everywhere - see SpritePixelHit's own plane-basis math, which assumes this mode.
+    // FixedY, not Enabled: full billboarding aligns local up with the camera's up, so at this
+    // game's pitch a sprite renders shorter than its nominal height and its base floats above
+    // the ground. FixedY pins local up to world up. SpritePixelHit's plane math assumes it.
     public static Sprite3D Create(
         string texturePath,
         float worldHeight,
@@ -89,23 +68,13 @@ public static class BillboardSprite
         var sprite = new Sprite3D
         {
             Billboard = BaseMaterial3D.BillboardModeEnum.FixedY,
-            // LinearMipmap, not Nearest: the art is now illustrated engraving detail (fine
-            // crosshatching), not deliberate hard-edged pixel art. Without a mip chain, that
-            // fine detail aliases into shimmering noise once a sprite is small on screen -
-            // mipmaps let minified sprites sample a properly pre-blurred, smaller version
-            // instead of resampling the full-detail texture at a handful of screen pixels.
-            // useMipmaps=false opts out of that trade for a kind where it isn't worth it -
-            // CloudScatter's own sprites are few and sparse (no dense repeated silhouette
-            // to alias against, unlike a forest of trees), and the woodcut hatching/outline
-            // that trade blurs away is thin enough that even a moderate mip level washes it
-            // out into one flat tone - a cloud reading as a featureless pale blob instead of
-            // the same hand-drawn style every other sprite keeps.
+            // Mipmaps: the art is fine engraving hatching, which aliases into shimmer when
+            // minified without a mip chain. useMipmaps=false is for kinds where the blur costs
+            // more than it saves - CloudScatter's few sparse clouds lose their hatching to one
+            // flat tone at even a moderate mip level.
             TextureFilter = useMipmaps ? BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps : BaseMaterial3D.TextureFilterEnum.Linear,
-            // OpaquePrepass, not Discard: Discard is a hard alpha-test cutoff with no
-            // blending at all, which throws away every soft anti-aliased/shadow edge pixel
-            // the new art actually has (each edge pixel snaps to either fully opaque or
-            // fully invisible). OpaquePrepass keeps Discard's correct depth-sorting behavior
-            // for overlapping billboards while still alpha-blending the soft edge on top.
+            // OpaquePrepass keeps Discard's depth sorting between overlapping billboards but
+            // still blends the art's soft anti-aliased edges instead of snapping them.
             AlphaCut = alphaCut,
             RenderPriority = renderPriority,
             Shaded = false,

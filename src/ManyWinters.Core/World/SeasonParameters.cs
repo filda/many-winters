@@ -1,8 +1,7 @@
 namespace ManyWinters.Core.World;
 
-// How the abstract calendar (Season) maps onto the climate that actually drives gameplay
-// (hunger cost, resource yield/regrowth). Swapping which season is Cold vs. Hot - e.g. for
-// a southern-hemisphere scenario - is a different SeasonParameters instance, not a code change.
+// Maps the calendar (Season) onto the climate that drives gameplay (hunger, yield, regrowth).
+// A southern-hemisphere scenario is a different instance, not a code change.
 public sealed class SeasonParameters(
     IReadOnlyDictionary<Season, Climate> climateBySeason,
     IReadOnlyDictionary<Climate, float> hungerMultiplierByClimate,

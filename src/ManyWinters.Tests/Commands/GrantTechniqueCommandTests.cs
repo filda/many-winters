@@ -22,10 +22,8 @@ public class GrantTechniqueCommandTests
     [Fact]
     public void GrantsUnconditionally()
     {
-        // The player is the sole initial source of every technique in the world, so this one is
-        // deliberately not bound by the rules a person teaching another person is (proximity,
-        // knowing "teaching" themselves) - without that, the very first technique could never
-        // get into the world at all.
+        // The player is the sole initial source of every technique, so this is deliberately not
+        // bound by the rules for one person teaching another (proximity, knowing "teaching").
         var world = TestCatalogs.CreateWorld();
         var ava = world.SpawnPerson("Ava", new Position(0, 0));
 

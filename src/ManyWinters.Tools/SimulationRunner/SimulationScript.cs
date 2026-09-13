@@ -13,8 +13,8 @@ public sealed class SimulationScript
         "generate", "create", "simulate", "print", "save", "load",
     };
 
-    // Every world this script ever holds - the one it starts with, a `generate`d one, a `load`ed
-    // one - runs on the same catalogs, the way the Godot game does with its Content folder.
+    // Every world this script holds - initial, generated or loaded - runs on the same catalogs,
+    // as the Godot game does with its Content folder.
     private readonly WorldConfiguration _configuration;
 
     public SimulationScript(WorldConfiguration configuration)
@@ -25,7 +25,8 @@ public sealed class SimulationScript
 
     public WorldState World { get; private set; }
 
-    // Re-chunks unquoted shell argv (e.g. "create 2 simulate 100") back into individual commands by splitting at each verb.
+    // Re-chunks unquoted shell argv ("create 2 simulate 100") into commands by splitting at
+    // each verb.
     public static IReadOnlyList<string> SplitIntoCommands(IReadOnlyList<string> tokens)
     {
         var commands = new List<string>();
@@ -114,8 +115,8 @@ public sealed class SimulationScript
 
                 break;
 
-            // The inscriptions the game shows over a band's beginning and end (see Prologue and
-            // Epitaph) - here so their wording can be read over many bands without playing each out.
+            // The inscriptions over a band's beginning and end (see Prologue, Epitaph), so their
+            // wording can be read over many bands without playing each out.
             case "print" when parts.Length > 1 && parts[1].Equals("prologue", StringComparison.OrdinalIgnoreCase):
                 if (World.People.All(person => !person.IsAlive))
                 {

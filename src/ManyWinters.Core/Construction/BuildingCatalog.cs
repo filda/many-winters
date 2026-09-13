@@ -16,8 +16,8 @@ public sealed class BuildingCatalog
     public static BuildingCatalog LoadFromDirectory(string rootPath)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
-    // Takes documents rather than a path so an exported Godot build, where these live
-    // inside the .pck and only Godot's file access can reach them, can load them too.
+    // Takes documents, not a path: in an exported Godot build only Godot's file access reaches
+    // the content inside the .pck.
     public static BuildingCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
         => new(JsonDefinitions.Parse<BuildingDefinition>(documents, "Building"));
 }

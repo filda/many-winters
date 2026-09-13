@@ -4,9 +4,8 @@ namespace ManyWinters.Godot.Tests;
 
 public class LendingPoolTests
 {
-    // A stand-in for the ShaderMaterial the hover rim actually pools - the rule against
-    // touching Resource-derived types here is exactly why the pool is generic (see the test
-    // project's README).
+    // A stand-in for the pooled ShaderMaterial: Resource-derived types cannot be touched here
+    // (see this project's README), which is why the pool is generic.
     private sealed class Lent
     {
     }
@@ -44,9 +43,8 @@ public class LendingPoolTests
     [Fact]
     public void TwoUsersAtOnceGetTwoDifferentObjects()
     {
-        // What the pool has to guarantee above all else: an entity's layers are lent to at the
-        // same time, and handing the same material to two of them would have them fight over
-        // its uniforms.
+        // An entity's layers are lent to at the same time; sharing one material would have them
+        // fight over its uniforms.
         var pool = CountingPool(out var created);
 
         var first = pool.Take();
@@ -85,9 +83,8 @@ public class LendingPoolTests
     [Fact]
     public void ThePoolOnlyEverGrowsToTheWidestSimultaneousUse()
     {
-        // Four layers out at once, all handed back, then four out again: the second round
-        // reuses all four rather than making a fifth. This is the property that keeps one
-        // hovered entity from leaving a material behind per entity it ever hovered.
+        // Four out, all returned, four out again reuses all four rather than making a fifth -
+        // what keeps hovering from leaving a material behind per entity ever hovered.
         var pool = CountingPool(out var created);
 
         var round = new[] { pool.Take(), pool.Take(), pool.Take(), pool.Take() };

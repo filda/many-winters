@@ -1,11 +1,8 @@
 namespace ManyWinters.Core.Population;
 
-// How much a person can carry, before any equipped gear bonus (see
-// WorldState.MaxCarryWeightFor, which adds ItemDefinition.CarryCapacityBonus on top) - rises
-// from a small fraction at birth up to the full adult baseline, holds there through the
-// prime years, then eases back down a little toward the end of a lifespan rather than
-// staying at its physical peak forever. The ages it turns at are LifeStages' - the same ones
-// that decide who is still nursing and who can have children.
+// Carry weight before any equipped gear bonus (WorldState.MaxCarryWeightFor adds that): grows
+// from a fraction at birth to the adult baseline, holds through the prime years, then eases
+// down a little toward the end of a lifespan. The turning ages are LifeStages'.
 public static class CarryCapacity
 {
     public const float AdultBaseWeight = 50f;

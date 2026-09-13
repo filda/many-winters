@@ -7,8 +7,8 @@ namespace ManyWinters.Tests.Continuity;
 
 public class BandEndingTests
 {
-    // SimulationRules.Default: 75-tick seasons, Winter the fourth, so winters begin at ticks
-    // 225, 525, 825, ... - the numbers every expectation below is counted against.
+    // SimulationRules.Default: 75-tick seasons, Winter the fourth, so winters begin at 225, 525,
+    // 825, ...
     private const long WinterBegins = 225;
 
     private static Person NewPerson(string name, Sex sex, long birthTick, int idSeed = 1) =>
@@ -170,8 +170,8 @@ public class BandEndingTests
         Assert.Equal(1, ending.Survivors);
     }
 
-    // A band that never had a man has no death to date the spear side's ending by: the line
-    // was never open, and the ending is dated to now.
+    // A band that never had a man has no death to date the spear side's ending by; it is dated
+    // to now.
     [Fact]
     public void ALineNobodyWasEverOnHasNoLastDeath()
     {
@@ -188,8 +188,8 @@ public class BandEndingTests
         Assert.Equal(1, ending.WintersSeen);
     }
 
-    // With no man ever, the spear side counts as closed from the band's arrival, so the women
-    // "kept the fire" for every winter the band saw.
+    // With no man ever, the spear side counts as closed from arrival, so the women kept the fire
+    // for every winter the band saw.
     [Fact]
     public void ABandOfWomenAloneKeptTheFireFromTheStart()
     {
@@ -234,8 +234,8 @@ public class BandEndingTests
         Assert.Equal(0, ending.WintersKeptAfterwards);
     }
 
-    // The range of winters counted after a line closed starts the tick after the death: a
-    // winter beginning that very next tick counts, one beginning on the death tick does not.
+    // Winters after a line closed are counted from the tick after the death: a winter beginning
+    // that next tick counts, one beginning on the death tick does not.
     [Fact]
     public void AWinterBeginningTheTickAfterTheLineClosedCounts()
     {
@@ -299,8 +299,7 @@ public class BandEndingTests
         Assert.Equal("Ava", ending.LastToDie?.Name);
     }
 
-    // A death nobody dated (a test fixture's, say) is taken as the most recent one, and the
-    // ending is dated to now rather than to nothing.
+    // An undated death counts as the most recent one, and the ending is dated to now.
     [Fact]
     public void AnUndatedDeathIsTakenAsTheLatestAndDatedToNow()
     {

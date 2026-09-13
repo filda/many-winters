@@ -7,9 +7,8 @@ namespace ManyWinters.Godot.Sprites;
 // hands it to SpriteExtents to turn into world metres.
 internal static class SpriteVisibleExtent
 {
-    // Keyed by texture path: the used rect and the canvas size are resolution-independent
-    // fractions of the image, so one read per unique texture covers every instance that shares
-    // it (every conifer tree on the map, say) whatever its own worldHeight.
+    // Keyed by texture path: the used rect and canvas size are fractions of the image, so one
+    // read covers every instance sharing the texture whatever its worldHeight.
     private static readonly Dictionary<string, (Vector2 Position, Vector2 Size, Vector2 CanvasSize)> _cache = new();
 
     internal static SpriteExtents.Extent Compute(string texturePath, float worldHeight)

@@ -99,9 +99,9 @@ public static class SaveGameService
         var world = new WorldState(configuration);
         world.Clock.Advance(data.Tick);
 
-        // A person is built around its parents (see Person.Mother), so they have to be back
-        // before the child is. Forebears first (nobody's child but Unknown's), then people in
-        // save order: a parent always existed before its child, so it was saved before it too.
+        // Parents have to exist before their children (see Person.Mother): forebears first
+        // (children of Unknown only), then people in save order, a parent always having been
+        // added before its child.
         var peopleById = new Dictionary<Guid, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
         foreach (var forebearData in data.Forebears)
         {
@@ -190,8 +190,7 @@ public static class SaveGameService
             Father = ParentById(personData.FatherId, peopleById),
             Sex = personData.Sex,
 
-            // Redrawn rather than read out of the file - it was never written there, because
-            // the id it comes off was (see Person.MaxHunger).
+            // Not saved: it is redrawn from the id (see Person.MaxHunger).
             MaxHunger = rules.MaxHungerFor(id),
         };
         person.Needs.Hunger = personData.Hunger;
@@ -226,8 +225,7 @@ public static class SaveGameService
         File.WriteAllText(path, json);
     }
 
-    // A save carries no catalogs of its own (see SaveData) - the configuration is what
-    // turns the restored ids back into something the world can act on.
+    // A save carries no catalogs; the configuration turns the restored ids back into definitions.
     public static WorldState Load(string path, WorldConfiguration configuration)
     {
         var json = File.ReadAllText(path);

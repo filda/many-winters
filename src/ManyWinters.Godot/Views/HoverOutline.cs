@@ -3,48 +3,37 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Views;
 
-// Puts the hover rim (Content/effects/sprite_highlight.gdshader) on whatever the cursor is
-// currently on, and takes it off again.
+// Puts the hover rim (Content/effects/sprite_highlight.gdshader) on whatever the cursor is on,
+// and takes it off again.
 //
-// One rim for the whole entity rather than one per layer, hung on the topmost layer's sprite:
-// all of an entity's layers share the same quad and UV mapping, so the shader can trace the
-// union of their silhouettes from one pass (see its own doc comment for what per-layer rims did
-// to a person). The shader samples up to MaxLayers of them at once.
+// One rim for the whole entity, hung on the topmost layer's sprite: all layers share one quad
+// and UV mapping, so the shader traces the union of up to MaxLayers silhouettes in one pass
+// (per-layer rims fill a person in solid - see the shader's header).
 //
-// The materials are pooled rather than owned per sprite: there are thousands of sprites and at
-// most one entity is ever hovered - HoverArbiter enforces exactly that - so one material in
-// hand is normally enough, and a material per sprite would mean thousands of ShaderMaterial
-// instances for a highlight only one of them shows at a time.
+// Materials are pooled: thousands of sprites, at most one hovered (HoverArbiter), so one
+// material in hand is normally enough.
 internal static class HoverOutline
 {
     private const string ShaderPath = "res://Content/effects/sprite_highlight.gdshader";
 
-    // What hover looks like, and the whole of it. Two earlier answers are worth not repeating:
-    // a second, scaled-up "rim" sprite behind the original (the removed SpriteOutline) depended
-    // on depth-test and billboard-orientation behaviour that two fix attempts could not pin
-    // down, and a Modulate tint could not be seen reliably - Modulate is a pure multiply and
-    // this art is largely black crosshatch ink, so a large share of every sprite barely changed
-    // whatever colour was picked. A size bump stood in for both until this rim existed; it is
-    // gone now, because growing the thing under the cursor also moved its own click rectangle.
+    // The whole of what hover looks like. A Modulate tint is not an option: it is a pure
+    // multiply and this art is largely black crosshatch ink, so most of a sprite barely changes.
     private static readonly Color RimColor = new(1f, 0.85f, 0.15f);
 
-    // In pixels of the screen: the same entity is rendered at every distance the camera has, and
-    // an ink line that keeps its weight regardless is what the drawing itself does. Kept thin
-    // deliberately - the rim reads as the art's own contour picked out, not as a glow over it.
+    // Screen pixels, so the line keeps its weight at every camera distance like the drawing's
+    // own ink. Kept thin: the art's contour picked out, not a glow over it.
     private const float RimScreenPixels = 2f;
 
-    // As many textures as the shader has slots for. A fruit tree is the widest entity in the
-    // game at four layers, and its fruit overlay is not one of the silhouette's own (see
-    // SpriteEntityView.ShowHovered), so nothing today comes close to filling this.
+    // As many textures as the shader has slots for. A fruit tree is the widest entity at four
+    // layers, and only two of those are traced (SpriteLayer.Outlines), so nothing comes close.
     private const int MaxLayers = 4;
 
     private static Shader? _shader;
     private static readonly LendingPool<ShaderMaterial> _materials = new(NewMaterial);
 
-    // Draws the rim on `host` until Clear takes it off, tracing the union of `textures`. They
-    // are handed to the shader explicitly: a second pass has no automatic binding to what the
-    // sprite itself draws, and reading them off the layers here keeps the rim in step through a
-    // texture swap (PersonView lying down on death).
+    // Draws the rim on `host` until Clear, tracing the union of `textures`. They are handed to
+    // the shader explicitly - an overlay pass has no binding to what the sprite draws - and read
+    // off the layers, which keeps the rim in step through a texture swap (PersonView on death).
     internal static void Show(Sprite3D host, IReadOnlyList<Texture2D> textures)
     {
         if (textures.Count == 0)
@@ -56,9 +45,8 @@ internal static class HoverOutline
         var count = Math.Min(textures.Count, MaxLayers);
         for (var slot = 0; slot < MaxLayers; slot++)
         {
-            // An unused slot is cleared rather than left pointing at whatever the last hovered
-            // entity had there; the shader's own hint_default_transparent then makes it
-            // contribute nothing to the silhouette.
+            // An unused slot is cleared rather than left pointing at the last hovered entity's
+            // texture; hint_default_transparent then contributes nothing to the silhouette.
             material.SetShaderParameter($"layer_{slot}", slot < count ? Variant.From(textures[slot]) : default);
         }
 
@@ -74,8 +62,8 @@ internal static class HoverOutline
         }
 
         host.MaterialOverlay = null;
-        // The texture references go with it, so a pooled material cannot keep textures (and
-        // whatever they own) alive while it sits unused.
+        // Texture references go with it, so a pooled material does not keep textures alive
+        // while unused.
         for (var slot = 0; slot < MaxLayers; slot++)
         {
             material.SetShaderParameter($"layer_{slot}", default(Variant));
@@ -88,10 +76,8 @@ internal static class HoverOutline
     {
         _shader ??= ResourceLoader.Load<Shader>(ShaderPath);
         // The highest priority there is, one above the fog-of-war sheets
-        // (FogOfWarRenderer.OverlayRenderPriority). Hover feedback is the answer to "what is
-        // under your cursor" and belongs on top of the world rather than inside it - drawn
-        // under the fog, the rim lost contrast as the fog boundary moved past the thing being
-        // pointed at, which looks like the line changing thickness.
+        // (FogOfWarRenderer.OverlayRenderPriority): drawn under the fog, the rim lost contrast
+        // where the fog boundary crossed it, which looks like the line changing thickness.
         var material = new ShaderMaterial { Shader = _shader, RenderPriority = 127 };
         material.SetShaderParameter("rim_color", RimColor);
         material.SetShaderParameter("rim_pixels", RimScreenPixels);

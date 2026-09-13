@@ -4,10 +4,9 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-// Clickable - the inspector shows who lies here - but never lit up under the cursor: a
-// highlight in this game means "there is an order to give here", and there is none. Passing no
-// hover arbiter to SpriteEntityView is what says so, and also what keeps a grave transparent
-// to HoverRescue, so the cursor over a grave still finds whatever stands behind it.
+// Clickable - the inspector shows who lies here - but never lit up: a highlight means "there
+// is an order to give here", and there is none. Passing no hover arbiter says so and keeps a
+// grave transparent to HoverRescue, so the cursor still finds whatever stands behind it.
 internal partial class GraveView : SpriteEntityView
 {
     public const float Size = 0.8f;

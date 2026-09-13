@@ -54,8 +54,7 @@ public class IdleSwayTests
         Assert.Equal(1f, IdleSway.Settle(0f, 1f, delta: 100f, settleSeconds: 0.5f), 5);
     }
 
-    // The target need not be zero or one: settling toward it from either side moves the same
-    // share of the remaining distance.
+    // Settling toward any target from either side moves the same share of the remaining distance.
     [Fact]
     public void SettlingWorksTowardAnyTargetFromEitherSide()
     {

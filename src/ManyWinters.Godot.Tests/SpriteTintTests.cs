@@ -8,10 +8,8 @@ public class SpriteTintTests
     [Fact]
     public void ModulateUndoesTheRecolourableBaseSoTheAskedForColourComesOutOfTheShader()
     {
-        // The person sprite is drawn in a near-white base tint so it can be recoloured; the
-        // modulate has to divide that base back out, or every requested colour renders darker
-        // than it was asked for. Feeding the base itself back in must therefore give plain
-        // white - no tint at all.
+        // The sprite is drawn in a near-white base so it can be recoloured; the modulate divides
+        // that base out, so feeding the base itself in must give plain white.
         var neutral = new Color(0.82f, 0.80f, 0.78f);
 
         var modulate = SpriteTint.ModulateFor(neutral);

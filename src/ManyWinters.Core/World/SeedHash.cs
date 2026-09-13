@@ -1,16 +1,10 @@
 namespace ManyWinters.Core.World;
 
-// Thomas Wang's 32-bit integer avalanche, shared by every deterministic system that keys off
-// an entity's own seed (see EntityId.SeedOf): idle wandering, casual teaching, and the Godot
-// layer's per-instance visual variation. System.Random's legacy algorithm correlates badly on
-// nearby small seeds, so two entities whose seeds happen to sit close together would draw
-// eerily similar first values - reading as synchronized wandering, or as two neighbouring
-// trees tinted identically. This spreads them apart first while staying a pure function of
-// the seed, so the same entity looks and behaves the same on every reload.
-//
-// Callers mix their own inputs down to one value first (a salt, a tick, another entity's
-// seed) and pass the result here; what they mix in is their business, this is only the
-// spreading step.
+// 32-bit integer avalanche (xorshift-multiply), shared by every deterministic system that keys
+// off an entity's seed (see EntityId.SeedOf). System.Random correlates badly on nearby small
+// seeds - neighbouring entities would wander in sync or be tinted alike - so seeds are spread
+// first. Callers mix their own inputs (a salt, a tick, another seed) down to one value before
+// calling; this is only the spreading step.
 public static class SeedHash
 {
     public static int Avalanche(uint value)

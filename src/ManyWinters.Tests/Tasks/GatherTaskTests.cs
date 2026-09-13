@@ -9,7 +9,7 @@ public class GatherTaskTests
 {
     private static readonly Position Target = new(10, 10);
 
-    // The shipped reach - what DecideIdleTask hands in from SimulationRules.
+    // The shipped reach, what DecideIdleTask hands in from SimulationRules.
     private static readonly float Reach = SimulationRules.Default.MaxInteractionDistance;
 
     private static Person NewPerson(Position position) =>
@@ -23,8 +23,7 @@ public class GatherTaskTests
     [Fact]
     public void IsNeverComplete()
     {
-        // WorldState.Advance re-evaluates every tick whether this is still worth doing, the
-        // same way it does for IdleTask - the task itself never declares itself finished.
+        // WorldState.Advance decides every tick whether this is still worth doing, as for IdleTask.
         var task = NewTask();
         var person = NewPerson(new Position(30, 10));
 
@@ -73,8 +72,7 @@ public class GatherTaskTests
             task.Advance(person);
         }
 
-        // A person who walks all the way onto the sprite overlaps it visually; gathering only
-        // ever needed them to be within reach, so the walk ends the moment they are.
+        // Walking all the way onto the sprite overlaps it visually; the walk ends once in reach.
         Assert.True(
             WorldState.Distance(person.Position, Target) > Reach - 0.5,
             $"Walked closer than needed - ended up {WorldState.Distance(person.Position, Target)} away.");
@@ -83,9 +81,8 @@ public class GatherTaskTests
     [Fact]
     public void AShorterReachStillEndsTheWalkInsideIt()
     {
-        // The standoff scales with the reach it was handed rather than being a fixed 1.2 - a
-        // world whose people have to get closer to gather doesn't leave them stranded at a
-        // standoff point they can't gather from.
+        // The standoff scales with the reach it was handed, so a world with a shorter reach does
+        // not leave people stranded at a point they can't gather from.
         const float shortReach = 0.5f;
         var person = NewPerson(new Position(30, 10));
         var task = NewTask(shortReach);
@@ -118,8 +115,7 @@ public class GatherTaskTests
     [Fact]
     public void StaysPutWhenItStartsExactlyAtTheEdgeOfReach()
     {
-        // Exactly the reach distance away is within reach, not one step short of it -
-        // gathering works from here, so there's nothing left to walk.
+        // Exactly the reach distance away is within reach, so there is nothing left to walk.
         var start = new Position(Target.X + Reach, Target.Y);
         var person = NewPerson(start);
         var task = NewTask();
@@ -140,8 +136,8 @@ public class GatherTaskTests
     [InlineData(10, -22)]
     public void ApproachesTheResourceInAStraightLine(double startX, double startY)
     {
-        // The standoff point is on the line between where the person set off and the resource,
-        // so the whole approach is one straight walk - not a curve out to one side and back.
+        // The standoff point lies on the line from the start to the resource, so the approach is
+        // one straight walk.
         var start = new Position(startX, startY);
         var person = NewPerson(start);
         var task = NewTask();
@@ -150,9 +146,8 @@ public class GatherTaskTests
         {
             task.Advance(person);
 
-            // Cross product of "start -> target" with "start -> here": zero while the person
-            // stays on that line, and it scales with the distances involved, hence the
-            // proportional tolerance rather than a flat one.
+            // Cross product of start->target with start->here: zero while on the line. It scales
+            // with the distances, hence the proportional tolerance.
             var cross = ((Target.X - start.X) * (person.Position.Y - start.Y))
                 - ((Target.Y - start.Y) * (person.Position.X - start.X));
             Assert.True(
@@ -164,8 +159,7 @@ public class GatherTaskTests
     [Fact]
     public void ApproachesFromWhicheverSideItSetOffFrom()
     {
-        // Two people converging on the same resource from opposite sides each stop on their own
-        // side of it, rather than both walking around to one agreed spot.
+        // Two people converging from opposite sides each stop on their own side of the resource.
         var west = NewPerson(new Position(-20, 10));
         var east = NewPerson(new Position(40, 10));
         var westTask = NewTask();
@@ -184,8 +178,8 @@ public class GatherTaskTests
     [Fact]
     public void TheWalkStopsAsSoonAsTheGathererIsInReachRatherThanAtTheStandoffPoint()
     {
-        // The standoff (60% of reach) is deliberately shorter than reach, so the reach check
-        // ends the leg first - the walker never actually arrives at the point they aimed at.
+        // The standoff (60% of reach) is shorter than reach, so the reach check ends the leg
+        // first and the walker never arrives at the point they aimed at.
         var task = NewTask();
         var person = NewPerson(new Position(30, 10));
 

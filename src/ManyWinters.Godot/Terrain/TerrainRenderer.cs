@@ -5,9 +5,9 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Terrain;
 
-// Shared real-terrain rendering (docs/terrain-and-world-scale-architecture.md): loads one
-// elevation/waterway patch and builds it into a given Node3D. Used by both TerrainSandbox.cs
-// (pure visual sandbox) and Main.cs (the live game) so both render identically real terrain.
+// Real-terrain rendering (docs/terrain-and-world-scale-architecture.md): loads one
+// elevation/waterway patch and builds it into a Node3D. Shared by Prototypes/TerrainSandbox.cs
+// and Main.cs (via TerrainSetup) so both render identical terrain.
 public sealed class TerrainRenderer
 {
     private const float TextureTileMeters = 16f;
@@ -37,14 +37,9 @@ public sealed class TerrainRenderer
     // ReSharper disable once ClassNeverInstantiated.Local
     private sealed record WaterwayPolyline(float WidthMeters, float[][] Points);
 
-    // Even a sprite has "mass" as far as placement goes - a minimum gap so two decorations
-    // never land exactly (or near-exactly) on top of each other, which reads as a rendering
-    // glitch (flickering z-fighting) rather than the deliberately overlapping clumped-forest
-    // look ScatterClump's own sub-disks already lean into (see its doc comment). This only
-    // rejects near-exact coincidence, not ordinary crowding - at the scatter counts/areas
-    // involved, exact coincidences are common enough by chance alone to matter (~1500 points
-    // over a ~38000 sq m disk already gives close to even odds of at least one 10cm-range
-    // collision), not just a hypothetical edge case.
+    // Minimum gap so two decorations never land (near-)exactly on top of each other, which reads
+    // as z-fighting rather than the deliberate clumped-forest overlap. Rejects only coincidence,
+    // not crowding - at ~1500 points over a ~38000 sq m disk a 10cm collision is near even odds.
     private const float MinDecorationSpacing = 0.1f;
     private const int MaxPlacementAttempts = 10;
 
@@ -53,10 +48,8 @@ public sealed class TerrainRenderer
     private Heightmap _heightmap = null!;
     private string _heightmapJson = null!;
 
-    // Spatial hash (cell size = MinDecorationSpacing) of every decoration position placed so
-    // far, across every ScatterDecoration call on this instance - an O(1)-ish neighbor lookup
-    // instead of checking a candidate against every decoration placed before it, which would
-    // get slow once the running total climbs into the thousands.
+    // Spatial hash (cell size = MinDecorationSpacing) of every decoration placed so far, across
+    // every ScatterDecoration call - O(1)-ish neighbour lookup once the total reaches thousands.
     private readonly Dictionary<(int, int), List<Vector2>> _occupiedPositions = new();
 
     public float Half { get; private set; }
@@ -87,21 +80,14 @@ public sealed class TerrainRenderer
     // for why it interpolates the mesh's own vertices rather than the formula behind them.
     public float SampleHeight(float x, float z) => _heightmap.HeightAt(x, z);
 
-    // Cache format, bump whenever the vertex/color/UV formula below changes shape (subdivision,
-    // bump noise params, or the low/high terrain colors) - the hash already covers every value
-    // that goes into the mesh, but not the code that combines them, so a formula change with no
-    // constant change wouldn't otherwise invalidate a stale cache.
+    // Bump whenever the vertex/colour/UV formula in BuildMeshAndCollision changes shape: the hash
+    // covers every value that goes into the mesh, not the code that combines them.
     private const int TerrainMeshCacheVersion = 1;
     private const string TerrainMeshCacheDirectory = "user://terrain_mesh_cache";
 
-    // The whole build below - subdividing a 41x41 heightmap into a 401x401 grid, triangulating
-    // it, and building a matching collision trimesh - is a pure function of the heightmap file
-    // and the constants above; nothing here is random or time-based. Rebuilding it from scratch
-    // every single time the game starts (previously ~1.2s, the single biggest chunk of startup)
-    // buys nothing a cache keyed on those same inputs couldn't skip - a cache hit loads the same
-    // ArrayMesh/Shape3D data back from disk in a few ms instead. Keyed by a hash so a heightmap
-    // edit or a tuning change to the constants above transparently invalidates it, rather than
-    // silently serving stale terrain.
+    // The mesh build is a pure function of the heightmap file and the constants above, and took
+    // ~1.2s per start - the biggest chunk of startup. A hash-keyed cache loads it in a few ms and
+    // invalidates itself on any heightmap or tuning change.
     private string ComputeMeshCacheKey()
     {
         var input = string.Join(
@@ -115,9 +101,8 @@ public sealed class TerrainRenderer
         return Convert.ToHexString(hash);
     }
 
-    // Builds the terrain mesh + matching collision into the given parent, and returns that
-    // collision body so callers can hook their own click handling onto it (e.g. "click ground
-    // to walk there").
+    // Returns the collision body so callers can hook click handling onto it ("click ground to
+    // walk there").
     public StaticBody3D BuildTerrainMesh(Node3D parent)
     {
         var cacheKey = ComputeMeshCacheKey();
@@ -147,9 +132,8 @@ public sealed class TerrainRenderer
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoTexture = groundTexture,
-                // LinearWithMipmaps, not Nearest: BillboardSprite's engraving-detail sprites
-                // moved to this filter in 058cf05, but the ground kept the old hard-pixel
-                // filter, so its tiling read as blocky next to everything sitting on it.
+                // LinearWithMipmaps to match BillboardSprite's filter; Nearest made the ground's
+                // tiling read as blocky next to everything standing on it.
                 TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
                 VertexColorUseAsAlbedo = true,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
@@ -167,24 +151,15 @@ public sealed class TerrainRenderer
     {
         var heightRange = Math.Max(0.001f, _heightmap.MaxHeight - _heightmap.MinHeight);
 
-        // The real heightmap is only a 41x41 grid at 25m spacing - fine enough for the DEM's
-        // own broad shape, but far too coarse to resolve TerrainBump's wavelength (see its
-        // own doc comment on why that has to stay meaningfully larger than sample spacing to
-        // avoid aliasing into per-vertex jitter). Subdividing each 25m source cell into
-        // TerrainSubdivisionsPerCell smaller ones lets the bump use a shorter, still-smooth
-        // wavelength without changing the source data at all. FineVertexHeight, not
-        // SampleHeight, for each vertex - SampleHeight itself now blends between these exact
-        // vertices for everything ELSE (see its own doc comment), so calling it here would
-        // just re-derive the same value through an extra, pointless layer of interpolation.
+        // The heightmap is a 41x41 grid at 25m - far too coarse for the bump's wavelength (see
+        // Heightmap), so each source cell is subdivided (Heightmap.SubdivisionsPerCell) without
+        // changing the source data. RawAt + BumpAt per vertex, not SampleHeight: HeightAt blends
+        // between these very vertices, so calling it here would add a pointless interpolation.
         var fineGridSize = FineGridSize;
         var fineCellSize = FineCellSize;
 
-        // Each fine-grid vertex is shared by up to 4 quads, so building it inline per quad
-        // (the old VertexAt/ColorAt closures) recomputed the same TerrainBump noise (3 Fbm
-        // octaves) and the same SampleRawHeight bilinear sample up to 4x over - on a 401x401
-        // grid that's ~640,000 redundant noise evaluations instead of the 160,801 actually
-        // needed. Precomputing every vertex/color exactly once here and indexing into it below
-        // avoids that.
+        // Each fine-grid vertex is shared by up to 4 quads; computing it per quad would evaluate
+        // the bump noise up to 4x over (~640,000 instead of 160,801 on a 401x401 grid).
         var vertices = new Vector3[fineGridSize, fineGridSize];
         var colors = new Color[fineGridSize, fineGridSize];
         for (var row = 0; row < fineGridSize; row++)
@@ -246,9 +221,8 @@ public sealed class TerrainRenderer
         }
     }
 
-    // Real OSM waterway centerlines (see art/fetch_stream.py), rendered as flat ribbons that
-    // follow the terrain's own height at each point - the DEM already captures the valley the
-    // real river cut, so the ribbon should track the visible low ground without extra fudging.
+    // Real OSM waterway centerlines (art/fetch_stream.py) as flat ribbons following the terrain's
+    // raw height at each point - the DEM already holds the valley the river cut.
     public void BuildWaterways(Node3D parent)
     {
         if (!ContentFiles.Exists(_waterwaysPath))
@@ -321,16 +295,13 @@ public sealed class TerrainRenderer
         tool.AddVertex(c);
     }
 
-    // Cutout/billboard scatter (visual plan Phase B/C) - purely decorative, unrelated to
-    // gameplay resource nodes. Reuses the same BillboardSprite every other entity uses.
+    // Cutout/billboard scatter for the TerrainSandbox prototype; the game's decorations are
+    // ResourceNodes (MapLoader.ScatterDecorations). Per-node sprites, never a MultiMesh batch:
+    // decorations keep individual identity so they can become clickable (AGENTS.md).
     //
-    // Scattered within radius of (centerX, centerZ), not across the whole terrain patch -
-    // a count that reads as a reasonably dense forest over a real ~1 km terrain (Half=500)
-    // is instead spread so thin that the tiny playable area around it looks bare, since
-    // that area is a negligible fraction of the total scatter footprint.
-    // texturePaths: one or more textures for this decoration kind - each instance picks one
-    // independently at random, so a single call can scatter (say) a mix of three differently
-    // shaped/sized rocks instead of the same one just rescaled.
+    // Scattered within radius of (centerX, centerZ), not over the whole ~1 km patch - a forest
+    // dense enough there would still leave the small playable area bare. Each instance picks
+    // one of texturePaths at random, so one call can mix differently shaped rocks.
     public void ScatterDecoration(
         Node3D parent,
         Random rng,
@@ -346,13 +317,11 @@ public sealed class TerrainRenderer
     {
         for (var i = 0; i < count; i++)
         {
-            // Uniform over the *disk* of radius, not independent x/z within [-radius, radius]
-            // (a square) - sqrt(u) compensates for the outer rings of a circle covering more
-            // area than the inner ones, so points don't bunch up toward the center. Retried
-            // (up to MaxPlacementAttempts) if the candidate lands within MinDecorationSpacing
-            // of an already-placed decoration - falls back to the last attempt tried rather
-            // than skipping the decoration entirely if every retry still collides (same
-            // "don't loop forever" tradeoff as MapLoader's own crowd placement).
+            // Uniform over the disk, not a square: sqrt(u) compensates for outer rings covering
+            // more area, so points do not bunch toward the centre. Retried up to
+            // MaxPlacementAttempts when within MinDecorationSpacing of a placed decoration; falls
+            // back to the last attempt rather than skipping (the same "don't loop forever"
+            // trade-off as MapLoader's crowd placement).
             var position = new Vector2(centerX, centerZ);
             for (var attempt = 0; attempt < MaxPlacementAttempts; attempt++)
             {
@@ -385,9 +354,8 @@ public sealed class TerrainRenderer
     private static (int, int) CellFor(Vector2 position) =>
         ((int)MathF.Floor(position.X / MinDecorationSpacing), (int)MathF.Floor(position.Y / MinDecorationSpacing));
 
-    // Checks the candidate's own cell plus its 8 neighbors, not just the one it falls in -
-    // two points can be within MinDecorationSpacing of each other while sitting in different
-    // (adjacent) cells near a shared cell boundary.
+    // The candidate's cell plus its 8 neighbours - two points within MinDecorationSpacing can
+    // sit in adjacent cells.
     private bool IsTooCloseToAnExistingDecoration(Vector2 candidate)
     {
         var (cellX, cellY) = CellFor(candidate);

@@ -6,12 +6,9 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
-/// Roadmap Step 6 ("First Headless + Visual Milestone"): can 10-20 people survive
-/// through repeated gathering, and do they actually starve without it? Written before
-/// seasons existed (Step 9); the 300-tick run now spans a full year including one
-/// winter, so this doubles as a basic "survive the winter" check for regular gathering.
-/// See <see cref="WinterSurvivalMilestoneTests"/> for a check targeted specifically at
-/// winter's harsher pressure.
+/// Can 10-20 people survive on repeated gathering, and do they starve without it? The 300-tick
+/// run spans a full year including one winter; <see cref="WinterSurvivalMilestoneTests"/>
+/// targets winter's pressure specifically.
 /// </summary>
 public class SurvivalMilestoneTests
 {
@@ -25,9 +22,8 @@ public class SurvivalMilestoneTests
         for (var i = 0; i < populationSize; i++)
         {
             var person = world.SpawnPerson($"Person {i + 1}", new Position(0, 0));
-            // Gathering and eating both have to be learned now (see SkillDefinition.
-            // BaseTechnique) - granted directly here since this test is about the
-            // gather/eat/hunger loop itself, not about how that knowledge would spread.
+            // Gathering and eating have to be learned (SkillDefinition.BaseTechnique); granted
+            // directly because this test is about the gather/eat/hunger loop itself.
             person.KnownTechniques.Add(TestCatalogs.BasicForaging);
             person.KnownTechniques.Add(TestCatalogs.BasicEating);
             people.Add(person);
@@ -42,14 +38,12 @@ public class SurvivalMilestoneTests
             {
                 foreach (var person in people)
                 {
-                    // IdleTask can wander a person away from the node between manual actions
-                    // (see WorldState.Advance) - this test is about the gather/eat/hunger
-                    // loop, not about walking back, so it puts them right back at the node
-                    // rather than simulating that walk.
+                    // IdleTask can wander a person off between manual actions; put them back
+                    // rather than simulate the walk.
                     person.Position = node.Position;
 
-                    // Gathering only fills the inventory now (see GatherCommand) - eating it
-                    // back down is a separate, explicit step, same as a real player would do.
+                    // Gathering only fills the inventory (GatherCommand); eating is a separate
+                    // step.
                     world.Execute(new GatherCommand(person, node));
                     world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
                 }

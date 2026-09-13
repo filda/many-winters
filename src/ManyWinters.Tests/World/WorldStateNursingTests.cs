@@ -17,9 +17,8 @@ public class WorldStateNursingTests
     private static Person SpawnInfant(WorldState world, Person mother, Position position, long ageTicks = 0) =>
         world.SpawnPerson("Bran", position, initialAgeTicks: ageTicks, mother: mother);
 
-    // The game itself only ever steps one tick at a time (Main.cs), and age is read off the
-    // clock, which Advance moves before the loop runs - so a multi-tick call would age
-    // everyone to the end of it on the very first tick.
+    // Age is read off the clock, which Advance moves before its loop runs, so a multi-tick call
+    // would age everyone to its end on the first tick. The game steps one at a time (Main.cs).
     private static void AdvanceTickByTick(WorldState world, int ticks)
     {
         for (var i = 0; i < ticks; i++)
@@ -69,8 +68,7 @@ public class WorldStateNursingTests
     [Fact]
     public void AnOrphanedInfantEventuallyStarves()
     {
-        // The stake the whole arrangement rests on: nothing else in the world will feed a
-        // child whose mother is gone.
+        // Nothing else in the world feeds a child whose mother is gone.
         var world = TestCatalogs.CreateWorld();
         var mother = SpawnMother(world, new Position(0, 0));
         var infant = SpawnInfant(world, mother, new Position(0, 0));
@@ -166,8 +164,7 @@ public class WorldStateNursingTests
     [Fact]
     public void SomebodyWithNoRecordedMotherIsNeverNursed()
     {
-        // Person.Unknown is long dead (see its own doc comment), so this falls out of the
-        // living-mother check rather than needing a case of its own.
+        // Person.Unknown is long dead, so this falls out of the living-mother check.
         var world = TestCatalogs.CreateWorld();
         var foundling = world.SpawnPerson("Bran", new Position(0, 0));
 
@@ -234,16 +231,9 @@ public class WorldStateNursingTests
     [Fact]
     public void AnInfantStaysWithinReachOfAMotherWhoWandersOffOnHerOwn()
     {
-        // The mother's own idle wandering is what would otherwise strand the child - the
-        // infant has to be able to out-walk her, not merely walk. Her id is pinned because
-        // IdleTask's wander is seeded from it (see IdleTask.SeedFor): with a random one, how
-        // far she actually gets in a given number of ticks - and so whether this test is
-        // testing anything - would be a fresh coin flip every run.
-        //
-        // Fifty ticks: long enough for her to cover several times the reach the infant has to
-        // stay inside, short enough that she has not yet starved (a nursing mother with
-        // nothing to eat is on a much shorter clock than usual, which
-        // AnOrphanedInfantEventuallyStarves picks up from there).
+        // The mother's idle wander is what would strand the child, so the infant must out-walk
+        // her. Her id is pinned because IdleTask seeds the wander from it (IdleTask.SeedFor);
+        // fifty ticks covers several times the reach without a nursing mother starving first.
         var world = TestCatalogs.CreateWorld();
         var mother = world.SpawnPerson(TestIds.Person(1), "Sela", new Position(0, 0), initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
         var infant = SpawnInfant(world, mother, new Position(0, 0));

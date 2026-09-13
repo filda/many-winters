@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
 
-// The presentation layer's own calculations are internal - exposed to its test project rather
-// than made public, since nothing else has any business calling them.
+// The presentation layer's calculations are internal, exposed only to its test project.
 [assembly: InternalsVisibleTo("ManyWinters.Godot.Tests")]

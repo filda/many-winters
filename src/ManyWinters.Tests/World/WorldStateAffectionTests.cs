@@ -91,8 +91,7 @@ public class WorldStateAffectionTests
         Assert.Equal(rules.MaxAffection, world.Affections.Between(ava.Id, bran.Id));
     }
 
-    // What someone meant to the people around them outlives them - it is the raw material for
-    // anything the game later wants to say about a life that has ended.
+    // Bonds with the dead are the raw material for anything said about a life that has ended.
     [Fact]
     public void ABondWithSomeoneWhoHasDiedNeitherGrowsNorFades()
     {
@@ -164,8 +163,8 @@ public class WorldStateAffectionTests
         Assert.Equal(2, world.People.Count);
     }
 
-    // The reason a newborn's bond with its parents starts high and the reproduction threshold
-    // sits higher still - closeness to family must never be the kind that makes more family.
+    // Why a newborn's bond with its parents starts high yet below the reproduction threshold:
+    // closeness to family must never make more family.
     [Fact]
     public void CloseKinNeverHaveAChildNoMatterHowFondTheyAre()
     {
@@ -207,8 +206,7 @@ public class WorldStateAffectionTests
         Assert.Equal(2, world.People.Count);
     }
 
-    // The nursing gate is what keeps a devoted couple from producing a child every single tick
-    // - the second one has to wait until the first is weaned (see BirthCommand).
+    // The nursing gate (see BirthCommand): a second child waits until the first is weaned.
     [Fact]
     public void ADevotedCoupleHaveOneChildAtATimeRatherThanOnePerTick()
     {

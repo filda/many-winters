@@ -5,9 +5,8 @@ namespace ManyWinters.Godot.Tests;
 
 public class RememberedFadeTests
 {
-    // A layer's own base modulate is never plain white in practice (brightness jitter, a
-    // recoloured garment), and each channel here is a different distance from 1, so a tint
-    // applied to the wrong channel or dropped entirely cannot pass by coincidence.
+    // Base modulate is never plain white in practice, and each channel here is a different
+    // distance from 1, so a tint on the wrong channel or dropped entirely cannot pass.
     private static readonly Color Base = new(0.9f, 0.6f, 0.4f);
 
     [Fact]
@@ -88,8 +87,8 @@ public class RememberedFadeTests
     {
         var fade = new RememberedFade();
 
-        // Every view's exploration state is re-checked once a tick, so the overwhelming
-        // majority of these calls repeat what the fade already knows and must cost nothing.
+        // Exploration state is re-checked every tick, so most calls repeat what the fade already
+        // knows and must cost nothing.
         Assert.False(fade.Retarget(false));
         Assert.True(fade.Retarget(true));
         Assert.False(fade.Retarget(true));
@@ -168,9 +167,8 @@ public class RememberedFadeTests
         fade.Retarget(false);
         fade.Advance(RememberedFade.ToVisibleSeconds / 4f);
 
-        // Halfway out, then a quarter of the way back from *there* - 0.5 - 0.25. Had it
-        // restarted from the fully-remembered end it never reached, this would be 0.75, and
-        // that jump is what showed up as a flicker along the edge of sight.
+        // Halfway out, then a quarter of the way back from there: 0.5 - 0.25. Restarting from
+        // the fully-remembered end would give 0.75 and flicker along the edge of sight.
         Assert.Equal(0.25f, fade.Progress, 5);
     }
 

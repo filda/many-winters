@@ -18,10 +18,8 @@ public class HoverArbiterTests
     [Fact]
     public void OnlyOneThingIsEverLitAtOnce()
     {
-        // The whole point: the cursor is over one thing, so whoever had the highlight loses it
-        // the moment somebody else takes it - even though nothing told the first one directly.
-        // A view picked up through HoverRescue never receives Godot's own mouse_exited at all,
-        // and used to stay lit forever on the strength of that.
+        // The cursor is over one thing, so the previous holder loses the highlight even though
+        // nothing told it directly - a view lit through HoverRescue never gets mouse_exited.
         var arbiter = new HoverArbiter();
         var rescued = new FakeHoverable();
         var nearest = new FakeHoverable();
@@ -36,8 +34,7 @@ public class HoverArbiterTests
     [Fact]
     public void ReTakingHoverWithTheSameTargetLeavesItAloneRatherThanReApplyingIt()
     {
-        // Mouse motion over one sprite arrives every frame it moves; re-lighting an already
-        // lit view each time would be pointless churn on the sprite's Modulate/Scale.
+        // Mouse motion arrives every frame; re-lighting an already lit view churns Modulate/Scale.
         var arbiter = new HoverArbiter();
         var person = new FakeHoverable();
 
@@ -62,9 +59,8 @@ public class HoverArbiterTests
     [Fact]
     public void GivingUpHoverFromSomethingThatNeverHadItLeavesTheRealOneLit()
     {
-        // Every view runs its own pixel test on every motion event it receives, and answers
-        // "no" far more often than "yes". Those answers must not put out somebody else's
-        // highlight.
+        // Every view answers "no" to its own pixel test far more often than "yes"; those answers
+        // must not put out somebody else's highlight.
         var arbiter = new HoverArbiter();
         var lit = new FakeHoverable();
         var missed = new FakeHoverable();
@@ -103,8 +99,7 @@ public class HoverArbiterTests
     [Fact]
     public void RevalidatingPutsOutATargetTheCursorHasLeft()
     {
-        // The stuck-highlight case that no engine event covers: a person walks out from under
-        // a cursor that never moved, so no picking event of any kind is coming.
+        // A person walks out from under a resting cursor: no picking event of any kind is coming.
         var arbiter = new HoverArbiter();
         var walkedAway = new FakeHoverable { IsUnderCursor = true };
 
@@ -130,8 +125,7 @@ public class HoverArbiterTests
     [Fact]
     public void RevalidatingWithNothingLitAsksNobodyAnything()
     {
-        // Runs every frame with nothing hovered most of the time - it must not reach for a
-        // target that isn't there.
+        // Runs every frame, mostly with nothing hovered; it must not reach for an absent target.
         var arbiter = new HoverArbiter();
         var person = new FakeHoverable { IsUnderCursor = false };
 
@@ -143,8 +137,7 @@ public class HoverArbiterTests
     [Fact]
     public void AForgottenTargetIsNeverCalledBackInto()
     {
-        // A view is forgotten precisely because it has been queued for freeing - calling
-        // ShowHovered on it afterwards is a crash, not a stale highlight.
+        // A view is forgotten because it is queued for freeing; calling into it afterwards crashes.
         var arbiter = new HoverArbiter();
         var removed = new FakeHoverable();
 
@@ -158,8 +151,7 @@ public class HoverArbiterTests
     [Fact]
     public void ForgettingSomethingThatWasNotLitLeavesTheRealOneAlone()
     {
-        // Views leave the scene constantly (fog of war alone creates and removes thousands),
-        // almost never while lit.
+        // Views leave the scene constantly, almost never while lit.
         var arbiter = new HoverArbiter();
         var lit = new FakeHoverable { IsUnderCursor = true };
         var removed = new FakeHoverable();

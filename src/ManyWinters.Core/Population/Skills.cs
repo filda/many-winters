@@ -2,9 +2,8 @@ using ManyWinters.Core.Knowledge;
 
 namespace ManyWinters.Core.Population;
 
-// How much practice a person has at each thing they do. A level is a number of *lessons the
-// body has taken*, not a count of actions: the same act teaches less the more often it has
-// already been done.
+// How much practice a person has at each thing they do. A level counts lessons the body has
+// taken, not actions: the same act teaches less the more often it has been done.
 public sealed class Skills
 {
     private readonly Dictionary<SkillTypeId, float> _levels = new();
@@ -13,27 +12,19 @@ public sealed class Skills
 
     public float Get(SkillTypeId type) => _levels.GetValueOrDefault(type);
 
-    // Diminishing returns, applied here rather than in each command, so every kind of practice
-    // (gathering, eating, teaching, burying) obeys the same curve and no caller can forget it.
-    // A flat point per action made a level a tally of repetitions, and repetitions are cheap:
-    // somebody standing at one apple tree collected a point every tick forever, reaching 193
-    // over a single simulated year (docs/todo/todo.md). Dividing the gain by the level already
-    // held makes the level grow as the square root of the practice behind it - that same year now
-    // reads in the teens - so the first few tries teach nearly all of what there is
-    // to learn and the two-hundredth teaches almost nothing, which is also what makes a
-    // technique's discovery threshold mean "practiced this properly" rather than "stood here".
+    // Diminishing returns applied here, not in each command, so every kind of practice obeys the
+    // same curve. Dividing the gain by the level held makes the level grow as the square root of
+    // the practice behind it, so a technique's discovery threshold means "practiced this
+    // properly" rather than "stood at one apple tree for a year".
     public void Increase(SkillTypeId type, float amount)
     {
         var level = Get(type);
         _levels[type] = level + (amount / (1f + level));
     }
 
-    // The level reached by practicing something this many times from nothing - so a rule that
-    // means "after about five tries" can say so, instead of quoting whatever number the curve
-    // above happens to produce and going stale the moment the curve is retuned. Every
-    // technique's discovery threshold is written this way (see GatherCommand and friends), and
-    // walking the same additions in the same order is what keeps "the fifth gather discovers
-    // it" exact rather than a hair either side of the threshold.
+    // The level reached by practicing this many times from nothing, so a rule can say "after
+    // about five tries" instead of quoting a number that goes stale when the curve is retuned.
+    // Walks the same additions in the same order as Increase, so the threshold is hit exactly.
     public static float LevelAfter(int practices)
     {
         var level = 0f;
@@ -45,8 +36,7 @@ public sealed class Skills
         return level;
     }
 
-    // Loading a saved game is not practice: the level was earned before the save and has to
-    // come back exactly as it was, rather than being re-derived by running the curve above
-    // over a number that has already been through it.
+    // Loading a saved game is not practice: the level comes back exactly as it was rather than
+    // being run through the curve again.
     public void Restore(SkillTypeId type, float level) => _levels[type] = level;
 }

@@ -3,10 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Mother and Father are required, not optional - there's no such thing as a person without
-// parents (see Person.Mother); a caller who genuinely has nobody to name says so with
+// Mother and Father are required (see Person.Mother); a caller with nobody to name passes
 // Person.Unknown. The id is normally the person's own to draw (see EntityId) - only a creator
-// that has to produce the same world twice (MapLoader) names one.
+// that must produce the same world twice (MapLoader) names one.
 public sealed record SpawnPersonCommand(
     PersonId Id,
     string Name,
@@ -14,9 +13,8 @@ public sealed record SpawnPersonCommand(
     Person Mother,
     Person Father,
     long InitialAgeTicks = 0,
-    // Left unset by anyone who has no reason to care, in which case the person's own id
-    // decides (see Person.Sex). MapLoader cares: its starting band comes with a family table
-    // that has already settled who bore whom.
+    // Null lets the id decide (see Person.Sex). MapLoader sets it: its family table has already
+    // settled who bore whom.
     Sex? Sex = null) : ICommand
 {
     public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0)

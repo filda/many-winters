@@ -9,11 +9,9 @@ namespace ManyWinters.Core.Population;
 public sealed class Person
 {
     // Where every family line ends. Parents are always real Person objects (see Mother), so
-    // someone with no recorded ancestry still has to point at *somebody* - this is that
-    // somebody: the empty id (no entity ever draws it - see EntityId), long dead, never on any
-    // map, and its own mother and father so the chain terminates without a null anywhere along
-    // it. Nobody can ever click it and discover the loop, because nothing ever puts it into a
-    // world.
+    // someone with no recorded ancestry points here: the empty id (no entity ever draws it - see
+    // EntityId), long dead, never in any world, and its own mother and father so the chain
+    // terminates without a null.
     public static Person Unknown { get; } = new(unknownRootName: "Unknown");
 
     public Person()
@@ -35,9 +33,8 @@ public sealed class Person
         Mother = this;
         Father = this;
 
-        // Arbitrary, and never read: this one is dead, is nobody's parent in the sense that
-        // matters (see Kinship), and never appears in a world. Drawn from the id rather than
-        // written as a literal so it is at least not a claim about anything.
+        // Never read: dead, nobody's parent (see Kinship), never in a world. Drawn from the id
+        // rather than written as a literal so it is not a claim about anything.
         Sex = SexOf(Id);
     }
 
@@ -58,33 +55,23 @@ public sealed class Person
 
     public bool IsBuried { get; set; }
 
-    // Never null: a person whose parents nobody remembers has Unknown here, and one whose
-    // parents died before the story began has a forebear (WorldState.Forebears) - a full
-    // Person with a name and a life of its own that simply isn't on the map. Either way a
-    // grave can always write "child of X and Y" without asking first (see BuryCommand).
+    // Never null: unremembered parents are Unknown, parents who died before the story began are
+    // forebears (WorldState.Forebears), so a grave can always write "child of X and Y"
+    // (BuryCommand).
     public required Person Mother { get; init; }
 
     public required Person Father { get; init; }
 
-    // Required, like Mother and Father and for the same reason: there is no such thing as a
-    // person without one, so nobody gets to leave it to chance by accident. A caller that
-    // genuinely does not care says so out loud with SexOf below, rather than this quietly
-    // drawing for them - which it used to, and which made every test person's sex a fresh coin
-    // flip per run.
-    //
-    // Saved rather than re-derived from the id on load (see PersonSaveData): a sex somebody
-    // chose would otherwise be replaced by whatever the id happens to say on the next reload.
+    // Required like Mother and Father: nobody leaves it to chance by accident. A caller with no
+    // opinion says so with SexOf rather than this drawing quietly, which would make every test
+    // person's sex a coin flip per run. Saved rather than re-derived from the id (PersonSaveData),
+    // or a chosen sex would be replaced by the id's draw on reload.
     public required Sex Sex { get; init; }
 
-    // The hunger this person dies at - WorldState.Advance checks Needs.Hunger against this one,
-    // not against the rule everybody shares. Settled when they are created: a creator inside a
-    // world draws it for them (SimulationRules.MaxHungerFor, off their own id, so two people
-    // born the same tick still don't run out together), and the average is what is left for a
-    // person built outside any world, who has no rules to be measured against and never gets
-    // hungry anyway.
-    //
-    // Not saved, for the reason Sex is: a sex can be somebody's choice, whereas this is only
-    // ever the draw, and the draw comes back off the id.
+    // The hunger this person dies at (WorldState.Advance checks Needs.Hunger against it). Drawn
+    // off their own id by SimulationRules.MaxHungerFor when created inside a world, so two people
+    // born the same tick don't run out together; the default is for a person built outside any
+    // world. Not saved: unlike Sex it is only ever the draw, and the draw comes back off the id.
     public float MaxHunger { get; init; } = SimulationRules.Default.MaxHunger;
 
     public Needs Needs { get; } = new();
@@ -97,19 +84,15 @@ public sealed class Person
 
     public PersonTaskQueue Tasks { get; } = new();
 
-    // A plausible sex for someone nobody has an opinion about, drawn from their own id the way
-    // every other per-entity variation in this game is (EntityVisualVariation's tint and
-    // scale, an idle wander, a casual-teaching roll) - so it is stable across a reload and
-    // spread by SeedHash first, because ids that sit close together must not come out alike.
-    //
-    // This is what a caller with no stake in the answer reaches for (SpawnPersonCommand and
-    // the test spawn helper both do), which is deliberately a thing you have to ask for.
+    // A plausible sex for someone nobody has an opinion about, drawn from their id like every
+    // other per-entity variation, so it survives a reload; spread by SeedHash first because
+    // close ids must not come out alike. What a caller with no stake reaches for
+    // (SpawnPersonCommand) - deliberately something you have to ask for.
     public static Sex SexOf(PersonId id) =>
         (SeedHash.Avalanche(unchecked((uint)id.Seed)) & 1) == 0 ? Sex.Female : Sex.Male;
 
-    // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't drop this
-    // person into an IdleTask even with an empty queue - lets the presentation layer (the
-    // currently-selected person, say) buy someone a few ticks of standing still rather than
-    // wandering off between manual actions. 0 by default: nobody's exempt unless granted.
+    // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't drop this person
+    // into an IdleTask despite an empty queue - lets the presentation layer buy the selected
+    // person a few ticks of standing still between manual actions. 0: no exemption.
     public long IdleGraceUntilTick { get; set; }
 }

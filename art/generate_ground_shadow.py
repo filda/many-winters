@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """
-Generates a soft radial-gradient shadow decal used under every entity (GroundShadow.cs).
-
-One shared texture, not per-entity-kind art: a shadow's shape doesn't need to match the
-silhouette above it to read correctly, and a single soft blob scales cleanly to any size
-via GroundShadow's PixelSize math.
+Generates the soft radial shadow decal under every entity (GroundShadow.cs). One shared
+texture: a shadow need not match the silhouette above it, and one blob scales to any size
+through GroundShadow's PixelSize.
 
 Run:  python3 generate_ground_shadow.py <output_path>
 """
@@ -24,8 +22,8 @@ def main():
     cx = cy = (S - 1) / 2
     r = np.sqrt(((xx - cx) / cx) ** 2 + ((yy - cy) / cy) ** 2)
 
-    # Flat dark core, then a smooth ease-out fade to fully transparent at the rim - not a
-    # linear falloff, which would show a visible edge where the fade rate kinks to zero.
+    # Flat dark core, then a smoothstep fade to transparent; a linear falloff shows an edge
+    # where the fade rate kinks.
     core = 0.55
     t = np.clip((r - core) / (1.0 - core), 0.0, 1.0)
     fade = 1.0 - (t * t * (3.0 - (2.0 * t)))  # smoothstep, inverted

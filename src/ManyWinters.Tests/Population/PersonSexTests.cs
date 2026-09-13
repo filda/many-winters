@@ -21,9 +21,8 @@ public class PersonSexTests
         Assert.Equal(Sex.Male, person.Sex);
     }
 
-    // Person.Sex is required, so a caller with no opinion of its own has to ask for a draw out
-    // loud - SpawnPersonCommand and BirthCommand both do. Nothing derives one behind anyone's
-    // back, which is what used to make every unstated sex a fresh coin flip per run.
+    // Person.Sex is required, so a caller with no opinion has to ask for a draw out loud, as
+    // SpawnPersonCommand and BirthCommand do; nothing derives one silently.
     [Fact]
     public void SexOfDrawsOneForACallerWithNoOpinion()
     {
@@ -38,8 +37,7 @@ public class PersonSexTests
         Assert.Equal(Person.SexOf(TestIds.Person(7)), Person.SexOf(TestIds.Person(7)));
     }
 
-    // The reason SexOf runs its seed through SeedHash: consecutive ids must not come out as an
-    // alternating or all-alike run.
+    // Why SexOf runs its seed through SeedHash: consecutive ids must not alternate or all agree.
     [Fact]
     public void NeighbouringIdsDoNotAllDrawTheSameSex()
     {

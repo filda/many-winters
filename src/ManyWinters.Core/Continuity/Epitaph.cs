@@ -3,20 +3,15 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// Writes the inscription shown when a band's line ends (see BandEnding for the facts, BandFate
-// for which ending). Written in the voice of a chronicle rather than a scoreboard - "Nine
-// winters Liska's people endured", not "Survived: 9 winters" - because the woodcut world in
-// front of it would make a scoreboard look like a debugger.
-//
-// Every sentence with more than one way of saying it is drawn from a short list, and the draw
-// is seeded from the death that ended the line, the way every other per-entity variation in
-// this game is (see SeedHash): the same ending reads the same on every reload and in every
-// retelling, and a different ending reads differently. The facts themselves are never varied,
-// only their wording.
+// Writes the inscription shown when a band's line ends (facts: BandEnding, which ending:
+// BandFate). Chronicle voice, not a scoreboard: "Nine winters Liska's people endured".
+// Every sentence with more than one wording is drawn from a short list, seeded from the death
+// that ended the line (see PhraseDraw), so the same ending reads the same on every reload.
+// Only the wording varies, never the facts.
 public static class Epitaph
 {
-    // Spread the two inputs apart before the draw (see PhraseDraw) - a plain sum of a small
-    // seed and a small tick would make neighbouring endings pick neighbouring phrases.
+    // Spreads the salts apart before the draw (see PhraseDraw), so neighbouring endings do not
+    // pick neighbouring phrases.
     private const uint SaltStride = 0x9E3779B9;
 
     public static Inscription Write(BandEnding ending)
@@ -31,8 +26,7 @@ public static class Epitaph
         };
     }
 
-    // No man (or no woman) is left, so no child will be born - but the survivors live on, and
-    // a line closed this way is not what a chronicle calls the end of a people.
+    // The survivors live on; no child will be born to them.
     private static Inscription WriteLineEnding(BandEnding ending, PhraseDraw draw, Sex sexThatEnded)
     {
         var band = ending.BandName;
@@ -104,8 +98,7 @@ public static class Epitaph
         return new Inscription(title, lines);
     }
 
-    // Names go into the ground only with a burial; a band nobody buried has nowhere its names
-    // could have gone, so that wording is kept for one that at least dug graves.
+    // "Their names went into the ground" needs graves; a band nobody buried gets the other wording.
     private static string ClosingLine(BandEnding ending, PhraseDraw draw)
     {
         if (ending.Graves == 0)
@@ -217,8 +210,7 @@ public static class Epitaph
         return $"{Capitalize(NumberWords.Of(ending.Unburied))} lie unburied where they fell, {last.Name} among them.";
     }
 
-    // Each of these has to read both at the end of a sentence and before "in the winter", so
-    // none of them ends in a clause of its own.
+    // Each must read both at the end of a sentence and before "in the winter": no trailing clause.
     private static string Died(Person person, PhraseDraw draw) =>
         person.CauseOfDeath switch
         {

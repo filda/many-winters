@@ -3,14 +3,13 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Destroys a fellable resource node (a fruit tree, say), leaving behind one or more one-time
-// piles of whatever ResourceDefinition.FellLeaves says (typically wood) that still have to be
-// gathered - unlike GatherCommand, which takes from the node repeatedly and leaves it standing.
+// Destroys a fellable node, leaving one-time piles of whatever ResourceDefinition.FellLeaves
+// says (typically wood), still to be gathered - unlike GatherCommand, which leaves the node
+// standing.
 public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
 {
-    // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in
-    // its own spot - lands from where the tree stood, so the two don't sit exactly on top of
-    // each other.
+    // How far a second or later leftover (a log beside the stump) lands from where the tree
+    // stood, so the two do not overlap.
     private const double SubsequentLeftoverDistance = 1.4;
 
     public void Execute(WorldState world)

@@ -2,8 +2,7 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// A 100m-wide map in 40 texels: 2.5m each, and no round number that would let a wrong
-// operation give the right answer by accident.
+// A 100m-wide map in 40 texels: 2.5m each, no round number that hides a wrong operation.
 public class TexelGridTests
 {
     private static readonly TexelGrid Grid = new(Size: 40, HalfExtentMeters: 50f);
@@ -18,8 +17,8 @@ public class TexelGridTests
     [Fact]
     public void ATexelMapsToItsOwnCentreNotItsCorner()
     {
-        // Texel 0 spans -50 to -47.5, so its centre is -48.75. Its corner would bias every
-        // sample half a texel toward the map's origin.
+        // Texel 0 spans -50 to -47.5, centre -48.75. Its corner would bias every sample half a
+        // texel toward the origin.
         Assert.Equal(-48.75f, Grid.WorldAt(0), 5);
         Assert.Equal(48.75f, Grid.WorldAt(39), 5);
     }
@@ -27,8 +26,8 @@ public class TexelGridTests
     [Fact]
     public void TheMiddleTexelSitsJustPastTheOriginBecauseAnEvenGridHasNoCentreTexel()
     {
-        // 40 texels means the origin falls on the seam between 19 and 20, so neither is
-        // centred on it - worth pinning, because "texel 20 is at 0" is the natural guess.
+        // The origin falls on the seam between 19 and 20; "texel 20 is at 0" is the natural
+        // wrong guess.
         Assert.Equal(1.25f, Grid.WorldAt(20), 5);
         Assert.Equal(-1.25f, Grid.WorldAt(19), 5);
     }
@@ -36,8 +35,7 @@ public class TexelGridTests
     [Fact]
     public void GoingOutToTheWorldAndBackReturnsTheSameTexel()
     {
-        // The whole reason both directions live together: they are exact inverses, even though
-        // one adds half a texel and the other does not.
+        // Exact inverses, even though one adds half a texel and the other does not.
         for (var texel = 0; texel < Grid.Size; texel++)
         {
             Assert.Equal(texel, Grid.TexelAt(Grid.WorldAt(texel)));
@@ -57,8 +55,7 @@ public class TexelGridTests
     [Fact]
     public void APointOffTheMapClampsToTheNearestEdgeTexel()
     {
-        // Callers legitimately ask about spots slightly outside - a cloud candidate near the
-        // edge - and wrapping would answer with the far side of the map.
+        // Callers ask about spots slightly off the map; wrapping would answer with the far side.
         Assert.Equal(0, Grid.TexelAt(-1000f));
         Assert.Equal(39, Grid.TexelAt(1000f));
         Assert.Equal(0, Grid.TexelAt(-50f));
@@ -68,8 +65,7 @@ public class TexelGridTests
     [Fact]
     public void CoveringRoundsUpSoTheBitmapNeverStopsShortOfTheMapEdge()
     {
-        // 100m of map in 7m cells is 14.28 cells: 15 texels, not 14, or the far edge would
-        // have no texel describing it at all.
+        // 100m in 7m cells is 14.28 cells: 15 texels, or the far edge would have no texel.
         var grid = TexelGrid.Covering(halfExtentMeters: 50f, cellSizeMeters: 7f);
 
         Assert.Equal(15, grid.Size);
@@ -85,8 +81,7 @@ public class TexelGridTests
     [Fact]
     public void AGridOfADifferentSizeScalesEverythingWithIt()
     {
-        // Guards the extent and the size against each other: halving the texel count doubles
-        // what one texel covers, and the map is still the same width.
+        // Halving the texel count doubles what one texel covers; the map stays the same width.
         var coarse = new TexelGrid(20, 50f);
 
         Assert.Equal(5f, coarse.MetresPerTexel, 5);

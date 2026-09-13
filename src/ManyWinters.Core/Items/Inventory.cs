@@ -33,10 +33,8 @@ public sealed class Inventory
 
     public float TotalWeight(ItemCatalog catalog) => _counts.Sum(kv => catalog.WeightFor(kv.Key) * kv.Value);
 
-    // Adds as much of `amount` as still fits under maxWeight (a zero-weight item is never
-    // capacity-limited) and returns how many units actually got added, so a caller pulling
-    // from a limited source (a resource node, a corpse, a building) only removes that many -
-    // "take only what fits" rather than all-or-nothing.
+    // Adds as much of `amount` as fits under maxWeight (a zero-weight item never limits) and
+    // returns how many, so a caller pulling from a node, corpse or building removes only that many.
     public int AddUpToCapacity(ItemKindId kind, int amount, ItemCatalog catalog, float maxWeight)
     {
         var toAdd = Math.Min(amount, UnitsThatFit(kind, catalog, maxWeight));
@@ -48,9 +46,8 @@ public sealed class Inventory
         return toAdd;
     }
 
-    // Whether even a single unit of `kind` would still go in - what decides if walking to a
-    // source of it is worth anyone's time at all (see WorldState.CanTakeAnythingFrom), asked
-    // before setting off rather than found out by gathering nothing on arrival.
+    // Whether a single unit of `kind` would still fit - asked before walking to a source of it
+    // (see WorldState.CanTakeAnythingFrom).
     public bool HasRoomFor(ItemKindId kind, ItemCatalog catalog, float maxWeight) => UnitsThatFit(kind, catalog, maxWeight) > 0;
 
     private int UnitsThatFit(ItemKindId kind, ItemCatalog catalog, float maxWeight)

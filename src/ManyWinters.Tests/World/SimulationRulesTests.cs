@@ -42,8 +42,8 @@ public class SimulationRulesTests
         Assert.Equal(expected, rules.SeasonAt(tick));
     }
 
-    // Deliberately not MaxHunger 100 with a variation of 0.5: at those numbers halving,
-    // doubling and adding all come out alike (docs/development.md, "Inspections").
+    // Not MaxHunger 100 with variation 0.5: there halving, doubling and adding come out alike,
+    // so mutants survive (docs/development.md, "Mutation testing").
     private static readonly SimulationRules HungerRules = new() { MaxHunger = 80f, MaxHungerVariation = 0.25f };
 
     [Fact]
@@ -57,13 +57,11 @@ public class SimulationRulesTests
     [Fact]
     public void TheSameIdAlwaysDrawsTheSameMaxHunger()
     {
-        // Nothing saves this, so a person restored by id has to come back the same - see
-        // Person.MaxHunger.
+        // Nothing saves this, so a person restored by id must draw the same - see Person.MaxHunger.
         Assert.Equal(HungerRules.MaxHungerFor(TestIds.Person(7)), HungerRules.MaxHungerFor(TestIds.Person(7)));
     }
 
-    // The reason the draw runs through SeedHash: consecutive ids must not come out alike, and a
-    // starting band is exactly a run of them.
+    // Why the draw runs through SeedHash: a starting band is a run of consecutive ids.
     [Fact]
     public void NeighbouringIdsDrawNoticeablyDifferentMaxHungers()
     {
@@ -80,8 +78,8 @@ public class SimulationRulesTests
         Assert.InRange(below, 400, 600);
     }
 
-    // The reason the draw reads every bit of the spread except the one Person.SexOf takes: a
-    // band whose men all outlast its women is not what this is for.
+    // The draw reads every bit of the spread except the one Person.SexOf takes, so lifespan
+    // and sex stay independent.
     [Fact]
     public void HowLongSomebodyLastsDoesNotFollowFromTheirSex()
     {

@@ -2,13 +2,9 @@ using Godot;
 
 namespace ManyWinters.Godot.Terrain;
 
-// Builds the terrain mesh and waterways - purely presentation/art, no gameplay rule lives
-// here (contrast MapLoader, which defines the actual starting WorldState). Every scattered
-// decoration prop (background trees, bushes, ground cover, rocks, stumps, fallen logs) used
-// to be built here too, as purely-visual sprites with no gameplay identity; they're now real
-// ResourceNodes spawned by MapLoader.ScatterDecorations and rendered like any other resource
-// node via WorldPresenter's existing ResourceNodeAdded pipeline, so this class no
-// longer needs to know about any of them (or about the camp's position).
+// Builds the terrain mesh and waterways - presentation only, no gameplay rule lives here
+// (MapLoader defines the starting WorldState). Scattered decorations are ResourceNodes spawned
+// by MapLoader.ScatterDecorations and rendered through WorldPresenter, not built here.
 public static class TerrainSetup
 {
     private const string HeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";

@@ -57,9 +57,8 @@ public class CloudSpotScatterTests
     [Fact]
     public void FillsTheMapToRoughlyTheRequestedDensity()
     {
-        // 200m x 200m at an 11m mean spacing asks for ~330 spots; rejection sampling won't
-        // hit that exactly, but it should land in the same neighbourhood rather than
-        // leaving the map half empty.
+        // 200m x 200m at an 11m mean spacing asks for ~330 spots; rejection sampling should
+        // land near that, not leave the map half empty.
         var count = Scatter().Count;
 
         Assert.InRange(count, 200, 331);
@@ -93,9 +92,8 @@ public class CloudSpotScatterTests
     [Fact]
     public void ClumpyRollChangesSmoothlyBetweenNeighbours()
     {
-        // Two spots a metre apart share most of their spatial grain, so with the same
-        // independent chance their rolls stay close - that shared part is what makes whole
-        // patches of cover drop out together.
+        // Neighbouring spots share most of their spatial grain - that shared part is what makes
+        // whole patches of cover drop out together.
         var a = CloudSpotScatter.ClumpyRoll(10f, 10f, independent: 0.5f, seed: 7);
         var b = CloudSpotScatter.ClumpyRoll(11f, 10f, independent: 0.5f, seed: 7);
 
@@ -105,9 +103,8 @@ public class CloudSpotScatterTests
     [Fact]
     public void LayoutIsNotAGrid()
     {
-        // On a jittered grid every spot stays inside its own cell, so nearest-neighbour
-        // distances cluster tightly; a Poisson-disc scatter spreads them out. Check that the
-        // spacing to the nearest neighbour genuinely varies across the layout.
+        // A jittered grid keeps nearest-neighbour distances tightly clustered; a Poisson-disc
+        // scatter varies them.
         var spots = Scatter();
         var nearest = new List<float>();
         for (var i = 0; i < spots.Count; i++)
@@ -130,8 +127,7 @@ public class CloudSpotScatterTests
     [Fact]
     public void MinGapIsAFixedShareOfBothCloudsSizesCombined()
     {
-        // Exact, not just "greater than either" - the gap is what caps how densely the cover
-        // can pack, so the factor and the sum are both load-bearing.
+        // Exact: the gap caps how densely the cover can pack, so factor and sum both matter.
         Assert.Equal(5.4f, CloudSpotScatter.MinGap(9f, 18f), 5);
         Assert.Equal(7.2f, CloudSpotScatter.MinGap(18f, 18f), 5);
     }
@@ -139,19 +135,17 @@ public class CloudSpotScatterTests
     [Fact]
     public void GenerateStopsExactlyAtTheTargetCount()
     {
-        // 200m x 200m at an 11m mean spacing targets 330 spots and rejection sampling reaches
-        // it here. Asserted exactly rather than as a range: the loop's two bounds (attempts
-        // used up, target reached) are the only thing deciding when scattering stops.
+        // The 330 target is reachable here, so it is the bound that stops the loop rather than
+        // the attempt budget. Exact, because those two bounds alone decide the count.
         Assert.Equal(330, Scatter().Count);
     }
 
     [Fact]
     public void ALayoutForAGivenSeedIsFixedDownToEachSpotsOwnNumbers()
     {
-        // Characterization: the scatter is a deterministic seeded generator whose output the
-        // presentation layer places verbatim, so every arithmetic step between the seed and a
-        // spot's fields is behaviour, not an implementation detail. Regenerate these numbers
-        // deliberately if the generator is meant to change; don't relax them.
+        // Characterization: the presentation layer places these numbers verbatim, so every step
+        // from seed to spot is behaviour. Regenerate deliberately if the generator changes;
+        // don't relax.
         var spots = Scatter();
 
         AssertSpot(spots[0], x: 74.251144f, z: 32.18773f, size: 12.448984f, texture: 0, roll: 0.34839553f, lift: 0.67616946f);
@@ -167,16 +161,15 @@ public class CloudSpotScatterTests
     public void ClumpyRollsSpatialGrainIsAFixedFunctionOfPositionAndSeed(float x, float z, int seed, float expected)
     {
         // independent: 0 leaves only the spatial grain, so this pins the value noise and its
-        // hash - the part that decides which patches of cover tear open together - rather than
-        // the blend with the per-spot draw.
+        // hash rather than the blend with the per-spot draw.
         Assert.Equal(expected, CloudSpotScatter.ClumpyRoll(x, z, independent: 0f, seed: seed), 6);
     }
 
     [Fact]
     public void ClumpyRollBlendsTheIndependentDrawInAtAFixedWeight()
     {
-        // Same position and seed, two different independent draws: the difference between the
-        // rolls is the independent share, so this pins the weight without restating the grain.
+        // Same position and seed, two independent draws: the difference is the independent
+        // share, so this pins the blend weight alone.
         var low = CloudSpotScatter.ClumpyRoll(0f, 0f, independent: 0f, seed: 7);
         var high = CloudSpotScatter.ClumpyRoll(0f, 0f, independent: 1f, seed: 7);
 
@@ -196,9 +189,8 @@ public class CloudSpotScatterTests
     [Fact]
     public void ScatteringStopsWhenTheAttemptBudgetRunsOutOnAMapThatCannotHoldTheTarget()
     {
-        // A 40m map asked for 400 spots that a 5.4m-plus gap can never fit: the target is
-        // unreachable, so the attempt budget is what ends the run. Exact, because that budget
-        // and the way it is counted down are then the only things deciding the answer.
+        // A 40m map cannot hold 400 spots at a 5.4m-plus gap, so the attempt budget ends the
+        // run. Exact, because that budget alone then decides the count.
         var spots = CloudSpotScatter.Generate(halfExtentMeters: 20f, meanSpacingMeters: 2f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: 7);
 
         Assert.Equal(53, spots.Count);
