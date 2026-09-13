@@ -6,7 +6,6 @@ namespace ManyWinters.Godot.Tests;
 public class WalkCycleTests
 {
     private const float Bob = 0.08f;
-    private const float Rock = 0.12f;
 
     [Fact]
     public void TheSpeedCoversTheDistanceInExactlyTheTimeGiven()
@@ -68,74 +67,33 @@ public class WalkCycleTests
     }
 
     [Fact]
-    public void ThePoseStartsNeutralAndRisesToTheBobAmplitude()
+    public void TheBobStartsNeutralAndRisesToItsAmplitude()
     {
         // Phase zero is the middle of the dip, a quarter turn is the top of it.
-        Assert.Equal(0f, WalkCycle.PoseAt(0f, Bob, Rock).Offset.Y, 5);
-        Assert.Equal(Bob, WalkCycle.PoseAt(MathF.PI / 2f, Bob, Rock).Offset.Y, 5);
-        Assert.Equal(-Bob, WalkCycle.PoseAt(3f * MathF.PI / 2f, Bob, Rock).Offset.Y, 5);
+        Assert.Equal(0f, WalkCycle.BobAt(0f, Bob).Y, 5);
+        Assert.Equal(Bob, WalkCycle.BobAt(MathF.PI / 2f, Bob).Y, 5);
+        Assert.Equal(-Bob, WalkCycle.BobAt(3f * MathF.PI / 2f, Bob).Y, 5);
     }
 
     [Fact]
     public void TheBobMovesOnlyUpAndDown()
     {
         // Sideways or forward drift would slide the cutout off its own feet.
-        var pose = WalkCycle.PoseAt(1.3f, Bob, Rock);
+        var offset = WalkCycle.BobAt(1.3f, Bob);
 
-        Assert.Equal(0f, pose.Offset.X, 5);
-        Assert.Equal(0f, pose.Offset.Z, 5);
+        Assert.Equal(0f, offset.X, 5);
+        Assert.Equal(0f, offset.Z, 5);
     }
 
     [Fact]
-    public void TheRockLeansAboutTheLocalZAxisAlone()
+    public void TheAmplitudeScalesTheBob()
     {
-        // Any other axis would turn the cutout away from the camera and break the billboard.
-        var pose = WalkCycle.PoseAt(1.3f, Bob, Rock);
-
-        Assert.Equal(0f, pose.Rotation.X, 5);
-        Assert.Equal(0f, pose.Rotation.Y, 5);
-        Assert.NotEqual(0f, pose.Rotation.Z);
+        Assert.Equal(WalkCycle.BobAt(1.3f, Bob).Y * 2f, WalkCycle.BobAt(1.3f, Bob * 2f).Y, 5);
     }
 
     [Fact]
-    public void TheRockRunsAtHalfTheBobsFrequencySoItIsOnePerStride()
+    public void TheBobRepeatsEveryFullTurnOfPhase()
     {
-        // A body dips once per footfall but leans over once per stride. At a full bob cycle
-        // the bob is back where it started while the rock is only half way round - at its own
-        // extreme. In step with the bob it would read as a limp.
-        var full = WalkCycle.PoseAt(2f * MathF.PI, Bob, Rock);
-
-        Assert.Equal(0f, full.Offset.Y, 4);
-        Assert.Equal(0f, MathF.Abs(full.Rotation.Z), 4);
-
-        var half = WalkCycle.PoseAt(MathF.PI, Bob, Rock);
-
-        Assert.Equal(0f, half.Offset.Y, 4);
-        Assert.Equal(Rock, half.Rotation.Z, 4);
-    }
-
-    [Fact]
-    public void BothAmplitudesScaleTheirOwnPartAndNotTheOther()
-    {
-        var normal = WalkCycle.PoseAt(1.3f, Bob, Rock);
-        var bobbier = WalkCycle.PoseAt(1.3f, Bob * 2f, Rock);
-        var rockier = WalkCycle.PoseAt(1.3f, Bob, Rock * 2f);
-
-        Assert.Equal(normal.Offset.Y * 2f, bobbier.Offset.Y, 5);
-        Assert.Equal(normal.Rotation.Z, bobbier.Rotation.Z, 5);
-        Assert.Equal(normal.Rotation.Z * 2f, rockier.Rotation.Z, 5);
-        Assert.Equal(normal.Offset.Y, rockier.Offset.Y, 5);
-    }
-
-    [Fact]
-    public void ThePoseRepeatsEveryTwoFullTurnsOfPhase()
-    {
-        // The rock's half frequency makes the combined cycle twice as long as the bob's, so
-        // this is where the whole pose actually comes back round.
-        var start = WalkCycle.PoseAt(0.7f, Bob, Rock);
-        var later = WalkCycle.PoseAt(0.7f + (4f * MathF.PI), Bob, Rock);
-
-        Assert.Equal(start.Offset.Y, later.Offset.Y, 3);
-        Assert.Equal(start.Rotation.Z, later.Rotation.Z, 3);
+        Assert.Equal(WalkCycle.BobAt(0.7f, Bob).Y, WalkCycle.BobAt(0.7f + (2f * MathF.PI), Bob).Y, 3);
     }
 }

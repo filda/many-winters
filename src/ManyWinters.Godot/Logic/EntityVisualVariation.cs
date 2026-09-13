@@ -26,7 +26,7 @@ internal static class EntityVisualVariation
     }
 
     // Like Scale, but for callers that need several independent attributes off the same
-    // seed (e.g. a person's walk-cycle rate and its bob/rock amplitudes, all keyed off their
+    // seed (e.g. a person's walk-cycle rate and its bob amplitude, all keyed off their
     // id) - a distinguishing salt per attribute avoids each one just landing on the same
     // underlying draw, rescaled differently. Also avalanches seed+salt first (Thomas Wang's
     // 32-bit integer hash): System.Random's legacy algorithm correlates badly on adjacent

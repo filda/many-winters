@@ -16,19 +16,14 @@ internal partial class PersonView : SpriteEntityView
     private const float MaxScale = 1.08f;
     private const float ShadowDiameter = 0.9f;
 
-    // A cardboard-cutout-on-a-stick wobble while actually walking, rather than gliding
-    // like a ghost: a vertical bob plus a side-to-side rock, both driven by the same phase
-    // accumulator (rock at half the bob's frequency - one full lean cycle per two bounces,
-    // roughly matching a two-footed gait) so they read as one coherent waddle, not two
-    // independent wiggles. Each person draws their own rate/amplitudes once (see _Ready) from
-    // within these ranges - a shared exact rate is what made everyone's gait read as
+    // A cardboard-cutout-on-a-stick bounce while actually walking, rather than gliding like a
+    // ghost (see WalkCycle). Each person draws their own rate and amplitude once (see Build)
+    // from within these ranges - a shared exact rate is what made everyone's gait read as
     // synchronized even after IdleTask's paths stopped lining up.
     private const float MinWalkCyclesPerSecond = 8f;
     private const float MaxWalkCyclesPerSecond = 12f;
     private const float MinBobAmplitude = 0.06f;
     private const float MaxBobAmplitude = 0.10f;
-    private const float MinRockAmplitude = 0.08f;
-    private const float MaxRockAmplitude = 0.16f;
 
     // Standing still is not standing frozen (see IdleSway): the walk's own bob, a fifth slower
     // and at about half the height, so a person at rest keeps the same restless bounce as one
@@ -147,17 +142,16 @@ internal partial class PersonView : SpriteEntityView
     private float _walkPhase;
     private float _walkCyclesPerSecond;
     private float _bobAmplitude;
-    private float _rockAmplitude;
     private float _idlePhase;
     private float _idleBobAmplitude;
     private float _idleWeight;
     private float _standingSeconds;
 
     // What the layers currently show, as two parts that come and go on their own clocks (see
-    // OnProcess): the walk cycle's pose, exact while walking and easing away once standing,
-    // and the idle bob, whose weight fades in once standing and out again once walking. Kept
-    // so the hand-over between the two is never a jump.
-    private WalkCycle.Pose _stepPose = new(Vector3.Zero, Vector3.Zero);
+    // OnProcess): the walk's bob, exact while walking and easing away once standing, and the
+    // idle bob, whose weight fades in once standing and out again once walking. Kept so the
+    // hand-over between the two is never a jump.
+    private Vector3 _stepOffset;
     private bool _isAlive = true;
 
     // Internal, like the HoverArbiter it takes: WorldPresenter is the only thing that ever
@@ -185,20 +179,12 @@ internal partial class PersonView : SpriteEntityView
         ScaleAndKeepGroundContact(scale, scale);
         _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
         _bobAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 2, MinBobAmplitude, MaxBobAmplitude);
-        _rockAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 3, MinRockAmplitude, MaxRockAmplitude);
         _idleBobAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 5, MinIdleBobAmplitude, MaxIdleBobAmplitude);
         _idlePhase = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 7, 0f, MathF.Tau);
         _targetPosition = Position;
 
         SetUpGroundShadow(ShadowDiameter);
 
-        // BillboardSprite.Create always uses FixedY now (switched from full/spherical so a
-        // standing figure's own feet actually land at ground level at this camera's oblique
-        // tilt - see its own doc comment). That trade-off cuts both ways here specifically:
-        // the walk-cycle's local Z "roll" below (_walkPhase) was tuned assuming full billboard,
-        // where a Z roll reads as a proper side-to-side lean; under FixedY it may instead read
-        // as a forward/backward tilt. Needs a live look once the ground-contact fix is
-        // confirmed - if the walk rock looks wrong now, that's the reason.
         var body = BillboardSprite.Create(_aliveTexturePath, Height, AliveColor);
         _aliveBodyModulate = body.Modulate;
         _body = Register(body, _aliveTexturePath);
@@ -264,7 +250,7 @@ internal partial class PersonView : SpriteEntityView
         {
             _standingSeconds = 0f;
             _walkPhase = WalkCycle.Advanced(_walkPhase, seconds, _walkCyclesPerSecond);
-            _stepPose = WalkCycle.PoseAt(_walkPhase, _bobAmplitude, _rockAmplitude);
+            _stepOffset = WalkCycle.BobAt(_walkPhase, _bobAmplitude);
             _idleWeight = IdleSway.Settle(_idleWeight, 0f, seconds, IdleFadeOutSeconds);
             ApplyPose();
             return;
@@ -283,23 +269,18 @@ internal partial class PersonView : SpriteEntityView
         }
 
         // Genuinely standing: the step's bounce eases away and the idle bob fades in.
-        _stepPose = IdleSway.Settle(_stepPose, new WalkCycle.Pose(Vector3.Zero, Vector3.Zero), seconds, StepSettleSeconds);
+        _stepOffset = IdleSway.Settle(_stepOffset, Vector3.Zero, seconds, StepSettleSeconds);
         _idleWeight = IdleSway.Settle(_idleWeight, 1f, seconds, IdleFadeInSeconds);
         ApplyPose();
     }
 
-    // All three layers take the same pose, not their own - they are one rigid cutout. The
-    // rotation is set for completeness; a FixedY billboard discards it (see IdleSway).
+    // All three layers take the same offset, not their own - they are one rigid cutout.
     private void ApplyPose()
     {
-        var idleOffset = WalkCycle.PoseAt(_idlePhase, _idleBobAmplitude * _idleWeight, 0f).Offset;
-        var offset = _stepPose.Offset + idleOffset;
+        var offset = _stepOffset + WalkCycle.BobAt(_idlePhase, _idleBobAmplitude * _idleWeight);
         _body.Sprite.Position = offset;
-        _body.Sprite.Rotation = _stepPose.Rotation;
         _clothing.Sprite.Position = offset;
-        _clothing.Sprite.Rotation = _stepPose.Rotation;
         _hair.Sprite.Position = offset;
-        _hair.Sprite.Rotation = _stepPose.Rotation;
     }
 
     // `target` is where WorldSpace.ToRender puts an unscaled person; this view stands a little
@@ -339,12 +320,12 @@ internal partial class PersonView : SpriteEntityView
         ApplyTints();
 
         // The rotated "lying down" texture already reads as flat on the ground - any
-        // leftover walk bob/rock from mid-stride would tilt it off that, so clear it once
+        // leftover walk bob from mid-stride would lift it off that, so clear it once
         // there's no more walking to re-derive it each frame (OnProcess neither walks nor
         // sways the dead).
         if (!isAlive)
         {
-            _stepPose = new WalkCycle.Pose(Vector3.Zero, Vector3.Zero);
+            _stepOffset = Vector3.Zero;
             _idleWeight = 0f;
             ApplyPose();
         }

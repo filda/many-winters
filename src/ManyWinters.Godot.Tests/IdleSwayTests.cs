@@ -5,8 +5,7 @@ namespace ManyWinters.Godot.Tests;
 
 public class IdleSwayTests
 {
-    private static readonly WalkCycle.Pose Leaning = new(new Vector3(0f, 0.08f, 0f), new Vector3(0f, 0f, 0.12f));
-    private static readonly WalkCycle.Pose Upright = new(Vector3.Zero, Vector3.Zero);
+    private static readonly Vector3 MidBounce = new(0f, 0.08f, 0f);
 
     [Fact]
     public void AValueEasesTowardItsTargetByTheTimeConstant()
@@ -22,40 +21,36 @@ public class IdleSwayTests
     }
 
     [Fact]
-    public void APoseEasesBothItsOffsetAndItsRotationByTheSameShare()
+    public void AnOffsetEasesByTheSameShareOnEveryAxis()
     {
-        var settled = IdleSway.Settle(Leaning, Upright, delta: 0.5f, settleSeconds: 1f);
+        var settled = IdleSway.Settle(new Vector3(0.1f, 0.08f, -0.2f), Vector3.Zero, delta: 0.5f, settleSeconds: 1f);
 
-        Assert.Equal(0.08f * MathF.Exp(-0.5f), settled.Offset.Y, 5);
-        Assert.Equal(0.12f * MathF.Exp(-0.5f), settled.Rotation.Z, 5);
-        Assert.Equal(0f, settled.Offset.X);
-        Assert.Equal(0f, settled.Rotation.X);
+        Assert.Equal(0.1f * MathF.Exp(-0.5f), settled.X, 5);
+        Assert.Equal(0.08f * MathF.Exp(-0.5f), settled.Y, 5);
+        Assert.Equal(-0.2f * MathF.Exp(-0.5f), settled.Z, 5);
     }
 
     [Fact]
     public void AShorterTimeConstantSettlesFaster()
     {
-        var slow = IdleSway.Settle(Leaning, Upright, delta: 0.1f, settleSeconds: 2f);
-        var fast = IdleSway.Settle(Leaning, Upright, delta: 0.1f, settleSeconds: 0.2f);
+        var slow = IdleSway.Settle(MidBounce, Vector3.Zero, delta: 0.1f, settleSeconds: 2f);
+        var fast = IdleSway.Settle(MidBounce, Vector3.Zero, delta: 0.1f, settleSeconds: 0.2f);
 
-        Assert.True(fast.Offset.Y < slow.Offset.Y);
+        Assert.True(fast.Y < slow.Y);
         Assert.True(IdleSway.Settle(0f, 1f, 0.1f, 0.2f) > IdleSway.Settle(0f, 1f, 0.1f, 2f));
     }
 
     [Fact]
     public void NoTimeMeansNoMovement()
     {
-        Assert.Equal(Leaning, IdleSway.Settle(Leaning, Upright, delta: 0f, settleSeconds: 1f));
+        Assert.Equal(MidBounce, IdleSway.Settle(MidBounce, Vector3.Zero, delta: 0f, settleSeconds: 1f));
         Assert.Equal(0.3f, IdleSway.Settle(0.3f, 1f, delta: 0f, settleSeconds: 1f));
     }
 
     [Fact]
     public void ALongTimeArrivesWithoutOvershooting()
     {
-        var settled = IdleSway.Settle(Leaning, Upright, delta: 100f, settleSeconds: 0.5f);
-
-        Assert.Equal(0f, settled.Offset.Y, 5);
-        Assert.Equal(0f, settled.Rotation.Z, 5);
+        Assert.Equal(0f, IdleSway.Settle(MidBounce, Vector3.Zero, delta: 100f, settleSeconds: 0.5f).Y, 5);
         Assert.Equal(1f, IdleSway.Settle(0f, 1f, delta: 100f, settleSeconds: 0.5f), 5);
     }
 
