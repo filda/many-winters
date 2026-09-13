@@ -6,6 +6,7 @@ using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Views;
@@ -66,6 +67,16 @@ public partial class Main : Node3D
         var configuration = WorldConfiguration.LoadFromJson(catalog => ContentFiles.ReadJsonTree($"res://Content/{catalog}"));
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
+
+        // The band takes its first steps before anyone is watching. Everyone idles for up to
+        // IdleTask.MaxPauseTicks before their first wander leg, and with the prologue holding
+        // the clock the player watches the band's first moment closely - a band that then
+        // stood still for ten more seconds read as stuck. Running those ticks here, before
+        // the views exist, changes nothing about how the world unfolds (it is the same
+        // deterministic world, watched from ten ticks in); it costs the band that many ticks
+        // of hunger before the player can act.
+        _world.Advance(IdleTask.MaxPauseTicks + 1);
+
         _exploration = new RevealableExploration(_world.Exploration);
         _campCenter = map.CampCenter;
 
@@ -467,6 +478,10 @@ public partial class Main : Node3D
     private void SetUpInscriptionOverlay(CanvasLayer canvas)
     {
         _inscriptionOverlay = new InscriptionOverlay();
+        // The clock stood still with the inscription up, so the next tick is due the moment
+        // it comes down - not a full interval later, which read as the world taking a second
+        // to notice that the player had walked on.
+        _inscriptionOverlay.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         canvas.AddChild(_inscriptionOverlay);
     }
 
@@ -629,7 +644,7 @@ public partial class Main : Node3D
         _statusBar = new StatusBar();
         _statusBar.AddThemeStyleboxOverride("panel", PanelBackground());
         canvas.AddChild(_statusBar);
-        _statusBar.SetTick(0, _world.CurrentSeason);
+        _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
     }
 
     // Refreshes right away rather than waiting for the next tick: the tick interval is long

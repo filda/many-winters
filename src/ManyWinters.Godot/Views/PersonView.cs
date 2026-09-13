@@ -30,6 +30,33 @@ internal partial class PersonView : SpriteEntityView
     private const float MinRockAmplitude = 0.08f;
     private const float MaxRockAmplitude = 0.16f;
 
+    // Standing still is not standing frozen (see IdleSway): the walk's own bob, a fifth slower
+    // and at about half the height, so a person at rest keeps the same restless bounce as one
+    // on the move and the two hand over without a change of rhythm. Each person bobs at their
+    // own rate (a fixed share of their own walk rate) from their own starting phase, so a crowd
+    // at rest does not bounce in unison. A slow side-to-side sway was tried first and read as
+    // stalling rather than standing.
+    private const float IdleCyclesPerWalkCycle = 0.8f;
+    private const float MinIdleBobAmplitude = 0.03f;
+    private const float MaxIdleBobAmplitude = 0.05f;
+
+    // A person is only "standing" once they have been still this long. Between two ticks the
+    // interpolation of a step arrives a frame or two before the next target is handed over
+    // (everyone shares Main's single tick accumulator), and treating that gap as standing
+    // made every walking person start to sway and snap back at once, every tick.
+    private const float StandingAfterSeconds = 0.3f;
+
+    // How quickly the idle bob fades in once standing and, faster, out again once walking. It
+    // is the bob's weight that eases, not the bob itself - eased directly, an eight-hertz
+    // signal is mostly damped away (see IdleSway). Not a snap either way, which would jolt the
+    // cutout on the first frame of standing or of walking.
+    private const float IdleFadeInSeconds = 0.35f;
+    private const float IdleFadeOutSeconds = 0.15f;
+
+    // How quickly the last step's own bob eases away once standing, so a person does not stay
+    // frozen mid-bounce for as long as they stand.
+    private const float StepSettleSeconds = 0.25f;
+
     private const string BodyMaleTexturePath = "res://Content/people/person_body_male.png";
     private const string BodyFemaleTexturePath = "res://Content/people/person_body_female.png";
     private const string BodyMaleDeadTexturePath = "res://Content/people/person_body_male_dead.png";
@@ -121,6 +148,16 @@ internal partial class PersonView : SpriteEntityView
     private float _walkCyclesPerSecond;
     private float _bobAmplitude;
     private float _rockAmplitude;
+    private float _idlePhase;
+    private float _idleBobAmplitude;
+    private float _idleWeight;
+    private float _standingSeconds;
+
+    // What the layers currently show, as two parts that come and go on their own clocks (see
+    // OnProcess): the walk cycle's pose, exact while walking and easing away once standing,
+    // and the idle bob, whose weight fades in once standing and out again once walking. Kept
+    // so the hand-over between the two is never a jump.
+    private WalkCycle.Pose _stepPose = new(Vector3.Zero, Vector3.Zero);
     private bool _isAlive = true;
 
     // Internal, like the HoverArbiter it takes: WorldPresenter is the only thing that ever
@@ -149,6 +186,8 @@ internal partial class PersonView : SpriteEntityView
         _walkCyclesPerSecond = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 1, MinWalkCyclesPerSecond, MaxWalkCyclesPerSecond);
         _bobAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 2, MinBobAmplitude, MaxBobAmplitude);
         _rockAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 3, MinRockAmplitude, MaxRockAmplitude);
+        _idleBobAmplitude = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 5, MinIdleBobAmplitude, MaxIdleBobAmplitude);
+        _idlePhase = EntityVisualVariation.RangeFor(_person.Id.Seed, salt: 7, 0f, MathF.Tau);
         _targetPosition = Position;
 
         SetUpGroundShadow(ShadowDiameter);
@@ -210,34 +249,66 @@ internal partial class PersonView : SpriteEntityView
     protected override void OnProcess(double delta)
     {
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
+        var seconds = (float)delta;
+
+        if (!_isAlive)
+        {
+            return;
+        }
+
+        // The idle bob runs all the time and is only faded in and out, so that whatever weight
+        // it has when a step begins or ends carries on in the same rhythm instead of restarting.
+        _idlePhase = WalkCycle.Advanced(_idlePhase, seconds, _walkCyclesPerSecond * IdleCyclesPerWalkCycle);
 
         if (WalkCycle.IsWalking(Position, _targetPosition))
         {
-            _walkPhase = WalkCycle.Advanced(_walkPhase, (float)delta, _walkCyclesPerSecond);
-            var pose = WalkCycle.PoseAt(_walkPhase, _bobAmplitude, _rockAmplitude);
-
-            // All three layers take the same pose, not their own.
-            _body.Sprite.Position = pose.Offset;
-            _body.Sprite.Rotation = pose.Rotation;
-            _clothing.Sprite.Position = pose.Offset;
-            _clothing.Sprite.Rotation = pose.Rotation;
-            _hair.Sprite.Position = pose.Offset;
-            _hair.Sprite.Rotation = pose.Rotation;
+            _standingSeconds = 0f;
+            _walkPhase = WalkCycle.Advanced(_walkPhase, seconds, _walkCyclesPerSecond);
+            _stepPose = WalkCycle.PoseAt(_walkPhase, _bobAmplitude, _rockAmplitude);
+            _idleWeight = IdleSway.Settle(_idleWeight, 0f, seconds, IdleFadeOutSeconds);
+            ApplyPose();
+            return;
         }
 
-        // Deliberately no "not walking" branch that snaps _walkPhase/_sprite back to
-        // neutral: everyone shares the same tick cadence (Main's single _tickAccumulator),
-        // so the interpolation from the previous target finishing a frame or two early -
-        // right at that shared tick boundary - hit every walking person at once. Snapping to
-        // a neutral pose and rewinding the phase to 0 there read as a synchronized hiccup
-        // across the whole crowd. Holding the last pose instead means those stray frames are
-        // invisible, and phases drift apart naturally instead of all rewinding together.
+        // The last step's pose is held, not snapped to neutral, for the first moments of not
+        // walking: that gap at the shared tick boundary (see StandingAfterSeconds) used to read
+        // as a synchronized hiccup across the whole crowd when it was snapped. The walk phase
+        // is left where it stopped for the same reason, so phases drift apart on their own
+        // instead of all rewinding together.
+        _standingSeconds += seconds;
+        if (_standingSeconds < StandingAfterSeconds)
+        {
+            ApplyPose();
+            return;
+        }
+
+        // Genuinely standing: the step's bounce eases away and the idle bob fades in.
+        _stepPose = IdleSway.Settle(_stepPose, new WalkCycle.Pose(Vector3.Zero, Vector3.Zero), seconds, StepSettleSeconds);
+        _idleWeight = IdleSway.Settle(_idleWeight, 1f, seconds, IdleFadeInSeconds);
+        ApplyPose();
     }
 
+    // All three layers take the same pose, not their own - they are one rigid cutout. The
+    // rotation is set for completeness; a FixedY billboard discards it (see IdleSway).
+    private void ApplyPose()
+    {
+        var idleOffset = WalkCycle.PoseAt(_idlePhase, _idleBobAmplitude * _idleWeight, 0f).Offset;
+        var offset = _stepPose.Offset + idleOffset;
+        _body.Sprite.Position = offset;
+        _body.Sprite.Rotation = _stepPose.Rotation;
+        _clothing.Sprite.Position = offset;
+        _clothing.Sprite.Rotation = _stepPose.Rotation;
+        _hair.Sprite.Position = offset;
+        _hair.Sprite.Rotation = _stepPose.Rotation;
+    }
+
+    // `target` is where WorldSpace.ToRender puts an unscaled person; this view stands a little
+    // higher than that (see SpriteEntityView.GroundContactCorrection), and so must its target.
     public void SetTargetPosition(Vector3 target, float overSeconds)
     {
-        _interpolationSpeed = WalkCycle.InterpolationSpeed(Position.DistanceTo(target), overSeconds);
-        _targetPosition = target;
+        var corrected = target + GroundContactCorrection;
+        _interpolationSpeed = WalkCycle.InterpolationSpeed(Position.DistanceTo(corrected), overSeconds);
+        _targetPosition = corrected;
     }
 
     public void SetAlive(bool isAlive)
@@ -269,16 +340,13 @@ internal partial class PersonView : SpriteEntityView
 
         // The rotated "lying down" texture already reads as flat on the ground - any
         // leftover walk bob/rock from mid-stride would tilt it off that, so clear it once
-        // there's no more walking to re-derive it each frame (isWalking only ever updates
-        // these while actually moving - see _Process).
+        // there's no more walking to re-derive it each frame (OnProcess neither walks nor
+        // sways the dead).
         if (!isAlive)
         {
-            _body.Sprite.Position = Vector3.Zero;
-            _body.Sprite.Rotation = Vector3.Zero;
-            _clothing.Sprite.Position = Vector3.Zero;
-            _clothing.Sprite.Rotation = Vector3.Zero;
-            _hair.Sprite.Position = Vector3.Zero;
-            _hair.Sprite.Rotation = Vector3.Zero;
+            _stepPose = new WalkCycle.Pose(Vector3.Zero, Vector3.Zero);
+            _idleWeight = 0f;
+            ApplyPose();
         }
 
         // Dead uses a differently-shaped (wider/shorter, lying down) silhouette - the

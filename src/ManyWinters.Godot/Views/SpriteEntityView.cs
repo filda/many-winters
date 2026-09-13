@@ -181,8 +181,17 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     protected void ScaleAndKeepGroundContact(float widthScale, float heightScale)
     {
         Scale = new Vector3(widthScale, heightScale, widthScale);
-        Position += new Vector3(0f, (NominalHeight / 2f) * (heightScale - 1f), 0f);
+        GroundContactCorrection = new Vector3(0f, (NominalHeight / 2f) * (heightScale - 1f), 0f);
+        Position += GroundContactCorrection;
     }
+
+    // How far ScaleAndKeepGroundContact lifted this node above where WorldSpace.ToRender puts
+    // an unscaled one, so that anything handing this view a later position (PersonView's
+    // per-tick target) can lift it by the same amount. Without it the first tick "walked"
+    // every person a few centimetres down to the uncorrected height, one second of walk bob
+    // for nothing - hidden while the game started ticking at once, and plain to see once the
+    // prologue held the clock and the player watched the band's first moment.
+    protected Vector3 GroundContactCorrection { get; private set; }
 
     // The entity's drawn silhouette in this node's own local metres: the union of its picking
     // layers' visible extents - a split tree's trunk and canopy together reconstruct exactly

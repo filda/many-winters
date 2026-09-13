@@ -4,9 +4,13 @@ using ManyWinters.Core.Continuity;
 namespace ManyWinters.Godot.Ui;
 
 // An inscription carved across the whole screen - the band's arrival (Prologue), the end of
-// its line (Epitaph): the world dims to a sepia wash and the title stands alone in the middle,
-// set in the title page's own face (InscriptionFont). Only the title: one sentence is what a
-// moment like this can carry, and the lines under it wait in the chronicle (ChroniclePanel).
+// its line (Epitaph): the title stands alone in the middle of the undimmed world, set in the
+// title page's own face (InscriptionFont) with an ink outline so it reads over whatever the
+// camera happens to show. Only the title: one sentence is what a moment like this can carry,
+// and the lines under it wait in the chronicle (ChroniclePanel). The world behind it is left
+// as it is on purpose - the survivors, or the graves, are what the words are about - and the
+// camera keeps working while it is up; only clicks into the world are swallowed, since a
+// command issued into a stopped clock would land the moment it starts again.
 // Under it, the ways on. "Walk the land" closes it and leaves the world running - the
 // survivors, or the graves, are worth looking at. "Another band comes" is only offered once
 // nobody is left, and is not wired yet: it will bring a new band into this same world
@@ -20,11 +24,16 @@ public partial class InscriptionOverlay : Control
     private const float ColumnWidth = 900f;
     private const int Spacing = 36;
 
-    private static readonly Color Wash = new(0.16f, 0.12f, 0.08f, 0.88f);
+    private const int OutlineSize = 10;
+
     private static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
+    private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
 
     private Label _title = null!;
     private Button _anotherBand = null!;
+
+    // "Walk the land" was pressed: the world may move on.
+    public event Action? Dismissed;
 
     public override void _Ready()
     {
@@ -32,10 +41,6 @@ public partial class InscriptionOverlay : Control
         MouseFilter = MouseFilterEnum.Stop;
         Visible = false;
         Theme = InscriptionFont.BodyTheme(ButtonFontSize);
-
-        var wash = new ColorRect { Color = Wash, MouseFilter = MouseFilterEnum.Stop };
-        wash.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(wash);
 
         var centre = new CenterContainer();
         centre.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -47,6 +52,8 @@ public partial class InscriptionOverlay : Control
 
         _title = InscriptionFont.TitleLabel(string.Empty, TitleFontSize, Ink);
         _title.HorizontalAlignment = HorizontalAlignment.Center;
+        _title.AddThemeColorOverride("font_outline_color", Outline);
+        _title.AddThemeConstantOverride("outline_size", OutlineSize);
         column.AddChild(_title);
 
         var ways = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
@@ -54,7 +61,11 @@ public partial class InscriptionOverlay : Control
         column.AddChild(ways);
 
         var walk = new Button { Text = "Walk the land" };
-        walk.Pressed += () => Visible = false;
+        walk.Pressed += () =>
+        {
+            Visible = false;
+            Dismissed?.Invoke();
+        };
         ways.AddChild(walk);
 
         _anotherBand = new Button

@@ -15,9 +15,12 @@ public sealed class IdleTask : PersonTask
 
     // A person stands still for a bit between wander legs (and before the very first one)
     // instead of immediately setting off again the instant one ends - without this, idle
-    // reads as restless, constant walking rather than someone occasionally wandering.
+    // reads as restless, constant walking rather than someone occasionally wandering. The
+    // ceiling is public because the game lets a fresh band run for that long before anyone is
+    // watching (see Main._Ready), so that the first thing the player sees is a band already
+    // on the move rather than one standing about for up to ten ticks.
     private const int MinPauseTicks = 3;
-    private const int MaxPauseTicks = 10;
+    public const int MaxPauseTicks = 10;
 
     // Seeded from the person, not shared/time-based, so a given person's wander path is
     // reproducible from a given start tick rather than depending on simulation order.
