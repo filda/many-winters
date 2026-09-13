@@ -9,7 +9,7 @@ namespace ManyWinters.Godot.Ui;
 public partial class StatusBar : PanelContainer
 {
     // Tall enough to give the "?" button (which drives its own theme minimum height) and
-    // a centered line of text room inside PanelBackground's 10px top/bottom margins -
+    // a centered line of text room inside PanelChrome's 10px top/bottom margins -
     // 36f left only 16px of interior, so content was being squeezed past the panel edge.
     private const float BarHeight = 48f;
     private const float NotificationSeconds = 4f;
@@ -22,7 +22,7 @@ public partial class StatusBar : PanelContainer
 
     private const string HelpText =
         "WASD/arrows: pan camera. Q/E or right-drag: rotate. R/F or mouse wheel: zoom. " +
-        "Page Up/Page Down or right-drag: tilt. T: toggle ortho/perspective.\n\n" +
+        "Page Up/Page Down or right-drag: tilt. T: toggle ortho/perspective. Space: pause/resume.\n\n" +
         "Left-click: select person. Right-click another person: teach them what the " +
         "selected person knows. Click a resource node: gather (needs a selected person). " +
         "Click a grave: view its record. Click empty ground: walk there (needs a selected " +

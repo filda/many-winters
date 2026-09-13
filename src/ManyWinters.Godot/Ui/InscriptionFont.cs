@@ -17,6 +17,14 @@ public static class InscriptionFont
 {
     private const string FontDirectory = "res://Content/fonts";
 
+    // The ink every full-screen title is set in, and the outline that keeps it legible over
+    // whatever the camera happens to show behind it (see OutlinedTitleLabel) - shared here so
+    // InscriptionOverlay and PausePanel read as the same title rather than two that happen to
+    // agree for now.
+    public static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
+    private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
+    private const int OutlineSize = 10;
+
     private static FontFile Title { get; } = ResourceLoader.Load<FontFile>($"{FontDirectory}/im-fell-english/IMFeENrm28P.ttf");
 
     private static FontFile Body { get; } = ResourceLoader.Load<FontFile>($"{FontDirectory}/vollkorn/Vollkorn-Regular.ttf");
@@ -35,6 +43,17 @@ public static class InscriptionFont
     public static Label TitleLabel(string text, int size, Color ink) => Styled(text, Title, size, ink);
 
     public static Label BodyLabel(string text, int size, Color ink) => Styled(text, Body, size, ink);
+
+    // A centred title carrying the ink-and-outline look every full-screen title wears - the one
+    // look InscriptionOverlay and PausePanel both need, so neither hardcodes it locally.
+    public static Label OutlinedTitleLabel(string text, int size)
+    {
+        var label = TitleLabel(text, size, Ink);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.AddThemeColorOverride("font_outline_color", Outline);
+        label.AddThemeConstantOverride("outline_size", OutlineSize);
+        return label;
+    }
 
     private static Label Styled(string text, Font font, int size, Color ink)
     {

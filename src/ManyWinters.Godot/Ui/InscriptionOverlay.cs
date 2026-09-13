@@ -24,11 +24,6 @@ public partial class InscriptionOverlay : Control
     private const float ColumnWidth = 900f;
     private const int Spacing = 36;
 
-    private const int OutlineSize = 10;
-
-    private static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
-    private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
-
     private Label _title = null!;
     private Button _anotherBand = null!;
 
@@ -50,10 +45,7 @@ public partial class InscriptionOverlay : Control
         column.AddThemeConstantOverride("separation", Spacing);
         centre.AddChild(column);
 
-        _title = InscriptionFont.TitleLabel(string.Empty, TitleFontSize, Ink);
-        _title.HorizontalAlignment = HorizontalAlignment.Center;
-        _title.AddThemeColorOverride("font_outline_color", Outline);
-        _title.AddThemeConstantOverride("outline_size", OutlineSize);
+        _title = InscriptionFont.OutlinedTitleLabel(string.Empty, TitleFontSize);
         column.AddChild(_title);
 
         var ways = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };

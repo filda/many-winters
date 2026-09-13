@@ -43,6 +43,7 @@ public partial class Main : Node3D
     private VBoxContainer _contextualActions = null!;
     private StatusBar _statusBar = null!;
     private InscriptionOverlay _inscriptionOverlay = null!;
+    private PausePanel _pausePanel = null!;
     private ChroniclePanel _chronicle = null!;
     private readonly EndingAnnouncements _endingAnnouncements = new();
     private TextureRect _selectionMarkerOverlay = null!;
@@ -52,6 +53,11 @@ public partial class Main : Node3D
     private Person? _selectedPerson;
     private Grave? _selectedGrave;
     private double _tickAccumulator;
+
+    // Captured once, at the one point BandArrival.Of legitimately means "the band has just
+    // arrived" (see _Ready) - TogglePause reads it back much later, when BandArrival.Of is
+    // called again only for its live population counts, never for this.
+    private long _bandArrivalTick;
 
     // Faded in/out every frame in UpdateOcclusionFade depending on whether each one
     // currently sits between the camera and the selection.
@@ -95,7 +101,9 @@ public partial class Main : Node3D
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
-        ShowInscription(Prologue.Write(BandArrival.Of(_world)), offerAnotherBand: false);
+        var arrival = BandArrival.Of(_world);
+        _bandArrivalTick = arrival.ArrivalTick;
+        ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
         // A permanent build tag, answering "am I actually running the build I think I'm
@@ -142,8 +150,9 @@ public partial class Main : Node3D
         // Time stands still while an inscription is up - the prologue at the start, the
         // inscription over the band's end later: what it says is true of this moment, and the
         // player decides when the world moves on from it. At the start this is also the one
-        // moment to look around before hunger starts counting.
-        if (_inscriptionOverlay.Visible)
+        // moment to look around before hunger starts counting. A pause the player asked for
+        // (see TogglePause) holds the clock the same way.
+        if (_inscriptionOverlay.Visible || _pausePanel.Visible)
         {
             return;
         }
@@ -204,6 +213,15 @@ public partial class Main : Node3D
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.T })
         {
             _cameraRig.ToggleProjection();
+        }
+
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space })
+        {
+            // Space is Godot's own default ui_accept - without eating the event here it goes
+            // on to activate whatever Control last took focus (Chronicle, the "?" help
+            // button, ...), re-triggering that button on top of the pause it just toggled.
+            TogglePause();
+            GetViewport().SetInputAsHandled();
         }
 
         // Checked ahead of Godot's own physics-object-picking (which fires later in the same
@@ -460,6 +478,7 @@ public partial class Main : Node3D
         SetUpSelectionMarker(canvas);
         SetUpChronicle(canvas);
         SetUpInscriptionOverlay(canvas);
+        SetUpPausePanel(canvas);
     }
 
     // Opposite the inspector, so the two can be open at once without covering each other.
@@ -469,7 +488,7 @@ public partial class Main : Node3D
         {
             Position = new Vector2(GetViewport().GetVisibleRect().Size.X - 476f, 16f),
         };
-        _chronicle.AddThemeStyleboxOverride("panel", PanelBackground());
+        _chronicle.AddThemeStyleboxOverride("panel", PanelChrome.Background());
         canvas.AddChild(_chronicle);
         _statusBar.ChronicleRequested += _chronicle.Toggle;
     }
@@ -483,6 +502,39 @@ public partial class Main : Node3D
         // to notice that the player had walked on.
         _inscriptionOverlay.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         canvas.AddChild(_inscriptionOverlay);
+    }
+
+    // Added after the inscription overlay: the two never show at once in practice (ticking,
+    // and with it every death, is on hold whenever either is up), but if that ever changed this
+    // is the one that should draw on top.
+    private void SetUpPausePanel(CanvasLayer canvas)
+    {
+        _pausePanel = new PausePanel();
+        canvas.AddChild(_pausePanel);
+    }
+
+    // Space toggles the clock on and off at the player's own request - ignored while an
+    // inscription already holds it, since that is not the player's to override. Unpausing
+    // primes the tick accumulator the same way dismissing an inscription does (see
+    // SetUpInscriptionOverlay), so the world resumes on the very next frame rather than a full
+    // tick interval later.
+    private void TogglePause()
+    {
+        if (_inscriptionOverlay.Visible)
+        {
+            return;
+        }
+
+        if (_pausePanel.Visible)
+        {
+            _pausePanel.Hide();
+            _tickAccumulator = _pacing.TickIntervalSeconds;
+            return;
+        }
+
+        var band = BandArrival.Of(_world);
+        var sinceArrival = DurationText(_world.Clock.CurrentTick - _bandArrivalTick);
+        _pausePanel.Show(band.BandName, sinceArrival, PopulationSummary.Of(band.People, band.Men, band.Women, band.Children));
     }
 
     // The fate is read off the world every tick and shown the first tick it changes (see
@@ -525,19 +577,6 @@ public partial class Main : Node3D
         canvas.AddChild(_selectionMarkerOverlay);
     }
 
-    private static StyleBoxFlat PanelBackground() => new()
-    {
-        BgColor = new Color(0f, 0f, 0f, 0.6f),
-        ContentMarginLeft = 12,
-        ContentMarginRight = 12,
-        ContentMarginTop = 10,
-        ContentMarginBottom = 10,
-        CornerRadiusTopLeft = 6,
-        CornerRadiusTopRight = 6,
-        CornerRadiusBottomLeft = 6,
-        CornerRadiusBottomRight = 6,
-    };
-
     // One floating, collapsible window for both the inspector and the action buttons -
     // the buttons are contextual to whichever person is selected, so they belong together
     // rather than in a separate always-open panel.
@@ -555,7 +594,7 @@ public partial class Main : Node3D
             // every label, and every contextual button inside.
             Theme = new Theme { DefaultFontSize = _presentation.InspectorFontSize },
         };
-        panel.AddThemeStyleboxOverride("panel", PanelBackground());
+        panel.AddThemeStyleboxOverride("panel", PanelChrome.Background());
         canvas.AddChild(panel);
 
         _infoLabel = new Label
@@ -642,7 +681,7 @@ public partial class Main : Node3D
     private void SetUpStatusBar(CanvasLayer canvas)
     {
         _statusBar = new StatusBar();
-        _statusBar.AddThemeStyleboxOverride("panel", PanelBackground());
+        _statusBar.AddThemeStyleboxOverride("panel", PanelChrome.Background());
         canvas.AddChild(_statusBar);
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
     }
@@ -1278,15 +1317,19 @@ public partial class Main : Node3D
             : "none");
     }
 
-    private string AgeText(Person person)
+    private string AgeText(Person person) => DurationText(_world.Clock.CurrentTick - person.BirthTick);
+
+    // Winters where there have been any, else seasons - the same rule a person's own age reads
+    // by (see AgeText), applied to any span of ticks rather than only one measured from a birth.
+    private string DurationText(long elapsedTicks)
     {
-        var winters = _world.AgeInYears(person);
+        var winters = elapsedTicks / _world.Configuration.Rules.TicksPerYear;
         if (winters >= 1)
         {
             return $"{winters} winter{(winters == 1 ? "" : "s")}";
         }
 
-        var seasons = _world.AgeInSeasons(person);
+        var seasons = elapsedTicks / _world.Configuration.Rules.TicksPerSeason;
         return $"{seasons} season{(seasons == 1 ? "" : "s")}";
     }
 
