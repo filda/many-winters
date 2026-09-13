@@ -15,6 +15,7 @@ Run:  python3 generate_splash.py <output.png>
 import math
 import random
 import sys
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -495,12 +496,19 @@ def frame(plate, inset, gap):
         plate.ink_line(pts, width=3 if d == inset else 1, color=mix(INK, PAPER, 0.15))
 
 
+FONTS = Path(__file__).resolve().parent.parent / "src" / "ManyWinters.Godot" / "Content" / "fonts"
+
+
 def text_block(plate):
     img = plate.image()
     draw = ImageDraw.Draw(img)
-    title_font = ImageFont.truetype("C:/Windows/Fonts/georgiab.ttf", 118)
-    over_font = ImageFont.truetype("C:/Windows/Fonts/georgiab.ttf", 52)
-    sub_font = ImageFont.truetype("C:/Windows/Fonts/constani.ttf", 34)
+    # The game's own faces (see src/ManyWinters.Godot/Ui/InscriptionFont.cs), read from the
+    # repository rather than from the system, so the title page is set in the same type as
+    # every inscription inside the game and renders the same on any machine. IM Fell English
+    # has one weight; the stroke below gives the title the heft a bold would.
+    title_font = ImageFont.truetype(str(FONTS / "im-fell-english" / "IMFeENrm28P.ttf"), 124)
+    over_font = ImageFont.truetype(str(FONTS / "im-fell-english" / "IMFeENrm28P.ttf"), 54)
+    sub_font = ImageFont.truetype(str(FONTS / "vollkorn" / "Vollkorn-Italic.ttf"), 32)
 
     def spaced(x, y, text, font, fill, spacing, stroke=0):
         for ch in text:

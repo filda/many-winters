@@ -41,6 +41,9 @@ public partial class Main : Node3D
     private Label _gravesLabel = null!;
     private VBoxContainer _contextualActions = null!;
     private StatusBar _statusBar = null!;
+    private InscriptionOverlay _inscriptionOverlay = null!;
+    private ChroniclePanel _chronicle = null!;
+    private readonly EndingAnnouncements _endingAnnouncements = new();
     private TextureRect _selectionMarkerOverlay = null!;
     // The selection is the Person itself, not an id - every command and every label wants the
     // object, and the views hand it over on click (see PersonView), so there's never a lookup
@@ -80,6 +83,8 @@ public partial class Main : Node3D
         _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
+
+        ShowInscription(Prologue.Write(BandArrival.Of(_world)), offerAnotherBand: false);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
         // A permanent build tag, answering "am I actually running the build I think I'm
@@ -123,6 +128,15 @@ public partial class Main : Node3D
         // camera's own continuous movement/zoom, not just once per simulation tick.
         _cloudFogMask.Update();
 
+        // Time stands still while an inscription is up - the prologue at the start, the
+        // inscription over the band's end later: what it says is true of this moment, and the
+        // player decides when the world moves on from it. At the start this is also the one
+        // moment to look around before hunger starts counting.
+        if (_inscriptionOverlay.Visible)
+        {
+            return;
+        }
+
         _tickAccumulator += delta;
         if (_tickAccumulator < _pacing.TickIntervalSeconds)
         {
@@ -144,6 +158,7 @@ public partial class Main : Node3D
         RefreshInfoLabel();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
+        AnnounceEndingIfAny();
 
         foreach (var person in _world.People)
         {
@@ -432,6 +447,53 @@ public partial class Main : Node3D
         SetUpInspectorWindow(canvas);
         SetUpStatusBar(canvas);
         SetUpSelectionMarker(canvas);
+        SetUpChronicle(canvas);
+        SetUpInscriptionOverlay(canvas);
+    }
+
+    // Opposite the inspector, so the two can be open at once without covering each other.
+    private void SetUpChronicle(CanvasLayer canvas)
+    {
+        _chronicle = new ChroniclePanel
+        {
+            Position = new Vector2(GetViewport().GetVisibleRect().Size.X - 476f, 16f),
+        };
+        _chronicle.AddThemeStyleboxOverride("panel", PanelBackground());
+        canvas.AddChild(_chronicle);
+        _statusBar.ChronicleRequested += _chronicle.Toggle;
+    }
+
+    // Added last so it draws over everything else on the canvas, the inspector included.
+    private void SetUpInscriptionOverlay(CanvasLayer canvas)
+    {
+        _inscriptionOverlay = new InscriptionOverlay();
+        canvas.AddChild(_inscriptionOverlay);
+    }
+
+    // The fate is read off the world every tick and shown the first tick it changes (see
+    // EndingAnnouncements): once when the last man or woman dies, once more when the last
+    // person does.
+    private void AnnounceEndingIfAny()
+    {
+        if (!_endingAnnouncements.ShouldAnnounce(BandEnding.FateOf(_world.People)))
+        {
+            return;
+        }
+
+        if (BandEnding.Of(_world) is { } ending)
+        {
+            ShowInscription(Epitaph.Write(ending), offerAnotherBand: ending.Fate == BandFate.Ended);
+        }
+    }
+
+    // Every inscription stops the clock until dismissed (see _Process); its title goes up on
+    // the overlay and the whole of it into the chronicle, where it stays for the session.
+    private void ShowInscription(Inscription inscription, bool offerAnotherBand)
+    {
+        _chronicle.Add(inscription);
+        _statusBar.ShowChronicleButton();
+        _inscriptionOverlay.Show(inscription, offerAnotherBand);
+        GD.Print($"Inscription: {inscription.Title}");
     }
 
     private void SetUpSelectionMarker(CanvasLayer canvas)

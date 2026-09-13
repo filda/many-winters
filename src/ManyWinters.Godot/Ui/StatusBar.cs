@@ -29,6 +29,7 @@ public partial class StatusBar : PanelContainer
         "person).";
 
     private Label _notificationLabel = null!;
+    private Button _chronicleButton = null!;
     private Label _performanceLabel = null!;
     private Label _tickLabel = null!;
     private double _sincePerformanceRefresh;
@@ -58,6 +59,13 @@ public partial class StatusBar : PanelContainer
             VerticalAlignment = VerticalAlignment.Center,
         };
         row.AddChild(_notificationLabel);
+
+        // Opens the chronicle (ChroniclePanel), where every inscription shown so far can be
+        // read whole - the overlay only ever carries a title. Hidden until there is one.
+        _chronicleButton = new Button { Text = "Chronicle", Visible = false };
+        _chronicleButton.Pressed += () => ChronicleRequested?.Invoke();
+        row.AddChild(_chronicleButton);
+        row.AddChild(new VSeparator());
 
         // Rendering cost is what the reveal-map toggle and the decoration-scale scene are
         // most likely to run into, so the frame rate sits permanently next to the tick
@@ -103,6 +111,10 @@ public partial class StatusBar : PanelContainer
         _notificationLabel.Text = message;
         _notificationTimer.Start();
     }
+
+    public event Action? ChronicleRequested;
+
+    public void ShowChronicleButton() => _chronicleButton.Visible = true;
 
     public void SetTick(long tick, Season season)
     {

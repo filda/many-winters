@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Persistence;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -111,6 +112,38 @@ public sealed class SimulationScript
                     output.Add($"  {person.Id} {person.Name} at {person.Position}{status}");
                 }
 
+                break;
+
+            // The inscriptions the game shows over a band's beginning and end (see Prologue and
+            // Epitaph) - here so their wording can be read over many bands without playing each out.
+            case "print" when parts.Length > 1 && parts[1].Equals("prologue", StringComparison.OrdinalIgnoreCase):
+                if (World.People.All(person => !person.IsAlive))
+                {
+                    output.Add("Nobody lives here.");
+                    break;
+                }
+
+                var prologue = Prologue.Write(BandArrival.Of(World));
+                output.Add(prologue.Title);
+                output.AddRange(prologue.Lines);
+                break;
+
+            case "print" when parts.Length > 1 && parts[1].Equals("epitaph", StringComparison.OrdinalIgnoreCase):
+                if (World.People.Count == 0)
+                {
+                    output.Add("Nobody has ever lived here.");
+                    break;
+                }
+
+                if (BandEnding.Of(World) is not { } ending)
+                {
+                    output.Add($"{BandName.Of(World.People)} are living still.");
+                    break;
+                }
+
+                var inscription = Epitaph.Write(ending);
+                output.Add(inscription.Title);
+                output.AddRange(inscription.Lines);
                 break;
 
             case "save" when parts.Length > 1:

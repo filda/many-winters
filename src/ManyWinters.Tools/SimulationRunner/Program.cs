@@ -22,6 +22,8 @@ if (commands.Length == 0)
     Console.WriteLine("  create <n>          Add n people to the current world");
     Console.WriteLine("  simulate <ticks>    Advance the simulation clock by <ticks>");
     Console.WriteLine("  print population    Print the current tick and every person");
+    Console.WriteLine("  print prologue      Print the inscription over the band's arrival");
+    Console.WriteLine("  print epitaph       Print the inscription over the band's end, if its line has ended");
     Console.WriteLine("  save <path>         Save the current world to <path>");
     Console.WriteLine("  load <path>         Load a world from <path>");
     return 0;

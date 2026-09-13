@@ -1,3 +1,5 @@
+using ManyWinters.Core.Population;
+using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 using ManyWinters.Tools.SimulationRunner;
 
@@ -201,6 +203,70 @@ public class SimulationScriptTests
         // ends at where they are standing.
         var living = Assert.Single(output, line => line.Contains("Person 2", StringComparison.Ordinal));
         Assert.EndsWith(script.World.People[1].Position.ToString(), living, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PrintPrologueOnAnEmptyWorldSaysNobodyLivesHere()
+    {
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+
+        var output = script.Run(["print prologue"]);
+
+        Assert.Equal(["Nobody lives here."], output);
+    }
+
+    [Fact]
+    public void PrintProloguePrintsTheInscriptionOverTheBandsArrival()
+    {
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+        script.World.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: 1500, sex: Sex.Female);
+        script.World.SpawnPerson("Doran", new Position(0, 0), initialAgeTicks: 1200, sex: Sex.Male);
+
+        var output = script.Run(["print prologue"]);
+
+        // A title and four lines (see Prologue.Write).
+        Assert.Equal(5, output.Count);
+        Assert.Contains("Sela's people", output[0]);
+        Assert.Contains(output, line => line.Contains("one man and one woman"));
+    }
+
+    [Fact]
+    public void PrintEpitaphOnAnEmptyWorldSaysNobodyHasLivedHere()
+    {
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+
+        var output = script.Run(["print epitaph"]);
+
+        Assert.Equal(["Nobody has ever lived here."], output);
+    }
+
+    [Fact]
+    public void PrintEpitaphOnALivingBandSaysSo()
+    {
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+        script.World.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: 600, sex: Sex.Female);
+        script.World.SpawnPerson("Doran", new Position(0, 0), initialAgeTicks: 300, sex: Sex.Male);
+
+        var output = script.Run(["print epitaph"]);
+
+        Assert.Equal(["Sela's people are living still."], output);
+    }
+
+    [Fact]
+    public void PrintEpitaphAfterTheBandStarvedPrintsTheInscription()
+    {
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+        script.World.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: 600, sex: Sex.Female);
+        script.World.SpawnPerson("Doran", new Position(0, 0), initialAgeTicks: 300, sex: Sex.Male);
+        script.Run(["simulate 100"]);
+
+        var output = script.Run(["print epitaph"]);
+
+        // A title and the lines under it (see Epitaph.Write) - nobody ate, so both starved on
+        // the same tick and neither side of the line closed before the other.
+        Assert.Equal(7, output.Count);
+        Assert.Contains("Sela's people", output[0]);
+        Assert.Contains(output, line => line.Contains("the last of them") || line.Contains("The last of them"));
     }
 
     [Fact]
