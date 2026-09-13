@@ -37,7 +37,7 @@ public static class CloudSpotScatter
         // candidate only ever has to check the 3x3 cells around it.
         // Stryker disable once Arithmetic: any cell at least this wide rejects the same candidates - bucket count, not layout
         var cell = MathF.Max(2f * MinGapFactor * maxSize, 1f);
-        var buckets = new Dictionary<(int, int), List<CloudSpot>>();
+        var index = new SpatialSpacingIndex<CloudSpot>(cell, spot => spot.X, spot => spot.Z);
         var spots = new List<CloudSpot>(target);
 
         // Stryker disable once Equality: a give-up budget, not a quantity - one more roll against an already saturated map
@@ -47,22 +47,14 @@ public static class CloudSpotScatter
             var x = ((float)rng.NextDouble() * extent) - halfExtentMeters;
             var z = ((float)rng.NextDouble() * extent) - halfExtentMeters;
 
-            var cx = (int)MathF.Floor(x / cell);
-            var cz = (int)MathF.Floor(z / cell);
-            if (IsTooClose(buckets, cx, cz, x, z, size))
+            if (index.IsTooClose(x, z, existing => MinGap(size, existing.Size)))
             {
                 continue;
             }
 
             var spot = new CloudSpot(x, z, size, rng.Next(textureCount), ClumpyRoll(x, z, (float)rng.NextDouble(), seed), (float)rng.NextDouble());
             spots.Add(spot);
-            if (!buckets.TryGetValue((cx, cz), out var bucket))
-            {
-                bucket = new List<CloudSpot>();
-                buckets[(cx, cz)] = bucket;
-            }
-
-            bucket.Add(spot);
+            index.Add(spot);
         }
 
         return spots;
@@ -113,34 +105,5 @@ public static class CloudSpotScatter
         var top = Hash(ix, iz) + ((Hash(ix + 1, iz) - Hash(ix, iz)) * ux);
         var bottom = Hash(ix, iz + 1) + ((Hash(ix + 1, iz + 1) - Hash(ix, iz + 1)) * ux);
         return top + ((bottom - top) * uz);
-    }
-
-    private static bool IsTooClose(Dictionary<(int, int), List<CloudSpot>> buckets, int cx, int cz, float x, float z, float size)
-    {
-        for (var dz = -1; dz <= 1; dz++)
-        {
-            for (var dx = -1; dx <= 1; dx++)
-            {
-                // Stryker disable once Arithmetic: dx and dz run symmetrically, so subtracting walks the same nine cells
-                if (!buckets.TryGetValue((cx + dx, cz + dz), out var bucket))
-                {
-                    continue;
-                }
-
-                foreach (var other in bucket)
-                {
-                    var gap = MinGap(size, other.Size);
-                    var ddx = other.X - x;
-                    var ddz = other.Z - z;
-                    // Stryker disable once Equality: two candidates at exactly the gap has probability zero
-                    if ((ddx * ddx) + (ddz * ddz) < gap * gap)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
     }
 }

@@ -273,7 +273,7 @@ public static class MapLoader
     private static void ScatterDecorations(WorldState world, Random idRng)
     {
         var rng = new Random(DecorationScatterSeed);
-        var occupied = new Dictionary<(int, int), List<Position>>();
+        var occupied = new SpatialSpacingIndex<Position>(MinDecorationSpacing, p => p.X, p => p.Y);
 
         void SpawnKind(ResourceKindId kind, int count, float amount, double centerX, double centerY, double radius)
         {
@@ -357,7 +357,7 @@ public static class MapLoader
     // point for a cluster - so the two noise fields alone decide both whether it survives
     // and what grows there; any clustering the result shows is the noise's own spatial
     // coherence, not code drawing a shape.
-    private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Random idRng, Dictionary<(int, int), List<Position>> occupied)
+    private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Random idRng, SpatialSpacingIndex<Position> occupied)
     {
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
         var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
@@ -430,7 +430,7 @@ public static class MapLoader
             }
 
             var position = new Position(x, y);
-            if (IsTooCloseToAnExistingDecoration(occupied, position))
+            if (occupied.IsTooClose(position.X, position.Y, _ => MinDecorationSpacing))
             {
                 continue;
             }
@@ -450,16 +450,16 @@ public static class MapLoader
             // Stryker restore Equality
 
             world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, amount));
-            MarkOccupied(occupied, position);
+            occupied.Add(position);
         }
     }
 
-    // Same spatial-hash rejection sampling as TerrainRenderer.ScatterDecoration (cell size =
-    // MinDecorationSpacing) - independent of that one (different Dictionary instance, per
-    // ScatterDecorations call), since these are two entirely separate placement passes now
-    // (this one spawns real ResourceNodes; TerrainRenderer's only still serves TerrainSandbox's
-    // own preview scatter).
-    private static Position NextDecorationPosition(Random rng, Dictionary<(int, int), List<Position>> occupied, double centerX, double centerY, double radius)
+    // Backed by SpatialSpacingIndex (docs/todo/refactoring.md), the same shared type
+    // CloudSpotScatter uses for its own blue-noise clouds - independent instance per
+    // ScatterDecorations call, since each call is its own placement pass. TerrainRenderer keeps
+    // its own separate copy of this rejection sampling; it only ever serves TerrainSandbox's
+    // preview scatter, not the shipped game.
+    private static Position NextDecorationPosition(Random rng, SpatialSpacingIndex<Position> occupied, double centerX, double centerY, double radius)
     {
         var position = new Position(centerX, centerY);
 
@@ -471,61 +471,14 @@ public static class MapLoader
             var angle = rng.NextDouble() * Math.Tau;
             var distance = radius * Math.Sqrt(rng.NextDouble());
             position = new Position(centerX + (Math.Cos(angle) * distance), centerY + (Math.Sin(angle) * distance));
-            if (!IsTooCloseToAnExistingDecoration(occupied, position))
+            if (!occupied.IsTooClose(position.X, position.Y, _ => MinDecorationSpacing))
             {
                 break;
             }
         }
 
-        MarkOccupied(occupied, position);
+        occupied.Add(position);
         return position;
-    }
-
-    // Stryker disable once Arithmetic: the cell size is only how finely the hash buckets
-    // positions - a coarser one still gathers every neighbour the 3x3 scan below needs, and
-    // that scan measures real distances anyway, so the placements come out identical
-    private static (int, int) CellFor(Position position) =>
-        ((int)Math.Floor(position.X / MinDecorationSpacing), (int)Math.Floor(position.Y / MinDecorationSpacing));
-
-    private static bool IsTooCloseToAnExistingDecoration(Dictionary<(int, int), List<Position>> occupied, Position candidate)
-    {
-        var (cellX, cellY) = CellFor(candidate);
-        for (var dx = -1; dx <= 1; dx++)
-        {
-            for (var dy = -1; dy <= 1; dy++)
-            {
-                // Stryker disable once Arithmetic: the offsets run symmetrically from -1 to 1,
-                // so adding and subtracting them visit the same nine cells
-                if (!occupied.TryGetValue((cellX + dx, cellY + dy), out var positions))
-                {
-                    continue;
-                }
-
-                foreach (var existing in positions)
-                {
-                    // Stryker disable once Equality: two decorations at exactly the spacing has
-                    // probability zero, so < and <= reject the same candidates
-                    if (WorldState.Distance(existing, candidate) < MinDecorationSpacing)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static void MarkOccupied(Dictionary<(int, int), List<Position>> occupied, Position position)
-    {
-        var cell = CellFor(position);
-        if (!occupied.TryGetValue(cell, out var positions))
-        {
-            positions = new List<Position>();
-            occupied[cell] = positions;
-        }
-
-        positions.Add(position);
     }
 
     // Rejects a candidate too close to an already-placed person, so the crowd doesn't stack
