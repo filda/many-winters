@@ -44,6 +44,7 @@ public partial class Main : Node3D
     private StatusBar _statusBar = null!;
     private InscriptionOverlay _inscriptionOverlay = null!;
     private PausePanel _pausePanel = null!;
+    private HelpPanel _helpPanel = null!;
     private ChroniclePanel _chronicle = null!;
     private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
@@ -142,8 +143,9 @@ public partial class Main : Node3D
 
         // Time stands still while an inscription is up: what it says is true of this moment, and
         // the player decides when the world moves on (at the start, a chance to look around before
-        // hunger counts). A pause the player asked for (TogglePause) holds the clock the same way.
-        if (_inscriptionOverlay.Visible || _pausePanel.Visible)
+        // hunger counts). A pause the player asked for (TogglePause) holds the clock the same way,
+        // and so does the controls page - it is read instead of playing, not while playing.
+        if (_inscriptionOverlay.Visible || _pausePanel.Visible || _helpPanel.Visible)
         {
             return;
         }
@@ -211,11 +213,16 @@ public partial class Main : Node3D
             GetViewport().SetInputAsHandled();
         }
 
-        // Nothing else answers to Escape, and a menu that can only be dismissed by clicking
-        // somewhere harmless is one the player fights.
+        // Nothing else answers to Escape, and a menu or a page that can only be dismissed by
+        // clicking one particular thing is one the player fights. Both, not one or the other:
+        // the controls page swallows the clicks that would open a menu, so only one can be up.
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
             _contextMenu.Close();
+            if (_helpPanel.Visible)
+            {
+                _helpPanel.Dismiss();
+            }
         }
 
         HandleRightButton(@event);
@@ -515,6 +522,7 @@ public partial class Main : Node3D
         SetUpContextMenu(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
+        SetUpHelpPanel(canvas);
     }
 
     private void SetUpBandPanel(CanvasLayer canvas)
@@ -602,12 +610,26 @@ public partial class Main : Node3D
         canvas.AddChild(_pausePanel);
     }
 
+    // Last of all, so the controls can be read over whatever else is up. Opened and closed by
+    // the "?" on the status bar or by Escape; like an inscription being dismissed, letting it go
+    // primes the tick accumulator so the world starts again on the next frame rather than a full
+    // interval later.
+    private void SetUpHelpPanel(CanvasLayer canvas)
+    {
+        _helpPanel = new HelpPanel();
+        _helpPanel.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        canvas.AddChild(_helpPanel);
+        _statusBar.HelpRequested += _helpPanel.Toggle;
+    }
+
     // Space toggles the clock at the player's request - ignored while an inscription holds it,
     // which is not the player's to override. Unpausing primes the tick accumulator like an
     // inscription dismissal does (SetUpInscriptionOverlay), so the world resumes next frame.
     private void TogglePause()
     {
-        if (_inscriptionOverlay.Visible)
+        // Neither is the player's to override, and both already hold the clock: a pause asked for
+        // behind a page nobody can see would only surface when that page comes down.
+        if (_inscriptionOverlay.Visible || _helpPanel.Visible)
         {
             return;
         }

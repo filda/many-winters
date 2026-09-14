@@ -4,9 +4,9 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Ui;
 
 // Bottom-of-screen bar: transient notifications (left, auto-clearing), the buttons that open the
-// game's windows, performance and tick/season (right), and a help popup with the controls
-// reference. Every window is opened and closed from here, the debug inspector included - none of
-// them is on screen until the player asks for it.
+// game's windows, performance and tick/season (right), and the "?" that opens the controls page
+// (HelpPanel). Every window is opened and closed from here, the debug inspector included - none
+// of them is on screen until the player asks for it.
 public partial class StatusBar : PanelContainer
 {
     // Room for the "?" button (which drives its own theme minimum height) and a centred line
@@ -17,15 +17,6 @@ public partial class StatusBar : PanelContainer
     // Engine.GetFramesPerSecond only changes once a second; a few reads a second catch every
     // value, and the per-frame render monitors stay readable rather than a flicker of digits.
     private const double PerformanceRefreshSeconds = 0.25;
-
-    private const string HelpText =
-        "WASD/arrows: pan camera. Q/E or right-drag: rotate. R/F or mouse wheel: zoom. " +
-        "Page Up/Page Down or right-drag: tilt. T: toggle ortho/perspective. Space: pause/resume.\n\n" +
-        "Left-click: select person. Right-click another person: teach them what the " +
-        "selected person knows. Click a resource node: gather (needs a selected person). " +
-        "Click a grave: view its record. Click empty ground: walk there (needs a selected " +
-        "person).\n\nBand: the whole band in a list - press a name to go to that person. " +
-        "Inspector: the debug window.";
 
     private Label _notificationLabel = null!;
     private Button _bandButton = null!;
@@ -88,7 +79,7 @@ public partial class StatusBar : PanelContainer
         row.AddChild(_tickLabel);
 
         var helpButton = new Button { Text = "?", CustomMinimumSize = new Vector2(28, 0) };
-        helpButton.Pressed += ShowHelp;
+        helpButton.Pressed += () => HelpRequested?.Invoke();
         row.AddChild(helpButton);
 
         _notificationTimer = new global::Godot.Timer { WaitTime = NotificationSeconds, OneShot = true };
@@ -126,21 +117,12 @@ public partial class StatusBar : PanelContainer
 
     public event Action? InspectorRequested;
 
+    public event Action? HelpRequested;
+
     public void ShowChronicleButton() => _chronicleButton.Visible = true;
 
     public void SetTick(long tick, Season season)
     {
         _tickLabel.Text = $"Tick: {tick}  Season: {season}";
-    }
-
-    private void ShowHelp()
-    {
-        var dialog = new AcceptDialog
-        {
-            Title = "Controls",
-            DialogText = HelpText,
-        };
-        AddChild(dialog);
-        dialog.PopupCentered(new Vector2I(440, 200));
     }
 }
