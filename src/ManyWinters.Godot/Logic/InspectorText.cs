@@ -32,6 +32,11 @@ internal static class InspectorText
         _ => "At rest",
     };
 
+    // How a person is introduced: age first, then sex, both in lower case so the phrase reads as
+    // a description rather than a heading. Beside the name on the selection card, under it on the
+    // band's roster (SelectionCard, BandRoster).
+    internal static string ForAgeAndSex(string age, Sex sex) => $"{age}, {sex}".ToLowerInvariant();
+
     // The three lists the selection panel and the debug inspector both show. Each reads "none"
     // or "empty" when there is nothing rather than leaving a bare label, and each is sorted, so
     // a person's card does not reshuffle itself between refreshes.

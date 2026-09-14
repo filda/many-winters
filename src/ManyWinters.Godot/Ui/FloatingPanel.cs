@@ -2,8 +2,9 @@ using Godot;
 
 namespace ManyWinters.Godot.Ui;
 
-// Window chrome: drag the title bar to move it, the fold button collapses the body away.
-// Callers add content to Body; this class owns only the frame.
+// Window chrome: drag the title bar to move it. Callers add content to Body; this class owns only
+// the frame. There is no fold button - every window here is opened and closed from the status bar,
+// and a panel that can also be half-shut is a second state nobody asked for.
 //
 // `onPaper` picks which of the two the frame is made of: a page like the player's own card
 // (PanelChrome.Parchment, weathered, dark ink), or the dark card the panels over the world use.
@@ -18,10 +19,8 @@ public partial class FloatingPanel(string title, bool onPaper = false) : PanelCo
     // tall body scrolls instead of drawing over it.
     private const float BottomClearance = 56f;
 
-    private Button _collapseButton = null!;
-    private VBoxContainer _bodyWrapper = null!;
+    private Label _titleLabel = null!;
     private ScrollContainer _scroll = null!;
-    private bool _collapsed;
     private bool _dragging;
     private Vector2 _dragOffset;
 
@@ -50,40 +49,27 @@ public partial class FloatingPanel(string title, bool onPaper = false) : PanelCo
         titleBar.GuiInput += OnTitleBarInput;
         outer.AddChild(titleBar);
 
-        var titleLabel = onPaper
+        _titleLabel = onPaper
             ? InscriptionFont.BodyLabel(title, TitleFontSize, InscriptionFont.DarkInk)
             : new Label { Text = title };
-        titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        titleBar.AddChild(titleLabel);
-
-        _collapseButton = new Button { Text = "-", CustomMinimumSize = new Vector2(24, 0) };
-        if (onPaper)
-        {
-            _collapseButton.AddThemeColorOverride("font_color", InscriptionFont.DarkInk);
-        }
-
-        _collapseButton.Pressed += ToggleCollapsed;
-        titleBar.AddChild(_collapseButton);
-
-        _bodyWrapper = new VBoxContainer();
-        outer.AddChild(_bodyWrapper);
+        _titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        titleBar.AddChild(_titleLabel);
 
         _scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        _bodyWrapper.AddChild(_scroll);
+        outer.AddChild(_scroll);
 
         Body = new VBoxContainer();
         _scroll.AddChild(Body);
     }
 
+    // What the window is called. A title that is a fact about the world - whose band this is -
+    // changes with the world, so it is not fixed at construction.
+    public void SetTitle(string text) => _titleLabel.Text = text;
+
     // Body height is its natural size, capped to the room left above BottomClearance so an
     // overlong body scrolls internally.
     public override void _Process(double delta)
     {
-        if (_collapsed)
-        {
-            return;
-        }
-
         var available = GetViewport().GetVisibleRect().Size.Y - Position.Y - TitleBarHeight - BottomClearance;
         var desired = Body.GetCombinedMinimumSize().Y;
         _scroll.CustomMinimumSize = new Vector2(0, Mathf.Min(desired, Mathf.Max(available, 0f)));
@@ -106,13 +92,6 @@ public partial class FloatingPanel(string title, bool onPaper = false) : PanelCo
 
         padding.AddChild(content);
         return padding;
-    }
-
-    private void ToggleCollapsed()
-    {
-        _collapsed = !_collapsed;
-        _bodyWrapper.Visible = !_collapsed;
-        _collapseButton.Text = _collapsed ? "+" : "-";
     }
 
     private void OnTitleBarInput(InputEvent @event)

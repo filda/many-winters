@@ -18,8 +18,10 @@ namespace ManyWinters.Godot.Ui;
 // class draws them and reports which one was pressed.
 internal partial class SelectionPanel : PanelContainer
 {
-    private const float Width = 300f;
-    private const float Margin = 16f;
+    // Internal, because the band's roster is the same page on the other edge of the screen and
+    // mirrors both (BandPanel).
+    internal const float Width = 300f;
+    internal const float Margin = 16f;
 
     private const int NameFontSize = 28;
     private const int BodyFontSize = 15;
@@ -57,7 +59,7 @@ internal partial class SelectionPanel : PanelContainer
         AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
         // Added first, so every label and button that follows sits on top of the grain.
         AddChild(PanelChrome.Grain());
-        Theme = ActionTheme();
+        Theme = PanelChrome.PaperButtons(BodyFontSize);
 
         // Hugs its content. Nothing is recomputed per frame - a height that chases the content
         // every frame is a height that flickers - and the card is short now that everything
@@ -219,16 +221,7 @@ internal partial class SelectionPanel : PanelContainer
         var caption = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         container.AddChild(caption);
 
-        var bar = new ProgressBar
-        {
-            MinValue = 0,
-            MaxValue = 1,
-            ShowPercentage = false,
-            CustomMinimumSize = new Vector2(0, MeterHeight),
-        };
-        // A hollow trough rather than the engine's blue; the fill's own colour arrives with each
-        // reading (see MeterReading.Fill), because hunger changes colour as it worsens.
-        bar.AddThemeStyleboxOverride("background", Filled(new Color(InscriptionFont.DarkInk, 0.14f)));
+        var bar = PanelChrome.MeterBar(MeterHeight);
         container.AddChild(bar);
 
         return new MeterRow(container, caption, bar);
@@ -276,41 +269,6 @@ internal partial class SelectionPanel : PanelContainer
         return row;
     }
 
-    // The game's body face, with the buttons flattened: a raised grey box per action is the look
-    // the debug inspector wears, and thirteen of them turn a card about a person into a settings
-    // dialog. The row lights up under the cursor instead.
-    private static Theme ActionTheme()
-    {
-        var theme = InscriptionFont.BodyTheme(BodyFontSize);
-        theme.SetStylebox("normal", "Button", Filled(Clear));
-        theme.SetStylebox("hover", "Button", Filled(new Color(InscriptionFont.DarkInk, 0.10f)));
-        theme.SetStylebox("pressed", "Button", Filled(new Color(InscriptionFont.DarkInk, 0.18f)));
-        theme.SetStylebox("disabled", "Button", Filled(Clear));
-        theme.SetStylebox("focus", "Button", Filled(Clear));
-        theme.SetColor("font_color", "Button", InscriptionFont.DarkInk);
-        theme.SetColor("font_hover_color", "Button", InscriptionFont.DarkInk);
-        theme.SetColor("font_pressed_color", "Button", InscriptionFont.DarkInk);
-        // Distinctly fainter than the reason underneath, so the eye sorts what can be pressed
-        // from what cannot before it reads a word.
-        theme.SetColor("font_disabled_color", "Button", new Color(InscriptionFont.DarkInk, 0.38f));
-        return theme;
-    }
-
-    private static Color Clear => new(0f, 0f, 0f, 0f);
-
-    private static StyleBoxFlat Filled(Color color) => new()
-    {
-        BgColor = color,
-        ContentMarginLeft = 8,
-        ContentMarginRight = 8,
-        ContentMarginTop = 3,
-        ContentMarginBottom = 3,
-        CornerRadiusTopLeft = 3,
-        CornerRadiusTopRight = 3,
-        CornerRadiusBottomLeft = 3,
-        CornerRadiusBottomRight = 3,
-    };
-
     // A hairline in the ink; the engine's own separator draws a grey bevel.
     private static HSeparator Rule()
     {
@@ -332,7 +290,7 @@ internal partial class SelectionPanel : PanelContainer
 
             caption.Text = shown.Label;
             bar.Value = shown.Fraction;
-            bar.AddThemeStyleboxOverride("fill", Filled(shown.Fill));
+            bar.AddThemeStyleboxOverride("fill", PanelChrome.Filled(shown.Fill));
         }
     }
 

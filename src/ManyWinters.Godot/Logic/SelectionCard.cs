@@ -48,7 +48,7 @@ internal sealed record SelectionCard(
 
         return new SelectionCard(
             person.Name,
-            person.IsAlive ? $"{age}, {person.Sex}".ToLowerInvariant() : "deceased",
+            person.IsAlive ? InspectorText.ForAgeAndSex(age, person.Sex) : "deceased",
             InspectorText.ForParents(NameOrNull(person.Mother), NameOrNull(person.Father)).TrimEnd('\n'),
             // The one sentence a body can still tell the player. The living have no death to report.
             person.IsAlive
@@ -63,8 +63,7 @@ internal sealed record SelectionCard(
             person.IsAlive
                 ?
                 [
-                    // How full they are, not how hungry: the bar drains as hunger rises.
-                    new MeterReading("Fed", person.MaxHunger - person.Needs.Hunger, person.MaxHunger, HungerFill(person, rules.HungerSeekFoodThreshold)),
+                    FedFor(person, rules.HungerSeekFoodThreshold),
                     carrying,
                 ]
                 : [carrying],
@@ -72,6 +71,11 @@ internal sealed record SelectionCard(
             person.IsAlive ? "Knows" : "Knew",
             InspectorText.ForKnowledge(person.KnownTechniques, world.Configuration.SkillCatalog));
     }
+
+    // How full they are, not how hungry: the bar drains as hunger rises. The band's roster draws
+    // the same bar under every name (BandRoster), so the reading is built here for both.
+    internal static MeterReading FedFor(Person person, float seekFoodThreshold) =>
+        new("Fed", person.MaxHunger - person.Needs.Hunger, person.MaxHunger, HungerFill(person, seekFoodThreshold));
 
     // Green while the belly is its own business; yellow the moment hunger sends the person off to
     // look for food by themselves (WorldState's own pass, at HungerSeekFoodThreshold), then

@@ -3,8 +3,10 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Ui;
 
-// Bottom-of-screen bar: transient notifications (left, auto-clearing), the chronicle button,
-// performance and tick/season (right), and a help popup with the controls reference.
+// Bottom-of-screen bar: transient notifications (left, auto-clearing), the buttons that open the
+// game's windows, performance and tick/season (right), and a help popup with the controls
+// reference. Every window is opened and closed from here, the debug inspector included - none of
+// them is on screen until the player asks for it.
 public partial class StatusBar : PanelContainer
 {
     // Room for the "?" button (which drives its own theme minimum height) and a centred line
@@ -22,10 +24,13 @@ public partial class StatusBar : PanelContainer
         "Left-click: select person. Right-click another person: teach them what the " +
         "selected person knows. Click a resource node: gather (needs a selected person). " +
         "Click a grave: view its record. Click empty ground: walk there (needs a selected " +
-        "person).";
+        "person).\n\nBand: the whole band in a list - press a name to go to that person. " +
+        "Inspector: the debug window.";
 
     private Label _notificationLabel = null!;
+    private Button _bandButton = null!;
     private Button _chronicleButton = null!;
+    private Button _inspectorButton = null!;
     private Label _performanceLabel = null!;
     private Label _tickLabel = null!;
     private double _sincePerformanceRefresh;
@@ -54,11 +59,23 @@ public partial class StatusBar : PanelContainer
         };
         row.AddChild(_notificationLabel);
 
+        // Opens BandPanel. Always there, unlike the chronicle button: the player can lose track
+        // of where their people went from the first minute, and there is always a band.
+        _bandButton = new Button { Text = "Band" };
+        _bandButton.Pressed += () => BandRequested?.Invoke();
+        row.AddChild(_bandButton);
+
         // Opens ChroniclePanel, where each inscription can be read whole - the overlay only
         // carries the title. Hidden until there is one.
         _chronicleButton = new Button { Text = "Chronicle", Visible = false };
         _chronicleButton.Pressed += () => ChronicleRequested?.Invoke();
         row.AddChild(_chronicleButton);
+
+        // The world's raw numbers and the levers that move them - a tool, not part of the game
+        // (see Main.SetUpInspectorWindow), so it sits at the end of the row and starts shut.
+        _inspectorButton = new Button { Text = "Inspector" };
+        _inspectorButton.Pressed += () => InspectorRequested?.Invoke();
+        row.AddChild(_inspectorButton);
         row.AddChild(new VSeparator());
 
         // Frame rate sits permanently next to the tick rather than behind a debug key, with
@@ -103,7 +120,11 @@ public partial class StatusBar : PanelContainer
         _notificationTimer.Start();
     }
 
+    public event Action? BandRequested;
+
     public event Action? ChronicleRequested;
+
+    public event Action? InspectorRequested;
 
     public void ShowChronicleButton() => _chronicleButton.Visible = true;
 

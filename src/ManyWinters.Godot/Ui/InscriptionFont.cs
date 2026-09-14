@@ -46,6 +46,10 @@ public static class InscriptionFont
 
     public static Label BodyLabel(string text, int size, Color ink) => Styled(text, Body, size, ink);
 
+    // The face BodyTheme gives buttons, for a caption that has to sit inside one as a label of its
+    // own (BandPanel's rows, where the whole row is the button).
+    public static Label BodyBoldLabel(string text, int size, Color ink) => Styled(text, BodyBold, size, ink);
+
     // A centred title in the shared ink-and-outline look InscriptionOverlay and PausePanel use.
     public static Label OutlinedTitleLabel(string text, int size)
     {

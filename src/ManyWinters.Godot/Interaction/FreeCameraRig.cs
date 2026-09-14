@@ -84,6 +84,19 @@ public sealed class FreeCameraRig
         UpdateCamera();
     }
 
+    // Puts the orbit point on a spot in the world, keeping the zoom, rotation and tilt the player
+    // has set: taking the view to somebody (Main's band roster) is a pan, not a new camera.
+    //
+    // Only X and Z are taken from the target - the rig rides the ground under it (see
+    // HandleInput), and a person's own Y is their feet on a slope. Any pan still gliding is
+    // dropped, or the eased velocity would carry the view straight off the person just arrived at.
+    public void FocusOn(Vector3 target)
+    {
+        _panVelocity = Vector3.Zero;
+        _rig.Position = new Vector3(target.X, _sampleHeight(target.X, target.Z), target.Z);
+        UpdateCamera();
+    }
+
     public void ToggleProjection()
     {
         _isOrthographic = !_isOrthographic;

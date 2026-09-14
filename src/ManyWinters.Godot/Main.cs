@@ -36,6 +36,7 @@ public partial class Main : Node3D
     private FreeCameraRig _cameraRig = null!;
     private Position _campCenter;
 
+    private FloatingPanel _inspector = null!;
     private Label _infoLabel = null!;
     private Label _buildingsLabel = null!;
     private Label _gravesLabel = null!;
@@ -44,6 +45,7 @@ public partial class Main : Node3D
     private InscriptionOverlay _inscriptionOverlay = null!;
     private PausePanel _pausePanel = null!;
     private ChroniclePanel _chronicle = null!;
+    private BandPanel _bandPanel = null!;
     private readonly EndingAnnouncements _endingAnnouncements = new();
     private TextureRect _selectionMarkerOverlay = null!;
     // The Person itself, not an id: commands and labels want the object and PersonView hands it
@@ -419,13 +421,61 @@ public partial class Main : Node3D
         var canvas = new CanvasLayer();
         AddChild(canvas);
 
-        SetUpInspectorWindow(canvas);
+        // The status bar first: it carries the buttons the windows below hang their own toggles on.
         SetUpStatusBar(canvas);
+        SetUpInspectorWindow(canvas);
         SetUpSelectionMarker(canvas);
         SetUpSelectionPanel(canvas);
+        SetUpBandPanel(canvas);
         SetUpChronicle(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
+    }
+
+    private void SetUpBandPanel(CanvasLayer canvas)
+    {
+        _bandPanel = new BandPanel();
+        _bandPanel.PersonChosen += GoTo;
+        canvas.AddChild(_bandPanel);
+        _statusBar.BandRequested += ToggleBandPanel;
+    }
+
+    // Opened and closed by the button on the status bar.
+    //
+    // Placed on the way open rather than once at setup, so it always comes back where the player
+    // expects it however far they dragged it last time: mirrored across the screen from the
+    // selection panel, same inset from its own edge (see BandPanel), the band on the left and
+    // whoever is picked out of it on the right.
+    //
+    // Filled on the way open as well as on every tick: the clock can be standing still (a pause,
+    // an inscription), and an empty roster is no answer to "where is everybody".
+    private void ToggleBandPanel()
+    {
+        _bandPanel.Visible = !_bandPanel.Visible;
+        _bandPanel.Position = new Vector2(BandPanel.Margin, BandPanel.Margin);
+        RefreshBandPanel();
+    }
+
+    private void RefreshBandPanel()
+    {
+        if (_bandPanel.Visible)
+        {
+            _bandPanel.Update(BandRoster.Of(_world));
+        }
+    }
+
+    // Pressing a name on the roster: select the person and take the view to them. Selecting alone
+    // would leave the player looking at the same empty forest with a marker somewhere off screen.
+    private void GoTo(Person person)
+    {
+        _selectedPerson = person;
+        _selectedGrave = null;
+        RefreshSelection();
+
+        if (_presenter.GetPersonGlobalPosition(person.Id) is { } position)
+        {
+            _cameraRig.FocusOn(position);
+        }
     }
 
     // Opposite the inspector, so the two can be open at once without covering each other.
@@ -522,6 +572,10 @@ public partial class Main : Node3D
     // Debug only: the world's raw numbers and the levers that move them. What the player is meant
     // to read and press lives in SelectionPanel; this window keeps the dump, the spawner and the
     // map reveal, none of which belong in the game proper (docs/todo/todo.md).
+    //
+    // Shut until the status bar's Inspector button is pressed. It used to open with the game and
+    // sit over the corner the band's roster now claims, which put a debug tool in front of the
+    // player before they had asked for one.
     private void SetUpInspectorWindow(CanvasLayer canvas)
     {
         const float width = 340f;
@@ -529,6 +583,7 @@ public partial class Main : Node3D
         var panel = new FloatingPanel("Inspector (debug)")
         {
             Position = new Vector2(16, 16),
+            Visible = false,
             CustomMinimumSize = new Vector2(width, 0),
             // A Theme resource cascades its DefaultFontSize down to every descendant Control that
             // doesn't set its own override - unlike AddThemeFontSizeOverride, which only affects
@@ -536,6 +591,8 @@ public partial class Main : Node3D
             Theme = new Theme { DefaultFontSize = _presentation.InspectorFontSize },
         };
         canvas.AddChild(panel);
+        _inspector = panel;
+        _statusBar.InspectorRequested += () => _inspector.Visible = !_inspector.Visible;
 
         _infoLabel = new Label
         {
@@ -807,11 +864,13 @@ public partial class Main : Node3D
         RefreshSelection();
     }
 
-    // Both halves of what is on screen about the selection: the player's panel and, behind it,
-    // the debug inspector's raw dump of the same person.
+    // Everything on screen that is about people: the player's panel for whoever is selected,
+    // behind it the debug inspector's raw dump of the same person, and the band's roster, whose
+    // lines go stale on exactly the same occasions.
     private void RefreshSelection()
     {
         RefreshInfoLabel();
+        RefreshBandPanel();
 
         if (_selectedGrave is { } grave)
         {

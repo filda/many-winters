@@ -44,6 +44,62 @@ public static class PanelChrome
     // StyleBox cannot carry it without insetting the grain with it.
     public const int PaperPadding = 14;
 
+    // How far a filled box holds text off its own left and right edge. Public, because anything
+    // laying its own labels over such a box (BandPanel's rows) has to line up with it.
+    public const int FilledPadding = 8;
+
+    // A box filled with one colour, padded the way a line of text on paper wants: what the panels
+    // build their flat buttons and their meter bars out of.
+    public static StyleBoxFlat Filled(Color color) => new()
+    {
+        BgColor = color,
+        ContentMarginLeft = FilledPadding,
+        ContentMarginRight = FilledPadding,
+        ContentMarginTop = 3,
+        ContentMarginBottom = 3,
+        CornerRadiusTopLeft = 3,
+        CornerRadiusTopRight = 3,
+        CornerRadiusBottomLeft = 3,
+        CornerRadiusBottomRight = 3,
+    };
+
+    // A meter's bar: a hollow trough rather than the engine's blue, because the fill's own colour
+    // arrives with each reading (see MeterReading.Fill) - hunger changes colour as it worsens.
+    public static ProgressBar MeterBar(int height)
+    {
+        var bar = new ProgressBar
+        {
+            MinValue = 0,
+            MaxValue = 1,
+            ShowPercentage = false,
+            CustomMinimumSize = new Vector2(0, height),
+        };
+        bar.AddThemeStyleboxOverride("background", Filled(new Color(InscriptionFont.DarkInk, 0.14f)));
+        return bar;
+    }
+
+    // The game's body face with the buttons flattened, for the lists drawn on paper - the actions
+    // on the selection panel, the people on the band's roster. A raised grey box per line is the
+    // look the debug inspector wears, and a column of them turns a page about people into a
+    // settings dialog; the row lights up under the cursor instead.
+    public static Theme PaperButtons(int fontSize)
+    {
+        var clear = new Color(0f, 0f, 0f, 0f);
+        var theme = InscriptionFont.BodyTheme(fontSize);
+        theme.SetStylebox("normal", "Button", Filled(clear));
+        theme.SetStylebox("hover", "Button", Filled(new Color(InscriptionFont.DarkInk, 0.10f)));
+        theme.SetStylebox("pressed", "Button", Filled(new Color(InscriptionFont.DarkInk, 0.18f)));
+        theme.SetStylebox("disabled", "Button", Filled(clear));
+        theme.SetStylebox("focus", "Button", Filled(clear));
+        theme.SetColor("font_color", "Button", InscriptionFont.DarkInk);
+        theme.SetColor("font_hover_color", "Button", InscriptionFont.DarkInk);
+        theme.SetColor("font_pressed_color", "Button", InscriptionFont.DarkInk);
+        // Distinctly fainter than anything beside it, so the eye sorts what can be pressed from
+        // what cannot before it reads a word.
+        theme.SetColor("font_disabled_color", "Button", new Color(InscriptionFont.DarkInk, 0.38f));
+        return theme;
+    }
+
     // The age on the page: broad blotches where it was handled, and the printer's hatching under
     // them, the same diagonal stroke the sprites are drawn with. Both are faint - past a certain
     // strength this stops being paper and becomes wallpaper, and the ink has to fight it.
