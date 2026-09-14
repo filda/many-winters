@@ -15,7 +15,8 @@ namespace ManyWinters.Godot.Ui;
 //
 // It holds no opinions of its own - what an action is called, whether it can run and why not all
 // arrive as ActionOffer (see PersonActions), and the person's own card as SelectionCard. This
-// class draws them and reports which one was pressed.
+// class draws them and reports which one was pressed; the column of actions itself is the same
+// control the contextual menu draws (ActionList).
 internal partial class SelectionPanel : PanelContainer
 {
     // Internal, because the band's roster is the same page on the other edge of the screen and
@@ -25,7 +26,6 @@ internal partial class SelectionPanel : PanelContainer
 
     private const int NameFontSize = 28;
     private const int BodyFontSize = 15;
-    private const int ReasonFontSize = 13;
     private const int MeterHeight = 8;
     private const int SectionSpacing = 10;
 
@@ -37,7 +37,7 @@ internal partial class SelectionPanel : PanelContainer
     private Label _parents = null!;
     private Label _task = null!;
     private VBoxContainer _meters = null!;
-    private VBoxContainer _actions = null!;
+    private ActionList _actions = null!;
     private Label _carried = null!;
     private Label _death = null!;
     private VBoxContainer _knowledge = null!;
@@ -45,7 +45,6 @@ internal partial class SelectionPanel : PanelContainer
     private Label _graveRecord = null!;
     private VBoxContainer _column = null!;
 
-    private readonly List<ActionRow> _rows = [];
     private readonly List<MeterRow> _meterRows = [];
 
     // Which action the player pressed. Main runs it: the panel knows what an offer is, not what
@@ -127,7 +126,8 @@ internal partial class SelectionPanel : PanelContainer
 
         _personBody.AddChild(Rule());
 
-        _actions = new VBoxContainer();
+        _actions = new ActionList();
+        _actions.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _personBody.AddChild(_actions);
 
         _personBody.AddChild(Rule());
@@ -159,7 +159,7 @@ internal partial class SelectionPanel : PanelContainer
         SyncKnowledge(card.KnowledgeLabel, card.Knowledge);
 
         SyncMeters(card.Meters);
-        SyncActions(offers);
+        _actions.Show(offers);
     }
 
     internal void ShowGrave(string record)
@@ -227,48 +227,6 @@ internal partial class SelectionPanel : PanelContainer
         return new MeterRow(container, caption, bar);
     }
 
-    // Buttons are kept and updated in place, not thrown away and rebuilt: the panel refreshes on
-    // every tick, and a button that is freed between the press and the release swallows the
-    // click. The list only ever grows, since the actions on offer are the same set every time.
-    private void SyncActions(IReadOnlyList<ActionOffer> offers)
-    {
-        while (_rows.Count < offers.Count)
-        {
-            _rows.Add(NewRow());
-        }
-
-        for (var i = 0; i < _rows.Count; i++)
-        {
-            _rows[i].Apply(i < offers.Count ? offers[i] : null);
-        }
-    }
-
-    private ActionRow NewRow()
-    {
-        var container = new VBoxContainer();
-        _actions.AddChild(container);
-
-        // Left-aligned so a column of them reads as a list of choices rather than a stack of
-        // centred captions.
-        var button = new Button { Text = string.Empty, Alignment = HorizontalAlignment.Left };
-        container.AddChild(button);
-
-        var reason = InscriptionFont.BodyLabel(string.Empty, ReasonFontSize, InscriptionFont.FadedDarkInk);
-        reason.Visible = false;
-        container.AddChild(reason);
-
-        var row = new ActionRow(container, button, reason);
-        button.Pressed += () =>
-        {
-            if (row.Offer is { } offer)
-            {
-                ActionInvoked?.Invoke(offer);
-            }
-        };
-
-        return row;
-    }
-
     // A hairline in the ink; the engine's own separator draws a grey bevel.
     private static HSeparator Rule()
     {
@@ -277,7 +235,8 @@ internal partial class SelectionPanel : PanelContainer
         return rule;
     }
 
-    // One measure's caption and bar. Same shape as ActionRow: kept, and given new numbers.
+    // One measure's caption and bar. Same shape as an action's row (ActionList): kept between
+    // refreshes, and given new numbers.
     private sealed class MeterRow(VBoxContainer container, Label caption, ProgressBar bar)
     {
         public void Apply(MeterReading? reading)
@@ -291,30 +250,6 @@ internal partial class SelectionPanel : PanelContainer
             caption.Text = shown.Label;
             bar.Value = shown.Fraction;
             bar.AddThemeStyleboxOverride("fill", PanelChrome.Filled(shown.Fill));
-        }
-    }
-
-    // One action's button and the line under it saying why it is greyed out. Holds the offer it
-    // is currently showing, so the press reports the offer the player actually saw.
-    private sealed class ActionRow(VBoxContainer container, Button button, Label reason)
-    {
-        public ActionOffer? Offer { get; private set; }
-
-        public void Apply(ActionOffer? offer)
-        {
-            Offer = offer;
-            container.Visible = offer is not null;
-            if (offer is not { } shown)
-            {
-                return;
-            }
-
-            button.Text = shown.Label;
-            button.Disabled = !shown.IsAvailable;
-
-            var text = ActionBlockerText.For(shown.Blocker);
-            reason.Text = text;
-            reason.Visible = text.Length > 0;
         }
     }
 }

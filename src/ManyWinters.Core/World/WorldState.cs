@@ -514,7 +514,11 @@ public sealed class WorldState(WorldConfiguration configuration)
     // Drawn from the shared name pool deterministically from the parents and the tick, so a
     // replayed world names the same children. Repeats are possible and left alone; richer
     // naming is a todo item (docs/todo/todo.md).
-    private static string NameForNewborn(Person mother, Person father, long tick)
+    //
+    // Public because a child the player asks for is named the same way as one the band has of
+    // its own accord (see TargetActions): BirthCommand takes the name, so somebody has to draw
+    // it, and there is only one right way to draw it.
+    public static string NameForNewborn(Person mother, Person father, long tick)
     {
         var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ (uint)(father.Id.Seed * 19349663) ^ ((uint)tick * 2654435761u));
         var index = (int)((uint)SeedHash.Avalanche(mixed) % (uint)PersonNames.Pool.Length);

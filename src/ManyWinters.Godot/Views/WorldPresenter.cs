@@ -11,7 +11,8 @@ public sealed class WorldPresenter
 {
     private readonly Node3D _container;
     private readonly Action<Person, MouseButton> _onPersonClicked;
-    private readonly Action<ResourceNode> _onResourceNodeSelected;
+    private readonly Action<ResourceNode, MouseButton> _onResourceNodeClicked;
+    private readonly Action<Building, MouseButton> _onBuildingClicked;
     private readonly Action<Grave> _onGraveSelected;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
@@ -41,14 +42,16 @@ public sealed class WorldPresenter
         WorldState world,
         RevealableExploration exploration,
         Action<Person, MouseButton> onPersonClicked,
-        Action<ResourceNode> onResourceNodeSelected,
+        Action<ResourceNode, MouseButton> onResourceNodeClicked,
+        Action<Building, MouseButton> onBuildingClicked,
         Action<Grave> onGraveSelected,
         CollisionObject3D.InputEventEventHandler onMissedClick,
         Func<float, float, float> sampleHeight)
     {
         _container = container;
         _onPersonClicked = onPersonClicked;
-        _onResourceNodeSelected = onResourceNodeSelected;
+        _onResourceNodeClicked = onResourceNodeClicked;
+        _onBuildingClicked = onBuildingClicked;
         _onGraveSelected = onGraveSelected;
         _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight;
@@ -171,7 +174,7 @@ public sealed class WorldPresenter
     private void CreateResourceNodeViewNow(ResourceNode node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
-        var view = new ResourceNodeView(node, canFell, _hover, _onResourceNodeSelected, _onMissedClick);
+        var view = new ResourceNodeView(node, canFell, _hover, _onResourceNodeClicked, _onMissedClick);
         view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
         view.SnapRemembered(IsOutOfSight(node.Position));
         _container.AddChild(view);
@@ -274,7 +277,7 @@ public sealed class WorldPresenter
 
     private void CreateBuildingView(Building building)
     {
-        var view = new BuildingView(building.Id, building.Kind)
+        var view = new BuildingView(building, _hover, _onBuildingClicked, _onMissedClick)
         {
             Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),
         };

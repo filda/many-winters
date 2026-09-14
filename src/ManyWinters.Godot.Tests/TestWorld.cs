@@ -18,16 +18,19 @@ internal static class TestWorld
     private static readonly ItemKindId Axe = new("axe");
 
     internal static readonly ResourceKindId AppleTree = new("apple");
-    private static readonly ResourceKindId Stump = new("tree_stump");
+    internal static readonly ResourceKindId Stump = new("tree_stump");
 
     private static readonly SkillTypeId Foraging = new("foraging");
+    private static readonly SkillTypeId Teaching = new("teaching");
     internal static readonly TechniqueId BasicForaging = new("basic_foraging");
+    internal static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     private static readonly TechniqueId BasicEating = new("basic_eating");
+    internal static readonly TechniqueId BasicTeaching = new("basic_teaching");
 
     private static readonly BuildingKindId StorageHut = new("storage_hut");
 
-    private const int AxeInputAmount = 5;
-    private const int StorageHutInputAmount = 20;
+    internal const int AxeInputAmount = 5;
+    internal const int StorageHutInputAmount = 20;
 
     internal static WorldState Create()
     {
@@ -51,9 +54,10 @@ internal static class TestWorld
                 new ResourceDefinition(Stump, "Tree Stump", Foraging, Wood),
             ]),
             new SkillCatalog([
-                new SkillDefinition(Foraging, "Foraging", BasicForaging, new TechniqueId("efficient_foraging")),
+                new SkillDefinition(Foraging, "Foraging", BasicForaging, EfficientForaging),
                 new SkillDefinition(new SkillTypeId("eating"), "Eating", BasicEating, new TechniqueId("efficient_eating")),
                 new SkillDefinition(new SkillTypeId("burial"), "Burial", new TechniqueId("basic_burial"), new TechniqueId("efficient_burial")),
+                new SkillDefinition(Teaching, "Teaching", BasicTeaching, new TechniqueId("efficient_teaching")),
             ]),
             new RecipeCatalog([new RecipeDefinition(Axe, Wood, AxeInputAmount)]),
             new BuildingCatalog([new BuildingDefinition(StorageHut, "Storage Hut", Wood, StorageHutInputAmount)]),
@@ -78,6 +82,14 @@ internal static class TestWorld
 
         world.AddPerson(child);
         return child;
+    }
+
+    // A hut to put things into and take them back out of, for the menu a store offers.
+    internal static Building AddStorageHut(WorldState world, Position position)
+    {
+        var building = new Building { Kind = StorageHut, Position = position };
+        world.AddBuilding(building);
+        return building;
     }
 
     // Grown, so nothing in a test is refused merely for being a child.

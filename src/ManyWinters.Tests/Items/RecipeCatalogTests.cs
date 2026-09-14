@@ -18,6 +18,26 @@ public class RecipeCatalogTests
         Assert.Equal(5, recipe.InputAmount);
     }
 
+    // What the list of what a person could make is built from (see PersonActions).
+    [Fact]
+    public void DefinitionsListsEveryRecipe()
+    {
+        var catalog = new RecipeCatalog([
+            new RecipeDefinition(TestCatalogs.Axe, TestCatalogs.WoodItem, 5),
+            new RecipeDefinition(TestCatalogs.WarmClothing, TestCatalogs.WoodItem, 10),
+        ]);
+
+        Assert.Equal(
+            [TestCatalogs.Axe, TestCatalogs.WarmClothing],
+            catalog.Definitions.Select(definition => definition.Output).OrderBy(output => output.Value, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void DefinitionsIsEmptyForAnEmptyCatalog()
+    {
+        Assert.Empty(new RecipeCatalog([]).Definitions);
+    }
+
     [Fact]
     public void GetThrowsForAnUnknownOutput()
     {

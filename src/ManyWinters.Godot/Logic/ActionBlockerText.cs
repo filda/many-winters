@@ -2,7 +2,7 @@ using ManyWinters.Core.Commands;
 
 namespace ManyWinters.Godot.Logic;
 
-// An ActionBlocker put into words for the player - the counterpart of InspectorText for
+// The line under an action, put into words for the player - the counterpart of InspectorText for
 // refusals. Core states why an action cannot run as a value; the wording is ours, and lives
 // here rather than in the panel so it is a plain function of the blocker.
 //
@@ -10,6 +10,12 @@ namespace ManyWinters.Godot.Logic;
 // away"): it sits under a greyed-out button, where it reads as a label on the obstacle.
 internal static class ActionBlockerText
 {
+    // What an offer says about itself, which is not always a refusal: the one distance the person
+    // can be sent to close themselves reads as part of the order rather than as an obstacle (see
+    // ActionOffer.NeedsWalkingTo), and its button is pressable.
+    internal static string For(ActionOffer offer) =>
+        offer.NeedsWalkingTo ? "Will walk over first" : For(offer.Blocker);
+
     internal static string For(ActionBlocker blocker) => blocker switch
     {
         ActionBlocker.None => string.Empty,

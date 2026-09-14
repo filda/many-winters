@@ -19,6 +19,23 @@ public class BuildingCatalogTests
         Assert.Equal(20, definition.RequiredAmount);
     }
 
+    // What the list of what could be put up on a chosen spot is built from (see TargetActions).
+    [Fact]
+    public void DefinitionsListsEveryKind()
+    {
+        var catalog = new BuildingCatalog([
+            new BuildingDefinition(TestCatalogs.StorageHut, "Storage Hut", TestCatalogs.WoodItem, 20),
+        ]);
+
+        Assert.Equal([TestCatalogs.StorageHut], catalog.Definitions.Select(definition => definition.Id));
+    }
+
+    [Fact]
+    public void DefinitionsIsEmptyForAnEmptyCatalog()
+    {
+        Assert.Empty(new BuildingCatalog([]).Definitions);
+    }
+
     [Fact]
     public void GetThrowsForAnUnknownId()
     {

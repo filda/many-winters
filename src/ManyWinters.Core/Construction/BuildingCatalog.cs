@@ -13,6 +13,10 @@ public sealed class BuildingCatalog
 
     public BuildingDefinition Get(BuildingKindId id) => _definitions[id];
 
+    // Every kind there is - for the menu of what a person could put up on a chosen spot, which
+    // has to list the possibilities before it can offer one (see SkillCatalog.Definitions).
+    public IEnumerable<BuildingDefinition> Definitions => _definitions.Values;
+
     public static BuildingCatalog LoadFromDirectory(string rootPath)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 

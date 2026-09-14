@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
@@ -49,5 +50,36 @@ public class ActionBlockerTextTests
         Assert.NotEqual(
             ActionBlockerText.For(ActionBlocker.NotLearned),
             ActionBlockerText.For(ActionBlocker.TeacherDoesNotKnowIt));
+    }
+
+    // Distance the person can be sent to close is not an obstacle: the line under a pressable
+    // button says what pressing it will do, not why it cannot be pressed.
+    [Fact]
+    public void SomethingToWalkToReadsAsPartOfTheOrderRatherThanAsARefusal()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var node = new ResourceNode { Kind = TestWorld.AppleTree, Position = new Position(50, 0), RemainingAmount = 100, MaxAmount = 100 };
+        world.AddResourceNode(node);
+
+        var gather = TargetActions.Gather(world, person, node);
+
+        Assert.True(gather.NeedsWalkingTo);
+        Assert.NotEqual(ActionBlockerText.For(ActionBlocker.TooFar), ActionBlockerText.For(gather));
+        Assert.NotEmpty(ActionBlockerText.For(gather));
+    }
+
+    // An act on the person themselves has nowhere to walk to (see ActionOffer.Target), so its
+    // refusals are worded as refusals.
+    [Fact]
+    public void AnOfferWithNowhereToGoIsWordedByItsBlocker()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Apple, 5);
+
+        var eat = Assert.Single(PersonActions.For(world, person));
+
+        Assert.Equal(ActionBlockerText.For(ActionBlocker.NotHungry), ActionBlockerText.For(eat));
     }
 }

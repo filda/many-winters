@@ -59,7 +59,7 @@ internal partial class ResourceNodeView : SpriteEntityView
     // For WorldPresenter, which sends a view back to pending when its cell is un-revealed
     // (WorldPresenter.RefreshResourceNodeExploration).
     public ResourceNode Node => _node;
-    private readonly Action<ResourceNode> _onSelected;
+    private readonly Action<ResourceNode, MouseButton> _onClicked;
     private readonly Color _baseColor;
     private int _variantIndex;
     private int _branchVariantIndex;
@@ -69,12 +69,12 @@ internal partial class ResourceNodeView : SpriteEntityView
     private SpriteLayer? _fruit;
 
     // Internal for the same reason as PersonView's constructor.
-    internal ResourceNodeView(ResourceNode node, bool canFell, HoverArbiter hover, Action<ResourceNode> onSelected, InputEventEventHandler onMissedClick)
+    internal ResourceNodeView(ResourceNode node, bool canFell, HoverArbiter hover, Action<ResourceNode, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(NominalHeightFor(node.Kind, canFell), hover, onMissedClick)
     {
         _node = node;
         _kind = node.Kind;
-        _onSelected = onSelected;
+        _onClicked = onClicked;
         _baseColor = LoadVisualDefinition(node.Kind)?.Color ?? DefaultColor;
     }
 
@@ -173,9 +173,13 @@ internal partial class ResourceNodeView : SpriteEntityView
         }
     }
 
+    // Both buttons, as a person answers to both: left gathers from it, right asks what else may
+    // be done with it (see Main, ContextMenu).
+    protected override bool WantsClick(MouseButton button) => true;
+
     protected override bool OnClicked(MouseButton button)
     {
-        _onSelected(_node);
+        _onClicked(_node, button);
         return true;
     }
 

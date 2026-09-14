@@ -4,9 +4,10 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-// Clickable - the inspector shows who lies here - but never lit up: a highlight means "there
-// is an order to give here", and there is none. Passing no hover arbiter says so and keeps a
-// grave transparent to HoverRescue, so the cursor still finds whatever stands behind it.
+// Clickable - the selection panel shows what the stone says - but never lit up: a highlight
+// means "there is an order to give here", and there is none. Passing no hover arbiter says so
+// and keeps a grave transparent to HoverRescue, so the cursor still finds whatever stands
+// behind it.
 internal partial class GraveView : SpriteEntityView
 {
     public const float Size = 0.8f;
@@ -37,8 +38,19 @@ internal partial class GraveView : SpriteEntityView
         Register(BillboardSprite.Create(texturePath, Size, fallbackColor), texturePath);
     }
 
+    // Answers to both buttons but only means the left one: a grave is worth reading, and there is
+    // nothing to be done to one. Declining the right click (returning false) sends it down the
+    // same fallback chain as one that missed the pixels, so the ground behind a headstone is not
+    // a patch where the contextual menu refuses to open.
+    protected override bool WantsClick(MouseButton button) => true;
+
     protected override bool OnClicked(MouseButton button)
     {
+        if (button != MouseButton.Left)
+        {
+            return false;
+        }
+
         _onSelected(_grave);
         return true;
     }

@@ -5,10 +5,10 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-// The one view nothing can point at or click yet: the inspector has no page for a hut (see
-// docs/todo/todo.md on a player menu), so it takes no hover arbiter and no missed-click
-// handler, which makes SpriteEntityView skip the collision shape and ray picking. Everything
-// else a world sprite does - seeded size, ground shadow, fog dimming - it does.
+// A hut in the camp: a store to put wood into and take it back out of, and something to mend
+// when the weather has had at it. It lights up under the cursor and answers to both buttons like
+// the rest of the world does, because there are orders to give here (see TargetActions) - it had
+// neither for as long as there was no menu to give them from.
 internal partial class BuildingView : SpriteEntityView
 {
     // A one-room hut should clear a person's head (PersonView.Height) with some roof to spare;
@@ -18,25 +18,36 @@ internal partial class BuildingView : SpriteEntityView
     private const float MaxScale = 1.1f;
     private const float ShadowDiameter = 3.5f;
 
-    private readonly BuildingId _buildingId;
-    private readonly BuildingKindId _kind;
+    private readonly Building _building;
+    private readonly Action<Building, MouseButton> _onClicked;
 
-    public BuildingView(BuildingId buildingId, BuildingKindId kind)
-        : base(Size, hover: null, onMissedClick: null)
+    // Internal for the same reason as PersonView's constructor: only WorldPresenter builds views.
+    internal BuildingView(Building building, HoverArbiter hover, Action<Building, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(Size, hover, onMissedClick)
     {
-        _buildingId = buildingId;
-        _kind = kind;
+        _building = building;
+        _onClicked = onClicked;
     }
 
     protected override void Build()
     {
-        var fallbackColor = EntityVisualVariation.Tint(ColorFor(_kind), _buildingId.Seed);
-        var scale = EntityVisualVariation.Scale(_buildingId.Seed, MinScale, MaxScale);
+        var fallbackColor = EntityVisualVariation.Tint(ColorFor(_building.Kind), _building.Id.Seed);
+        var scale = EntityVisualVariation.Scale(_building.Id.Seed, MinScale, MaxScale);
         ScaleAndKeepGroundContact(scale, scale);
         SetUpGroundShadow(ShadowDiameter);
 
-        var texturePath = TexturePaths.ForBuilding(_kind);
+        var texturePath = TexturePaths.ForBuilding(_building.Kind);
         Register(BillboardSprite.Create(texturePath, Size, fallbackColor), texturePath);
+    }
+
+    // Both buttons: a store has no single obvious thing to do with it, so either one opens the
+    // list of what it can do (see Main).
+    protected override bool WantsClick(MouseButton button) => true;
+
+    protected override bool OnClicked(MouseButton button)
+    {
+        _onClicked(_building, button);
+        return true;
     }
 
     // Cached per kind for the same reason (and the same C#-bridge crash under repeated

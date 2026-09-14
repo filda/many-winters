@@ -309,8 +309,9 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     public bool TryClickAt(Camera3D camera, Vector3 worldPosition, MouseButton button) =>
         WantsClick(button) && IsOpaqueAt(camera, worldPosition) && OnClicked(button);
 
-    // Which buttons this view answers to. An unwanted button is left entirely alone - not even
-    // the missed-click fallback runs - so a right-click on a tree does not become a ground order.
+    // Which of the two order buttons (see OrderButtons) this view answers to. An unwanted one is
+    // left entirely alone - not even the missed-click fallback runs - so a click a view declines
+    // outright cannot become a ground order behind it.
     protected virtual bool WantsClick(MouseButton button) => button == MouseButton.Left;
 
     // What a click on this entity means. False means "not mine after all" and sends the click
@@ -362,7 +363,11 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
             // click only to the nearest pickable collider, so a click inside the box but off the
             // pixels (on the shadow at a person's feet) would be swallowed here. Try whatever
             // else is at this point first (HoverRescue), then fall back to a ground-click order.
-            case InputEventMouseButton { Pressed: true } mouseEvent when WantsClick(mouseEvent.ButtonIndex):
+            //
+            // OrderButtons first, and for every view: the wheel arrives here as a pressed mouse
+            // button too, and a scroll over a tree is a zoom rather than an order to fell it.
+            case InputEventMouseButton { Pressed: true } mouseEvent
+                when OrderButtons.Includes(mouseEvent.ButtonIndex) && WantsClick(mouseEvent.ButtonIndex):
                 if (!TryClickAt(camera3D, position, mouseEvent.ButtonIndex)
                     && !HoverRescue.TryClickElsewhere(this, camera3D, position, mouseEvent.ButtonIndex))
                 {

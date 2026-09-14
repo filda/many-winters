@@ -46,6 +46,7 @@ public partial class Main : Node3D
     private PausePanel _pausePanel = null!;
     private ChroniclePanel _chronicle = null!;
     private BandPanel _bandPanel = null!;
+    private ContextMenu _contextMenu = null!;
     private readonly EndingAnnouncements _endingAnnouncements = new();
     private TextureRect _selectionMarkerOverlay = null!;
     // The Person itself, not an id: commands and labels want the object and PersonView hands it
@@ -58,10 +59,20 @@ public partial class Main : Node3D
     // calls BandArrival.Of again later only for its live population counts.
     private long _bandArrivalTick;
 
-    // People walking to a resource node they were told to gather from; ResolvePendingGathers
-    // fires the gather on arrival, so clicking a distant node means "go gather that" instead of
-    // the silent no-op of an out-of-range GatherCommand.
-    private readonly Dictionary<Person, ResourceNode> _pendingGathers = new();
+    // Orders given to somebody who first has to walk there; ResolvePendingOrders fires each one
+    // on arrival, so pointing at something across the clearing means "go and do that" instead of
+    // a greyed-out line telling the player to walk them over themselves.
+    private readonly PendingOrders _pendingOrders = new();
+
+    // Telling a right-click apart from the right-drag that turns the camera, and what the press
+    // landed on until the button comes up (see HandleRightButton). The world's views report the
+    // press; only the release decides whether a menu opens.
+    private readonly RightClickGesture _rightClick = new();
+    private Func<Person, TargetMenu>? _pointedAt;
+
+    // The one thing the game says out loud about an order nobody can carry out. Every order the
+    // player gives goes through Acting(), so it is said in exactly one way.
+    private const string NobodySelected = "Select someone first, then tell them what to do.";
 
     public override void _Ready()
     {
@@ -89,7 +100,7 @@ public partial class Main : Node3D
         CloudScatter.Scatter(this, _terrain.Half);
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
 
-        _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeSelected, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
@@ -153,7 +164,7 @@ public partial class Main : Node3D
         _presenter.RefreshExploration();
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
-        ResolvePendingGathers();
+        ResolvePendingOrders();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
         RefreshSelection();
         RefreshBuildingsLabel();
@@ -200,16 +211,89 @@ public partial class Main : Node3D
             GetViewport().SetInputAsHandled();
         }
 
+        // Nothing else answers to Escape, and a menu that can only be dismissed by clicking
+        // somewhere harmless is one the player fights.
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
+        {
+            _contextMenu.Close();
+        }
+
+        HandleRightButton(@event);
+
         // Ahead of Godot's physics picking (which runs later, from unhandled input) so it wins even
         // when the pick would land on something opaque in front of a person - see
         // PresentationSettings.PersonClickScreenRadius.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
-            && GetViewport().GuiGetHoveredControl() is null
-            && FindNearestPersonOnScreen(mouseButton.Position) is { } person)
+            && GetViewport().GuiGetHoveredControl() is null)
         {
-            OnPersonClicked(person, MouseButton.Left);
-            GetViewport().SetInputAsHandled();
+            // A click out in the world puts the menu away, as any menu closes when the player
+            // looks elsewhere. Only out in the world: over the UI the press has to reach whatever
+            // it landed on, and a button of the menu's own only fires when it comes back up.
+            _contextMenu.Close();
+
+            if (FindNearestPersonOnScreen(mouseButton.Position) is { } person)
+            {
+                OnPersonClicked(person, MouseButton.Left);
+                GetViewport().SetInputAsHandled();
+            }
         }
+    }
+
+    // The right button does two jobs: dragged it turns the camera (FreeCameraRig), pressed and
+    // released in one spot it asks what may be done with whatever is under the cursor. So the
+    // menu waits for the release (RightClickGesture), and what the cursor was over is recorded on
+    // the press - the only half of it a view ever sees, since Godot delivers presses to colliders
+    // through physics picking, which runs after this.
+    private void HandleRightButton(InputEvent @event)
+    {
+        switch (@event)
+        {
+            case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } pressed:
+                _pointedAt = null;
+                _contextMenu.Close();
+                _rightClick.Press(pressed.Position);
+                break;
+            case InputEventMouseMotion motion:
+                _rightClick.Moved(motion.Position);
+                break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } released:
+                if (_rightClick.Release())
+                {
+                    ShowContextMenu(released.Position);
+                }
+
+                break;
+        }
+    }
+
+    // Opens the menu for whatever the press landed on. An empty one is not opened at all: the one
+    // target with nothing to offer is the selected person themselves, whose own card is already on
+    // screen (see TargetActions).
+    private void ShowContextMenu(Vector2 screenPosition)
+    {
+        if (_pointedAt is not { } menuFor || Acting() is not { } person)
+        {
+            return;
+        }
+
+        var menu = menuFor(person);
+        if (menu.Offers.Count > 0)
+        {
+            _contextMenu.Open(menu.Heading, menu.Offers, screenPosition);
+        }
+    }
+
+    // Whoever an order is for. Every order the player gives needs somebody to carry it out, and
+    // this is the one place that says so when there is nobody.
+    private Person? Acting()
+    {
+        if (_selectedPerson is { } person)
+        {
+            return person;
+        }
+
+        _statusBar.Notify(NobodySelected);
+        return null;
     }
 
     // The already-selected person is never a candidate: re-selecting is a no-op, and the radius
@@ -428,6 +512,7 @@ public partial class Main : Node3D
         SetUpSelectionPanel(canvas);
         SetUpBandPanel(canvas);
         SetUpChronicle(canvas);
+        SetUpContextMenu(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
     }
@@ -489,7 +574,17 @@ public partial class Main : Node3D
         _statusBar.ChronicleRequested += _chronicle.Toggle;
     }
 
-    // Added last so it draws over everything else on the canvas, the inspector included.
+    // After the windows, so a menu opened over one of them is on top of it; before the
+    // inscription overlay and the pause panel, which are on top of everything.
+    private void SetUpContextMenu(CanvasLayer canvas)
+    {
+        _contextMenu = new ContextMenu();
+        _contextMenu.ActionInvoked += OnActionInvoked;
+        canvas.AddChild(_contextMenu);
+    }
+
+    // Added after the contextual menu so it draws over everything else on the canvas, the
+    // inspector included.
     private void SetUpInscriptionOverlay(CanvasLayer canvas)
     {
         _inscriptionOverlay = new InscriptionOverlay();
@@ -651,29 +746,66 @@ public partial class Main : Node3D
         _world.Execute(new SpawnPersonCommand(name, FindFreeSpawnPosition(), Person.Unknown, Person.Unknown));
     }
 
-    // Every action the player presses arrives here, whichever button it was. The panel hands back
-    // the offer it was showing, and that already carries both the command and the world's answer
-    // about whether it can run (see ActionOffer), so nothing is re-checked here - the thirteen
-    // handlers this replaced each re-asked a different subset and worded the refusal their own way.
+    // A line pressed on the selected person's card or on the contextual menu. Both draw offers
+    // for whoever is selected, so that is who carries it out.
     private void OnActionInvoked(ActionOffer offer)
     {
-        if (!offer.IsAvailable || offer.Command is not { } command)
+        if (_selectedPerson is not { } person)
+        {
+            return;
+        }
+
+        _contextMenu.Close();
+        Perform(person, offer);
+    }
+
+    // Every action the player asks for arrives here - pressed on a card, picked off the menu, or
+    // meant by a left click on something in the world. The offer carries both the command and the
+    // world's own answer about whether it can run (see ActionOffer), so nothing is re-checked
+    // here: the handlers this replaced each re-asked a different subset and worded the refusal
+    // their own way.
+    private void Perform(Person person, ActionOffer offer)
+    {
+        if (!offer.IsAvailable)
         {
             return;
         }
 
         // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): being directed is how
         // a person is shown the way, so an action that teaches grants its base technique first.
-        if (offer.TeachFirst is { } skill && _selectedPerson is { } person)
+        // Granted when the order is given rather than when it is carried out, so somebody sent off
+        // to a tree already knows what to do with it by the time they get there.
+        if (offer.TeachFirst is { } skill)
         {
             TeachBaseTechniqueIfNeeded(person, skill);
         }
 
+        if (offer.NeedsWalkingTo && offer.Target is { } target)
+        {
+            _pendingOrders.Add(person, offer);
+            // Fully qualified: inside a Node3D, a bare `Position` is the node's own Vector3.
+            _world.Execute(new MoveCommand(person, Core.World.Position.Approach(person.Position, target, _presentation.ApproachDistance)));
+        }
+        else
+        {
+            // A new order replaces whatever they were on their way to do - including a plain walk,
+            // which is the player changing their mind.
+            _pendingOrders.Forget(person);
+            Execute(offer.Command);
+        }
+
+        RefreshSelection();
+        RefreshBuildingsLabel();
+        RefreshGravesLabel();
+    }
+
+    // Two commands take something off the map, and views are pushed to the presenter rather than
+    // reconciled from world state, so both have to say so. The per-tick sweep would catch a felled
+    // node a moment later; a buried person it would never catch at all.
+    private void Execute(ICommand command)
+    {
         _world.Execute(command);
 
-        // Two of these take something off the map, and views are pushed to the presenter rather
-        // than reconciled from world state, so both have to say so. The per-tick sweep below would
-        // catch a felled node a moment later; a buried person it would never catch at all.
         switch (command)
         {
             case FellCommand fell:
@@ -683,10 +815,6 @@ public partial class Main : Node3D
                 _presenter.RemovePersonView(bury.Deceased.Id);
                 break;
         }
-
-        RefreshSelection();
-        RefreshBuildingsLabel();
-        RefreshGravesLabel();
     }
 
     private Position FindFreeSpawnPosition()
@@ -720,7 +848,7 @@ public partial class Main : Node3D
     {
         if (button == MouseButton.Right)
         {
-            TeachFromSelectedPersonTo(person);
+            _pointedAt = actor => TargetActions.For(_world, actor, person);
             return;
         }
 
@@ -736,79 +864,45 @@ public partial class Main : Node3D
         RefreshSelection();
     }
 
-    private void TeachFromSelectedPersonTo(Person student)
-    {
-        if (_selectedPerson is not { } teacher || teacher == student)
-        {
-            return;
-        }
-
-        // Directing a person to teach at all is the player showing them how to teach in the
-        // first place - same as TeachBaseTechniqueIfNeeded for gather/fell/eat.
-        TeachBaseTechniqueIfNeeded(teacher, TeachCommand.TeachingSkill);
-
-        foreach (var technique in teacher.KnownTechniques)
-        {
-            _world.Execute(new TeachCommand(teacher, student, technique));
-        }
-
-        RefreshSelection();
-    }
-
-    private void OnResourceNodeSelected(ResourceNode node)
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then click a resource node to gather.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, node.Position))
-        {
-            _pendingGathers[person] = node;
-            // Fully qualified: inside a Node3D, a bare `Position` is the node's own Vector3.
-            _world.Execute(new MoveCommand(person, Core.World.Position.Approach(person.Position, node.Position, _presentation.ApproachDistance)));
-            RefreshSelection();
-            return;
-        }
-
-        _pendingGathers.Remove(person);
-        GatherFrom(person, node);
-        RefreshSelection();
-    }
-
-    // Fires the gather once a person walking to a node (see OnResourceNodeSelected) arrives.
-    private void ResolvePendingGathers()
-    {
-        if (_pendingGathers.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var (person, node) in _pendingGathers.ToList())
-        {
-            if (!person.IsAlive)
-            {
-                _pendingGathers.Remove(person);
-                continue;
-            }
-
-            if (!_world.IsWithinReach(person.Position, node.Position))
-            {
-                continue;
-            }
-
-            _pendingGathers.Remove(person);
-            GatherFrom(person, node);
-        }
-    }
-
+    // A left click on a resource is the one shortcut kept from before there was a menu: "gather
+    // that" is the only thing anybody means by pointing at a bush, and it is how the game is
+    // played. Everything else aimed at a target is asked for by name, on the right button.
+    //
     // Depleting a node to zero keeps its view - the plant is still there, fruitless until
     // RegenPerTick refills it. Only IsAlive turning false (felled or withered) removes it.
-    private void GatherFrom(Person person, ResourceNode node)
+    private void OnResourceNodeClicked(ResourceNode node, MouseButton button)
     {
-        TeachBaseTechniqueIfNeeded(person, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
-        _world.Execute(new GatherCommand(person, node));
+        if (button == MouseButton.Right)
+        {
+            _pointedAt = actor => TargetActions.For(_world, actor, node);
+            return;
+        }
+
+        if (Acting() is { } person)
+        {
+            Perform(person, TargetActions.Gather(_world, person, node));
+        }
+    }
+
+    // Either button opens the store's menu: a hut has no one obvious thing to do with it, so
+    // putting something in, taking something out and mending it are equally the point.
+    private void OnBuildingClicked(Building building, MouseButton button)
+    {
+        _pointedAt = actor => TargetActions.For(_world, actor, building);
+
+        if (button == MouseButton.Left)
+        {
+            ShowContextMenu(GetViewport().GetMousePosition());
+        }
+    }
+
+    // Fires the order of everyone who has arrived where they were sent (see PendingOrders).
+    private void ResolvePendingOrders()
+    {
+        foreach (var offer in _pendingOrders.Ready(_world))
+        {
+            Execute(offer.Command);
+        }
     }
 
     // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): the player directing an
@@ -833,35 +927,49 @@ public partial class Main : Node3D
     private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
         if (camera is not Camera3D camera3D
-            || @event is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton)
+            || @event is not InputEventMouseButton { Pressed: true } mouseButton)
         {
             return;
         }
 
         if (GroundPick.FindGround(camera3D, mouseButton.Position) is { } groundPosition)
         {
-            OrderWalkTo(groundPosition);
+            OnGroundClicked(groundPosition, mouseButton.ButtonIndex);
         }
     }
 
     private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
     {
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+        if (@event is InputEventMouseButton { Pressed: true } mouseButton)
         {
-            OrderWalkTo(position);
+            OnGroundClicked(position, mouseButton.ButtonIndex);
         }
     }
 
-    private void OrderWalkTo(Vector3 groundPosition)
+    // Left means walk there; right asks what else could be done on that spot, which is where
+    // building belongs - it needs a place chosen rather than a thing pointed at.
+    //
+    // Reached straight from the terrain's own collider as well as from a view that declined the
+    // click, so the wheel has to be turned away here too (see OrderButtons).
+    private void OnGroundClicked(Vector3 groundPosition, MouseButton button)
     {
-        if (_selectedPerson is not { } person)
+        if (!OrderButtons.Includes(button))
         {
-            _statusBar.Notify("Select a person first, then click the ground to walk there.");
             return;
         }
 
-        _world.Execute(new MoveCommand(person, WorldSpace.ToSimulation(groundPosition)));
-        RefreshSelection();
+        var ground = WorldSpace.ToSimulation(groundPosition);
+
+        if (button == MouseButton.Right)
+        {
+            _pointedAt = actor => TargetActions.For(_world, actor, ground);
+            return;
+        }
+
+        if (button == MouseButton.Left && Acting() is { } person)
+        {
+            Perform(person, TargetActions.WalkTo(_world, person, ground));
+        }
     }
 
     // Everything on screen that is about people: the player's panel for whoever is selected,
