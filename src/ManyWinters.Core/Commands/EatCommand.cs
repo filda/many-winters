@@ -29,16 +29,8 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
     // stated as the number of tries it stands for rather than as a level.
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
-    public ActionBlocker Blocker(WorldState world)
-    {
-        var blocker = EatingBlocker(world, Person, FoodItem);
-        if (blocker is not ActionBlocker.None)
-        {
-            return blocker;
-        }
-
-        return Person.Inventory.Get(FoodItem) > 0 ? ActionBlocker.None : ActionBlocker.MissingMaterials;
-    }
+    public ActionBlocker Blocker(WorldState world) =>
+        EatingBlocker(world, Person, FoodItem, Person.Inventory.Get(FoodItem));
 
     public void Execute(WorldState world)
     {
@@ -52,22 +44,17 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
         Person.Inventory.Remove(FoodItem, Eat(world, Person, FoodItem, Person.Inventory.Get(FoodItem)));
     }
 
-    // Why this person could not eat this food at all, leaving aside where it would come from -
-    // shared by the command's own Blocker, which adds "and they are carrying some", and by Eat,
-    // which GatherCommand calls with units straight off the node.
-    public static ActionBlocker EatingBlocker(WorldState world, Person person, ItemKindId food)
+    // Why this meal cannot happen, over `availableUnits` of `food` from wherever they come:
+    // EatCommand passes what the person carries, GatherCommand what the node would give up.
+    //
+    // Knowledge is asked last on purpose (see ActionBlocker.NotLearned): a hungry person with an
+    // empty pack is told the pack is empty, not that they never learned to eat, and the player's
+    // menu can forgive NotLearned without that hiding a second reason underneath.
+    public static ActionBlocker EatingBlocker(WorldState world, Person person, ItemKindId food, int availableUnits)
     {
         if (!person.IsAlive)
         {
             return ActionBlocker.ActorIsDead;
-        }
-
-        // Find, not Get - a caller with no "eating" skill registered at all (a minimal test
-        // world, say) just means this can never succeed, not a crash.
-        if (world.Configuration.SkillCatalog.Find(Skill) is not { } skillDefinition
-            || !person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
-        {
-            return ActionBlocker.NotLearned;
         }
 
         // This is what keeps the division in Eat from being by zero - an item nobody described
@@ -82,7 +69,22 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
 
         // Nothing to put right. The player's Eat button deliberately stops here rather than at
         // WorldState.IsHungryEnoughToEat: being told to eat is not the same as deciding to.
-        return person.Needs.Hunger > 0f ? ActionBlocker.None : ActionBlocker.NotHungry;
+        if (person.Needs.Hunger <= 0f)
+        {
+            return ActionBlocker.NotHungry;
+        }
+
+        if (availableUnits <= 0)
+        {
+            return ActionBlocker.MissingMaterials;
+        }
+
+        // Find, not Get - a caller with no "eating" skill registered at all (a minimal test
+        // world, say) just means this can never succeed, not a crash.
+        return world.Configuration.SkillCatalog.Find(Skill) is { } skillDefinition
+            && person.KnownTechniques.Contains(skillDefinition.BaseTechnique)
+            ? ActionBlocker.None
+            : ActionBlocker.NotLearned;
     }
 
     // The act of eating itself, apart from where the food comes from: EatCommand feeds from
@@ -92,7 +94,7 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
     // returns how many, leaving the caller to take exactly that many from wherever they were.
     public static int Eat(WorldState world, Person person, ItemKindId food, int availableUnits)
     {
-        if (EatingBlocker(world, person, food) is not ActionBlocker.None)
+        if (EatingBlocker(world, person, food, availableUnits) is not ActionBlocker.None)
         {
             return 0;
         }
@@ -104,14 +106,10 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
             restoredPerUnit *= EfficientHungerRestoredMultiplier;
         }
 
+        // At least one: EatingBlocker has already refused both a person with no hunger to put
+        // right and a caller offering nothing to eat.
         var unitsNeeded = (int)MathF.Ceiling(person.Needs.Hunger / restoredPerUnit);
         var unitsEaten = Math.Min(availableUnits, unitsNeeded);
-        // Not a hunger test - EatingBlocker has already refused a person with none. This is the
-        // caller who offered nothing to eat.
-        if (unitsEaten <= 0)
-        {
-            return 0;
-        }
 
         person.Needs.Hunger = Math.Max(0f, person.Needs.Hunger - (unitsEaten * restoredPerUnit));
 

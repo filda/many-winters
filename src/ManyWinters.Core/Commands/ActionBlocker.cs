@@ -32,7 +32,10 @@ public enum ActionBlocker
     TooYoung,
     AlreadyNursing,
 
-    // Knowledge: the actor has never been taught this.
+    // Knowledge: the actor has never been taught this. Always the last thing a command checks,
+    // so it means "nothing else is wrong, they simply do not know how" - which is what lets the
+    // player's menu forgive it for the actions where directing a person is teaching them
+    // (see ActionOffer.For).
     NotLearned,
 
     // Teaching only, and not the same as NotLearned: the teacher knows how to teach, just not

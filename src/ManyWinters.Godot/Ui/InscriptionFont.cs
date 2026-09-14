@@ -13,9 +13,17 @@ public static class InscriptionFont
 {
     private const string FontDirectory = "res://Content/fonts";
 
-    // Ink and outline of every full-screen title (OutlinedTitleLabel), shared so
-    // InscriptionOverlay and PausePanel cannot drift apart.
-    public static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
+    // Ink and outline of every full-screen title (OutlinedTitleLabel). Private now that the
+    // panels have moved onto paper: the only light-on-dark text left is the inscription overlay,
+    // which sets its own titles through here.
+    private static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
+    // The other way round: dark ink on a pale ground, for anything set on paper rather than over
+    // the world (see PanelChrome.Parchment). Brown rather than black - nobody wrote in black.
+    public static readonly Color DarkInk = new(0.20f, 0.14f, 0.09f);
+
+    // The same ink stepped back, for text on paper that labels rather than speaks.
+    public static readonly Color FadedDarkInk = new(0.20f, 0.14f, 0.09f, 0.62f);
+
     private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
     private const int OutlineSize = 10;
 
@@ -45,6 +53,15 @@ public static class InscriptionFont
         label.HorizontalAlignment = HorizontalAlignment.Center;
         label.AddThemeColorOverride("font_outline_color", Outline);
         label.AddThemeConstantOverride("outline_size", OutlineSize);
+        return label;
+    }
+
+    // A centred title in dark ink, for a title set on paper (PanelChrome.Parchment) rather than
+    // over the world - an outline there would only fatten the letters.
+    public static Label PaperTitleLabel(string text, int size)
+    {
+        var label = TitleLabel(text, size, DarkInk);
+        label.HorizontalAlignment = HorizontalAlignment.Center;
         return label;
     }
 

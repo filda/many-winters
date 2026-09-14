@@ -2,7 +2,6 @@ using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
-using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
@@ -40,7 +39,7 @@ public partial class Main : Node3D
     private Label _infoLabel = null!;
     private Label _buildingsLabel = null!;
     private Label _gravesLabel = null!;
-    private VBoxContainer _contextualActions = null!;
+    private SelectionPanel _selectionPanel = null!;
     private StatusBar _statusBar = null!;
     private InscriptionOverlay _inscriptionOverlay = null!;
     private PausePanel _pausePanel = null!;
@@ -154,7 +153,7 @@ public partial class Main : Node3D
         _groundClouds.Refresh();
         ResolvePendingGathers();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
-        RefreshInfoLabel();
+        RefreshSelection();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
         AnnounceEndingIfAny();
@@ -423,6 +422,7 @@ public partial class Main : Node3D
         SetUpInspectorWindow(canvas);
         SetUpStatusBar(canvas);
         SetUpSelectionMarker(canvas);
+        SetUpSelectionPanel(canvas);
         SetUpChronicle(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
@@ -435,7 +435,6 @@ public partial class Main : Node3D
         {
             Position = new Vector2(GetViewport().GetVisibleRect().Size.X - 476f, 16f),
         };
-        _chronicle.AddThemeStyleboxOverride("panel", PanelChrome.Background());
         canvas.AddChild(_chronicle);
         _statusBar.ChronicleRequested += _chronicle.Toggle;
     }
@@ -476,7 +475,7 @@ public partial class Main : Node3D
         }
 
         var band = BandArrival.Of(_world);
-        var sinceArrival = DurationText(_world.Clock.CurrentTick - _bandArrivalTick);
+        var sinceArrival = DurationText.For(_world.Clock.CurrentTick - _bandArrivalTick, _world.Configuration.Rules.TicksPerYear, _world.Configuration.Rules.TicksPerSeason);
         _pausePanel.Show(band.BandName, sinceArrival, PopulationSummary.Of(band.People, band.Men, band.Women, band.Children));
     }
 
@@ -520,22 +519,22 @@ public partial class Main : Node3D
         canvas.AddChild(_selectionMarkerOverlay);
     }
 
-    // One collapsible window for both the inspector and the action buttons - the buttons are
-    // contextual to the selected person, so they belong together.
+    // Debug only: the world's raw numbers and the levers that move them. What the player is meant
+    // to read and press lives in SelectionPanel; this window keeps the dump, the spawner and the
+    // map reveal, none of which belong in the game proper (docs/todo/todo.md).
     private void SetUpInspectorWindow(CanvasLayer canvas)
     {
         const float width = 340f;
 
-        var panel = new FloatingPanel("Inspector")
+        var panel = new FloatingPanel("Inspector (debug)")
         {
             Position = new Vector2(16, 16),
             CustomMinimumSize = new Vector2(width, 0),
-            // A Theme's DefaultFontSize cascades to every descendant Control without its own
-            // override (unlike AddThemeFontSizeOverride, which affects one Control), so this alone
-            // shrinks the title, every label and every button inside.
+            // A Theme resource cascades its DefaultFontSize down to every descendant Control that
+            // doesn't set its own override - unlike AddThemeFontSizeOverride, which only affects
+            // the single Control it's called on.
             Theme = new Theme { DefaultFontSize = _presentation.InspectorFontSize },
         };
-        panel.AddThemeStyleboxOverride("panel", PanelChrome.Background());
         canvas.AddChild(panel);
 
         _infoLabel = new Label
@@ -551,71 +550,24 @@ public partial class Main : Node3D
         panel.Body.AddChild(spawnButton);
 
         // A development view, not a gameplay one (see RevealableExploration): the whole map as if
-        // fog of war did not exist. Sits with "Spawn Person" because it ignores the selection.
+        // fog of war did not exist.
         var revealMapToggle = new CheckButton { Text = "Reveal Map" };
         revealMapToggle.Toggled += OnRevealMapToggled;
         panel.Body.AddChild(revealMapToggle);
-
-        _contextualActions = new VBoxContainer { Visible = false };
-        panel.Body.AddChild(_contextualActions);
-
-        var craftButton = new Button { Text = "Craft Axe (5 Wood)" };
-        craftButton.Pressed += OnCraftButtonPressed;
-        _contextualActions.AddChild(craftButton);
-
-        var craftClothingButton = new Button { Text = "Craft Warm Clothing (10 Wood)" };
-        craftClothingButton.Pressed += OnCraftClothingButtonPressed;
-        _contextualActions.AddChild(craftClothingButton);
-
-        var craftBasketButton = new Button { Text = "Craft Basket (8 Wood)" };
-        craftBasketButton.Pressed += OnCraftBasketButtonPressed;
-        _contextualActions.AddChild(craftBasketButton);
-
-        var craftBagButton = new Button { Text = "Craft Bag (10 Grass)" };
-        craftBagButton.Pressed += OnCraftBagButtonPressed;
-        _contextualActions.AddChild(craftBagButton);
-
-        var buildButton = new Button { Text = "Build Storage Hut (20 Wood)" };
-        buildButton.Pressed += OnBuildButtonPressed;
-        _contextualActions.AddChild(buildButton);
-
-        var repairButton = new Button { Text = "Repair Nearest Building (5 Wood)" };
-        repairButton.Pressed += OnRepairButtonPressed;
-        _contextualActions.AddChild(repairButton);
-
-        var depositButton = new Button { Text = "Deposit Wood -> Nearest Building" };
-        depositButton.Pressed += OnDepositButtonPressed;
-        _contextualActions.AddChild(depositButton);
-
-        var withdrawButton = new Button { Text = "Withdraw Wood <- Nearest Building" };
-        withdrawButton.Pressed += OnWithdrawButtonPressed;
-        _contextualActions.AddChild(withdrawButton);
-
-        var fellButton = new Button { Text = "Fell Nearest Tree" };
-        fellButton.Pressed += OnFellButtonPressed;
-        _contextualActions.AddChild(fellButton);
-
-        var buryButton = new Button { Text = "Bury Nearest Dead Person" };
-        buryButton.Pressed += OnBuryButtonPressed;
-        _contextualActions.AddChild(buryButton);
-
-        var lootButton = new Button { Text = "Loot Nearest Dead Person" };
-        lootButton.Pressed += OnLootButtonPressed;
-        _contextualActions.AddChild(lootButton);
-
-        var eatButton = new Button { Text = "Eat" };
-        eatButton.Pressed += OnEatButtonPressed;
-        _contextualActions.AddChild(eatButton);
-
-        var childButton = new Button { Text = "Have Child With Nearest Person" };
-        childButton.Pressed += OnHaveChildButtonPressed;
-        _contextualActions.AddChild(childButton);
 
         _buildingsLabel = new Label { Text = "Buildings: none" };
         panel.Body.AddChild(_buildingsLabel);
 
         _gravesLabel = new Label { Text = "Graves: none" };
         panel.Body.AddChild(_gravesLabel);
+    }
+
+    // The player's panel, against the opposite edge from the debug inspector so both can be open.
+    private void SetUpSelectionPanel(CanvasLayer canvas)
+    {
+        _selectionPanel = new SelectionPanel();
+        _selectionPanel.ActionInvoked += OnActionInvoked;
+        canvas.AddChild(_selectionPanel);
     }
 
     private void SetUpStatusBar(CanvasLayer canvas)
@@ -642,305 +594,43 @@ public partial class Main : Node3D
         _world.Execute(new SpawnPersonCommand(name, FindFreeSpawnPosition(), Person.Unknown, Person.Unknown));
     }
 
-    private void OnCraftButtonPressed()
+    // Every action the player presses arrives here, whichever button it was. The panel hands back
+    // the offer it was showing, and that already carries both the command and the world's answer
+    // about whether it can run (see ActionOffer), so nothing is re-checked here - the thirteen
+    // handlers this replaced each re-asked a different subset and worded the refusal their own way.
+    private void OnActionInvoked(ActionOffer offer)
     {
-        if (_selectedPerson is not { } person)
+        if (!offer.IsAvailable || offer.Command is not { } command)
         {
-            _statusBar.Notify("Select a person first, then craft.");
             return;
         }
 
-        _world.Execute(new CraftCommand(person, new ItemKindId("axe")));
-        RefreshInfoLabel();
-    }
-
-    private void OnCraftClothingButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
+        // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): being directed is how
+        // a person is shown the way, so an action that teaches grants its base technique first.
+        if (offer.TeachFirst is { } skill && _selectedPerson is { } person)
         {
-            _statusBar.Notify("Select a person first, then craft.");
-            return;
+            TeachBaseTechniqueIfNeeded(person, skill);
         }
 
-        _world.Execute(new CraftCommand(person, new ItemKindId("warm_clothing")));
-        RefreshInfoLabel();
-    }
+        _world.Execute(command);
 
-    private void OnCraftBasketButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
+        // Two of these take something off the map, and views are pushed to the presenter rather
+        // than reconciled from world state, so both have to say so. The per-tick sweep below would
+        // catch a felled node a moment later; a buried person it would never catch at all.
+        switch (command)
         {
-            _statusBar.Notify("Select a person first, then craft.");
-            return;
+            case FellCommand fell:
+                _presenter.RemoveResourceNodeView(fell.Node.Id);
+                break;
+            case BuryCommand bury:
+                _presenter.RemovePersonView(bury.Deceased.Id);
+                break;
         }
 
-        _world.Execute(new CraftCommand(person, new ItemKindId("basket")));
-        RefreshInfoLabel();
-    }
-
-    private void OnCraftBagButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then craft.");
-            return;
-        }
-
-        _world.Execute(new CraftCommand(person, new ItemKindId("bag")));
-        RefreshInfoLabel();
-    }
-
-    private void OnBuildButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then build.");
-            return;
-        }
-
-        var buildPosition = FindFreeBuildingPosition(person.Position);
-        _world.Execute(new ConstructCommand(person, new BuildingKindId("storage_hut"), buildPosition));
-        RefreshInfoLabel();
+        RefreshSelection();
         RefreshBuildingsLabel();
-    }
-
-    private void OnRepairButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then repair.");
-            return;
-        }
-
-        var nearestBuilding = FindNearestBuilding(person.Position);
-        if (nearestBuilding is null)
-        {
-            _statusBar.Notify("No buildings to repair yet.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, nearestBuilding.Position))
-        {
-            _statusBar.Notify("The nearest building is too far away.");
-            return;
-        }
-
-        _world.Execute(new RepairCommand(person, nearestBuilding));
-        RefreshInfoLabel();
-        RefreshBuildingsLabel();
-    }
-
-    private void OnDepositButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then deposit.");
-            return;
-        }
-
-        var nearestBuilding = FindNearestBuilding(person.Position);
-        if (nearestBuilding is null)
-        {
-            _statusBar.Notify("No buildings to deposit into yet.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, nearestBuilding.Position))
-        {
-            _statusBar.Notify("The nearest building is too far away.");
-            return;
-        }
-
-        var woodItem = new ItemKindId("wood");
-        var amount = person.Inventory.Get(woodItem);
-        if (amount <= 0)
-        {
-            _statusBar.Notify("No wood to deposit.");
-            return;
-        }
-
-        _world.Execute(new DepositCommand(person, nearestBuilding, woodItem, amount));
-        RefreshInfoLabel();
-        RefreshBuildingsLabel();
-    }
-
-    private void OnWithdrawButtonPressed()
-    {
-        const int withdrawAmount = 20;
-
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then withdraw.");
-            return;
-        }
-
-        var nearestBuilding = FindNearestBuilding(person.Position);
-        if (nearestBuilding is null)
-        {
-            _statusBar.Notify("No buildings to withdraw from yet.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, nearestBuilding.Position))
-        {
-            _statusBar.Notify("The nearest building is too far away.");
-            return;
-        }
-
-        var woodItem = new ItemKindId("wood");
-        var amount = Math.Min(withdrawAmount, nearestBuilding.Inventory.Get(woodItem));
-        if (amount <= 0)
-        {
-            _statusBar.Notify("No wood to withdraw.");
-            return;
-        }
-
-        _world.Execute(new WithdrawCommand(person, nearestBuilding, woodItem, amount));
-        RefreshInfoLabel();
-        RefreshBuildingsLabel();
-    }
-
-    private void OnFellButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then fell.");
-            return;
-        }
-
-        var node = FindNearestFellableResourceNode(person.Position);
-        if (node is null)
-        {
-            _statusBar.Notify("No trees nearby to fell.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, node.Position))
-        {
-            _statusBar.Notify("The nearest tree is too far away.");
-            return;
-        }
-
-        TeachBaseTechniqueIfNeeded(person, _world.Configuration.ResourceCatalog.Get(node.Kind).Skill);
-        _world.Execute(new FellCommand(person, node));
-        _presenter.RemoveResourceNodeView(node.Id);
-        RefreshInfoLabel();
-    }
-
-    private void OnBuryButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then bury.");
-            return;
-        }
-
-        // A dead-and-unburied selected person would otherwise be their own nearest deceased:
-        // BuryCommand no-ops (the burier must be alive) but the view below would still vanish
-        // with no grave created.
-        if (!person.IsAlive)
-        {
-            _statusBar.Notify("A dead person can't bury anyone.");
-            return;
-        }
-
-        var deceased = FindNearestUnburiedDeceased(person.Position);
-        if (deceased is null)
-        {
-            _statusBar.Notify("No one left to bury.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, deceased.Position))
-        {
-            _statusBar.Notify("The nearest deceased person is too far away.");
-            return;
-        }
-
-        _world.Execute(new BuryCommand(person, deceased));
-        _presenter.RemovePersonView(deceased.Id);
-        RefreshInfoLabel();
         RefreshGravesLabel();
     }
-
-    private void OnLootButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then loot.");
-            return;
-        }
-
-        // Same reasoning as OnBuryButtonPressed: a dead selected person could otherwise loot
-        // their own corpse.
-        if (!person.IsAlive)
-        {
-            _statusBar.Notify("A dead person can't loot anyone.");
-            return;
-        }
-
-        var deceased = FindNearestLootableDeceased(person.Position);
-        if (deceased is null)
-        {
-            _statusBar.Notify("Nothing left to loot.");
-            return;
-        }
-
-        if (!_world.IsWithinReach(person.Position, deceased.Position))
-        {
-            _statusBar.Notify("The nearest belongings are too far away.");
-            return;
-        }
-
-        _world.Execute(new LootCommand(person, deceased));
-        RefreshInfoLabel();
-    }
-
-    // The deliberate meal - gathering feeds a picker only while they are hungry enough (see
-    // GatherCommand). Tries every carried kind rather than asking the player to pick one;
-    // EatCommand no-ops for anything that isn't food.
-    private void OnEatButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first, then eat.");
-            return;
-        }
-
-        TeachBaseTechniqueIfNeeded(person, EatCommand.Skill);
-        foreach (var item in person.Inventory.Counts.Keys.ToList())
-        {
-            if (person.Needs.Hunger <= 0f)
-            {
-                break;
-            }
-
-            _world.Execute(new EatCommand(person, item));
-        }
-
-        RefreshInfoLabel();
-    }
-
-    private Building? FindNearestBuilding(Position position) =>
-        _world.Buildings.OrderBy(b => WorldState.Distance(b.Position, position)).FirstOrDefault();
-
-    private ResourceNode? FindNearestFellableResourceNode(Position position) =>
-        _world.ResourceNodes
-            .Where(n => n.IsAlive && _world.Configuration.ResourceCatalog.Get(n.Kind).CanFell)
-            .OrderBy(n => WorldState.Distance(n.Position, position))
-            .FirstOrDefault();
-
-    private Person? FindNearestUnburiedDeceased(Position position) =>
-        _world.People
-            .Where(p => !p.IsAlive && !p.IsBuried)
-            .OrderBy(p => WorldState.Distance(p.Position, position))
-            .FirstOrDefault();
-
-    private Person? FindNearestLootableDeceased(Position position) =>
-        _world.People
-            .Where(p => !p.IsAlive && p.Inventory.Counts.Count > 0)
-            .OrderBy(p => WorldState.Distance(p.Position, position))
-            .FirstOrDefault();
 
     private Position FindFreeSpawnPosition()
     {
@@ -954,82 +644,6 @@ public partial class Main : Node3D
             candidate => !_world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance),
             maxAttempts: 20);
     }
-
-    private Position FindFreeBuildingPosition(Position near)
-    {
-        const float minDistance = 1.5f;
-        // Kept within MaxInteractionDistance's worst-case diagonal (spread/2 * sqrt(2)) so the
-        // picked spot is never too far to construct on - ConstructCommand requires proximity.
-        var spread = _world.Configuration.Rules.MaxInteractionDistance;
-
-        return FreePositionSearch.Find(
-            () => new Position(
-                near.X + ((GD.Randf() - 0.5f) * spread),
-                near.Y + ((GD.Randf() - 0.5f) * spread)),
-            candidate => !_world.Buildings.Any(b => WorldState.Distance(b.Position, candidate) < minDistance)
-                && !_world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance),
-            maxAttempts: 20);
-    }
-
-    // The player asking for a child directly rather than waiting for fondness (WorldState's own
-    // pass). Only the fondness is skipped: the possibility checks are BirthCommand's, repeated
-    // here purely to say which one stopped it instead of doing nothing.
-    private void OnHaveChildButtonPressed()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            _statusBar.Notify("Select a person first.");
-            return;
-        }
-
-        if (!person.IsAlive)
-        {
-            _statusBar.Notify("The dead have no children.");
-            return;
-        }
-
-        if (!_world.IsOldEnoughForChildren(person))
-        {
-            _statusBar.Notify($"{person.Name} is still a child.");
-            return;
-        }
-
-        var partner = FindNearestPartner(person);
-        if (partner is null)
-        {
-            _statusBar.Notify($"Nobody {person.Name} could have a child with is standing close enough.");
-            return;
-        }
-
-        // Which of the two is the mother is decided by them, not by whoever the player clicked
-        // first: she is the one the newborn will follow and feed from (see WorldState nursing).
-        var mother = person.Sex == Sex.Female ? person : partner;
-        var father = ReferenceEquals(mother, person) ? partner : person;
-
-        if (_world.NursingInfantOf(mother) is { } nursing)
-        {
-            _statusBar.Notify($"{mother.Name} is still nursing {nursing.Name}.");
-            return;
-        }
-
-        var name = PersonNames.Pool[Random.Shared.Next(PersonNames.Pool.Length)];
-        _world.Execute(new BirthCommand(name, mother, father));
-        RefreshInfoLabel();
-    }
-
-    // The nearest person this one could have a child with: grown, of the other sex, not close kin,
-    // within reach. All BirthCommand's rules, matched here so the button can name the obstacle
-    // rather than silently no-op, like the "nearest building" buttons do.
-    private Person? FindNearestPartner(Person person) =>
-        _world.People
-            .Where(p => p != person
-                && p.IsAlive
-                && p.Sex != person.Sex
-                && !Kinship.AreCloseKin(person, p)
-                && _world.IsOldEnoughForChildren(p)
-                && _world.IsWithinReach(person.Position, p.Position))
-            .OrderBy(p => WorldState.Distance(p.Position, person.Position))
-            .FirstOrDefault();
 
     // The few people this one is closest to. Bonds never formed are absent (see Affections.For),
     // so a loner reads "none" rather than a column of zeroes.
@@ -1055,16 +669,14 @@ public partial class Main : Node3D
 
         _selectedPerson = person;
         _selectedGrave = null;
-        _contextualActions.Visible = true;
-        RefreshInfoLabel();
+        RefreshSelection();
     }
 
     private void OnGraveSelected(Grave grave)
     {
         _selectedGrave = grave;
         _selectedPerson = null;
-        _contextualActions.Visible = false;
-        RefreshInfoLabel();
+        RefreshSelection();
     }
 
     private void TeachFromSelectedPersonTo(Person student)
@@ -1083,7 +695,7 @@ public partial class Main : Node3D
             _world.Execute(new TeachCommand(teacher, student, technique));
         }
 
-        RefreshInfoLabel();
+        RefreshSelection();
     }
 
     private void OnResourceNodeSelected(ResourceNode node)
@@ -1099,13 +711,13 @@ public partial class Main : Node3D
             _pendingGathers[person] = node;
             // Fully qualified: inside a Node3D, a bare `Position` is the node's own Vector3.
             _world.Execute(new MoveCommand(person, Core.World.Position.Approach(person.Position, node.Position, _presentation.ApproachDistance)));
-            RefreshInfoLabel();
+            RefreshSelection();
             return;
         }
 
         _pendingGathers.Remove(person);
         GatherFrom(person, node);
-        RefreshInfoLabel();
+        RefreshSelection();
     }
 
     // Fires the gather once a person walking to a node (see OnResourceNodeSelected) arrives.
@@ -1192,7 +804,28 @@ public partial class Main : Node3D
         }
 
         _world.Execute(new MoveCommand(person, WorldSpace.ToSimulation(groundPosition)));
+        RefreshSelection();
+    }
+
+    // Both halves of what is on screen about the selection: the player's panel and, behind it,
+    // the debug inspector's raw dump of the same person.
+    private void RefreshSelection()
+    {
         RefreshInfoLabel();
+
+        if (_selectedGrave is { } grave)
+        {
+            _selectionPanel.ShowGrave(InspectorText.ForGraveRecord(grave, _world.Configuration.SkillCatalog));
+            return;
+        }
+
+        if (_selectedPerson is { } person)
+        {
+            _selectionPanel.ShowPerson(SelectionCard.For(_world, person), PersonActions.For(_world, person));
+            return;
+        }
+
+        _selectionPanel.ClearSelection();
     }
 
     private void RefreshInfoLabel()
@@ -1241,21 +874,8 @@ public partial class Main : Node3D
             : "none");
     }
 
-    private string AgeText(Person person) => DurationText(_world.Clock.CurrentTick - person.BirthTick);
-
-    // Winters where there have been any, else seasons - the same rule a person's own age reads
-    // by (see AgeText), applied to any span of ticks rather than only one measured from a birth.
-    private string DurationText(long elapsedTicks)
-    {
-        var winters = elapsedTicks / _world.Configuration.Rules.TicksPerYear;
-        if (winters >= 1)
-        {
-            return $"{winters} winter{(winters == 1 ? "" : "s")}";
-        }
-
-        var seasons = elapsedTicks / _world.Configuration.Rules.TicksPerSeason;
-        return $"{seasons} season{(seasons == 1 ? "" : "s")}";
-    }
+    private string AgeText(Person person) =>
+        DurationText.For(_world.Clock.CurrentTick - person.BirthTick, _world.Configuration.Rules.TicksPerYear, _world.Configuration.Rules.TicksPerSeason);
 
     private void RefreshGravesLabel()
     {

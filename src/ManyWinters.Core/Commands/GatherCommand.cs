@@ -37,27 +37,26 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
         }
 
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
+        if (resource.YieldsItem is not null)
+        {
+            if (PotentialHarvestUnits(world, Person, resource, Node.RemainingAmount) <= 0)
+            {
+                return ActionBlocker.NothingLeft;
+            }
+
+            if (!CanTakeAnythingFrom(world, Person, resource, Node.RemainingAmount))
+            {
+                return ActionBlocker.InventoryFull;
+            }
+        }
+
+        // Never self-taught, unlike the efficient technique: it has to be taught first (see
+        // SkillDefinition.BaseTechnique). Asked last, like every knowledge gate
+        // (see ActionBlocker.NotLearned).
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
-        // Never self-taught, unlike the efficient technique: it has to be taught first
-        // (see SkillDefinition.BaseTechnique).
-        if (!Person.KnownTechniques.Contains(skillDefinition.BaseTechnique))
-        {
-            return ActionBlocker.NotLearned;
-        }
-
-        if (resource.YieldsItem is null)
-        {
-            return ActionBlocker.None;
-        }
-
-        if (PotentialHarvestUnits(world, Person, resource, Node.RemainingAmount) <= 0)
-        {
-            return ActionBlocker.NothingLeft;
-        }
-
-        return CanTakeAnythingFrom(world, Person, resource, Node.RemainingAmount)
+        return Person.KnownTechniques.Contains(skillDefinition.BaseTechnique)
             ? ActionBlocker.None
-            : ActionBlocker.InventoryFull;
+            : ActionBlocker.NotLearned;
     }
 
     public void Execute(WorldState world)
@@ -112,14 +111,15 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
             return true;
         }
 
-        if (PotentialHarvestUnits(world, person, resource, remainingAmount) <= 0)
+        var units = PotentialHarvestUnits(world, person, resource, remainingAmount);
+        if (units <= 0)
         {
             return false;
         }
 
         var canEatOnTheSpot =
             world.IsHungryEnoughToEat(person)
-            && EatCommand.EatingBlocker(world, person, item) is ActionBlocker.None;
+            && EatCommand.EatingBlocker(world, person, item, units) is ActionBlocker.None;
 
         return canEatOnTheSpot
             || person.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));

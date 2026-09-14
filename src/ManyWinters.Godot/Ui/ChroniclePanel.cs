@@ -16,10 +16,17 @@ public partial class ChroniclePanel : FloatingPanel
     private const int LineSpacing = 4;
     private const int EntrySpacing = 18;
 
-    private static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
+    // Room for the scrollbar the body grows one of once there is more than a screenful.
+    private const int ScrollbarWidth = 16;
+
+    // What an entry may actually use. Without it every label wraps to its own minimum, which for
+    // wrapped text is one character - the column of single letters this panel used to print
+    // (docs/todo/todo.md). Nothing up the chain hands a width down: the ScrollContainer sizes its
+    // content to the content's own minimum.
+    private const float TextWidth = Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth;
 
     public ChroniclePanel()
-        : base("Chronicle")
+        : base("Chronicle", onPaper: true)
     {
         CustomMinimumSize = new Vector2(Width, 0);
         Visible = false;
@@ -34,12 +41,12 @@ public partial class ChroniclePanel : FloatingPanel
 
     public void Add(Inscription inscription)
     {
-        var entry = new VBoxContainer();
+        var entry = new VBoxContainer { CustomMinimumSize = new Vector2(TextWidth, 0) };
         entry.AddThemeConstantOverride("separation", LineSpacing);
-        entry.AddChild(InscriptionFont.TitleLabel(inscription.Title, TitleFontSize, Ink));
+        entry.AddChild(InscriptionFont.TitleLabel(inscription.Title, TitleFontSize, InscriptionFont.DarkInk));
         foreach (var line in inscription.Lines)
         {
-            entry.AddChild(InscriptionFont.BodyLabel(line, LineFontSize, Ink));
+            entry.AddChild(InscriptionFont.BodyLabel(line, LineFontSize, InscriptionFont.DarkInk));
         }
 
         Body.AddChild(entry);

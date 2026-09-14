@@ -298,4 +298,28 @@ public class EatCommandTests
 
         Assert.Equal(ActionBlocker.MissingMaterials, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
     }
+
+    // Knowledge is the last thing asked (see ActionBlocker.NotLearned), so a hungry person with an
+    // empty pack hears about the pack. The player's menu leans on this: it forgives NotLearned for
+    // actions where directing someone teaches them, and that would hide a second reason if
+    // NotLearned could win over one.
+    [Fact]
+    public void AnEmptyPackIsBlamedBeforeNeverHavingLearnedToEat()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.MissingMaterials, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
+
+    [Fact]
+    public void HavingNoHungerIsBlamedBeforeNeverHavingLearnedToEat()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.AppleItem, 20);
+
+        Assert.Equal(ActionBlocker.NotHungry, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
 }

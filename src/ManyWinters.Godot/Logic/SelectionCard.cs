@@ -1,0 +1,94 @@
+using Godot;
+using ManyWinters.Core.Population;
+using ManyWinters.Core.World;
+
+namespace ManyWinters.Godot.Logic;
+
+// One measure of a person drawn as a bar that empties as things get worse, never fills: a full
+// bar is a person with nothing wrong. No numbers - the player reads a length and a colour, and
+// the exact figures stay in the debug inspector.
+internal readonly record struct MeterReading(string Label, float Value, float Max, Color Fill)
+{
+    // Clamped, because a bar that overruns its box reads as a bug rather than as an overfull
+    // pack; a zero maximum (nothing worth measuring against) shows empty rather than dividing.
+    public float Fraction => Max > 0f ? Math.Clamp(Value / Max, 0f, 1f) : 0f;
+}
+
+// Everything the selection panel says about the person who is selected, worked out in one place
+// so the panel is left with nothing but drawing. The debug inspector keeps its own raw dump
+// (positions, ids, fatigue); this is the player's view of the same person.
+internal sealed record SelectionCard(
+    string Name,
+    string Beside,
+    string Parents,
+    string Death,
+    string Task,
+    IReadOnlyList<MeterReading> Meters,
+    string Carried,
+    string KnowledgeLabel,
+    IReadOnlyList<string> Knowledge)
+{
+    // A belly with nothing wrong with it, someone who has begun looking for food of their own
+    // accord, and someone near the end of it. The bar walks from the first to the last as hunger
+    // rises, so the colour changes at the moment the person's own behaviour does.
+    // Deep enough to read on paper (PanelChrome.Parchment), which is what these are drawn on.
+    private static readonly Color Fed = new(0.33f, 0.45f, 0.24f);
+    private static readonly Color Hungry = new(0.76f, 0.58f, 0.16f);
+    private static readonly Color Starving = new(0.60f, 0.18f, 0.14f);
+
+    // A load is nobody's alarm, so it stays the colour of the ink around it.
+    private static readonly Color Load = new(0.38f, 0.31f, 0.21f);
+
+    internal static SelectionCard For(WorldState world, Person person)
+    {
+        var rules = world.Configuration.Rules;
+        var age = DurationText.For(world.Clock.CurrentTick - person.BirthTick, rules.TicksPerYear, rules.TicksPerSeason);
+
+        var carrying = new MeterReading("Carrying", person.Inventory.TotalWeight(world.Configuration.ItemCatalog), world.MaxCarryWeightFor(person), Load);
+
+        return new SelectionCard(
+            person.Name,
+            person.IsAlive ? $"{age}, {person.Sex}".ToLowerInvariant() : "deceased",
+            InspectorText.ForParents(NameOrNull(person.Mother), NameOrNull(person.Father)).TrimEnd('\n'),
+            // The one sentence a body can still tell the player. The living have no death to report.
+            person.IsAlive
+                ? string.Empty
+                : InspectorText.ForDeath((int)world.AgeInYearsAt(person, person.DeathTick ?? world.Clock.CurrentTick), person.CauseOfDeath),
+            // Nobody dead is doing anything, and "At rest" under a corpse reads as a joke.
+            person.IsAlive ? InspectorText.ForWork(person, world.Configuration.ResourceCatalog) : string.Empty,
+            // Fatigue is deliberately absent: nothing in the simulation moves it yet, and a bar
+            // that is always empty teaches the player the wrong thing about what matters. Hunger
+            // goes the same way once someone is dead - it has stopped mattering. What is on the
+            // body still does, because it can be taken.
+            person.IsAlive
+                ?
+                [
+                    // How full they are, not how hungry: the bar drains as hunger rises.
+                    new MeterReading("Fed", person.MaxHunger - person.Needs.Hunger, person.MaxHunger, HungerFill(person, rules.HungerSeekFoodThreshold)),
+                    carrying,
+                ]
+                : [carrying],
+            InspectorText.ForCarried(person.Inventory, world.Configuration.ItemCatalog),
+            person.IsAlive ? "Knows" : "Knew",
+            InspectorText.ForKnowledge(person.KnownTechniques, world.Configuration.SkillCatalog));
+    }
+
+    // Green while the belly is its own business; yellow the moment hunger sends the person off to
+    // look for food by themselves (WorldState's own pass, at HungerSeekFoodThreshold), then
+    // deepening to red the rest of the way to the hunger that kills them.
+    internal static Color HungerFill(Person person, float seekFoodThreshold)
+    {
+        if (person.Needs.Hunger < seekFoodThreshold)
+        {
+            return Fed;
+        }
+
+        var remaining = person.MaxHunger - seekFoodThreshold;
+        var travelled = remaining > 0f ? Math.Clamp((person.Needs.Hunger - seekFoodThreshold) / remaining, 0f, 1f) : 1f;
+        return Hungry.Lerp(Starving, travelled);
+    }
+
+    // Person.Mother and Father are never null - an unremembered parent is Person.Unknown, and a
+    // card should say nothing rather than name them "Unknown".
+    private static string? NameOrNull(Person parent) => ReferenceEquals(parent, Person.Unknown) ? null : parent.Name;
+}

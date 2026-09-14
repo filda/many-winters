@@ -1,4 +1,5 @@
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
@@ -169,5 +170,133 @@ public class InspectorTextTests
     public void OneRememberedParentIsNamedWithoutADanglingAnd(string? mother, string? father, string expected)
     {
         Assert.Equal(expected, InspectorText.ForParents(mother, father));
+    }
+
+    // The three lists a person's card and the debug dump both show. Each has an empty form, and
+    // each is sorted, so the card does not reshuffle itself between refreshes.
+    [Fact]
+    public void KnowingNothingReadsAsNoneRatherThanAnEmptyLine()
+    {
+        Assert.Equal("none", InspectorText.ForTechniques([]));
+    }
+
+    [Fact]
+    public void TechniquesAreListedInAStableOrder()
+    {
+        var techniques = new[] { new TechniqueId("basic_woodcutting"), new TechniqueId("basic_eating") };
+
+        Assert.Equal("basic_eating, basic_woodcutting", InspectorText.ForTechniques(techniques));
+    }
+
+    [Fact]
+    public void NoSkillsPractisedYetReadsAsNone()
+    {
+        Assert.Equal("none", InspectorText.ForSkills(new Skills()));
+    }
+
+    [Fact]
+    public void SkillsAreListedWithTheirLevels()
+    {
+        var skills = new Skills();
+        skills.Restore(new SkillTypeId("foraging"), 2.5f);
+
+        Assert.Equal("foraging: 2.5", InspectorText.ForSkills(skills));
+    }
+
+    [Fact]
+    public void AnEmptyPackSaysSo()
+    {
+        Assert.Equal("empty", InspectorText.ForInventory(new Inventory()));
+    }
+
+    [Fact]
+    public void CarriedItemsAreListedWithTheirCounts()
+    {
+        var inventory = new Inventory();
+        inventory.Add(new ItemKindId("wood"), 3);
+        inventory.Add(new ItemKindId("apple"), 1);
+
+        Assert.Equal("apple x1, wood x3", InspectorText.ForInventory(inventory));
+    }
+
+    // The player's card says what someone is doing, never where: a destination in raw
+    // coordinates is for the debug inspector (ForTask), not for a card about a person.
+    [Fact]
+    public void AWalkerIsJustWalkingWithNoCoordinates()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Tasks.Interrupt(new MoveTask(new Position(9.2451, 245.707), 1f));
+
+        var work = InspectorText.ForWork(person, world.Configuration.ResourceCatalog);
+
+        Assert.Equal("Walking", work);
+        Assert.DoesNotContain("245", work, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AGathererNamesWhatTheyArePicking()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var node = new ResourceNode { Kind = TestWorld.AppleTree, Position = new Position(0, 0), RemainingAmount = 10, MaxAmount = 10 };
+        world.AddResourceNode(node);
+        person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance));
+
+        Assert.Equal("Gathering apple", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));
+    }
+
+    // "Idle" is a scheduler's word; the player is looking at somebody standing in a field.
+    [Fact]
+    public void SomebodyWithNothingToDoIsAtRest()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+
+        Assert.Equal("At rest", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));
+    }
+
+    // The player's grave card says what the stone says, and nothing the stone could not - no id,
+    // no coordinates. Those stay in ForGrave for the debug inspector.
+    [Fact]
+    public void AGraveRecordCarriesNoIdAndNoCoordinates()
+    {
+        var world = TestWorld.Create();
+        var grave = NewGrave(ageAtDeath: 30, causeOfDeath: DeathCause.Hunger);
+
+        var record = InspectorText.ForGraveRecord(grave, world.Configuration.SkillCatalog);
+
+        Assert.Contains("Ava. Died at 30 winters of hunger.", record, StringComparison.Ordinal);
+        Assert.DoesNotContain(grave.Id.ToString(), record, StringComparison.Ordinal);
+        Assert.DoesNotContain("Position", record, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnUnmarkedGraveSaysOnlyThatNothingSurvives()
+    {
+        var world = TestWorld.Create();
+
+        var record = InspectorText.ForGraveRecord(NewGrave(isMarked: false), world.Configuration.SkillCatalog);
+
+        Assert.Equal("An unmarked grave. No record survives of who lies here.", record);
+    }
+
+    [Fact]
+    public void APractisedSkillIsMarkedAsSuch()
+    {
+        var world = TestWorld.Create();
+        var techniques = new HashSet<TechniqueId> { TestWorld.BasicForaging, new("efficient_foraging") };
+
+        Assert.Equal(["Foraging (practised)"], InspectorText.ForKnowledge(techniques, world.Configuration.SkillCatalog));
+    }
+
+    // Empty rather than worded: "nothing yet" of the living and "nothing" of the dead are
+    // different things to say, so the caller says them.
+    [Fact]
+    public void KnowingNothingAtAllComesBackEmpty()
+    {
+        var world = TestWorld.Create();
+
+        Assert.Empty(InspectorText.ForKnowledge([], world.Configuration.SkillCatalog));
     }
 }
