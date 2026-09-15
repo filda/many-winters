@@ -10,6 +10,14 @@ public static class PersonNames
         "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
     ];
 
+    // Names for a successor band arriving after the first one dies out. Disjoint from Pool so the
+    // old band can be distinguished from the new one on a grave or in the roster.
+    public static readonly string[] AlternativePool =
+    [
+        "Tove", "Harald", "Sigrun", "Bjorn", "Elsa", "Runar", "Hildur", "Sigurd",
+        "Ingrid", "Torsten", "Freya", "Gunnar", "Astrid", "Sven", "Ylva",
+    ];
+
     // Names for the starting crowd's dead parents (WorldState.Forebears), disjoint from Pool so
     // "child of Orla and Hesk" on a grave can't be mistaken for a couple still walking around.
     public static readonly string[] Forebears =

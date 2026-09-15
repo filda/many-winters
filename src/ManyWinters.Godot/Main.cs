@@ -667,6 +667,10 @@ public partial class Main : Node3D
     // takes their place on screen. The old band's dead and graves stay where they are.
     private void OnAnotherBandRequested()
     {
+        // Put away the old band's windows — the roster and selection are about dead people.
+        _bandPanel.Visible = false;
+        _selectionPanel.ClearSelection();
+
         // The new band has not walked this land yet — fog clears around their new camp.
         _world.Exploration.Reset();
 
@@ -683,6 +687,12 @@ public partial class Main : Node3D
 
         // Brief pre-roll so the new band is not standing still behind the prologue.
         _world.Advance(IdleTask.MaxPauseTicks + 1);
+
+        // Update the fog visuals so the area around the new camp is already revealed.
+        // _Process is blocked by the inscription, so we do it here instead of waiting.
+        _presenter.RefreshExploration();
+        _fogOfWar.Refresh();
+        _groundClouds.Refresh();
 
         var arrival = BandArrival.Of(_world);
         _bandArrivalTick = arrival.ArrivalTick;

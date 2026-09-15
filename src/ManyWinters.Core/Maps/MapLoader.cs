@@ -125,7 +125,7 @@ public static class MapLoader
         var world = new WorldState(configuration);
         var idRng = new Random(EntityIdSeed);
 
-        SpawnBand(world, idRng, CampCenter, -world.Configuration.Rules.TicksPerYear);
+        SpawnBand(world, idRng, CampCenter, -world.Configuration.Rules.TicksPerYear, PersonNames.Pool);
 
         ScatterDecorations(world, idRng);
 
@@ -143,7 +143,7 @@ public static class MapLoader
             oldCampCenter.X + (Math.Cos(angle) * distance),
             oldCampCenter.Y + (Math.Sin(angle) * distance));
 
-        SpawnBand(world, idRng, campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
+        SpawnBand(world, idRng, campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear, PersonNames.AlternativePool);
         SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
 
         return campCenter;
@@ -192,7 +192,7 @@ public static class MapLoader
     // Spawns a band of 15 people with family ties and forebears, plus starting stock (wood and
     // grass). Camp food (fruit, roots, mushrooms) is scattered separately: ScatterDecorations
     // for a fresh world, SpawnCampFood for a successor band into an existing one.
-    private static void SpawnBand(WorldState world, Random idRng, Position campCenter, long forebearDeathTick)
+    private static void SpawnBand(WorldState world, Random idRng, Position campCenter, long forebearDeathTick, string[] namesPool)
     {
         var rules = world.Configuration.Rules;
         var rng = new Random(CrowdPlacementSeed);
@@ -243,7 +243,7 @@ public static class MapLoader
             var initialAgeTicks = StartingAgesInWinters[index] * rules.TicksPerYear;
             world.Execute(new SpawnPersonCommand(
                 PersonId.New(idRng),
-                PersonNames.Pool[index],
+                namesPool[index],
                 positions[index],
                 mother,
                 father,
