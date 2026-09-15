@@ -44,9 +44,21 @@ jobs:
       - name: Restore solution
         run: dotnet restore ManyWinters.sln
 
-      - name: Run Stryker.NET (ManyWinters.Core)
+      - name: Run Stryker.NET (Core – Continuity Epitaph)
         working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj
+        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-1.json
+
+      - name: Run Stryker.NET (Core – Continuity BandEnding + BandArrival + Prologue)
+        working-directory: src/ManyWinters.Tests
+        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-2.json
+
+      - name: Run Stryker.NET (Core – Continuity small files)
+        working-directory: src/ManyWinters.Tests
+        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-3.json
+
+      - name: Run Stryker.NET (Core – remaining)
+        working-directory: src/ManyWinters.Tests
+        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-other.json
 
       - name: Run Stryker.NET (ManyWinters.Tools.SimulationRunner)
         working-directory: src/ManyWinters.Tests
@@ -65,5 +77,5 @@ jobs:
         with:
           name: mutation-report
           path: |
-            src/ManyWinters.Tests/StrykerOutput/**/reports/mutation-report.html
-            src/ManyWinters.Godot.Tests/StrykerOutput/**/reports/mutation-report.html
+            src/ManyWinters.Tests/StrykerOutput/**/reports/
+            src/ManyWinters.Godot.Tests/StrykerOutput/**/reports/

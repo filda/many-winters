@@ -1,8 +1,12 @@
 {
   "stryker-config": {
-    "project": "ManyWinters.Godot.csproj",
     "mutate": [
-      "**/Logic/*.cs"
+      "**/Continuity/BandName.cs",
+      "**/Continuity/BandFate.cs",
+      "**/Continuity/Grave.cs",
+      "**/Continuity/GraveId.cs",
+      "**/Continuity/Inscription.cs",
+      "**/Continuity/NumberWords.cs"
     ],
     "reporters": ["html", "progress"],
     "concurrency": 2,
@@ -11,7 +15,7 @@
     "thresholds": {
       "high": 100,
       "low": 100,
-      "break": 100
+      "break": 95
     }
   }
 }

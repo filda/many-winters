@@ -2,6 +2,9 @@
   "stryker-config": {
     "mutate": ["**/*.cs", "!**/Program.cs"],
     "reporters": ["html", "progress"],
+    "concurrency": 2,
+    "timeout-assembly": 30000,
+    "timeout-tests": 60000,
     "thresholds": {
       "high": 100,
       "low": 100,

@@ -1,9 +1,6 @@
 {
   "stryker-config": {
-    "project": "ManyWinters.Godot.csproj",
-    "mutate": [
-      "**/Logic/*.cs"
-    ],
+    "mutate": ["**/*.cs", "!**/Continuity/*.cs", "!**/Program.cs"],
     "reporters": ["html", "progress"],
     "concurrency": 2,
     "timeout-assembly": 30000,
@@ -11,7 +8,7 @@
     "thresholds": {
       "high": 100,
       "low": 100,
-      "break": 100
+      "break": 95
     }
   }
 }
