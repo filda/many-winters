@@ -13,10 +13,10 @@ public static class InscriptionFont
 {
     private const string FontDirectory = "res://Content/fonts";
 
-    // Ink and outline of every full-screen title (OutlinedTitleLabel). Private now that the
-    // panels have moved onto paper: the only light-on-dark text left is the inscription overlay,
-    // which sets its own titles through here.
-    private static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
+    // Ink and outline of every full-screen title (OutlinedTitleLabel). Public, because the two
+    // surfaces the game still sets light-on-dark - the inscription overlay and the loading screen
+    // - tint their own bars and faded lines with it rather than each repeating the colour.
+    public static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
     // The other way round: dark ink on a pale ground, for anything set on paper rather than over
     // the world (see PanelChrome.Parchment). Brown rather than black - nobody wrote in black.
     public static readonly Color DarkInk = new(0.20f, 0.14f, 0.09f);

@@ -75,9 +75,35 @@ public partial class Main : Node3D
     // player gives goes through Acting(), so it is said in exactly one way.
     private const string NobodySelected = "Select someone first, then tell them what to do.";
 
-    public override void _Ready()
+    // Above the game's own UI canvas (SetUpUi), which is built three quarters of the way through
+    // the load: both sit on the default layer otherwise, and the status bar - added to the tree
+    // later - drew over the bottom of the title page for the rest of the load.
+    private const int LoadingCanvasLayer = 100;
+
+    // The title page, held up while the world is built. On its own CanvasLayer so it covers the
+    // game's own UI layer, and freed rather than hidden once there is a world to look at.
+    private CanvasLayer? _loadingCanvas;
+    private LoadingScreen? _loadingScreen;
+
+    // Nothing below is built yet: the camera, the presenter and the terrain are all still null,
+    // and every per-frame and input path that touches them has to stand down until they are not.
+    private bool _loading;
+
+    // Async so the loading screen can be drawn between the steps: without yielding a frame, all
+    // of this runs inside one frame and the player sees a frozen window and then a world.
+    public override async void _Ready()
     {
+        _loading = true;
+
+        _loadingCanvas = new CanvasLayer { Layer = LoadingCanvasLayer };
+        AddChild(_loadingCanvas);
+        _loadingScreen = new LoadingScreen();
+        _loadingCanvas.AddChild(_loadingScreen);
+
+        await Building(0, "Reading the winter's rules");
         var configuration = WorldConfiguration.LoadFromJson(catalog => ContentFiles.ReadJsonTree($"res://Content/{catalog}"));
+
+        await Building(10, "Raising the land");
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
 
@@ -85,34 +111,57 @@ public partial class Main : Node3D
         // the prologue holding the clock a band that then stood still read as stuck. Running those
         // ticks before the views exist keeps the same deterministic world, watched from a few
         // ticks in; it costs the band that much hunger before the player can act.
+        await Building(35, "Waking the band");
         _world.Advance(IdleTask.MaxPauseTicks + 1);
 
+        await Building(45, "Hanging the sky");
         _exploration = new RevealableExploration(_world.Exploration);
         _campCenter = map.CampCenter;
-
         GetViewport().PhysicsObjectPicking = true;
-
         SetUpLighting();
         SetUpSky();
+
+        await Building(55, "Laying the ground");
         SetUpTerrain();
+
+        await Building(70, "Placing the camera");
         SetUpCamera();
+
+        await Building(75, "Drawing the pages");
         SetUpUi();
 
+        await Building(85, "Gathering the clouds");
         CloudScatter.Scatter(this, _terrain.Half);
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
 
+        await Building(90, "Setting out the band");
         _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
+        await Building(100, "The band arrives");
         var arrival = BandArrival.Of(_world);
         _bandArrivalTick = arrival.ArrivalTick;
+
+        _loadingCanvas.QueueFree();
+        _loadingCanvas = null;
+        _loadingScreen = null;
+        _loading = false;
+
         ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
         // Answers "am I running the build I think I am" (a stale process after hot-reload or a
         // forgotten relaunch) with one log line; derived from the assembly, not bumped by hand.
         GD.Print($"Build tag: {BuildTag.For(AssemblyBuildTimeUtc())}");
+    }
+
+    // Says what is about to be built, then lets the frame draw before building it - the other way
+    // round and every line the player reads names the step that has just finished.
+    private async Task Building(float progress, string step)
+    {
+        _loadingScreen!.Show(progress, step);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
     // Last write time of the running assembly - a build stamp needing no build-time code
@@ -130,6 +179,12 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+        // Half the world does not exist yet; every line below reaches into it.
+        if (_loading)
+        {
+            return;
+        }
+
         _cameraRig.HandleInput((float)delta);
         // Every frame, not per tick: the camera and the selected person's interpolated position
         // move continuously between ticks, so what stands in the way changes continuously too.
@@ -200,6 +255,12 @@ public partial class Main : Node3D
 
     public override void _Input(InputEvent @event)
     {
+        // Nothing to toggle, pause or dismiss until _Ready has finished building it.
+        if (_loading)
+        {
+            return;
+        }
+
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.T })
         {
             _cameraRig.ToggleProjection();
@@ -338,6 +399,13 @@ public partial class Main : Node3D
     // ignores everything while the cursor is over any Control at all.
     public override void _UnhandledInput(InputEvent @event)
     {
+        // The camera rig is built two thirds of the way through the load, and until then one
+        // mouse movement over the title page was enough to throw here every frame.
+        if (_loading)
+        {
+            return;
+        }
+
         if (GetViewport().GuiGetHoveredControl() is not null)
         {
             return;
