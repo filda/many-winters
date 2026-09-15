@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Population.Naming;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Maps;
@@ -32,6 +33,15 @@ public static class MapLoader
     // variant keyed off an id's seed. Separate from the placement generators: 16 bytes per
     // entity drawn from those would shift every position that follows.
     private const int EntityIdSeed = 3;
+
+    // Separate from EntityIdSeed and CrowdPlacementSeed for the same reason those are separate
+    // from each other: drawing names from either of those generators would shift every id or
+    // position that follows. AlternativeNamingSeed keeps a successor band's founding names from
+    // being identical to the first band's despite drawing from the same flat global generator
+    // (PhoneticNameGenerator.GenerateFounding) - it is not a descendant culture, so it does not
+    // inherit the extinct band's CultureProfile either.
+    private const int NamingSeed = 4;
+    private const int AlternativeNamingSeed = 5;
     private const float CrowdRadius = 4f;
     private const float CrowdMinSpacing = 1f;
 
@@ -125,7 +135,7 @@ public static class MapLoader
         var world = new WorldState(configuration);
         var idRng = new Random(EntityIdSeed);
 
-        SpawnBand(world, idRng, CampCenter, -world.Configuration.Rules.TicksPerYear, PersonNames.Pool);
+        SpawnBand(world, idRng, new Random(NamingSeed), CampCenter, -world.Configuration.Rules.TicksPerYear);
 
         ScatterDecorations(world, idRng);
 
@@ -143,7 +153,7 @@ public static class MapLoader
             oldCampCenter.X + (Math.Cos(angle) * distance),
             oldCampCenter.Y + (Math.Sin(angle) * distance));
 
-        SpawnBand(world, idRng, campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear, PersonNames.AlternativePool);
+        SpawnBand(world, idRng, new Random(AlternativeNamingSeed), campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
         SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
 
         return campCenter;
@@ -192,7 +202,7 @@ public static class MapLoader
     // Spawns a band of 15 people with family ties and forebears, plus starting stock (wood and
     // grass). Camp food (fruit, roots, mushrooms) is scattered separately: ScatterDecorations
     // for a fresh world, SpawnCampFood for a successor band into an existing one.
-    private static void SpawnBand(WorldState world, Random idRng, Position campCenter, long forebearDeathTick, string[] namesPool)
+    private static void SpawnBand(WorldState world, Random idRng, Random namingRng, Position campCenter, long forebearDeathTick)
     {
         var rules = world.Configuration.Rules;
         var rng = new Random(CrowdPlacementSeed);
@@ -205,7 +215,20 @@ public static class MapLoader
         }
 
         var spawned = new Dictionary<int, Person>();
-        var nextForebearName = 0;
+
+        // Seeded with every name already in the world (an existing band, on a successor's
+        // arrival) so a founding name can never collide with someone already walking around or
+        // already buried.
+        var existingNames = new HashSet<string>(
+            world.People.Select(person => person.Name).Concat(world.Forebears.Select(person => person.Name)),
+            StringComparer.OrdinalIgnoreCase);
+
+        string NextFoundingName()
+        {
+            var name = PhoneticNameGenerator.GenerateFounding(namingRng, existingNames);
+            existingNames.Add(name);
+            return name;
+        }
 
         Person SpawnForebear(Sex sex)
         {
@@ -215,7 +238,7 @@ public static class MapLoader
             var forebear = new Person
             {
                 Id = id,
-                Name = PersonNames.Forebears[nextForebearName++],
+                Name = NextFoundingName(),
                 BirthTick = forebearDeathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
                 IsAlive = false,
                 DeathTick = forebearDeathTick,
@@ -243,7 +266,7 @@ public static class MapLoader
             var initialAgeTicks = StartingAgesInWinters[index] * rules.TicksPerYear;
             world.Execute(new SpawnPersonCommand(
                 PersonId.New(idRng),
-                namesPool[index],
+                NextFoundingName(),
                 positions[index],
                 mother,
                 father,

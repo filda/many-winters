@@ -875,7 +875,7 @@ public partial class Main : Node3D
 
     private void OnSpawnButtonPressed()
     {
-        var name = PersonNames.Pool[Random.Shared.Next(PersonNames.Pool.Length)];
+        var name = _world.GenerateUnrelatedName(Random.Shared);
         _world.Execute(new SpawnPersonCommand(name, FindFreeSpawnPosition(), Person.Unknown, Person.Unknown));
     }
 

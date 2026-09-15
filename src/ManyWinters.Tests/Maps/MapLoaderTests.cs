@@ -7,7 +7,19 @@ namespace ManyWinters.Tests.Maps;
 
 public class MapLoaderTests
 {
+    // MapLoader.SpawnStarting recurses into a person's recorded parent before spawning that
+    // person, so World.People ends up in this order of MapLoader.StartingAgesInWinters/
+    // StartingMotherIndex/StartingFatherIndex indices - traced from those tables, not from any
+    // name. Naming is procedural now (PhoneticNameGenerator), so a test can no longer identify a
+    // starting person by a literal name; it identifies them by this fixed spawn position instead.
+    private static readonly int[] SpawnOrderOriginalIndex = [10, 1, 0, 2, 3, 6, 4, 8, 11, 5, 7, 9, 12, 13, 14];
+
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
+
+    // person[i] in MapLoader's own index space (StartingAgesInWinters etc.), regardless of
+    // spawn order.
+    private static Person PersonAt(LoadedMap map, int originalIndex) =>
+        map.World.People[Array.IndexOf(SpawnOrderOriginalIndex, originalIndex)];
 
     // The family table settles who bore whom before any id gets a say
     // (MapLoader.StartingSexFor).
@@ -64,17 +76,19 @@ public class MapLoaderTests
     public void LoadDefaultPopulatesTheWorldWithFifteenPeopleParentsBeforeChildren()
     {
         var map = LoadDefault();
+        var people = map.World.People.ToList();
 
-        // PersonNames.Pool order, except that a parent is always spawned before their child
-        // (Sela and Bran before Ava, Liska before Mira, ...) - see MapLoader.SpawnStartingCrowd.
-        var expectedNames = new[]
-        {
-            "Sela", "Bran", "Ava", "Tora", "Kael", "Liska", "Mira", "Ivy",
-            "Bodin", "Doran", "Faro", "Rask", "Yara", "Corin", "Vessa",
-        };
+        Assert.Equal(15, people.Count);
+        Assert.Equal(SpawnOrderOriginalIndex.Length, people.Select(p => p.Name).Distinct().Count());
 
-        Assert.Equal(15, map.World.People.Count);
-        Assert.Equal(expectedNames, map.World.People.Select(p => p.Name));
+        // A parent is always spawned before their child (MapLoader.SpawnStarting recurses into
+        // parents first) - checked here against every starting couple's children.
+        Assert.True(people.IndexOf(PersonAt(map, 10)) < people.IndexOf(PersonAt(map, 0)));
+        Assert.True(people.IndexOf(PersonAt(map, 1)) < people.IndexOf(PersonAt(map, 0)));
+        Assert.True(people.IndexOf(PersonAt(map, 2)) < people.IndexOf(PersonAt(map, 14)));
+        Assert.True(people.IndexOf(PersonAt(map, 6)) < people.IndexOf(PersonAt(map, 14)));
+        Assert.True(people.IndexOf(PersonAt(map, 8)) < people.IndexOf(PersonAt(map, 13)));
+        Assert.True(people.IndexOf(PersonAt(map, 11)) < people.IndexOf(PersonAt(map, 13)));
     }
 
     [Fact]
@@ -114,48 +128,43 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        var names = new[]
-        {
-            "Ava", "Bran", "Tora", "Kael", "Mira", "Doran", "Liska", "Faro",
-            "Ivy", "Rask", "Sela", "Bodin", "Yara", "Corin", "Vessa",
-        };
+        // MapLoader.StartingAgesInWinters, in its own index order (0..14) rather than spawn order.
         var expectedAges = new long[] { 2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5 };
-        var byName = map.World.People.ToDictionary(p => p.Name);
 
-        Assert.Equal(expectedAges, names.Select(name => map.World.AgeInYears(byName[name])));
+        Assert.Equal(expectedAges, Enumerable.Range(0, 15).Select(i => map.World.AgeInYears(PersonAt(map, i))));
     }
 
     [Fact]
     public void LoadDefaultAssignsFamilyTiesForEachOfTheThreeStartingCouplesChildren()
     {
         var map = LoadDefault();
-        var byName = map.World.People.ToDictionary(p => p.Name);
 
-        Assert.Same(byName["Sela"], byName["Ava"].Mother);
-        Assert.Same(byName["Bran"], byName["Ava"].Father);
-        Assert.Same(byName["Sela"], byName["Faro"].Mother);
-        Assert.Same(byName["Bran"], byName["Faro"].Father);
+        // MapLoader.StartingMotherIndex/StartingFatherIndex, by original index rather than name.
+        Assert.Same(PersonAt(map, 10), PersonAt(map, 0).Mother);
+        Assert.Same(PersonAt(map, 1), PersonAt(map, 0).Father);
+        Assert.Same(PersonAt(map, 10), PersonAt(map, 7).Mother);
+        Assert.Same(PersonAt(map, 1), PersonAt(map, 7).Father);
 
-        Assert.Same(byName["Tora"], byName["Mira"].Mother);
-        Assert.Same(byName["Liska"], byName["Mira"].Father);
-        Assert.Same(byName["Tora"], byName["Vessa"].Mother);
-        Assert.Same(byName["Liska"], byName["Vessa"].Father);
+        Assert.Same(PersonAt(map, 2), PersonAt(map, 4).Mother);
+        Assert.Same(PersonAt(map, 6), PersonAt(map, 4).Father);
+        Assert.Same(PersonAt(map, 2), PersonAt(map, 14).Mother);
+        Assert.Same(PersonAt(map, 6), PersonAt(map, 14).Father);
 
-        Assert.Same(byName["Ivy"], byName["Doran"].Mother);
-        Assert.Same(byName["Bodin"], byName["Doran"].Father);
-        Assert.Same(byName["Ivy"], byName["Corin"].Mother);
-        Assert.Same(byName["Bodin"], byName["Corin"].Father);
+        Assert.Same(PersonAt(map, 8), PersonAt(map, 5).Mother);
+        Assert.Same(PersonAt(map, 11), PersonAt(map, 5).Father);
+        Assert.Same(PersonAt(map, 8), PersonAt(map, 13).Mother);
+        Assert.Same(PersonAt(map, 11), PersonAt(map, 13).Father);
     }
 
     [Fact]
     public void LoadDefaultGivesStartingPeopleWithoutRecordedParentsDeadForebearsInsteadOfUnknown()
     {
         var map = LoadDefault();
-        var byName = map.World.People.ToDictionary(p => p.Name);
 
-        foreach (var name in new[] { "Kael", "Rask", "Yara", "Sela", "Bran" })
+        // MapLoader.StartingMotherIndex/StartingFatherIndex are both null for these indices.
+        foreach (var index in new[] { 3, 9, 12, 10, 1 })
         {
-            foreach (var parent in new[] { byName[name].Mother, byName[name].Father })
+            foreach (var parent in new[] { PersonAt(map, index).Mother, PersonAt(map, index).Father })
             {
                 Assert.Contains(parent, map.World.Forebears);
                 Assert.DoesNotContain(parent, map.World.People);
@@ -169,14 +178,14 @@ public class MapLoaderTests
     }
 
     [Fact]
-    public void LoadDefaultGivesEveryForebearADistinctNameFromADifferentPoolThanTheLivingCrowd()
+    public void LoadDefaultGivesEveryForebearADistinctNameNeverSharedWithTheLivingCrowd()
     {
         var map = LoadDefault();
 
         var forebearNames = map.World.Forebears.Select(f => f.Name).ToList();
         Assert.Equal(18, forebearNames.Count);
-        Assert.Equal(forebearNames.Count, forebearNames.Distinct().Count());
-        Assert.Empty(forebearNames.Intersect(map.World.People.Select(p => p.Name)));
+        Assert.Equal(forebearNames.Count, forebearNames.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Empty(forebearNames.Intersect(map.World.People.Select(p => p.Name), StringComparer.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -330,13 +339,12 @@ public class MapLoaderTests
             (8.587093795870151, 249.816741228071),
         };
 
-        // In PersonNames.Pool order - positions are drawn per name before anyone is spawned,
-        // so who stands where doesn't shift with the parents-first spawn order.
-        var byName = map.World.People.ToDictionary(p => p.Name);
-        Assert.Equal(expected.Length, byName.Count);
+        // In MapLoader's own index order (0..14) - positions are drawn per index before anyone is
+        // spawned, so who stands where doesn't shift with the parents-first spawn order.
+        Assert.Equal(15, map.World.People.Count);
         for (var i = 0; i < expected.Length; i++)
         {
-            var position = byName[PersonNames.Pool[i]].Position;
+            var position = PersonAt(map, i).Position;
             Assert.Equal(expected[i].Item1, position.X, 6);
             Assert.Equal(expected[i].Item2, position.Y, 6);
         }
