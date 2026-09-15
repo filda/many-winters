@@ -2,6 +2,7 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
+using static ManyWinters.Tests.TestSupport.InscriptionAssertions;
 
 namespace ManyWinters.Tests.Continuity;
 
@@ -56,22 +57,6 @@ public class EpitaphTests
     private static IEnumerable<Inscription> OverManyDeaths(Func<Person, BandEnding> ending, Sex sex = Sex.Male, DeathCause cause = DeathCause.Hunger) =>
         Enumerable.Range(1, ManySeeds).Select(seed => Epitaph.Write(ending(Dead("Odo", sex, cause, seed))));
 
-    private static IEnumerable<string> AllText(Inscription inscription) => inscription.Lines.Prepend(inscription.Title);
-
-    // Every carved line has to read as a sentence. An empty phrase slotted into a template leaves
-    // a double space or a dangling comma, so this also catches a variant that says nothing.
-    private static void AssertReadsAsASentence(string line)
-    {
-        Assert.False(string.IsNullOrWhiteSpace(line));
-        Assert.True(char.IsUpper(line[0]), $"Does not start with a capital: '{line}'");
-        Assert.EndsWith(".", line);
-        Assert.DoesNotContain("  ", line);
-        Assert.DoesNotContain(" .", line);
-        Assert.DoesNotContain(" ,", line);
-        Assert.DoesNotContain(" ;", line);
-        Assert.DoesNotContain(",.", line);
-    }
-
     [Fact]
     public void ALivingBandHasNoEpitaph()
     {
@@ -97,7 +82,7 @@ public class EpitaphTests
     {
         foreach (var inscription in OverManyDeaths(last => Ending(lastToDie: last, sideThatEndedFirst: BandFate.SpearSideEnded, wintersKeptAfterwards: 6)))
         {
-            Assert.All(AllText(inscription), AssertReadsAsASentence);
+            AssertReadsAsAnInscription(inscription);
         }
     }
 
@@ -106,12 +91,12 @@ public class EpitaphTests
     {
         foreach (var inscription in OverManyDeaths(last => Ending(fate: BandFate.SpearSideEnded, lastToDie: last, survivors: 3)))
         {
-            Assert.All(AllText(inscription), AssertReadsAsASentence);
+            AssertReadsAsAnInscription(inscription);
         }
 
         foreach (var inscription in OverManyDeaths(last => Ending(fate: BandFate.SpindleSideEnded, lastToDie: last, survivors: 3), Sex.Female, DeathCause.OldAge))
         {
-            Assert.All(AllText(inscription), AssertReadsAsASentence);
+            AssertReadsAsAnInscription(inscription);
         }
     }
 
@@ -122,7 +107,7 @@ public class EpitaphTests
         {
             foreach (var inscription in OverManyDeaths(last => Ending(lastToDie: last, wintersSeen: winters)))
             {
-                Assert.All(AllText(inscription), AssertReadsAsASentence);
+                AssertReadsAsAnInscription(inscription);
             }
         }
     }
@@ -134,7 +119,7 @@ public class EpitaphTests
         {
             foreach (var inscription in OverManyDeaths(last => Ending(lastToDie: last, born: born)))
             {
-                Assert.All(AllText(inscription), AssertReadsAsASentence);
+                AssertReadsAsAnInscription(inscription);
             }
         }
     }
@@ -144,7 +129,7 @@ public class EpitaphTests
     {
         var inscription = Epitaph.Write(Ending(sideThatEndedFirst: BandFate.SpearSideEnded, wintersKeptAfterwards: 6));
 
-        Assert.Equal("Here ends the line of Liska's people.", inscription.Title);
+        Assert.Equal("Here ends the line of Liska's people", inscription.Title);
         Assert.Equal(
             [
                 "Nine winters Liska's people endured.",
@@ -163,7 +148,7 @@ public class EpitaphTests
     {
         var inscription = Epitaph.Write(Ending(fate: BandFate.SpearSideEnded, survivors: 3));
 
-        Assert.Equal("The spear side of Liska's people is ended.", inscription.Title);
+        Assert.Equal("The spear side of Liska's people is ended", inscription.Title);
         Assert.Equal(
             [
                 "The last man of Liska's people is dead.",
@@ -202,7 +187,7 @@ public class EpitaphTests
         var inscription = Epitaph.Write(Ending(fate: BandFate.SpearSideEnded, survivors: 2) with { LastToDie = null });
 
         Assert.Equal(3, inscription.Lines.Count);
-        Assert.All(AllText(inscription), AssertReadsAsASentence);
+        AssertReadsAsAnInscription(inscription);
         Assert.DoesNotContain(inscription.Lines, line => line.Contains("Odo"));
     }
 
@@ -245,14 +230,15 @@ public class EpitaphTests
         var inscription = Epitaph.Write(Ending(lastToDie: Dead("Sela", Sex.Female, DeathCause.OldAge)));
 
         Assert.Contains("Sela lies where she fell.", inscription.Lines);
-        var women = OverManyDeaths(last => Ending(lastToDie: last), Sex.Female, DeathCause.OldAge).SelectMany(AllText).ToList();
-        Assert.All(women, line =>
+        var women = OverManyDeaths(last => Ending(lastToDie: last), Sex.Female, DeathCause.OldAge).ToList();
+        Assert.All(women, AssertReadsAsAnInscription);
+        var spoken = women.SelectMany(AllText).ToList();
+        Assert.All(spoken, line =>
         {
-            AssertReadsAsASentence(line);
             Assert.DoesNotContain(" he ", line);
             Assert.DoesNotContain(" his ", line);
         });
-        Assert.Contains(women, line => line.Contains(" she "));
+        Assert.Contains(spoken, line => line.Contains(" she "));
     }
 
     [Fact]
@@ -352,7 +338,7 @@ public class EpitaphTests
         var spear = OverManyDeaths(last => Ending(fate: BandFate.SpearSideEnded, lastToDie: last, survivors: 2)).ToList();
 
         Assert.Equal(
-            ["No man is left to Liska's people.", "The spear side of Liska's people is ended."],
+            ["No man is left to Liska's people", "The spear side of Liska's people is ended"],
             spear.Select(inscription => inscription.Title).Distinct().Order().ToList());
         Assert.Equal(
             ["No man remains among Liska's people.", "The last man of Liska's people is dead."],
@@ -367,7 +353,7 @@ public class EpitaphTests
     {
         var titles = OverManyDeaths(last => Ending(lastToDie: last)).Select(inscription => inscription.Title).Distinct().Order().ToList();
 
-        Assert.Equal(["Here ends the line of Liska's people.", "Liska's people are no more.", "The last of Liska's people."], titles);
+        Assert.Equal(["Here ends the line of Liska's people", "Liska's people are no more", "The last of Liska's people"], titles);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
+using static ManyWinters.Tests.TestSupport.InscriptionAssertions;
 
 namespace ManyWinters.Tests.Continuity;
 
@@ -46,27 +47,12 @@ public class PrologueTests
     private static IEnumerable<Inscription> OverManyBands(Func<Person, BandArrival> arrival, Sex sex = Sex.Female) =>
         Enumerable.Range(1, ManySeeds).Select(seed => Prologue.Write(arrival(Eldest(sex: sex, idSeed: seed))));
 
-    private static IEnumerable<string> AllText(Inscription inscription) => inscription.Lines.Prepend(inscription.Title);
-
-    private static void AssertReadsAsASentence(string line)
-    {
-        Assert.False(string.IsNullOrWhiteSpace(line));
-        Assert.True(char.IsUpper(line[0]), $"Does not start with a capital: '{line}'");
-        Assert.EndsWith(".", line);
-        Assert.DoesNotContain("  ", line);
-        Assert.DoesNotContain(" .", line);
-        Assert.DoesNotContain(" ,", line);
-        Assert.DoesNotContain(" ;", line);
-        Assert.DoesNotContain(",.", line);
-        Assert.DoesNotContain(": .", line);
-    }
-
     [Fact]
     public void TheShippedBandsPrologueIsWrittenInFull()
     {
         var inscription = Prologue.Write(Arrival());
 
-        Assert.Equal("Liska's people come to the land.", inscription.Title);
+        Assert.Equal("Liska's people come to the land", inscription.Title);
         Assert.Equal(
             [
                 "They came in the spring, fifteen in all: six men, six women and three children.",
@@ -96,12 +82,12 @@ public class PrologueTests
         {
             foreach (var inscription in OverManyBands(eldest => Arrival(eldest, knowsAnything: knows)))
             {
-                Assert.All(AllText(inscription), AssertReadsAsASentence);
+                AssertReadsAsAnInscription(inscription);
             }
 
             foreach (var inscription in OverManyBands(eldest => Arrival(eldest, knowsAnything: knows, eldestWinters: 0), Sex.Male))
             {
-                Assert.All(AllText(inscription), AssertReadsAsASentence);
+                AssertReadsAsAnInscription(inscription);
             }
         }
     }
@@ -111,7 +97,7 @@ public class PrologueTests
     {
         var titles = OverManyBands(eldest => Arrival(eldest)).Select(inscription => inscription.Title).Distinct().Order().ToList();
 
-        Assert.Equal(["Here begin Liska's people.", "Liska's people come to the land.", "The coming of Liska's people."], titles);
+        Assert.Equal(["Here begin Liska's people", "Liska's people come to the land", "The coming of Liska's people"], titles);
     }
 
     [Fact]

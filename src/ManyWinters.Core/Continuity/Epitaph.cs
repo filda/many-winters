@@ -34,8 +34,8 @@ public static class Epitaph
         var lost = sexThatEnded == Sex.Male ? "man" : "woman";
 
         var title = draw.Pick(
-            $"The {side} side of {band} is ended.",
-            $"No {lost} is left to {band}.");
+            $"The {side} side of {band} is ended",
+            $"No {lost} is left to {band}");
 
         var lines = new List<string>
         {
@@ -78,9 +78,9 @@ public static class Epitaph
         var last = ending.LastToDie!;
 
         var title = draw.Pick(
-            $"{band} are no more.",
-            $"Here ends the line of {band}.",
-            $"The last of {band}.");
+            $"{band} are no more",
+            $"Here ends the line of {band}",
+            $"The last of {band}");
 
         var lines = new List<string> { WintersLine(ending, draw) };
 

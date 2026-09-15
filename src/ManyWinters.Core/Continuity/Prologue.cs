@@ -16,9 +16,9 @@ public static class Prologue
         var band = arrival.BandName;
 
         var title = draw.Pick(
-            $"{band} come to the land.",
-            $"The coming of {band}.",
-            $"Here begin {band}.");
+            $"{band} come to the land",
+            $"The coming of {band}",
+            $"Here begin {band}");
 
         var lines = new List<string>
         {
