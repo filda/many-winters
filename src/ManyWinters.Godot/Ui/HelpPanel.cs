@@ -66,7 +66,10 @@ public partial class HelpPanel : Control
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
         Visible = false;
-        Theme = InscriptionFont.BodyTheme(ButtonFontSize);
+        // PaperButtons rather than plain BodyTheme: the way back at the foot of the page is the
+        // one button here, and a filled box under it would read as an application dialog pasted
+        // onto the page. As a line it lights under the cursor like everything pressable on paper.
+        Theme = PanelChrome.PaperButtons(ButtonFontSize);
 
         var centre = new CenterContainer();
         centre.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);

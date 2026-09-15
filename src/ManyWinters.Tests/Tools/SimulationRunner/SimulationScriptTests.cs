@@ -221,10 +221,11 @@ public class SimulationScriptTests
 
         var output = script.Run(["print prologue"]);
 
-        // A title and four lines (see Prologue.Write).
-        Assert.Equal(5, output.Count);
+        // A title, four lines and the closing words (see Prologue.Write).
+        Assert.Equal(6, output.Count);
         Assert.Contains("Sela's people", output[0]);
         Assert.Contains(output, line => line.Contains("one man and one woman"));
+        Assert.StartsWith("— ", output[^1]);
     }
 
     [Fact]
@@ -259,11 +260,12 @@ public class SimulationScriptTests
 
         var output = script.Run(["print epitaph"]);
 
-        // A title and the lines under it (see Epitaph.Write); nobody ate, so both starved on the
-        // same tick and neither side closed first.
-        Assert.Equal(7, output.Count);
+        // A title, the lines under it and the closing words (see Epitaph.Write); nobody ate, so
+        // both starved on the same tick and neither side closed first.
+        Assert.Equal(8, output.Count);
         Assert.Contains("Sela's people", output[0]);
         Assert.Contains(output, line => line.Contains("the last of them") || line.Contains("The last of them"));
+        Assert.StartsWith("— ", output[^1]);
     }
 
     [Fact]

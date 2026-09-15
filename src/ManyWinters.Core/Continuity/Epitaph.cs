@@ -54,7 +54,11 @@ public static class Epitaph
             $"The line has ended on the {side} side.",
             $"On the {side} side the line is ended."));
 
-        return new Inscription(title, lines);
+        // The pick comes after every line's, so adding it never reshuffles the wordings above
+        // (see PhraseDraw). The band lives on: the words let the reader walk on with it.
+        return new Inscription(title, lines, draw.Pick(
+            "Let them wander",
+            "Walk among them"));
     }
 
     private static string SurvivorsLine(int survivors, Sex sexThatEnded)
@@ -95,7 +99,11 @@ public static class Epitaph
         lines.Add(UnburiedLine(ending, last));
         lines.Add(ClosingLine(ending, draw));
 
-        return new Inscription(title, lines);
+        // The pick comes after every line's, so adding it never reshuffles the wordings above
+        // (see PhraseDraw). The band is gone; the words let the reader walk on among the graves.
+        return new Inscription(title, lines, draw.Pick(
+            "Let them wander",
+            "Walk among them"));
     }
 
     // "Their names went into the ground" needs graves; a band nobody buried gets the other wording.

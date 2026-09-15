@@ -127,6 +127,9 @@ public sealed class SimulationScript
                 var prologue = Prologue.Write(BandArrival.Of(World));
                 output.Add(prologue.Title);
                 output.AddRange(prologue.Lines);
+                // The dash marks the closing words off from the lines: they speak to the reader,
+                // not about the band (see Inscription).
+                output.Add($"— {prologue.Dismissal}");
                 break;
 
             case "print" when parts.Length > 1 && parts[1].Equals("epitaph", StringComparison.OrdinalIgnoreCase):
@@ -145,6 +148,9 @@ public sealed class SimulationScript
                 var inscription = Epitaph.Write(ending);
                 output.Add(inscription.Title);
                 output.AddRange(inscription.Lines);
+                // The dash marks the closing words off from the lines: they speak to the reader,
+                // not about the band (see Inscription).
+                output.Add($"— {inscription.Dismissal}");
                 break;
 
             case "save" when parts.Length > 1:

@@ -13,9 +13,9 @@ public static class InscriptionFont
 {
     private const string FontDirectory = "res://Content/fonts";
 
-    // Ink and outline of every full-screen title (OutlinedTitleLabel). Public, because the two
-    // surfaces the game still sets light-on-dark - the inscription overlay and the loading screen
-    // - tint their own bars and faded lines with it rather than each repeating the colour.
+    // Ink, its faded step, and the outline of every full-screen title (OutlinedTitleLabel).
+    // Public, because the surfaces the game sets light-on-dark - the inscription overlay and the
+    // loading screen - tint their own text with them rather than each repeating the colour.
     public static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
     // The other way round: dark ink on a pale ground, for anything set on paper rather than over
     // the world (see PanelChrome.Parchment). Brown rather than black - nobody wrote in black.
@@ -24,7 +24,7 @@ public static class InscriptionFont
     // The same ink stepped back, for text on paper that labels rather than speaks.
     public static readonly Color FadedDarkInk = new(0.20f, 0.14f, 0.09f, 0.62f);
 
-    private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
+    public static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
     private const int OutlineSize = 10;
 
     private static FontFile Title { get; } = ResourceLoader.Load<FontFile>($"{FontDirectory}/im-fell-english/IMFeENrm28P.ttf");

@@ -73,6 +73,15 @@ public class PrologueTests
 
         Assert.Equal(first.Title, second.Title);
         Assert.Equal(first.Lines, second.Lines);
+        Assert.Equal(first.Dismissal, second.Dismissal);
+    }
+
+    [Fact]
+    public void EveryWayOfSendingTheReaderOnIsDrawn()
+    {
+        var dismissals = OverManyBands(eldest => Arrival(eldest)).Select(inscription => inscription.Dismissal).Distinct().Order().ToList();
+
+        Assert.Equal(["Begin their story", "Enter the wilds", "Set forth", "Take the first step"], dismissals);
     }
 
     [Fact]

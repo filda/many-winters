@@ -75,6 +75,21 @@ public class EpitaphTests
 
         Assert.Equal(first.Title, second.Title);
         Assert.Equal(first.Lines, second.Lines);
+        Assert.Equal(first.Dismissal, second.Dismissal);
+    }
+
+    // The same two closings serve an ended line and an ended band alike: both send the reader
+    // on among the people, or the graves, that are left.
+    [Fact]
+    public void EveryWayOfSendingTheReaderOnIsDrawn()
+    {
+        var lineEnded = OverManyDeaths(last => Ending(fate: BandFate.SpearSideEnded, lastToDie: last, survivors: 3))
+            .Select(inscription => inscription.Dismissal).Distinct().Order().ToList();
+        var ended = OverManyDeaths(last => Ending(lastToDie: last))
+            .Select(inscription => inscription.Dismissal).Distinct().Order().ToList();
+
+        Assert.Equal(["Let them wander", "Walk among them"], lineEnded);
+        Assert.Equal(["Let them wander", "Walk among them"], ended);
     }
 
     [Fact]

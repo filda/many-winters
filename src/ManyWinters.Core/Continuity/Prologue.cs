@@ -37,7 +37,13 @@ public static class Prologue
                 "Their graves, if any are dug, will say the rest."),
         };
 
-        return new Inscription(title, lines);
+        // The pick comes after every line's, so adding it never reshuffles the wordings above
+        // (see PhraseDraw).
+        return new Inscription(title, lines, draw.Pick(
+            "Set forth",
+            "Enter the wilds",
+            "Take the first step",
+            "Begin their story"));
     }
 
     private static string HeadcountLine(BandArrival arrival, PhraseDraw draw)
