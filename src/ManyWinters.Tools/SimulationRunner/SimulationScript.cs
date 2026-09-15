@@ -149,8 +149,12 @@ public sealed class SimulationScript
                 output.Add(inscription.Title);
                 output.AddRange(inscription.Lines);
                 // The dash marks the closing words off from the lines: they speak to the reader,
-                // not about the band (see Inscription).
-                output.Add($"— {inscription.Dismissal}");
+                // not about the band. A band nobody is left of carries none (see Inscription).
+                if (inscription.Dismissal is { } dismissal)
+                {
+                    output.Add($"— {dismissal}");
+                }
+
                 break;
 
             case "save" when parts.Length > 1:

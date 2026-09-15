@@ -260,12 +260,12 @@ public class SimulationScriptTests
 
         var output = script.Run(["print epitaph"]);
 
-        // A title, the lines under it and the closing words (see Epitaph.Write); nobody ate, so
-        // both starved on the same tick and neither side closed first.
-        Assert.Equal(8, output.Count);
+        // A title and the lines under it (see Epitaph.Write); nobody ate, so both starved on the
+        // same tick and neither side closed first - and a band nobody is left of carries no
+        // closing words, so there is no dash line here.
+        Assert.Equal(7, output.Count);
         Assert.Contains("Sela's people", output[0]);
         Assert.Contains(output, line => line.Contains("the last of them") || line.Contains("The last of them"));
-        Assert.StartsWith("— ", output[^1]);
     }
 
     [Fact]

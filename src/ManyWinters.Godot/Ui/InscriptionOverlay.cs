@@ -13,8 +13,10 @@ namespace ManyWinters.Godot.Ui;
 // clicks into it are swallowed: a command issued into a stopped clock would land the moment it
 // restarts. Never a modal dialog.
 //
-// "Another band comes" is offered only once nobody is left, framed the same way beside the
-// closing words: a new band into this same world, not a scene reload.
+// "Another band comes" is offered only once nobody is left - and it is then the only thing
+// this screen offers: an epitaph with nobody left to go on for carries no closing words, so
+// the world waits under it for whoever comes next. A new band into this same world, not a
+// scene reload.
 public partial class InscriptionOverlay : Control
 {
     private const int TitleFontSize = 60;
@@ -96,7 +98,10 @@ public partial class InscriptionOverlay : Control
     {
         _title.Text = inscription.Title;
         _title.AddThemeFontSizeOverride("font_size", FittedTitleSize(inscription.Title));
-        _closing.Text = inscription.Dismissal;
+        // A band with nobody left carries no closing words (Epitaph), so it carries no way out
+        // of this screen either: "Another band comes" is the one thing left to do.
+        _closing.Visible = inscription.Dismissal is not null;
+        _closing.Text = inscription.Dismissal ?? string.Empty;
         // The growth is a hover state, not a memory: a line that was under the cursor when its
         // inscription was dismissed comes back resting.
         _closing.RemoveThemeFontSizeOverride("font_size");

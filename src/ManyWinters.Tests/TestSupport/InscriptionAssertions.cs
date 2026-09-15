@@ -7,13 +7,17 @@ namespace ManyWinters.Tests.TestSupport;
 // over many seeds, so every variant of every sentence is looked at at least once.
 public static class InscriptionAssertions
 {
-    // The title as a heading, every line under it as a sentence, and the closing words as the
-    // one piece that is neither: an imperative to the reader, carved without a full stop.
+    // The title as a heading, every line under it as a sentence, and the closing words - when
+    // there are any - as the one piece that is neither: an imperative to the reader, carved
+    // without a full stop.
     public static void AssertReadsAsAnInscription(Inscription inscription)
     {
         AssertReadsAsATitle(inscription.Title);
         Assert.All(inscription.Lines, AssertReadsAsASentence);
-        AssertReadsCleanly(inscription.Dismissal);
+        if (inscription.Dismissal is { } dismissal)
+        {
+            AssertReadsCleanly(dismissal);
+        }
     }
 
     // The title is the one piece of an inscription that is not a sentence: it names what the
@@ -32,10 +36,21 @@ public static class InscriptionAssertions
     }
 
     // The title and the lines under it, for what has to hold of both.
-    // Everything an inscription says, in the order it is said: the closing words too, since
-    // they are spoken over the band like the rest (see AWomanIsSpokenOfAsShe).
-    public static IEnumerable<string> AllText(Inscription inscription) =>
-        inscription.Lines.Prepend(inscription.Title).Append(inscription.Dismissal);
+    // Everything an inscription says, in the order it is said: the closing words too when
+    // there are any, since they are spoken over the band like the rest (see
+    // AWomanIsSpokenOfAsShe).
+    public static IEnumerable<string> AllText(Inscription inscription)
+    {
+        foreach (var text in inscription.Lines.Prepend(inscription.Title))
+        {
+            yield return text;
+        }
+
+        if (inscription.Dismissal is { } dismissal)
+        {
+            yield return dismissal;
+        }
+    }
 
     // An empty phrase slotted into a template leaves a double space or a dangling comma, so this
     // also catches a variant that says nothing.

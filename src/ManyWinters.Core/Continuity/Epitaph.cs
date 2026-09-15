@@ -99,11 +99,9 @@ public static class Epitaph
         lines.Add(UnburiedLine(ending, last));
         lines.Add(ClosingLine(ending, draw));
 
-        // The pick comes after every line's, so adding it never reshuffles the wordings above
-        // (see PhraseDraw). The band is gone; the words let the reader walk on among the graves.
-        return new Inscription(title, lines, draw.Pick(
-            "Let them wander",
-            "Walk among them"));
+        // No closing words for this one: nobody is left to wander or be walked among. The
+        // screen carries only the offer of a successor, and the world waits under it.
+        return new Inscription(title, lines, null);
     }
 
     // "Their names went into the ground" needs graves; a band nobody buried gets the other wording.

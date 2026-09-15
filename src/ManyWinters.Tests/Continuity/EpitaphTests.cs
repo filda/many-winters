@@ -78,18 +78,28 @@ public class EpitaphTests
         Assert.Equal(first.Dismissal, second.Dismissal);
     }
 
-    // The same two closings serve an ended line and an ended band alike: both send the reader
-    // on among the people, or the graves, that are left.
+    // The closings belong to a band that lives on: survivors to let wander, people to walk
+    // among. A band with nobody left carries none.
     [Fact]
     public void EveryWayOfSendingTheReaderOnIsDrawn()
     {
         var lineEnded = OverManyDeaths(last => Ending(fate: BandFate.SpearSideEnded, lastToDie: last, survivors: 3))
             .Select(inscription => inscription.Dismissal).Distinct().Order().ToList();
-        var ended = OverManyDeaths(last => Ending(lastToDie: last))
+        var spindleEnded = OverManyDeaths(last => Ending(fate: BandFate.SpindleSideEnded, lastToDie: last, survivors: 3), Sex.Female)
             .Select(inscription => inscription.Dismissal).Distinct().Order().ToList();
 
         Assert.Equal(["Let them wander", "Walk among them"], lineEnded);
-        Assert.Equal(["Let them wander", "Walk among them"], ended);
+        Assert.Equal(["Let them wander", "Walk among them"], spindleEnded);
+    }
+
+    // The screen over a band with nobody left holds only the offer of a successor: nothing is
+    // left to go on for, so there are no closing words to dismiss it with.
+    [Fact]
+    public void ABandWithNobodyLeftCarriesNoClosing()
+    {
+        Assert.All(
+            OverManyDeaths(last => Ending(lastToDie: last, sideThatEndedFirst: BandFate.SpearSideEnded, wintersKeptAfterwards: 6)),
+            inscription => Assert.Null(inscription.Dismissal));
     }
 
     [Fact]
