@@ -125,23 +125,74 @@ public static class MapLoader
         var world = new WorldState(configuration);
         var idRng = new Random(EntityIdSeed);
 
-        SpawnStartingCrowd(world, idRng);
-
-        // The band's starting stock, not scenery. Everything that grows - food included - is
-        // scattered by ScatterDecorations.
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("wood"), Offset(0f, 5f), 300f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("grass"), Offset(10f, 0f), 200f));
+        SpawnBand(world, idRng, CampCenter, -world.Configuration.Rules.TicksPerYear);
 
         ScatterDecorations(world, idRng);
 
         return new LoadedMap(world, CampCenter);
     }
 
-    // Parents before children: a Person is built around its Mother and Father, so a child recurses
-    // into a parent that sits later in the arrays. Positions are drawn in array order beforehand,
-    // so who stands where doesn't depend on parentage. Anyone with no recorded parent gets a
-    // forebear (SpawnForebear), never Person.Unknown, so every grave in camp can name real parents.
-    private static void SpawnStartingCrowd(WorldState world, Random idRng)
+    // Spawns a successor band into an existing world. Picks a new camp 80..250 m from the old one,
+    // spawns the crowd with starting stock and food, and returns the camp center for the caller
+    // to move the camera.
+    public static Position SpawnNewBand(WorldState world, Random idRng, Position oldCampCenter)
+    {
+        var angle = idRng.NextDouble() * Math.Tau;
+        var distance = 80 + (idRng.NextDouble() * 170);
+        var campCenter = ClampToTerrain(
+            oldCampCenter.X + (Math.Cos(angle) * distance),
+            oldCampCenter.Y + (Math.Sin(angle) * distance));
+
+        SpawnBand(world, idRng, campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
+        SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
+
+        return campCenter;
+    }
+
+    private static Position ClampToTerrain(double x, double y) =>
+        new(
+            Math.Max(-TerrainHalfMeters, Math.Min(TerrainHalfMeters, x)),
+            Math.Max(-TerrainHalfMeters, Math.Min(TerrainHalfMeters, y)));
+
+    private static void SpawnCampFood(WorldState world, Random rng, Random idRng, Position campCenter)
+    {
+        Position RandomCampPosition(double x, double y) =>
+            new(campCenter.X + x, campCenter.Y + y);
+
+        void Spawn(ResourceKindId kind, int count)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var angle = rng.NextDouble() * Math.Tau;
+                var distance = CampFoodRadius * Math.Sqrt(rng.NextDouble());
+                var position = RandomCampPosition(Math.Cos(angle) * distance, Math.Sin(angle) * distance);
+                world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, FoodAmount));
+            }
+        }
+
+        Spawn(AppleKind, CampAppleCount);
+        Spawn(PearKind, CampPearCount);
+        Spawn(MushroomKind, CampMushroomCount);
+        Spawn(PotatoKind, CampPotatoCount);
+    }
+
+    private static Position NextCrowdPositionFor(Random rng, List<Position> placed, Position center) =>
+        FreePositionSearch.Find(
+            () => RandomDiskPositionFor(rng, center),
+            candidate => placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing),
+            maxAttempts: 30);
+
+    private static Position RandomDiskPositionFor(Random rng, Position center)
+    {
+        var angle = rng.NextDouble() * Math.Tau;
+        var distance = CrowdRadius * Math.Sqrt(rng.NextDouble());
+        return new Position(center.X + (distance * Math.Cos(angle)), center.Y + (distance * Math.Sin(angle)));
+    }
+
+    // Spawns a band of 15 people with family ties and forebears, plus starting stock (wood and
+    // grass). Camp food (fruit, roots, mushrooms) is scattered separately: ScatterDecorations
+    // for a fresh world, SpawnCampFood for a successor band into an existing one.
+    private static void SpawnBand(WorldState world, Random idRng, Position campCenter, long forebearDeathTick)
     {
         var rules = world.Configuration.Rules;
         var rng = new Random(CrowdPlacementSeed);
@@ -150,7 +201,7 @@ public static class MapLoader
         // Stryker disable once Equality: only fills the list; everything below indexes it by the ages array, so a spare entry moves nobody
         for (var i = 0; i < StartingAgesInWinters.Length; i++)
         {
-            positions.Add(NextCrowdPosition(rng, positions));
+            positions.Add(NextCrowdPositionFor(rng, positions, campCenter));
         }
 
         var spawned = new Dictionary<int, Person>();
@@ -158,17 +209,16 @@ public static class MapLoader
 
         Person SpawnForebear(Sex sex)
         {
-            // Died the winter before the story began, after a full life: old enough to have raised
-            // anyone in the crowd, gone long enough to be buried rather than lying around camp.
-            var deathTick = -rules.TicksPerYear;
+            // Died before the story began, after a full life: old enough to have raised anyone in
+            // the crowd, gone long enough to be buried rather than lying around camp.
             var id = PersonId.New(idRng);
             var forebear = new Person
             {
                 Id = id,
                 Name = PersonNames.Forebears[nextForebearName++],
-                BirthTick = deathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
+                BirthTick = forebearDeathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
                 IsAlive = false,
-                DeathTick = deathTick,
+                DeathTick = forebearDeathTick,
                 CauseOfDeath = DeathCause.OldAge,
                 IsBuried = true,
                 Mother = Person.Unknown,
@@ -211,6 +261,11 @@ public static class MapLoader
         {
             SpawnStarting(i);
         }
+
+        // The band's starting stock, not scenery. Everything that grows — food included — is
+        // scattered by ScatterDecorations (fresh world) or SpawnCampFood (successor band).
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("wood"), new Position(campCenter.X, campCenter.Y + 5f), 300f));
+        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("grass"), new Position(campCenter.X + 10f, campCenter.Y), 200f));
     }
 
     // Anyone the family table names as a mother or father has their sex settled by it, not by
@@ -229,8 +284,6 @@ public static class MapLoader
 
         return null;
     }
-
-    private static Position Offset(double x, double y) => new(CampCenter.X + x, CampCenter.Y + y);
 
     // Spawns the scattered decoration - trees, bushes, ground cover, rocks, stumps, logs - as
     // real gatherable ResourceNodes: a dense zone around camp, several groves, then the open world.
@@ -427,24 +480,5 @@ public static class MapLoader
 
         occupied.Add(position);
         return position;
-    }
-
-    // Rejects a candidate too close to an already-placed person. Fifteen people in a four-metre
-    // disk always fit well inside the attempt budget, so FreePositionSearch never gives up here.
-    private static Position NextCrowdPosition(Random rng, List<Position> placed) =>
-        FreePositionSearch.Find(
-            () => RandomDiskPosition(rng),
-            // Stryker disable once Equality: a candidate landing at exactly CrowdMinSpacing has
-            // probability zero, so >= and > accept the same positions
-            candidate => placed.All(p => WorldState.Distance(p, candidate) >= CrowdMinSpacing),
-            maxAttempts: 30);
-
-    // Uniform over the disk's area: sampling angle and radius independently and uniformly would
-    // bunch samples near the center.
-    private static Position RandomDiskPosition(Random rng)
-    {
-        var angle = rng.NextDouble() * Math.Tau;
-        var distance = CrowdRadius * Math.Sqrt(rng.NextDouble());
-        return new Position(CampCenter.X + (distance * Math.Cos(angle)), CampCenter.Y + (distance * Math.Sin(angle)));
     }
 }

@@ -36,6 +36,9 @@ public partial class InscriptionOverlay : Control
     // "Walk the land" was pressed: the world may move on.
     public event Action? Dismissed;
 
+    // "Another band comes" was pressed: a new band should replace the dead one in this world.
+    public event Action? AnotherBandRequested;
+
     public override void _Ready()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -72,8 +75,11 @@ public partial class InscriptionOverlay : Control
         _anotherBand = new Button
         {
             Text = "Another band comes",
-            Disabled = true,
-            TooltipText = "Not yet. A new band will arrive into this same land, near where the last one died.",
+        };
+        _anotherBand.Pressed += () =>
+        {
+            Visible = false;
+            AnotherBandRequested?.Invoke();
         };
         ways.AddChild(_anotherBand);
     }

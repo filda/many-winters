@@ -48,7 +48,7 @@ public partial class Main : Node3D
     private ChroniclePanel _chronicle = null!;
     private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
-    private readonly EndingAnnouncements _endingAnnouncements = new();
+    private EndingAnnouncements _endingAnnouncements = new();
     private TextureRect _selectionMarkerOverlay = null!;
     // The Person itself, not an id: commands and labels want the object and PersonView hands it
     // over on click, so nothing is looked up between "clicked" and "acted on".
@@ -599,6 +599,7 @@ public partial class Main : Node3D
         // The clock stood still, so the next tick is due the moment the inscription comes down -
         // a full interval later read as the world taking a second to notice.
         _inscriptionOverlay.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        _inscriptionOverlay.AnotherBandRequested += OnAnotherBandRequested;
         canvas.AddChild(_inscriptionOverlay);
     }
 
@@ -660,6 +661,38 @@ public partial class Main : Node3D
         {
             ShowInscription(Epitaph.Write(ending), offerAnotherBand: ending.Fate == BandFate.Ended);
         }
+    }
+
+    // A successor band arrives into this same world: a fresh crowd is spawned and the prologue
+    // takes their place on screen. The old band's dead and graves stay where they are.
+    private void OnAnotherBandRequested()
+    {
+        // The new band has not walked this land yet — fog clears around their new camp.
+        _world.Exploration.Reset();
+
+        // Clear selection: the old person is dead.
+        _selectedPerson = null;
+
+        // Spawn the successor.
+        var idRng = new Random(_world.Clock.CurrentTick.GetHashCode());
+        var newCamp = MapLoader.SpawnNewBand(_world, idRng, _campCenter);
+        _campCenter = newCamp;
+
+        // Reset ending tracker so the new band's fate changes are announced independently.
+        _endingAnnouncements = new EndingAnnouncements();
+
+        // Brief pre-roll so the new band is not standing still behind the prologue.
+        _world.Advance(IdleTask.MaxPauseTicks + 1);
+
+        var arrival = BandArrival.Of(_world);
+        _bandArrivalTick = arrival.ArrivalTick;
+        ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
+
+        // Move the camera to the new camp.
+        var campX = (float)newCamp.X;
+        var campZ = (float)newCamp.Y;
+        var campHeight = _terrain.SampleHeight(campX, campZ);
+        _cameraRig.FocusOn(new Vector3(campX, campHeight, campZ));
     }
 
     // Every inscription stops the clock until dismissed (see _Process); its title goes up on
