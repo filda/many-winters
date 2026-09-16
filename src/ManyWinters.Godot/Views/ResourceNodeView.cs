@@ -9,7 +9,9 @@ namespace ManyWinters.Godot.Views;
 // the occlusion fade can ghost a canopy while the trunk stays solid and a tree can bear fruit
 // without a second whole texture. Being a sprite in the world (hover, clicks, fog fade, shadow,
 // collision shape) is SpriteEntityView's; here is which layers this kind has and what its seed
-// varies.
+// varies. The scattered forest is thousands of these, one node each, and stays that way: every
+// tree and bush is a clickable entity (MapLoader.ScatterDecorations), so instancing them into a
+// MultiMesh would erase exactly what makes them resources.
 internal partial class ResourceNodeView : SpriteEntityView
 {
     // Ordinary resources read as a small icon on the ground. A fellable one is a tree standing

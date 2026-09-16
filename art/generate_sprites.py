@@ -8,6 +8,12 @@ art/zeman-sprite-prompts.md).
 Drawn at 4x the 64-unit authoring grid (SCALE) so the hatch lines survive BillboardSprite.cs's
 mipmapped linear filtering instead of collapsing into single pixels.
 
+Redrawing a sprite after the concept art means following its drawing, not just its motif: crop
+and enlarge the relevant region of docs/ZemanConceptArt.png first and reproduce how it is drawn
+(silhouette construction, how the hatching follows the form), keeping this file's palette and
+diagonal hatch fill underneath. Render a contact sheet at full size and at in-game size (about
+80 to 130 px), look at it, and iterate a few rounds before calling the sprite done.
+
 Run:  python3 generate_sprites.py <output_dir>
 """
 

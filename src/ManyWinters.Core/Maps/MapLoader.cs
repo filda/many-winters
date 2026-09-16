@@ -343,6 +343,9 @@ public static class MapLoader
 
     // Spawns the scattered decoration - trees, bushes, ground cover, rocks, stumps, logs - as
     // real gatherable ResourceNodes: a dense zone around camp, several groves, then the open world.
+    // Each one is an entity with its own identity, hover, click and collision, which rules out
+    // presenting them as instanced geometry (MultiMeshInstance3D or the like). When the count
+    // hurts the frame rate, lower the counts here or cull by distance; never batch.
     private static void ScatterDecorations(WorldState world, Random idRng)
     {
         var rng = new Random(DecorationScatterSeed);
