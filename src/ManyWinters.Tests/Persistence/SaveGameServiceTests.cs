@@ -263,6 +263,30 @@ public class SaveGameServiceTests
     }
 
     [Fact]
+    public void RoundTripPreservesItemPiles()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var pile = world.SpawnItemPile(TestCatalogs.WoodItem, new Position(5f, 6f), 3);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var restoredPile = Assert.Single(restored.ItemPiles);
+            Assert.Equal(pile.Id, restoredPile.Id);
+            Assert.Equal(pile.Kind, restoredPile.Kind);
+            Assert.Equal(pile.Position, restoredPile.Position);
+            Assert.Equal(pile.Amount, restoredPile.Amount);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void LoadWithConfigurationProvidedWiresItIntoTheRestoredWorld()
     {
         var world = TestCatalogs.CreateWorld();

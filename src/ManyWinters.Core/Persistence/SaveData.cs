@@ -14,6 +14,7 @@ public sealed record SaveData(
     IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
     IReadOnlyList<BuildingSaveData> Buildings,
     IReadOnlyList<GraveSaveData> Graves,
+    IReadOnlyList<ItemPileSaveData> ItemPiles,
     IReadOnlyList<ExplorationCellSaveData> ExploredCells,
     IReadOnlyList<AffectionSaveData> Affections);
 
@@ -74,5 +75,12 @@ public sealed record GraveSaveData(
     string? MotherName,
     string? FatherName,
     IReadOnlyList<TechniqueId> KnownTechniques);
+
+public sealed record ItemPileSaveData(
+    Guid Id,
+    ItemKindId Kind,
+    double PositionX,
+    double PositionY,
+    int Amount);
 
 public sealed record ExplorationCellSaveData(int X, int Y);

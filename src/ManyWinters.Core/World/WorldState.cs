@@ -19,6 +19,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     private readonly List<ResourceNode> _resourceNodes = new();
     private readonly List<Building> _buildings = new();
     private readonly List<Grave> _graves = new();
+    private readonly List<ItemPile> _itemPiles = new();
 
     public SimulationClock Clock { get; } = new();
 
@@ -45,6 +46,8 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public IReadOnlyList<Grave> Graves => _graves;
 
+    public IReadOnlyList<ItemPile> ItemPiles => _itemPiles;
+
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
     public event Action<Person>? PersonAdded;
@@ -54,6 +57,10 @@ public sealed class WorldState(WorldConfiguration configuration)
     public event Action<Building>? BuildingAdded;
 
     public event Action<Grave>? GraveAdded;
+
+    public event Action<ItemPile>? ItemPileAdded;
+
+    public event Action<ItemPile>? ItemPileRemoved;
 
     // Add* take a finished object: what it is made of is the caller's business
     // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
@@ -93,6 +100,20 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         _graves.Add(grave);
         GraveAdded?.Invoke(grave);
+    }
+
+    public void AddItemPile(ItemPile pile)
+    {
+        _itemPiles.Add(pile);
+        ItemPileAdded?.Invoke(pile);
+    }
+
+    // Called once a pile's Amount reaches zero (see PickUpItemCommand): an empty pile has
+    // nothing left for anyone to point at.
+    public void RemoveItemPile(ItemPile pile)
+    {
+        _itemPiles.Remove(pile);
+        ItemPileRemoved?.Invoke(pile);
     }
 
     public void Execute(ICommand command) => command.Execute(this);
@@ -747,4 +768,6 @@ public sealed class WorldState(WorldConfiguration configuration)
     internal void RestoreBuilding(Building building) => _buildings.Add(building);
 
     internal void RestoreGrave(Grave grave) => _graves.Add(grave);
+
+    internal void RestoreItemPile(ItemPile pile) => _itemPiles.Add(pile);
 }

@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 16;
+    private const int CurrentVersion = 17;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -55,6 +55,15 @@ public static class SaveGameService
                 grave.KnownTechniques))
             .ToList();
 
+        var itemPiles = world.ItemPiles
+            .Select(pile => new ItemPileSaveData(
+                pile.Id.Value,
+                pile.Kind,
+                pile.Position.X,
+                pile.Position.Y,
+                pile.Amount))
+            .ToList();
+
         var exploredCells = world.Exploration.Explored
             .Select(cell => new ExplorationCellSaveData(cell.X, cell.Y))
             .ToList();
@@ -71,6 +80,7 @@ public static class SaveGameService
             resourceNodes,
             buildings,
             graves,
+            itemPiles,
             exploredCells,
             affections);
     }
@@ -161,6 +171,17 @@ public static class SaveGameService
             };
 
             world.RestoreGrave(grave);
+        }
+
+        foreach (var pileData in data.ItemPiles)
+        {
+            world.RestoreItemPile(new ItemPile
+            {
+                Id = new ItemPileId(pileData.Id),
+                Kind = pileData.Kind,
+                Position = new Position(pileData.PositionX, pileData.PositionY),
+                Amount = pileData.Amount,
+            });
         }
 
         world.Exploration.RestoreExplored(data.ExploredCells.Select(cell => new ExplorationCell(cell.X, cell.Y)));

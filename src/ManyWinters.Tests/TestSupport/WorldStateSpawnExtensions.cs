@@ -1,5 +1,6 @@
 using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -120,5 +121,18 @@ public static class WorldStateSpawnExtensions
 
         world.AddGrave(grave);
         return grave;
+    }
+
+    public static ItemPile SpawnItemPile(this WorldState world, ItemKindId kind, Position position, int amount)
+    {
+        var pile = new ItemPile
+        {
+            Kind = kind,
+            Position = position,
+            Amount = amount,
+        };
+
+        world.AddItemPile(pile);
+        return pile;
     }
 }
