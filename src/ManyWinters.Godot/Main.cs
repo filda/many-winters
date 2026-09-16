@@ -727,7 +727,19 @@ public partial class Main : Node3D
 
         if (BandEnding.Of(_world) is { } ending)
         {
-            ShowInscription(Epitaph.Write(ending), offerAnotherBand: ending.Fate == BandFate.Ended);
+            var nobodyIsLeft = ending.Fate == BandFate.Ended;
+
+            // The roster and the selection are about the dead, and the world under this epitaph
+            // waits for a successor band: put the old band's windows away now, the way that
+            // band's arrival would have (OnAnotherBandRequested), not only then.
+            if (nobodyIsLeft)
+            {
+                _bandPanel.Visible = false;
+                _selectionPanel.ClearSelection();
+                _selectedPerson = null;
+            }
+
+            ShowInscription(Epitaph.Write(ending), offerAnotherBand: nobodyIsLeft);
         }
     }
 
