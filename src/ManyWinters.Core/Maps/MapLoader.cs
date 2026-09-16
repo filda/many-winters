@@ -147,11 +147,7 @@ public static class MapLoader
     // to move the camera.
     public static Position SpawnNewBand(WorldState world, Random idRng, Position oldCampCenter)
     {
-        var angle = idRng.NextDouble() * Math.Tau;
-        var distance = 80 + (idRng.NextDouble() * 170);
-        var campCenter = ClampToTerrain(
-            oldCampCenter.X + (Math.Cos(angle) * distance),
-            oldCampCenter.Y + (Math.Sin(angle) * distance));
+        var campCenter = NextCampPosition(idRng, oldCampCenter);
 
         SpawnBand(world, idRng, new Random(AlternativeNamingSeed), campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
         SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
@@ -159,10 +155,47 @@ public static class MapLoader
         return campCenter;
     }
 
-    private static Position ClampToTerrain(double x, double y) =>
-        new(
-            Math.Max(-TerrainHalfMeters, Math.Min(TerrainHalfMeters, x)),
-            Math.Max(-TerrainHalfMeters, Math.Min(TerrainHalfMeters, y)));
+    // The walk a successor band makes from the old camp, far enough that the two camps read as
+    // separate, near enough that the open world between them stays in reach.
+    private const double MinCampDistance = 80;
+    private const double MaxCampDistance = 250;
+    private const int MaxCampPlacementAttempts = 30;
+
+    // Everything a camp scatters reaches at most CampFoodRadius from its center (the food; the
+    // starting stock sits 5/10 m out, the crowd within CrowdRadius). The camp center keeps that
+    // far, plus slack for a person's own extent, inside the terrain edge, so the farthest of
+    // what the band brings still has ground under it.
+    private const float CampEdgeInset = CampFoodRadius + 4f;
+
+    // A plain clamp to the terrain edge would pin the center there when the old camp sits near
+    // it, leaving part of the crowd, stock and food off the map - and the walk itself could
+    // shrink to nothing, spawning the successor on top of its predecessor. So the center is
+    // clamped to the inset square instead, and a draw whose clamped result no longer honours
+    // the walk is redrawn.
+    private static Position NextCampPosition(Random rng, Position oldCampCenter)
+    {
+        var limit = TerrainHalfMeters - CampEdgeInset;
+        var candidate = new Position(0, 0);
+
+        // Stryker disable once Equality,Update: the attempt cap is a give-up guard that a camp
+        // at a real distance turns up well before, so its value or the counter moving changes
+        // nothing placed
+        for (var attempt = 0; attempt < MaxCampPlacementAttempts; attempt++)
+        {
+            var angle = rng.NextDouble() * Math.Tau;
+            var distance = MinCampDistance + (rng.NextDouble() * (MaxCampDistance - MinCampDistance));
+            candidate = new Position(
+                Math.Max(-limit, Math.Min(limit, oldCampCenter.X + (Math.Cos(angle) * distance))),
+                Math.Max(-limit, Math.Min(limit, oldCampCenter.Y + (Math.Sin(angle) * distance))));
+
+            if (WorldState.Distance(candidate, oldCampCenter) >= MinCampDistance)
+            {
+                return candidate;
+            }
+        }
+
+        return candidate;
+    }
 
     private static void SpawnCampFood(WorldState world, Random rng, Random idRng, Position campCenter)
     {
