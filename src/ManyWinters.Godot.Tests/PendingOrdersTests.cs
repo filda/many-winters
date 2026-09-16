@@ -80,7 +80,8 @@ public class PendingOrdersTests
     }
 
     // The world moved on while they walked. That is the order's end, not something to keep
-    // waiting for: the tree was felled by somebody else, so there is nothing to arrive at.
+    // waiting for: the tree was felled by somebody else, so there is nothing to arrive at. It is
+    // worth telling the player, unlike a quiet arrival.
     [Fact]
     public void AnOrderWhoseTargetIsGoneEndsRatherThanWaiting()
     {
@@ -94,11 +95,19 @@ public class PendingOrdersTests
         person.Position = node.Position;
 
         Assert.Empty(orders.Ready(world));
+        var failed = Assert.Single(orders.Failed);
+        Assert.Equal(person, failed.Person);
+        Assert.Equal("Gather", failed.Label);
+
+        // Reported once, the same as a successful order.
         Assert.Empty(orders.Ready(world));
+        Assert.Empty(orders.Failed);
     }
 
+    // Dying on the way is the order's end too, but nobody expects to be told a dead person's
+    // errand fell through.
     [Fact]
-    public void AnOrderGivenToSomebodyWhoDiesOnTheWayEnds()
+    public void AnOrderGivenToSomebodyWhoDiesOnTheWayEndsWithoutBeingReportedAsFailed()
     {
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", Camp);
@@ -110,6 +119,7 @@ public class PendingOrdersTests
         person.IsAlive = false;
 
         Assert.Empty(orders.Ready(world));
+        Assert.Empty(orders.Failed);
     }
 
     // A new order replaces whatever they were on their way to do, the same way the walk that

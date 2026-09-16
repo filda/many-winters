@@ -11,9 +11,20 @@ namespace ManyWinters.Godot.Logic;
 //
 // One order per person. A new one replaces whatever they were on their way to do, the same way
 // the walk that carries it interrupts their current task (MoveCommand).
+// A dead end reached while walking: the target the player pointed at is no longer there to act
+// on (felled by somebody else, buried already) by the time the person arrives. Named by who was
+// sent and what they were sent to do, so the player can be told rather than left to notice the
+// person just stopped.
+internal readonly record struct FailedOrder(Person Person, string Label);
+
 internal sealed class PendingOrders
 {
     private readonly Dictionary<Person, ActionOffer> _orders = new();
+
+    // The failures from the most recent Ready call, for whoever wants to tell the player about
+    // them (see Main.ResolvePendingOrders). Dying on the way is not included: nobody expects to
+    // be told a dead person's errand fell through.
+    internal IReadOnlyList<FailedOrder> Failed { get; private set; } = [];
 
     internal void Add(Person person, ActionOffer offer) => _orders[person] = offer;
 
@@ -31,10 +42,12 @@ internal sealed class PendingOrders
     {
         if (_orders.Count == 0)
         {
+            Failed = [];
             return [];
         }
 
         var ready = new List<ActionOffer>();
+        var failed = new List<FailedOrder>();
 
         // Materialised: both branches below drop the order being looked at.
         foreach (var (person, offer) in _orders.ToList())
@@ -56,8 +69,13 @@ internal sealed class PendingOrders
             {
                 ready.Add(refreshed);
             }
+            else
+            {
+                failed.Add(new FailedOrder(person, offer.Label));
+            }
         }
 
+        Failed = failed;
         return ready;
     }
 }

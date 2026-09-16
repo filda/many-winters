@@ -1076,6 +1076,11 @@ public partial class Main : Node3D
         {
             Execute(offer.Command);
         }
+
+        foreach (var failed in _pendingOrders.Failed)
+        {
+            _statusBar.Notify($"{failed.Person.Name} arrived too late to {failed.Label.ToLowerInvariant()}.");
+        }
     }
 
     // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): the player directing an
