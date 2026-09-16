@@ -810,8 +810,8 @@ public partial class Main : Node3D
     }
 
     // Debug only: the world's raw numbers and the levers that move them. What the player is meant
-    // to read and press lives in SelectionPanel; this window keeps the dump, the spawner and the
-    // map reveal, none of which belong in the game proper (docs/todo/todo.md).
+    // to read and press lives in SelectionPanel; this window keeps the dump, the spawner, the
+    // extinguisher and the map reveal, none of which belong in the game proper (docs/todo/todo.md).
     //
     // Shut until the status bar's Inspector button is pressed. It used to open with the game and
     // sit over the corner the band's roster now claims, which put a debug tool in front of the
@@ -845,6 +845,13 @@ public partial class Main : Node3D
         var spawnButton = new Button { Text = "Spawn Person" };
         spawnButton.Pressed += OnSpawnButtonPressed;
         panel.Body.AddChild(spawnButton);
+
+        // The quick way to the epitaph and its "Another band comes" offer (docs/todo/todo.md):
+        // the epitaph of a band nobody is left in carries no closing words, so without this the
+        // only way to that screen is playing the band out by hand.
+        var extinguishButton = new Button { Text = "Extinguish Band" };
+        extinguishButton.Pressed += OnExtinguishButtonPressed;
+        panel.Body.AddChild(extinguishButton);
 
         // A development view, not a gameplay one (see RevealableExploration): the whole map as if
         // fog of war did not exist.
@@ -889,6 +896,11 @@ public partial class Main : Node3D
     {
         var name = _world.GenerateUnrelatedName(Random.Shared);
         _world.Execute(new SpawnPersonCommand(name, FindFreeSpawnPosition(), Person.Unknown, Person.Unknown));
+    }
+
+    private void OnExtinguishButtonPressed()
+    {
+        _world.Execute(new ExtinguishBandCommand());
     }
 
     // A line pressed on the selected person's card or on the contextual menu. Both draw offers
