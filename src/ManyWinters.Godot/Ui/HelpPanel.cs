@@ -55,6 +55,7 @@ public partial class HelpPanel : Control
             "Band — everyone in a list; press a name to go to them",
             "Chronicle — the inscriptions, once there are any",
             "Inspector — the raw numbers, a tool rather than the game",
+            "F11 — fullscreen and back to a window",
         ]),
     ];
 

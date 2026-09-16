@@ -266,6 +266,11 @@ public partial class Main : Node3D
             _cameraRig.ToggleProjection();
         }
 
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F11 })
+        {
+            ToggleFullscreen();
+        }
+
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space })
         {
             // Space is Godot's default ui_accept: unless eaten here it also activates whichever
@@ -305,6 +310,17 @@ public partial class Main : Node3D
                 GetViewport().SetInputAsHandled();
             }
         }
+    }
+
+    // F11 moves between the window and a borderless fullscreen - the whole screen, taskbar
+    // included, with no native Windows chrome (WindowMode.Fullscreen rather than the exclusive
+    // video-mode switch, which is the less forgiving kind on Windows). F alone zooms the camera
+    // (FreeCameraRig), so the key is F11; the controls page lists it under Windows.
+    private static void ToggleFullscreen()
+    {
+        var mode = DisplayServer.WindowGetMode();
+        var inFullscreen = mode is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
+        DisplayServer.WindowSetMode(inFullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
     }
 
     // The right button does two jobs: dragged it turns the camera (FreeCameraRig), pressed and
