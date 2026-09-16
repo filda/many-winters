@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Cake.Frosting" Version="6.3.0" />
+    <!-- Windows-only, used by the Screenshot target to encode the captured window as PNG. -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.31" />
   </ItemGroup>
 
 </Project>

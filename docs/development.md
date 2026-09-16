@@ -136,11 +136,16 @@ dotnet run --project build/ManyWinters.Build.csproj -- --help
 # Run the full CI gate
 dotnet run --project build/ManyWinters.Build.csproj -- --target=CI
 
-# Start Godot and wait until Beckett is listening
+# Start Godot if needed, wait until Beckett is listening, write the MCP client configs
 dotnet run --project build/ManyWinters.Build.csproj -- --target=Beckett
+
+# Save a PNG of the running game window (Windows only)
+dotnet run --project build/ManyWinters.Build.csproj -- --target=Screenshot --out=shot.png
 ```
 
-The `CI` target runs restore, formatting, the Release build, InspectCode and tests. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build.
+The `CI` target runs the line-ending check, restore, formatting, the Release build, InspectCode and tests, and stops at the first failure. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build, and it is the home for every repository task that needs a process launched, a log parsed or a Win32 call made. Do not add shell scripts beside it.
+
+`Screenshot` captures the window's own composited surface through `PrintWindow`, so the game may be behind other windows. It picks the main window whose title starts with "ManyWinters Godot" and skips the editor; `--pid=<n>` or `--title=<prefix>` override that.
 
 ### Editor plugins
 
@@ -170,10 +175,10 @@ A clone that skips this step is not merely noisy: the editor drops the missing p
 **Connect an agent:**
 
 ```powershell
-scripts/godot-editor.ps1
+dotnet run --project build/ManyWinters.Build.csproj -- --target=Beckett
 ```
 
-Beckett writes its client config next to `project.godot` (`src/ManyWinters.Godot/.mcp.json`, plus a `.vscode/mcp.json` we don't use), but the agents run from the repo root and look there: Claude Code reads `.mcp.json`, OpenCode reads `opencode.json` and does not read `.mcp.json` at all. The URL also carries a per-machine auth token from `src/ManyWinters.Godot/.beckett/token`, so all three files are gitignored. The script starts the editor if none is open, waits for the server, and writes the current URL into both root files, leaving any other servers listed there alone. Re-run it if the token is regenerated or the server reports a different port (it walks past a busy 8770, which is what a second editor on the same project causes).
+Beckett writes its client config next to `project.godot` (`src/ManyWinters.Godot/.mcp.json`, plus a `.vscode/mcp.json` we don't use), but the agents run from the repo root and look there: Claude Code reads `.mcp.json`, OpenCode reads `opencode.json` and does not read `.mcp.json` at all. The URL also carries a per-machine auth token from `src/ManyWinters.Godot/.beckett/token`, so all three files are gitignored. The target starts the editor only if none is open on the project, waits for the server, and writes the current URL into both root files, leaving any other servers listed there alone. Re-run it if the token is regenerated or the server reports a different port (it walks past a busy 8770, which is what a second editor on the same project causes). An MCP client that connected before the server existed needs a reconnect (Claude Code: `/mcp`).
 
 ## Testing the presentation layer
 
@@ -224,7 +229,7 @@ Whitespace formatting (indentation, line endings, spacing — whatever `.editorc
 dotnet format ManyWinters.sln
 ```
 
-`.gitattributes` pins every text file to LF on checkout regardless of the machine's `core.autocrlf`, so line endings can't drift either.
+`.gitattributes` pins every text file to LF on checkout and normalises it on commit regardless of the machine's `core.autocrlf`, so the repository itself can't drift. The working tree can: a tool that saves CRLF leaves a file git considers unchanged while every reader sees different bytes. The `LineEndings` step of the `CI` target (`git ls-files --eol`) fails on any tracked file like that and lists it.
 
 ## Inspections
 
@@ -238,11 +243,11 @@ dotnet jb inspectcode ManyWinters.sln --swea --no-build --severity=WARNING -f=Te
 
 Which inspections count is decided in `.editorconfig`: the dead-code family (`resharper_unused_member_global_highlighting` and friends) is raised to `warning` there, since it ships as mere suggestions; style suggestions stay below the gate. A genuine false positive — a Godot `[Export]` setter the engine writes, a JSON record the serializer instantiates — is silenced inline with `// ReSharper disable once <InspectionId>` and a comment saying why, never by lowering the inspection for everyone.
 
-If the tool aborts with "MSBuild process was started ... but the IDE failed to connect to it" on Windows, it picked up a Visual Studio Build Tools MSBuild; point it at the SDK's instead, e.g. `--toolset-path="C:\Program Files\dotnet\sdk\8.0.424\MSBuild.dll"`.
+If the tool aborts with "MSBuild process was started ... but the IDE failed to connect to it" on Windows, it picked up a Visual Studio Build Tools MSBuild; point it at the SDK's instead, e.g. `--toolset-path="C:\Program Files\dotnet\sdk\8.0.424\MSBuild.dll"`. The `InspectCode` target of the Cake build does this itself from `dotnet --list-sdks`.
 
 ## The whole gate in one command
 
-The Cake Frosting `CI` target runs the same restore, format check, Release build, InspectCode and test gate as `ci.yml`, and stops at the first failure. `scripts/check.ps1` remains a Windows-only extra check for tracked-file line endings. Run `dotnet run --project build/ManyWinters.Build.csproj -- --target=CI` before considering a change done.
+The Cake Frosting `CI` target is what `ci.yml` runs: line-ending check, restore, format check, Release build, InspectCode and tests, stopping at the first failure. Run `dotnet run --project build/ManyWinters.Build.csproj -- --target=CI` before considering a change done.
 
 ## Development notes
 
