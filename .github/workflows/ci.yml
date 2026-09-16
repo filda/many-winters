@@ -17,34 +17,8 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore
-        run: dotnet restore ManyWinters.sln
-
-      - name: Check formatting (lint)
-        run: dotnet format ManyWinters.sln --verify-no-changes --severity warn
-
-      - name: Build (analyzers run as part of build)
-        run: dotnet build ManyWinters.sln --no-restore --configuration Release
-
-      # Solution-wide inspections Roslyn's per-project analyzers cannot do: a public member
-      # nothing outside its type reads, a collection only ever written to, a class never
-      # instantiated. Which inspections count is decided in .editorconfig (the resharper_*
-      # keys); anything at warning or above fails the job. The tool itself never fails on
-      # findings, hence the count check. See docs/development.md ("Inspections") for running it locally.
-      - name: InspectCode (solution-wide dead-code checks)
-        run: |
-          dotnet tool restore
-          dotnet jb inspectcode ManyWinters.sln --swea --no-build --severity=WARNING \
-            --properties:Configuration=Release -f=Xml -o=inspectcode.xml
-          count=$(grep -c '<Issue ' inspectcode.xml || true)
-          if [ "$count" != "0" ]; then
-            cat inspectcode.xml
-            echo "InspectCode reported $count issue(s)"
-            exit 1
-          fi
-
-      - name: Test
-        run: dotnet test ManyWinters.sln --no-build --configuration Release --verbosity normal
+      - name: Cake Frosting CI
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=CI
 
   codeql:
     runs-on: ubuntu-latest
