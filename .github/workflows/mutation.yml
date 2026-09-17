@@ -30,6 +30,34 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      # One job per suite instead of five sequential runs in one job, so a stuck or
+      # cancelled suite doesn't take the others down with it and each gets its own
+      # runner (disk, memory) rather than accumulating five runs' worth of state.
+      fail-fast: false
+      matrix:
+        include:
+          - name: core-continuity-1
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-1.json
+          - name: core-continuity-2
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-2.json
+          - name: core-continuity-3
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-3.json
+          - name: core-other
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other.json
+          - name: simulation-runner
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Tools.SimulationRunner.csproj
+          # Its own stryker-config.json, because only the presentation layer's extracted
+          # calculations are mutated - the rest of ManyWinters.Godot is engine wiring with
+          # no tests, which would drown the score in uncovered mutants.
+          - name: godot
+            working-directory: src/ManyWinters.Godot.Tests
+            args: ""
     steps:
       - uses: actions/checkout@v7
 
@@ -44,38 +72,15 @@ jobs:
       - name: Restore solution
         run: dotnet restore ManyWinters.sln
 
-      - name: Run Stryker.NET (Core – Continuity Epitaph)
-        working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-1.json
-
-      - name: Run Stryker.NET (Core – Continuity BandEnding + BandArrival + Prologue)
-        working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-2.json
-
-      - name: Run Stryker.NET (Core – Continuity small files)
-        working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-3.json
-
-      - name: Run Stryker.NET (Core – remaining)
-        working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj --config-file stryker-config-core-other.json
-
-      - name: Run Stryker.NET (ManyWinters.Tools.SimulationRunner)
-        working-directory: src/ManyWinters.Tests
-        run: dotnet tool run dotnet-stryker --project ManyWinters.Tools.SimulationRunner.csproj
-
-      # Its own stryker-config.json, because only the presentation layer's extracted
-      # calculations are mutated - the rest of ManyWinters.Godot is engine wiring with no
-      # tests, which would drown the score in uncovered mutants.
-      - name: Run Stryker.NET (ManyWinters.Godot)
-        working-directory: src/ManyWinters.Godot.Tests
-        run: dotnet tool run dotnet-stryker
+      - name: Run Stryker.NET (${{ matrix.name }})
+        working-directory: ${{ matrix.working-directory }}
+        run: dotnet tool run dotnet-stryker ${{ matrix.args }}
 
       - name: Upload mutation report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mutation-report
+          name: mutation-report-${{ matrix.name }}
           path: |
             src/ManyWinters.Tests/StrykerOutput/**/reports/
             src/ManyWinters.Godot.Tests/StrykerOutput/**/reports/
