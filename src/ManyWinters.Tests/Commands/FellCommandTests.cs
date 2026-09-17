@@ -110,6 +110,7 @@ public class FellCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(3, 4));
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.Inventory.Add(TestCatalogs.Axe, 1);
         var node = world.SpawnResourceNode(TestCatalogs.ConiferTree, new Position(3, 4), 100);
 
         world.Execute(new FellCommand(person, node));
@@ -317,6 +318,43 @@ public class FellCommandTests
         var node = world.SpawnResourceNode(TestCatalogs.TreeStump, new Position(0, 0), 100);
 
         Assert.Equal(ActionBlocker.CannotBeFelled, new FellCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void FellingATreeWithoutAnAxeIsBlockedAsMissingTool()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var node = world.SpawnResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.MissingTool, new FellCommand(person, node).Blocker(world));
+        world.Execute(new FellCommand(person, node));
+
+        Assert.True(node.Growth!.IsAlive);
+    }
+
+    [Fact]
+    public void FellingATreeWithAnAxeInInventoryIsNotBlocked()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        person.Inventory.Add(TestCatalogs.Axe, 1);
+        var node = world.SpawnResourceNode(TestCatalogs.ConiferTree, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.None, new FellCommand(person, node).Blocker(world));
+    }
+
+    [Fact]
+    public void FellingABushWithoutAnAxeIsNotBlocked()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+        var node = world.SpawnResourceNode(TestCatalogs.Bush, new Position(0, 0), 100);
+
+        Assert.Equal(ActionBlocker.None, new FellCommand(person, node).Blocker(world));
     }
 
     [Fact]

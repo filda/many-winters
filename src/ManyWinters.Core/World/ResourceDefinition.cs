@@ -16,6 +16,9 @@ public sealed record ResourceDefinition(
     // sits where the tree stood (a stump), further ones (a fallen log) land nearby - see
     // FellCommand.
     IReadOnlyList<ResourceDefinition.FellLeaf>? FellLeaves = null,
+    // Whether felling this needs the felling skill's Tool in hand (see FellCommand.Blocker) - a
+    // trunk needs an axe, a bush does not, even though both use woodcutting.
+    bool RequiresToolToFell = false,
     // Ticks a node survives in an IsInhospitable climate (see WorldState.Advance). float.MaxValue
     // means never, so a stray 0-multiplier ClimateYield cannot kill something by accident.
     float TicksToWither = float.MaxValue,

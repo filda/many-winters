@@ -37,6 +37,11 @@ public sealed record FellCommand(Person Person, Entity Node) : ICommand
         }
 
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
+        if (resource.RequiresToolToFell && skillDefinition.Tool is { } tool && Person.Inventory.Get(tool) <= 0)
+        {
+            return ActionBlocker.MissingTool;
+        }
+
         return Person.KnownTechniques.Contains(skillDefinition.BaseTechnique)
             ? ActionBlocker.None
             : ActionBlocker.NotLearned;

@@ -26,6 +26,7 @@ public enum ActionBlocker
     NotHungry,
     NotEdible,
     CannotBeFelled,
+    MissingTool,
     SamePerson,
     WrongSex,
     CloseKin,
