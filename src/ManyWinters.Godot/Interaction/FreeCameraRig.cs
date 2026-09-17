@@ -36,6 +36,13 @@ public sealed class FreeCameraRig
     // Minimum clearance the camera keeps above the ground directly under it - see UpdateCamera.
     private const float MinCameraGroundClearance = 0.3f;
 
+    // ViewRadius's margin over the raw zoom distance: at the default tilt the ground footprint
+    // in view reaches well past the zoom distance itself (perspective spread plus the diagonal
+    // of a non-square viewport), and this is a cheap over-estimate rather than a per-frustum
+    // computation - WorldPresenter only uses it to decide which decorations are worth a node,
+    // where popping in a touch early costs nothing a real culling error would.
+    private const float ViewRadiusMultiplier = 3f;
+
     private readonly Node3D _rig;
     private readonly Camera3D _camera;
     private readonly float _minZoom;
@@ -57,6 +64,12 @@ public sealed class FreeCameraRig
     // For screen-space projection (Main's selection marker, click radius) - UnprojectPosition and
     // IsPositionBehind are not exposed any other way.
     public Camera3D Camera => _camera;
+
+    // How far from RigGlobalPosition a decoration is still worth building a node for (see
+    // WorldPresenter's view-distance culling). Tracks the current zoom, not a fixed world
+    // distance, so zooming out to see the whole map keeps everything in it, not just a fixed
+    // radius around the rig.
+    public float ViewRadius => (_isOrthographic ? _orthographicSize : _zoomDistance) * ViewRadiusMultiplier;
 
     // sampleHeight: the same ground-height function everything else on the ground uses
     // (TerrainRenderer.SampleHeight). Panning only moves the rig in XZ, so without it the rig's Y

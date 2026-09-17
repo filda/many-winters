@@ -37,12 +37,31 @@ public sealed class WorldPresenter
     // creating thousands of decoration views (MapLoader.ScatterDecorations) up front was the
     // biggest chunk of startup time. Kept here until its cell is explored (RefreshExploration).
     // Only Growable entities ever pile up at decoration scale, so only those go through pending.
+    //
+    // "Explored" never reverts (RevealableExploration), so once "Reveal Map" or normal play has
+    // explored the whole map, that gate alone would build a node for every decoration on it in
+    // one pass - see IsWithinViewOfCamera for the second, camera-distance gate that actually
+    // bounds how many resource nodes exist at once.
     private readonly Dictionary<EntityId, Entity> _pendingResourceNodes = new();
+
+    // Updated each RefreshExploration call (see Main._Process/OnRevealMapToggled). Simulation
+    // space (X, Y on the ground plane), not render space, so comparing against Entity.Position
+    // needs no per-node WorldSpace conversion. Radius starts at 0 so nothing is in view before
+    // the first update - the constructor passes the camera's actual starting values instead.
+    private Position _viewCenter;
+    private double _viewRadiusSquared;
+
+    // The radius a decoration must fall back outside of before its view is torn down again -
+    // wider than the create radius, so a decoration sitting right at the edge does not flicker
+    // in and out as the camera drifts by a meter.
+    private const float ViewReleaseRadiusMultiplier = 1.25f;
 
     public WorldPresenter(
         Node3D container,
         WorldState world,
         RevealableExploration exploration,
+        Vector3 initialCameraPosition,
+        float initialViewRadius,
         Action<Person, MouseButton> onPersonClicked,
         Action<Entity, MouseButton> onResourceNodeClicked,
         Action<Entity, MouseButton> onBuildingClicked,
@@ -64,6 +83,8 @@ public sealed class WorldPresenter
         _people = world.People;
         _graves = world.Graves;
         _entities = world.Entities;
+        _viewCenter = WorldSpace.ToSimulation(initialCameraPosition);
+        _viewRadiusSquared = (double)initialViewRadius * initialViewRadius;
 
         world.PersonAdded += CreatePersonView;
         world.EntityAdded += CreateEntityView;
@@ -184,13 +205,27 @@ public sealed class WorldPresenter
 
     private void CreateResourceNodeView(Entity node)
     {
-        if (!_exploration.IsExplored(ExplorationState.CellFor(node.Position)))
+        if (!IsWithinViewOfCamera(node.Position, _viewRadiusSquared))
         {
             _pendingResourceNodes[node.Id] = node;
             return;
         }
 
         CreateResourceNodeViewNow(node);
+    }
+
+    // Explored (fog of war, never reverts) and close enough to the camera to be worth a node
+    // right now (see the _viewCenter/_viewRadiusSquared fields).
+    private bool IsWithinViewOfCamera(Position position, double radiusSquared)
+    {
+        if (!_exploration.IsExplored(ExplorationState.CellFor(position)))
+        {
+            return false;
+        }
+
+        var dx = position.X - _viewCenter.X;
+        var dy = position.Y - _viewCenter.Y;
+        return dx * dx + dy * dy <= radiusSquared;
     }
 
     private void CreateResourceNodeViewNow(Entity node)
@@ -208,8 +243,15 @@ public sealed class WorldPresenter
     // early-out (RememberedFade.Retarget) ends most calls at once. Every family of view goes
     // through here, so a grave, hut or corpse the group walked away from dims with the trees;
     // what the view does with it is its own business.
-    public void RefreshExploration()
+    //
+    // cameraPosition/viewRadius refresh the view-distance gate resource nodes check themselves
+    // against (IsWithinViewOfCamera) - other view families are few enough in practice to skip
+    // the same treatment.
+    public void RefreshExploration(Vector3 cameraPosition, float viewRadius)
     {
+        _viewCenter = WorldSpace.ToSimulation(cameraPosition);
+        _viewRadiusSquared = (double)viewRadius * viewRadius;
+
         RefreshResourceNodeExploration();
 
         // People are read from the world, not _personViews, because the cell to ask about is
@@ -248,28 +290,30 @@ public sealed class WorldPresenter
     private bool IsOutOfSight(Position position) =>
         !_exploration.IsVisible(ExplorationState.CellFor(position));
 
-    // Resource nodes' two extra jobs: promote a pending node whose cell is now explored to a
-    // real view, and send a view whose cell is *not* explored back to pending. The latter only
-    // happens when "Reveal Map" is switched off again (ExplorationState never un-explores a
-    // cell): the fog shaders assume nothing is instantiated under unexplored ground, so a view
-    // left there shows through as a fogged silhouette. Graves and buildings need neither: built
-    // by the group's own hands, their cell is explored before they exist and stays so.
+    // Resource nodes' two extra jobs: promote a pending node now explored and in view to a real
+    // view, and send a view that fell out of either back to pending. The latter happens both
+    // when "Reveal Map" is switched off again (ExplorationState never un-explores a cell: the
+    // fog shaders assume nothing is instantiated under unexplored ground, so a view left there
+    // shows through as a fogged silhouette) and continuously as the camera moves away from an
+    // already-explored decoration - see IsWithinViewOfCamera. Graves and buildings need neither:
+    // built by the group's own hands, their cell is explored before they exist and stays so, and
+    // there are never enough of them to threaten node count the way decorations can.
     private void RefreshResourceNodeExploration()
     {
         if (_pendingResourceNodes.Count > 0)
         {
-            List<EntityId>? newlyExplored = null;
+            List<EntityId>? newlyInView = null;
             foreach (var (id, node) in _pendingResourceNodes)
             {
-                if (_exploration.IsExplored(ExplorationState.CellFor(node.Position)))
+                if (IsWithinViewOfCamera(node.Position, _viewRadiusSquared))
                 {
-                    (newlyExplored ??= new List<EntityId>()).Add(id);
+                    (newlyInView ??= new List<EntityId>()).Add(id);
                 }
             }
 
-            if (newlyExplored is not null)
+            if (newlyInView is not null)
             {
-                foreach (var id in newlyExplored)
+                foreach (var id in newlyInView)
                 {
                     var node = _pendingResourceNodes[id];
                     _pendingResourceNodes.Remove(id);
@@ -278,11 +322,14 @@ public sealed class WorldPresenter
             }
         }
 
+        // Wider than the create radius (ViewReleaseRadiusMultiplier), so a decoration right at
+        // the create boundary does not tear its view down again next tick.
+        var releaseRadiusSquared = _viewRadiusSquared * ViewReleaseRadiusMultiplier * ViewReleaseRadiusMultiplier;
+
         List<EntityId>? backToPending = null;
         foreach (var (id, view) in _resourceNodeViews)
         {
-            var cell = ExplorationState.CellFor(view.Node.Position);
-            if (!_exploration.IsExplored(cell))
+            if (!IsWithinViewOfCamera(view.Node.Position, releaseRadiusSquared))
             {
                 (backToPending ??= new List<EntityId>()).Add(id);
                 continue;

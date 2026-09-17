@@ -55,6 +55,13 @@ public partial class Main : Node3D
     private Grave? _selectedGrave;
     private double _tickAccumulator;
 
+    // Skips ComputeOccludingSprites (an O(sprite count) scan) on frames where neither the camera
+    // nor the occlusion target moved: with the camera at rest and nobody selected walking, the
+    // sight line - and so the occluding set - cannot have changed since last frame.
+    private Vector3? _lastOcclusionCameraPosition;
+    private Vector3? _lastOcclusionTargetPosition;
+    private const float OcclusionRecomputeDistanceSquaredThreshold = 0.0001f;
+
     // Captured in _Ready, the one moment BandArrival.Of really means "just arrived"; TogglePause
     // calls BandArrival.Of again later only for its live population counts.
     private long _bandArrivalTick;
@@ -134,7 +141,7 @@ public partial class Main : Node3D
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
 
         await Building(90, "Setting out the band");
-        _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(this, _world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
@@ -217,7 +224,7 @@ public partial class Main : Node3D
         }
 
         _world.Advance(1);
-        _presenter.RefreshExploration();
+        _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
         ResolvePendingOrders();
@@ -438,7 +445,21 @@ public partial class Main : Node3D
     // with no way to tell where they went.
     private void UpdateOcclusionFade()
     {
-        var occluding = ComputeOccludingSprites();
+        var (targetPosition, selectedPersonNode) = ResolveOcclusionTarget();
+        var cameraPosition = _cameraRig.CameraGlobalPosition;
+
+        if (_lastOcclusionCameraPosition is { } lastCameraPosition
+            && _lastOcclusionTargetPosition is { } lastTargetPosition
+            && cameraPosition.DistanceSquaredTo(lastCameraPosition) < OcclusionRecomputeDistanceSquaredThreshold
+            && targetPosition.DistanceSquaredTo(lastTargetPosition) < OcclusionRecomputeDistanceSquaredThreshold)
+        {
+            return;
+        }
+
+        _lastOcclusionCameraPosition = cameraPosition;
+        _lastOcclusionTargetPosition = targetPosition;
+
+        var occluding = ComputeOccludingSprites(cameraPosition, targetPosition, selectedPersonNode);
 
         // Re-applied every frame, not only on entering the set: the hover highlight rewrites the
         // same sprite's Modulate on every hover-state change and would undo the fade whenever the
@@ -467,29 +488,28 @@ public partial class Main : Node3D
         }
     }
 
+    // What the occlusion sight line runs to: the selected person if any (and the node to exclude,
+    // since it sits at the target itself), else the camera's own orbit/pan target so nothing gets
+    // to block the view indefinitely just because no one is selected.
+    private (Vector3 TargetPosition, Node? SelectedPersonNode) ResolveOcclusionTarget()
+    {
+        if (_selectedPerson is { } person && _presenter.GetPersonGlobalPosition(person.Id) is { } personPosition)
+        {
+            return (personPosition, _presenter.GetPersonNode(person.Id));
+        }
+
+        return (_cameraRig.RigGlobalPosition, null);
+    }
+
     // Walks BillboardSprite.LiveSprites rather than the scene tree: a per-frame FindChildren over
     // every ResourceNode's Area3D subtree stuttered the whole frame, camera included. Ground
     // shadows are plain Sprite3Ds (GroundShadow), never billboards, so need no exclusion; only
     // the selection's own sprites do, since they sit at the target itself.
-    private HashSet<Sprite3D> ComputeOccludingSprites()
+    private HashSet<Sprite3D> ComputeOccludingSprites(Vector3 cameraPosition, Vector3 targetPosition, Node? selectedPersonNode)
     {
         var result = new HashSet<Sprite3D>();
 
-        Vector3 targetPosition;
-        Node? selectedPersonNode = null;
-        if (_selectedPerson is { } person && _presenter.GetPersonGlobalPosition(person.Id) is { } personPosition)
-        {
-            targetPosition = personPosition;
-            selectedPersonNode = _presenter.GetPersonNode(person.Id);
-        }
-        else
-        {
-            // Nobody selected: fall back to the camera's orbit/pan target, so nothing gets to block
-            // the view indefinitely just because no one is selected.
-            targetPosition = _cameraRig.RigGlobalPosition;
-        }
-
-        if (SightLine.From(_cameraRig.CameraGlobalPosition, targetPosition) is not { } sightLine)
+        if (SightLine.From(cameraPosition, targetPosition) is not { } sightLine)
         {
             return result;
         }
@@ -790,7 +810,7 @@ public partial class Main : Node3D
 
         // Update the fog visuals so the area around the new camp is already revealed.
         // _Process is blocked by the inscription, so we do it here instead of waiting.
-        _presenter.RefreshExploration();
+        _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
 
@@ -907,7 +927,7 @@ public partial class Main : Node3D
     private void OnRevealMapToggled(bool toggledOn)
     {
         _exploration.RevealAll = toggledOn;
-        _presenter.RefreshExploration();
+        _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
     }
