@@ -30,6 +30,7 @@ internal static class PersonActions
         }
 
         offers.AddRange(Crafts(world, person));
+        offers.AddRange(Drops(world, person));
 
         return offers;
     }
@@ -61,6 +62,19 @@ internal static class PersonActions
             .Select(recipe => ActionOffer.For(
                 $"Make {world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName.ToLowerInvariant()}",
                 new CraftCommand(person, recipe.Output),
+                world));
+
+    // Dropping is offered per item kind actually carried, for the same reason Crafts is: a line
+    // for material nobody has would just be an invitation to go find some, which pressing it
+    // could not do. Drops the whole stack, matching the "one pile at a time" shape DropItemCommand
+    // already has.
+    private static IEnumerable<ActionOffer> Drops(WorldState world, Person person) =>
+        person.Inventory.Counts
+            .Where(carried => carried.Value > 0)
+            .OrderBy(carried => carried.Key.Value, StringComparer.Ordinal)
+            .Select(carried => ActionOffer.For(
+                $"Drop {world.Configuration.ItemCatalog.Get(carried.Key).DisplayName.ToLowerInvariant()}",
+                new DropItemCommand(person, carried.Key, carried.Value),
                 world));
 
     private static ItemKindId? CarriedFood(WorldState world, Person person) =>

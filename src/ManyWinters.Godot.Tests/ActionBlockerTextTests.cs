@@ -78,7 +78,7 @@ public class ActionBlockerTextTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Apple, 5);
 
-        var eat = Assert.Single(PersonActions.For(world, person));
+        var eat = Assert.Single(PersonActions.For(world, person), offer => offer.Command is EatCommand);
 
         Assert.Equal(ActionBlockerText.For(ActionBlocker.NotHungry), ActionBlockerText.For(eat));
     }

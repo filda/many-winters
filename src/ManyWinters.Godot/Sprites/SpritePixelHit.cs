@@ -48,7 +48,16 @@ public static class SpritePixelHit
 
         if (!_imageCache.TryGetValue(texturePath, out var image))
         {
-            var texture = TextureCache.Get(texturePath);
+            var texture = TextureCache.TryGet(texturePath);
+
+            // A kind with no art yet (BillboardSprite.Create's fallback) renders as a solid
+            // colour quad with no alpha edge to read - the hit-test plane already narrowed the
+            // click to inside that quad (UvAt), so there is nothing more to check.
+            if (texture is null)
+            {
+                return true;
+            }
+
             image = texture.GetImage();
             _imageCache[texturePath] = image;
         }

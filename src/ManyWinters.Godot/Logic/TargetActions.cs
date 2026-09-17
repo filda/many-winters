@@ -87,6 +87,16 @@ internal static class TargetActions
         return new TargetMenu(target.Name, offers);
     }
 
+    // A pile is always one kind (see ItemPile), so the heading already names it and the one
+    // offer under it is a bare verb - the same shape as a resource's "Gather".
+    internal static TargetMenu For(WorldState world, Person actor, ItemPile pile) =>
+        new(world.Configuration.ItemCatalog.Get(pile.Kind).DisplayName, [PickUp(world, actor, pile)]);
+
+    // Split out for the same reason as Gather and WalkTo: a left click on a pile means this and
+    // nothing else.
+    internal static ActionOffer PickUp(WorldState world, Person actor, ItemPile pile) =>
+        ActionOffer.For("Pick up", new PickUpItemCommand(actor, pile), world, target: pile.Position);
+
     internal static TargetMenu For(WorldState world, Person actor, Building building)
     {
         var items = world.Configuration.ItemCatalog;

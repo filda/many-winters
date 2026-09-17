@@ -318,6 +318,46 @@ public class TargetActionsTests
         Assert.Equal(ActionBlocker.NothingToRepair, mend.Blocker);
     }
 
+    // A pile is always one kind (ItemPile), so the heading already names it and the offer under
+    // it is a bare verb - the same shape as a resource's "Gather".
+    [Fact]
+    public void APileIsHeadedByItsOwnKindAndOffersPickingItUp()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var pile = new ItemPile { Kind = TestWorld.Wood, Position = Camp, Amount = 3 };
+
+        var menu = TargetActions.For(world, ava, pile);
+
+        Assert.Equal("Wood", menu.Heading);
+        Assert.Equal(["Pick up"], Labels(menu));
+        Assert.Equal(TestWorld.Wood, Assert.IsType<PickUpItemCommand>(menu.Offers[0].Command).Pile.Kind);
+    }
+
+    [Fact]
+    public void APileOutOfReachIsSomethingToWalkTo()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var pile = new ItemPile { Kind = TestWorld.Wood, Position = FarAway, Amount = 3 };
+
+        var pickUp = TargetActions.PickUp(world, ava, pile);
+
+        Assert.Equal(ActionBlocker.TooFar, pickUp.Blocker);
+        Assert.Equal(pile.Position, pickUp.Target);
+        Assert.True(pickUp.NeedsWalkingTo);
+    }
+
+    [Fact]
+    public void PickUpIsTheSameOfferWhicheverWayItIsAskedFor()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var pile = new ItemPile { Kind = TestWorld.Wood, Position = Camp, Amount = 3 };
+
+        Assert.Equal(TargetActions.PickUp(world, ava, pile), TargetActions.For(world, ava, pile).Offers[0]);
+    }
+
     [Fact]
     public void BareGroundIsSomewhereToWalkTo()
     {

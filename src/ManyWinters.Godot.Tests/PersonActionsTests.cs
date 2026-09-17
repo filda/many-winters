@@ -11,8 +11,8 @@ namespace ManyWinters.Godot.Tests;
 // to act on.
 public class PersonActionsTests
 {
-    private static ActionOffer Single(WorldState world, Person person) =>
-        Assert.Single(PersonActions.For(world, person));
+    private static ActionOffer OfType<TCommand>(WorldState world, Person person) =>
+        Assert.Single(PersonActions.For(world, person), offer => offer.Command is TCommand);
 
     // Everything that needed a target - felling, burying, depositing, building, having a child -
     // left for the contextual menu, and took "nothing nearby" with it: every offer that is made
@@ -37,7 +37,7 @@ public class PersonActionsTests
 
         var labels = PersonActions.For(world, person).Select(offer => offer.Label).ToList();
 
-        Assert.Equal(["Eat"], labels);
+        Assert.Equal(["Eat", "Drop apple"], labels);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Wood, TestWorld.AxeInputAmount);
 
-        var craft = Single(world, person);
+        var craft = OfType<CraftCommand>(world, person);
 
         Assert.Equal("Make axe", craft.Label);
         Assert.True(craft.IsAvailable);
@@ -101,7 +101,7 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Wood, 1);
 
-        Assert.Equal(ActionBlocker.MissingMaterials, Single(world, person).Blocker);
+        Assert.Equal(ActionBlocker.MissingMaterials, OfType<CraftCommand>(world, person).Blocker);
     }
 
     // Carrying none of the material at all and the line is absent, the same rule Eat follows -
@@ -124,7 +124,7 @@ public class PersonActionsTests
         person.Needs.Hunger = 50f;
         person.Inventory.Add(TestWorld.Apple, 5);
 
-        var eat = Single(world, person);
+        var eat = OfType<EatCommand>(world, person);
 
         Assert.True(eat.IsAvailable);
         Assert.IsType<EatCommand>(eat.Command);
@@ -137,7 +137,7 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Apple, 5);
 
-        Assert.Equal(ActionBlocker.NotHungry, Single(world, person).Blocker);
+        Assert.Equal(ActionBlocker.NotHungry, OfType<EatCommand>(world, person).Blocker);
     }
 
     // Pointing at the food is how the person is shown how to eat (see
@@ -151,11 +151,53 @@ public class PersonActionsTests
         person.Needs.Hunger = 50f;
         person.Inventory.Add(TestWorld.Apple, 5);
 
-        var eat = Single(world, person);
+        var eat = OfType<EatCommand>(world, person);
 
         Assert.Empty(person.KnownTechniques);
         Assert.True(eat.IsAvailable);
         Assert.Equal(EatCommand.Skill, eat.TeachFirst);
+    }
+
+    // Dropping is an act on the person themselves - putting something down out of their own pack -
+    // so it belongs here rather than in a menu aimed at something in the world.
+    [Fact]
+    public void DroppingIsOfferedForEachItemKindCarried()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Apple, 5);
+
+        var drop = OfType<DropItemCommand>(world, person);
+
+        Assert.Equal("Drop apple", drop.Label);
+        Assert.True(drop.IsAvailable);
+        Assert.Equal(new DropItemCommand(person, TestWorld.Apple, 5), drop.Command);
+    }
+
+    // Carrying none of a kind at all and the line is absent, the same rule Eat and Crafts follow -
+    // otherwise the card grows a column of things nobody has to put down.
+    [Fact]
+    public void DroppingIsNotOfferedWithAnEmptyPack()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+
+        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is DropItemCommand);
+    }
+
+    [Fact]
+    public void DroppingIsOfferedOnePerItemKindInTheSameOrderEveryTime()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 3);
+        person.Inventory.Add(TestWorld.Apple, 2);
+
+        var labels = PersonActions.For(world, person)
+            .Where(offer => offer.Command is DropItemCommand)
+            .Select(offer => offer.Label);
+
+        Assert.Equal(["Drop apple", "Drop wood"], labels);
     }
 
     [Fact]

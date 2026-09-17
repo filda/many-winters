@@ -14,6 +14,7 @@ public sealed class WorldPresenter
     private readonly Action<ResourceNode, MouseButton> _onResourceNodeClicked;
     private readonly Action<Building, MouseButton> _onBuildingClicked;
     private readonly Action<Grave> _onGraveSelected;
+    private readonly Action<ItemPile, MouseButton> _onItemPileClicked;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
@@ -25,12 +26,14 @@ public sealed class WorldPresenter
     private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
     private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
+    private readonly Dictionary<ItemPileId, ItemPileView> _itemPileViews = new();
 
     // Read every tick by RefreshExploration. The world's live collections, not copies, so a
     // view created later (a new grave, someone born) is in here as soon as the simulation adds it.
     private readonly IReadOnlyList<Person> _people;
     private readonly IReadOnlyList<Grave> _graves;
     private readonly IReadOnlyList<Building> _buildings;
+    private readonly IReadOnlyList<ItemPile> _itemPiles;
 
     // Fog of war: a node outside the ever-explored area gets no view at all, not a hidden one -
     // creating thousands of decoration views (MapLoader.ScatterDecorations) up front was the
@@ -45,6 +48,7 @@ public sealed class WorldPresenter
         Action<ResourceNode, MouseButton> onResourceNodeClicked,
         Action<Building, MouseButton> onBuildingClicked,
         Action<Grave> onGraveSelected,
+        Action<ItemPile, MouseButton> onItemPileClicked,
         CollisionObject3D.InputEventEventHandler onMissedClick,
         Func<float, float, float> sampleHeight)
     {
@@ -53,6 +57,7 @@ public sealed class WorldPresenter
         _onResourceNodeClicked = onResourceNodeClicked;
         _onBuildingClicked = onBuildingClicked;
         _onGraveSelected = onGraveSelected;
+        _onItemPileClicked = onItemPileClicked;
         _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight;
         _resourceCatalog = world.Configuration.ResourceCatalog;
@@ -60,11 +65,14 @@ public sealed class WorldPresenter
         _people = world.People;
         _graves = world.Graves;
         _buildings = world.Buildings;
+        _itemPiles = world.ItemPiles;
 
         world.PersonAdded += CreatePersonView;
         world.ResourceNodeAdded += CreateResourceNodeView;
         world.BuildingAdded += CreateBuildingView;
         world.GraveAdded += CreateGraveView;
+        world.ItemPileAdded += CreateItemPileView;
+        world.ItemPileRemoved += pile => RemoveItemPileView(pile.Id);
 
         foreach (var person in world.People)
         {
@@ -84,6 +92,11 @@ public sealed class WorldPresenter
         foreach (var grave in world.Graves)
         {
             CreateGraveView(grave);
+        }
+
+        foreach (var pile in world.ItemPiles)
+        {
+            CreateItemPileView(pile);
         }
     }
 
@@ -216,6 +229,14 @@ public sealed class WorldPresenter
                 buildingView.SetRemembered(IsOutOfSight(building.Position));
             }
         }
+
+        foreach (var pile in _itemPiles)
+        {
+            if (_itemPileViews.TryGetValue(pile.Id, out var pileView))
+            {
+                pileView.SetRemembered(IsOutOfSight(pile.Position));
+            }
+        }
     }
 
     private bool IsOutOfSight(Position position) =>
@@ -295,5 +316,28 @@ public sealed class WorldPresenter
         view.SnapRemembered(IsOutOfSight(grave.Position));
         _graveViews[grave.Id] = view;
         _container.AddChild(view);
+    }
+
+    private void CreateItemPileView(ItemPile pile)
+    {
+        var view = new ItemPileView(pile, _hover, _onItemPileClicked, _onMissedClick)
+        {
+            Position = WorldSpace.ToRender(pile.Position, ItemPileView.Size / 2f, _sampleHeight),
+        };
+        view.SnapRemembered(IsOutOfSight(pile.Position));
+        _container.AddChild(view);
+        _itemPileViews[pile.Id] = view;
+    }
+
+    // Driven by WorldState.ItemPileRemoved, unlike a felled resource or a buried person - a pile
+    // shrinks and vanishes from an ordinary command (PickUpItemCommand), not a special one Main
+    // has to recognise, so the event is enough.
+    private void RemoveItemPileView(ItemPileId id)
+    {
+        if (_itemPileViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _itemPileViews.Remove(id);
+        }
     }
 }

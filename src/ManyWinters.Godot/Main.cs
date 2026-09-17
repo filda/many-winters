@@ -135,7 +135,7 @@ public partial class Main : Node3D
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
 
         await Building(90, "Setting out the band");
-        _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnMissedClick, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(this, _world, _exploration, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
@@ -1054,6 +1054,22 @@ public partial class Main : Node3D
         if (Acting() is { } person)
         {
             Perform(person, TargetActions.Gather(_world, person, node));
+        }
+    }
+
+    // A left click on a pile is the one shortcut kept, the same as a resource's Gather: "pick
+    // that up" is the only thing anybody means by pointing at it.
+    private void OnItemPileClicked(ItemPile pile, MouseButton button)
+    {
+        if (button == MouseButton.Right)
+        {
+            _pointedAt = actor => TargetActions.For(_world, actor, pile);
+            return;
+        }
+
+        if (Acting() is { } person)
+        {
+            Perform(person, TargetActions.PickUp(_world, person, pile));
         }
     }
 
