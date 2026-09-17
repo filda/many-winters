@@ -112,20 +112,20 @@ public static class MapLoader
     private const float RockAmount = 80f;
     private const float DeadWoodAmount = 60f;
 
-    private static readonly ResourceKindId ConiferTreeKind = new("conifer_tree");
-    private static readonly ResourceKindId DeciduousTreeKind = new("deciduous_tree");
-    private static readonly ResourceKindId BushKind = new("bush");
-    private static readonly ResourceKindId GrassKind = new("grass");
-    private static readonly ResourceKindId FlowerKind = new("flower");
-    private static readonly ResourceKindId FernKind = new("fern");
-    private static readonly ResourceKindId TreeStumpKind = new("tree_stump");
-    private static readonly ResourceKindId FallenLogKind = new("fallen_log");
-    private static readonly ResourceKindId AppleKind = new("apple");
-    private static readonly ResourceKindId PearKind = new("pear");
-    private static readonly ResourceKindId MushroomKind = new("mushroom");
-    private static readonly ResourceKindId PotatoKind = new("potato");
+    private static readonly EntityKindId ConiferTreeKind = new("conifer_tree");
+    private static readonly EntityKindId DeciduousTreeKind = new("deciduous_tree");
+    private static readonly EntityKindId BushKind = new("bush");
+    private static readonly EntityKindId GrassKind = new("grass");
+    private static readonly EntityKindId FlowerKind = new("flower");
+    private static readonly EntityKindId FernKind = new("fern");
+    private static readonly EntityKindId TreeStumpKind = new("tree_stump");
+    private static readonly EntityKindId FallenLogKind = new("fallen_log");
+    private static readonly EntityKindId AppleKind = new("apple");
+    private static readonly EntityKindId PearKind = new("pear");
+    private static readonly EntityKindId MushroomKind = new("mushroom");
+    private static readonly EntityKindId PotatoKind = new("potato");
 
-    private static readonly ResourceKindId[] RockKinds =
+    private static readonly EntityKindId[] RockKinds =
     [
         new("rock_pile"), new("rock_boulder"), new("rock_cluster"),
     ];
@@ -202,14 +202,14 @@ public static class MapLoader
         Position RandomCampPosition(double x, double y) =>
             new(campCenter.X + x, campCenter.Y + y);
 
-        void Spawn(ResourceKindId kind, int count)
+        void Spawn(EntityKindId kind, int count)
         {
             for (var i = 0; i < count; i++)
             {
                 var angle = rng.NextDouble() * Math.Tau;
                 var distance = CampFoodRadius * Math.Sqrt(rng.NextDouble());
                 var position = RandomCampPosition(Math.Cos(angle) * distance, Math.Sin(angle) * distance);
-                world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, FoodAmount));
+                world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), kind, position, FoodAmount));
             }
         }
 
@@ -320,8 +320,8 @@ public static class MapLoader
 
         // The band's starting stock, not scenery. Everything that grows — food included — is
         // scattered by ScatterDecorations (fresh world) or SpawnCampFood (successor band).
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("wood"), new Position(campCenter.X, campCenter.Y + 5f), 300f));
-        world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), new ResourceKindId("grass"), new Position(campCenter.X + 10f, campCenter.Y), 200f));
+        world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), new EntityKindId("wood"), new Position(campCenter.X, campCenter.Y + 5f), 300f));
+        world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), new EntityKindId("grass"), new Position(campCenter.X + 10f, campCenter.Y), 200f));
     }
 
     // Anyone the family table names as a mother or father has their sex settled by it, not by
@@ -351,12 +351,12 @@ public static class MapLoader
         var rng = new Random(DecorationScatterSeed);
         var occupied = new SpatialSpacingIndex<Position>(MinDecorationSpacing, p => p.X, p => p.Y);
 
-        void SpawnKind(ResourceKindId kind, int count, float amount, double centerX, double centerY, double radius)
+        void SpawnKind(EntityKindId kind, int count, float amount, double centerX, double centerY, double radius)
         {
             for (var i = 0; i < count; i++)
             {
                 var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
-                world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, amount));
+                world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), kind, position, amount));
             }
         }
 
@@ -366,7 +366,7 @@ public static class MapLoader
             {
                 var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
                 var kind = RockKinds[rng.Next(RockKinds.Length)];
-                world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, RockAmount));
+                world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), kind, position, RockAmount));
             }
         }
 
@@ -438,7 +438,7 @@ public static class MapLoader
 
         // Stryker disable Equality: every threshold here is compared against a continuous
         // NextDouble(), which lands exactly on one with probability zero, so < and <= agree
-        (ResourceKindId Kind, float Amount) PickMeadowKind()
+        (EntityKindId Kind, float Amount) PickMeadowKind()
         {
             var roll = rng.NextDouble();
             if (roll < 0.55)
@@ -455,10 +455,10 @@ public static class MapLoader
         }
 
         // Stryker disable once Equality: continuous draw, as the disabled block above - which does not reach into a local function's body
-        (ResourceKindId Kind, float Amount) PickForestKind() =>
+        (EntityKindId Kind, float Amount) PickForestKind() =>
             rng.NextDouble() < 0.55 ? (ConiferTreeKind, WoodAmount) : (DeciduousTreeKind, WoodAmount);
 
-        (ResourceKindId Kind, float Amount) PickThicketKind()
+        (EntityKindId Kind, float Amount) PickThicketKind()
         {
             var roll = rng.NextDouble();
             if (roll < 0.6)
@@ -513,7 +513,7 @@ public static class MapLoader
 
             // Stryker restore Equality
 
-            world.Execute(new SpawnResourceNodeCommand(ResourceNodeId.New(idRng), kind, position, amount));
+            world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), kind, position, amount));
             occupied.Add(position);
         }
     }

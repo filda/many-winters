@@ -1,5 +1,4 @@
 using Godot;
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -11,10 +10,10 @@ public sealed class WorldPresenter
 {
     private readonly Node3D _container;
     private readonly Action<Person, MouseButton> _onPersonClicked;
-    private readonly Action<ResourceNode, MouseButton> _onResourceNodeClicked;
-    private readonly Action<Building, MouseButton> _onBuildingClicked;
+    private readonly Action<Entity, MouseButton> _onResourceNodeClicked;
+    private readonly Action<Entity, MouseButton> _onBuildingClicked;
     private readonly Action<Grave> _onGraveSelected;
-    private readonly Action<ItemPile, MouseButton> _onItemPileClicked;
+    private readonly Action<Entity, MouseButton> _onItemPileClicked;
     private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
@@ -23,32 +22,32 @@ public sealed class WorldPresenter
     // HoverArbiter).
     private readonly HoverArbiter _hover = new();
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
-    private readonly Dictionary<ResourceNodeId, ResourceNodeView> _resourceNodeViews = new();
+    private readonly Dictionary<EntityId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
-    private readonly Dictionary<BuildingId, BuildingView> _buildingViews = new();
-    private readonly Dictionary<ItemPileId, ItemPileView> _itemPileViews = new();
+    private readonly Dictionary<EntityId, BuildingView> _buildingViews = new();
+    private readonly Dictionary<EntityId, ItemPileView> _itemPileViews = new();
 
     // Read every tick by RefreshExploration. The world's live collections, not copies, so a
     // view created later (a new grave, someone born) is in here as soon as the simulation adds it.
     private readonly IReadOnlyList<Person> _people;
     private readonly IReadOnlyList<Grave> _graves;
-    private readonly IReadOnlyList<Building> _buildings;
-    private readonly IReadOnlyList<ItemPile> _itemPiles;
+    private readonly IReadOnlyList<Entity> _entities;
 
     // Fog of war: a node outside the ever-explored area gets no view at all, not a hidden one -
     // creating thousands of decoration views (MapLoader.ScatterDecorations) up front was the
     // biggest chunk of startup time. Kept here until its cell is explored (RefreshExploration).
-    private readonly Dictionary<ResourceNodeId, ResourceNode> _pendingResourceNodes = new();
+    // Only Growable entities ever pile up at decoration scale, so only those go through pending.
+    private readonly Dictionary<EntityId, Entity> _pendingResourceNodes = new();
 
     public WorldPresenter(
         Node3D container,
         WorldState world,
         RevealableExploration exploration,
         Action<Person, MouseButton> onPersonClicked,
-        Action<ResourceNode, MouseButton> onResourceNodeClicked,
-        Action<Building, MouseButton> onBuildingClicked,
+        Action<Entity, MouseButton> onResourceNodeClicked,
+        Action<Entity, MouseButton> onBuildingClicked,
         Action<Grave> onGraveSelected,
-        Action<ItemPile, MouseButton> onItemPileClicked,
+        Action<Entity, MouseButton> onItemPileClicked,
         CollisionObject3D.InputEventEventHandler onMissedClick,
         Func<float, float, float> sampleHeight)
     {
@@ -64,39 +63,29 @@ public sealed class WorldPresenter
         _exploration = exploration;
         _people = world.People;
         _graves = world.Graves;
-        _buildings = world.Buildings;
-        _itemPiles = world.ItemPiles;
+        _entities = world.Entities;
 
         world.PersonAdded += CreatePersonView;
-        world.ResourceNodeAdded += CreateResourceNodeView;
-        world.BuildingAdded += CreateBuildingView;
+        world.EntityAdded += CreateEntityView;
         world.GraveAdded += CreateGraveView;
-        world.ItemPileAdded += CreateItemPileView;
-        world.ItemPileRemoved += pile => RemoveItemPileView(pile.Id);
+        // Only a pile-category entity ever fires this (see WorldState.RemoveEntity): a felled or
+        // withered resource stays in Entities with Growth.IsAlive false instead, and a building is
+        // never removed.
+        world.EntityRemoved += entity => RemoveItemPileView(entity.Id);
 
         foreach (var person in world.People)
         {
             CreatePersonView(person);
         }
 
-        foreach (var node in world.ResourceNodes)
+        foreach (var entity in world.Entities)
         {
-            CreateResourceNodeView(node);
-        }
-
-        foreach (var building in world.Buildings)
-        {
-            CreateBuildingView(building);
+            CreateEntityView(entity);
         }
 
         foreach (var grave in world.Graves)
         {
             CreateGraveView(grave);
-        }
-
-        foreach (var pile in world.ItemPiles)
-        {
-            CreateItemPileView(pile);
         }
     }
 
@@ -142,7 +131,7 @@ public sealed class WorldPresenter
         }
     }
 
-    public void SetResourceNodeHasFruit(ResourceNodeId id, bool hasFruit)
+    public void SetResourceNodeHasFruit(EntityId id, bool hasFruit)
     {
         if (_resourceNodeViews.TryGetValue(id, out var view))
         {
@@ -150,7 +139,7 @@ public sealed class WorldPresenter
         }
     }
 
-    public void RemoveResourceNodeView(ResourceNodeId id)
+    public void RemoveResourceNodeView(EntityId id)
     {
         if (_resourceNodeViews.TryGetValue(id, out var view))
         {
@@ -173,7 +162,27 @@ public sealed class WorldPresenter
         _personViews[person.Id] = view;
     }
 
-    private void CreateResourceNodeView(ResourceNode node)
+    // Picks which kind of view an Entity gets from its Category, since the model no longer
+    // carries that in its static type (see Entity).
+    private void CreateEntityView(Entity entity)
+    {
+        switch (entity.Category)
+        {
+            case EntityCategory.Growable:
+                CreateResourceNodeView(entity);
+                break;
+            case EntityCategory.Pile:
+                CreateItemPileView(entity);
+                break;
+            case EntityCategory.Building:
+                CreateBuildingView(entity);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(entity), entity.Category, "Unknown entity category.");
+        }
+    }
+
+    private void CreateResourceNodeView(Entity node)
     {
         if (!_exploration.IsExplored(ExplorationState.CellFor(node.Position)))
         {
@@ -184,7 +193,7 @@ public sealed class WorldPresenter
         CreateResourceNodeViewNow(node);
     }
 
-    private void CreateResourceNodeViewNow(ResourceNode node)
+    private void CreateResourceNodeViewNow(Entity node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
         var view = new ResourceNodeView(node, canFell, _hover, _onResourceNodeClicked, _onMissedClick);
@@ -222,19 +231,16 @@ public sealed class WorldPresenter
             }
         }
 
-        foreach (var building in _buildings)
+        foreach (var entity in _entities)
         {
-            if (_buildingViews.TryGetValue(building.Id, out var buildingView))
+            switch (entity.Category)
             {
-                buildingView.SetRemembered(IsOutOfSight(building.Position));
-            }
-        }
-
-        foreach (var pile in _itemPiles)
-        {
-            if (_itemPileViews.TryGetValue(pile.Id, out var pileView))
-            {
-                pileView.SetRemembered(IsOutOfSight(pile.Position));
+                case EntityCategory.Building when _buildingViews.TryGetValue(entity.Id, out var buildingView):
+                    buildingView.SetRemembered(IsOutOfSight(entity.Position));
+                    break;
+                case EntityCategory.Pile when _itemPileViews.TryGetValue(entity.Id, out var pileView):
+                    pileView.SetRemembered(IsOutOfSight(entity.Position));
+                    break;
             }
         }
     }
@@ -252,12 +258,12 @@ public sealed class WorldPresenter
     {
         if (_pendingResourceNodes.Count > 0)
         {
-            List<ResourceNodeId>? newlyExplored = null;
+            List<EntityId>? newlyExplored = null;
             foreach (var (id, node) in _pendingResourceNodes)
             {
                 if (_exploration.IsExplored(ExplorationState.CellFor(node.Position)))
                 {
-                    (newlyExplored ??= new List<ResourceNodeId>()).Add(id);
+                    (newlyExplored ??= new List<EntityId>()).Add(id);
                 }
             }
 
@@ -272,13 +278,13 @@ public sealed class WorldPresenter
             }
         }
 
-        List<ResourceNodeId>? backToPending = null;
+        List<EntityId>? backToPending = null;
         foreach (var (id, view) in _resourceNodeViews)
         {
             var cell = ExplorationState.CellFor(view.Node.Position);
             if (!_exploration.IsExplored(cell))
             {
-                (backToPending ??= new List<ResourceNodeId>()).Add(id);
+                (backToPending ??= new List<EntityId>()).Add(id);
                 continue;
             }
 
@@ -296,7 +302,7 @@ public sealed class WorldPresenter
         }
     }
 
-    private void CreateBuildingView(Building building)
+    private void CreateBuildingView(Entity building)
     {
         var view = new BuildingView(building, _hover, _onBuildingClicked, _onMissedClick)
         {
@@ -318,7 +324,7 @@ public sealed class WorldPresenter
         _container.AddChild(view);
     }
 
-    private void CreateItemPileView(ItemPile pile)
+    private void CreateItemPileView(Entity pile)
     {
         var view = new ItemPileView(pile, _hover, _onItemPileClicked, _onMissedClick)
         {
@@ -329,10 +335,10 @@ public sealed class WorldPresenter
         _itemPileViews[pile.Id] = view;
     }
 
-    // Driven by WorldState.ItemPileRemoved, unlike a felled resource or a buried person - a pile
+    // Driven by WorldState.EntityRemoved, unlike a felled resource or a buried person - a pile
     // shrinks and vanishes from an ordinary command (PickUpItemCommand), not a special one Main
     // has to recognise, so the event is enough.
-    private void RemoveItemPileView(ItemPileId id)
+    private void RemoveItemPileView(EntityId id)
     {
         if (_itemPileViews.TryGetValue(id, out var view))
         {

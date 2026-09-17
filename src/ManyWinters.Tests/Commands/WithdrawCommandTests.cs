@@ -14,12 +14,12 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+        building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5));
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Empty(building.Inventory.Counts);
+        Assert.Empty(building.Storage!.Counts);
     }
 
     [Fact]
@@ -28,11 +28,11 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+        building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
-        Assert.Equal(5, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(5, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
@@ -42,11 +42,11 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+        building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
-        Assert.Equal(5, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(5, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
@@ -57,11 +57,11 @@ public class WithdrawCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.IsAlive = false;
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+        building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
-        Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(20, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
@@ -71,7 +71,7 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+        building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
@@ -84,11 +84,11 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+        building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
-        Assert.Equal(20, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(20, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
@@ -99,12 +99,12 @@ public class WithdrawCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(TestCatalogs.WoodItem, (int)world.MaxCarryWeightFor(person) - 5);
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 20);
+        building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
         world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
 
         Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(15, building.Storage!.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+        building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
         Assert.Equal(ActionBlocker.None, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
     }
@@ -125,7 +125,7 @@ public class WithdrawCommandTests
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.IsAlive = false;
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+        building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
         Assert.Equal(ActionBlocker.ActorIsDead, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
     }
@@ -136,7 +136,7 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 5);
+        building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
         Assert.Equal(ActionBlocker.TooFar, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
     }
@@ -149,7 +149,7 @@ public class WithdrawCommandTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
-        building.Inventory.Add(TestCatalogs.WoodItem, 4);
+        building.Storage!.Add(TestCatalogs.WoodItem, 4);
 
         Assert.Equal(ActionBlocker.StoreIsEmpty, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
     }

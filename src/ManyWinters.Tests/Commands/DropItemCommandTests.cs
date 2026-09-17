@@ -16,9 +16,9 @@ public class DropItemCommandTests
         world.Execute(new DropItemCommand(person, TestCatalogs.WoodItem, 3));
 
         Assert.Equal(2, person.Inventory.Get(TestCatalogs.WoodItem));
-        var pile = Assert.Single(world.ItemPiles);
-        Assert.Equal(TestCatalogs.WoodItem, pile.Kind);
-        Assert.Equal(3, pile.Amount);
+        var pile = Assert.Single(world.Entities, e => e.Category == EntityCategory.Pile);
+        Assert.Equal(new EntityKindId(TestCatalogs.WoodItem.Value), pile.Kind);
+        Assert.Equal(3, pile.StaticAmount);
         Assert.Equal(person.Position, pile.Position);
     }
 
@@ -32,7 +32,7 @@ public class DropItemCommandTests
         world.Execute(new DropItemCommand(person, TestCatalogs.WoodItem, 3));
 
         Assert.Equal(2, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Empty(world.ItemPiles);
+        Assert.DoesNotContain(world.Entities, e => e.Category == EntityCategory.Pile);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class DropItemCommandTests
         world.Execute(new DropItemCommand(person, TestCatalogs.WoodItem, 3));
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Empty(world.ItemPiles);
+        Assert.DoesNotContain(world.Entities, e => e.Category == EntityCategory.Pile);
     }
 
     [Fact]

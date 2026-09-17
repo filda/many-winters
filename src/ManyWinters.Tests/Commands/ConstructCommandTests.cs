@@ -18,7 +18,7 @@ public class ConstructCommandTests
         world.Execute(command);
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
-        var building = Assert.Single(world.Buildings);
+        var building = Assert.Single(world.Entities, e => e.Category == EntityCategory.Building);
         Assert.Equal(TestCatalogs.StorageHut, building.Kind);
         Assert.Equal(new Position(1, 1), building.Position);
     }
@@ -32,9 +32,9 @@ public class ConstructCommandTests
 
         world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(0, 0)));
 
-        var building = Assert.Single(world.Buildings);
+        var building = Assert.Single(world.Entities, e => e.Category == EntityCategory.Building);
         Assert.Equal(100f, building.Condition);
-        Assert.Empty(building.Inventory.Counts);
+        Assert.Empty(building.Storage!.Counts);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class ConstructCommandTests
         world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(0, 0)));
 
         Assert.Equal(3, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Single(world.Buildings);
+        Assert.Single(world.Entities, e => e.Category == EntityCategory.Building);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class ConstructCommandTests
         world.Execute(command);
 
         Assert.Equal(TestCatalogs.StorageHutInputAmount - 1, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Empty(world.Buildings);
+        Assert.DoesNotContain(world.Entities, e => e.Category == EntityCategory.Building);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class ConstructCommandTests
         world.Execute(command);
 
         Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Empty(world.Buildings);
+        Assert.DoesNotContain(world.Entities, e => e.Category == EntityCategory.Building);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class ConstructCommandTests
 
         world.Execute(new ConstructCommand(person, TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0)));
 
-        Assert.Single(world.Buildings);
+        Assert.Single(world.Entities, e => e.Category == EntityCategory.Building);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class ConstructCommandTests
         Assert.Equal(ActionBlocker.TooFar, command.Blocker(world));
         world.Execute(command);
 
-        Assert.Empty(world.Buildings);
+        Assert.DoesNotContain(world.Entities, e => e.Category == EntityCategory.Building);
         Assert.Equal(TestCatalogs.StorageHutInputAmount, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 

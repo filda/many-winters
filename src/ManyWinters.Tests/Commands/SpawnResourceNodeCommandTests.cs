@@ -6,6 +6,9 @@ namespace ManyWinters.Tests.Commands;
 
 public class SpawnResourceNodeCommandTests
 {
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+
     [Fact]
     public void ExecuteAddsAResourceNodeWithTheGivenKindPositionAndAmount()
     {
@@ -13,10 +16,10 @@ public class SpawnResourceNodeCommandTests
 
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(3, 4), 50f));
 
-        var node = Assert.Single(world.ResourceNodes);
+        var node = Assert.Single(ResourceNodes(world));
         Assert.Equal(TestCatalogs.Apple, node.Kind);
         Assert.Equal(new Position(3, 4), node.Position);
-        Assert.Equal(50f, node.RemainingAmount);
+        Assert.Equal(50f, node.Growth!.RemainingAmount);
     }
 
     [Fact]
@@ -26,9 +29,9 @@ public class SpawnResourceNodeCommandTests
 
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(0, 0), 40f));
 
-        var node = Assert.Single(world.ResourceNodes);
-        Assert.Equal(40f, node.MaxAmount);
-        Assert.Equal(node.MaxAmount, node.RemainingAmount);
+        var node = Assert.Single(ResourceNodes(world));
+        Assert.Equal(40f, node.Growth!.MaxAmount);
+        Assert.Equal(node.Growth.MaxAmount, node.Growth.RemainingAmount);
     }
 
     [Fact]
@@ -39,8 +42,9 @@ public class SpawnResourceNodeCommandTests
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(0, 0), 10f));
         world.Execute(new SpawnResourceNodeCommand(TestCatalogs.Apple, new Position(1, 1), 10f));
 
-        Assert.Equal(2, world.ResourceNodes.Count);
-        Assert.NotEqual(world.ResourceNodes[0].Id, world.ResourceNodes[1].Id);
+        var nodes = ResourceNodes(world);
+        Assert.Equal(2, nodes.Count);
+        Assert.NotEqual(nodes[0].Id, nodes[1].Id);
     }
 
     // World-building, not a player action: there is no state in which it refuses.

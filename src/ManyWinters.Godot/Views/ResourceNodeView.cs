@@ -55,13 +55,13 @@ internal partial class ResourceNodeView : SpriteEntityView
     // missing too.
     private static readonly Color DefaultColor = new(0.2f, 0.8f, 0.2f);
 
-    private readonly ResourceNode _node;
-    private readonly ResourceKindId _kind;
+    private readonly Entity _node;
+    private readonly EntityKindId _kind;
 
     // For WorldPresenter, which sends a view back to pending when its cell is un-revealed
     // (WorldPresenter.RefreshResourceNodeExploration).
-    public ResourceNode Node => _node;
-    private readonly Action<ResourceNode, MouseButton> _onClicked;
+    public Entity Node => _node;
+    private readonly Action<Entity, MouseButton> _onClicked;
     private readonly Color _baseColor;
     private int _variantIndex;
     private int _branchVariantIndex;
@@ -71,7 +71,7 @@ internal partial class ResourceNodeView : SpriteEntityView
     private SpriteLayer? _fruit;
 
     // Internal for the same reason as PersonView's constructor.
-    internal ResourceNodeView(ResourceNode node, bool canFell, HoverArbiter hover, Action<ResourceNode, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+    internal ResourceNodeView(Entity node, bool canFell, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(NominalHeightFor(node.Kind, canFell), hover, onMissedClick)
     {
         _node = node;
@@ -86,7 +86,7 @@ internal partial class ResourceNodeView : SpriteEntityView
 
     // A kind's authored height where it has one, else a standing tree's or a ground icon's
     // default. Static because the base class needs it before this view has fields.
-    private static float NominalHeightFor(ResourceKindId kind, bool canFell)
+    private static float NominalHeightFor(EntityKindId kind, bool canFell)
     {
         var visual = LoadVisualDefinition(kind);
         return visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
@@ -205,7 +205,7 @@ internal partial class ResourceNodeView : SpriteEntityView
     // fellable conifer/deciduous/bush only has the plain {kind}.png.
     private string TexturePathFor() => BaseTexturePathFor(_kind);
 
-    private static string BaseTexturePathFor(ResourceKindId kind) => HasTreeSprite(kind)
+    private static string BaseTexturePathFor(EntityKindId kind) => HasTreeSprite(kind)
         ? $"res://Content/resources/{kind.Value}/{kind.Value}_tree.png"
         : $"res://Content/resources/{kind.Value}/{kind.Value}.png";
 
@@ -231,9 +231,9 @@ internal partial class ResourceNodeView : SpriteEntityView
     // How many trunk/canopy shape variants this kind has on disk: 1 for the unsuffixed
     // original, then probing _v1, _v2, ... until one is missing. Cached per kind like the
     // other lookups.
-    private static readonly Dictionary<ResourceKindId, int> TreeVariantCountCache = new();
+    private static readonly Dictionary<EntityKindId, int> TreeVariantCountCache = new();
 
-    private static int TreeVariantCount(ResourceKindId kind)
+    private static int TreeVariantCount(EntityKindId kind)
     {
         if (TreeVariantCountCache.TryGetValue(kind, out var cached))
         {
@@ -264,10 +264,10 @@ internal partial class ResourceNodeView : SpriteEntityView
     // out rather than risk a branch drawn across its leaves.
     private static readonly HashSet<string> KindsWithGenericBranches = new() { "apple", "pear", "deciduous_tree" };
 
-    private static readonly Dictionary<ResourceKindId, bool> HasBranchLayerCache = new();
-    private static readonly Dictionary<ResourceKindId, int> BranchVariantCountCache = new();
+    private static readonly Dictionary<EntityKindId, bool> HasBranchLayerCache = new();
+    private static readonly Dictionary<EntityKindId, int> BranchVariantCountCache = new();
 
-    private static bool HasBranchLayer(ResourceKindId kind)
+    private static bool HasBranchLayer(EntityKindId kind)
     {
         if (HasBranchLayerCache.TryGetValue(kind, out var cached))
         {
@@ -280,8 +280,8 @@ internal partial class ResourceNodeView : SpriteEntityView
     }
 
     // Same probing as TreeVariantCount for the shared branch layer's own variants - identical
-    // for every kind, but cached per kind since callers key everything off ResourceKindId.
-    private static int BranchVariantCount(ResourceKindId kind)
+    // for every kind, but cached per kind since callers key everything off EntityKindId.
+    private static int BranchVariantCount(EntityKindId kind)
     {
         if (BranchVariantCountCache.TryGetValue(kind, out var cached))
         {
@@ -305,11 +305,11 @@ internal partial class ResourceNodeView : SpriteEntityView
 
     // Cached per kind (see VisualDefinitionCache below for why per-node ResourceLoader calls at
     // decoration scale are avoided).
-    private static readonly Dictionary<ResourceKindId, bool> HasTreeSpriteCache = new();
-    private static readonly Dictionary<ResourceKindId, bool> HasFruitOverlayCache = new();
-    private static readonly Dictionary<ResourceKindId, bool> HasTrunkCanopySplitCache = new();
+    private static readonly Dictionary<EntityKindId, bool> HasTreeSpriteCache = new();
+    private static readonly Dictionary<EntityKindId, bool> HasFruitOverlayCache = new();
+    private static readonly Dictionary<EntityKindId, bool> HasTrunkCanopySplitCache = new();
 
-    private static bool HasTreeSprite(ResourceKindId kind)
+    private static bool HasTreeSprite(EntityKindId kind)
     {
         if (HasTreeSpriteCache.TryGetValue(kind, out var cached))
         {
@@ -321,7 +321,7 @@ internal partial class ResourceNodeView : SpriteEntityView
         return exists;
     }
 
-    private static bool HasFruitOverlay(ResourceKindId kind)
+    private static bool HasFruitOverlay(EntityKindId kind)
     {
         if (HasFruitOverlayCache.TryGetValue(kind, out var cached))
         {
@@ -333,7 +333,7 @@ internal partial class ResourceNodeView : SpriteEntityView
         return exists;
     }
 
-    private static bool HasTrunkCanopySplit(ResourceKindId kind)
+    private static bool HasTrunkCanopySplit(EntityKindId kind)
     {
         if (HasTrunkCanopySplitCache.TryGetValue(kind, out var cached))
         {
@@ -351,9 +351,9 @@ internal partial class ResourceNodeView : SpriteEntityView
     // (MapLoader.ScatterDecorations) calling ResourceLoader.Load on the same .tres in one frame
     // reliably crashed Godot's C# bridge (a GCHandle race in
     // ScriptManagerBridge.SwapGCHandleForType, "Handle is not initialized").
-    private static readonly Dictionary<ResourceKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
+    private static readonly Dictionary<EntityKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
 
-    private static ResourceVisualDefinition? LoadVisualDefinition(ResourceKindId kind)
+    private static ResourceVisualDefinition? LoadVisualDefinition(EntityKindId kind)
     {
         if (VisualDefinitionCache.TryGetValue(kind, out var cached))
         {

@@ -3,7 +3,7 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
+public sealed record GatherCommand(Person Person, Entity Node) : ICommand
 {
     private const float BaseHarvestAmount = 20f;
     private const float EfficientHarvestAmount = 40f;
@@ -20,13 +20,13 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
             return ActionBlocker.ActorIsDead;
         }
 
-        if (!Node.IsAlive)
+        if (Node.Growth is not { } growth || !growth.IsAlive)
         {
             return ActionBlocker.TargetIsGone;
         }
 
         // Stryker disable once Equality: RemainingAmount never goes negative, and consuming zero is already a no-op below, so > 0 and >= 0 are indistinguishable here
-        if (Node.RemainingAmount <= 0)
+        if (growth.RemainingAmount <= 0)
         {
             return ActionBlocker.NothingLeft;
         }
@@ -39,12 +39,12 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
         if (resource.YieldsItem is not null)
         {
-            if (PotentialHarvestUnits(world, Person, resource, Node.RemainingAmount) <= 0)
+            if (PotentialHarvestUnits(world, Person, resource, growth.RemainingAmount) <= 0)
             {
                 return ActionBlocker.NothingLeft;
             }
 
-            if (!CanTakeAnythingFrom(world, Person, resource, Node.RemainingAmount))
+            if (!CanTakeAnythingFrom(world, Person, resource, growth.RemainingAmount))
             {
                 return ActionBlocker.InventoryFull;
             }
@@ -66,6 +66,7 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
             return;
         }
 
+        var growth = Node.Growth!;
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
         var skill = resource.Skill;
         var skillDefinition = world.Configuration.SkillCatalog.Get(skill);
@@ -73,7 +74,7 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
 
         if (resource.YieldsItem is { } item)
         {
-            var availableUnits = PotentialHarvestUnits(world, Person, resource, Node.RemainingAmount);
+            var availableUnits = PotentialHarvestUnits(world, Person, resource, growth.RemainingAmount);
             // A hungry picker eats as they go before pocketing anything - how someone with a full
             // pack still gets fed. Only what was eaten or fits comes off the node; the rest stays
             // for later. Same hunger test as the autonomous pass (WorldState.IsHungryEnoughToEat),
@@ -82,12 +83,12 @@ public sealed record GatherCommand(Person Person, ResourceNode Node) : ICommand
             var added = Person.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
             var taken = eaten + added;
 
-            Node.RemainingAmount -= taken;
+            growth.RemainingAmount -= taken;
         }
         else
         {
-            var potentialConsumed = PotentialHarvestAmount(world, Person, resource, Node.RemainingAmount);
-            Node.RemainingAmount -= potentialConsumed;
+            var potentialConsumed = PotentialHarvestAmount(world, Person, resource, growth.RemainingAmount);
+            growth.RemainingAmount -= potentialConsumed;
             Person.Needs.Hunger = Math.Max(0f, Person.Needs.Hunger - potentialConsumed);
         }
 

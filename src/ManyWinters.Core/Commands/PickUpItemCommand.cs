@@ -1,9 +1,10 @@
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record PickUpItemCommand(Person Person, ItemPile Pile) : ICommand
+public sealed record PickUpItemCommand(Person Person, Entity Pile) : ICommand
 {
     public ActionBlocker Blocker(WorldState world)
     {
@@ -12,7 +13,7 @@ public sealed record PickUpItemCommand(Person Person, ItemPile Pile) : ICommand
             return ActionBlocker.ActorIsDead;
         }
 
-        if (Pile.Amount <= 0)
+        if (Pile.StaticAmount is null or <= 0)
         {
             return ActionBlocker.TargetIsGone;
         }
@@ -29,17 +30,19 @@ public sealed record PickUpItemCommand(Person Person, ItemPile Pile) : ICommand
             return;
         }
 
+        var item = new ItemKindId(Pile.Kind.Value);
+
         // Only what fits comes off the pile; the rest stays on the ground (see
         // LootCommand.Execute, the same shape for a corpse's inventory).
-        var taken = Person.Inventory.AddUpToCapacity(Pile.Kind, Pile.Amount, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
+        var taken = Person.Inventory.AddUpToCapacity(item, Pile.StaticAmount!.Value, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
         if (taken > 0)
         {
-            Pile.Amount -= taken;
+            Pile.StaticAmount -= taken;
         }
 
-        if (Pile.Amount <= 0)
+        if (Pile.StaticAmount <= 0)
         {
-            world.RemoveItemPile(Pile);
+            world.RemoveEntity(Pile);
         }
     }
 }

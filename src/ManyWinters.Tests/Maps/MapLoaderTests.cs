@@ -16,6 +16,12 @@ public class MapLoaderTests
 
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
 
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+
+    private static List<Entity> BuildingEntities(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
+
     // person[i] in MapLoader's own index space (StartingAgesInWinters etc.), regardless of
     // spawn order.
     private static Person PersonAt(LoadedMap map, int originalIndex) =>
@@ -222,7 +228,7 @@ public class MapLoaderTests
 
         Assert.Equal(first.People.Select(p => p.Id), second.People.Select(p => p.Id));
         Assert.Equal(first.Forebears.Select(p => p.Id), second.Forebears.Select(p => p.Id));
-        Assert.Equal(first.ResourceNodes.Select(n => n.Id), second.ResourceNodes.Select(n => n.Id));
+        Assert.Equal(ResourceNodes(first).Select(n => n.Id), ResourceNodes(second).Select(n => n.Id));
     }
 
     [Fact]
@@ -230,7 +236,7 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        var nodeIds = map.World.ResourceNodes.Select(n => n.Id.Value).ToList();
+        var nodeIds = ResourceNodes(map.World).Select(n => n.Id.Value).ToList();
         var personIds = map.World.People.Concat(map.World.Forebears).Select(p => p.Id.Value).ToList();
         Assert.Equal(nodeIds.Count, nodeIds.Distinct().Count());
         Assert.Empty(nodeIds.Intersect(personIds));
@@ -249,7 +255,7 @@ public class MapLoaderTests
             (TestCatalogs.Grass, new Position(15f, 250f), 200f),
         };
 
-        Assert.Equal(expectedFirstTwo, map.World.ResourceNodes.Take(2).Select(n => (n.Kind, n.Position, n.RemainingAmount)));
+        Assert.Equal(expectedFirstTwo, ResourceNodes(map.World).Take(2).Select(n => (n.Kind, n.Position, n.Growth!.RemainingAmount)));
     }
 
     [Fact]
@@ -261,7 +267,7 @@ public class MapLoaderTests
         // thin to survive a first winter on.
         var foodKinds = new[] { TestCatalogs.Apple, TestCatalogs.Pear, TestCatalogs.Mushroom, TestCatalogs.Potato };
 
-        var nearCamp = map.World.ResourceNodes
+        var nearCamp = ResourceNodes(map.World)
             .Where(n => WorldState.Distance(n.Position, map.CampCenter) <= 12)
             .GroupBy(n => n.Kind)
             .ToDictionary(g => g.Key, g => g.Count());
@@ -285,20 +291,20 @@ public class MapLoaderTests
             TestCatalogs.Apple, TestCatalogs.Pear, TestCatalogs.Mushroom, TestCatalogs.Potato,
         };
 
-        var countsByKind = map.World.ResourceNodes
+        var countsByKind = ResourceNodes(map.World)
             .Skip(2)
             .GroupBy(n => n.Kind)
             .ToDictionary(g => g.Key, g => g.Count());
 
         Assert.All(decorationKinds, kind => Assert.True(countsByKind.GetValueOrDefault(kind) > 0, $"Expected at least one '{kind}' decoration node."));
-        Assert.True(map.World.ResourceNodes.Count > 5000, "Expected thousands of scattered decoration nodes.");
+        Assert.True(ResourceNodes(map.World).Count > 5000, "Expected thousands of scattered decoration nodes.");
     }
 
     [Fact]
     public void LoadDefaultScattersDecorationsDeterministically()
     {
-        var firstRun = LoadDefault().World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)).ToList();
-        var secondRun = LoadDefault().World.ResourceNodes.Select(n => (n.Kind, n.Position, n.RemainingAmount)).ToList();
+        var firstRun = ResourceNodes(LoadDefault().World).Select(n => (n.Kind, n.Position, n.Growth!.RemainingAmount)).ToList();
+        var secondRun = ResourceNodes(LoadDefault().World).Select(n => (n.Kind, n.Position, n.Growth!.RemainingAmount)).ToList();
 
         Assert.Equal(firstRun, secondRun);
     }
@@ -310,7 +316,7 @@ public class MapLoaderTests
 
         // Sampled, not all-pairs over thousands of nodes; enough to catch a regression in
         // MapLoader's spacing rejection (MinDecorationSpacing).
-        var positions = map.World.ResourceNodes.Skip(2).Select(n => n.Position).Take(500).ToList();
+        var positions = ResourceNodes(map.World).Skip(2).Select(n => n.Position).Take(500).ToList();
         for (var i = 0; i < positions.Count; i++)
         {
             for (var j = i + 1; j < positions.Count; j++)
@@ -358,7 +364,7 @@ public class MapLoaderTests
         // Every count is decided by MapLoader alone (fixed counts, seeded noise, placement
         // rejection), so a change in generation shows up here as a number. Update deliberately
         // when retuning; a surprise change is a bug.
-        var expected = new Dictionary<ResourceKindId, int>
+        var expected = new Dictionary<EntityKindId, int>
         {
             [TestCatalogs.Grass] = 7262,
             [TestCatalogs.Fern] = 3148,
@@ -378,10 +384,10 @@ public class MapLoaderTests
             [TestCatalogs.Wood] = 1,
         };
 
-        var actual = map.World.ResourceNodes.GroupBy(n => n.Kind).ToDictionary(g => g.Key, g => g.Count());
+        var actual = ResourceNodes(map.World).GroupBy(n => n.Kind).ToDictionary(g => g.Key, g => g.Count());
 
         Assert.Equal(expected.OrderBy(kv => kv.Key.Value, StringComparer.Ordinal), actual.OrderBy(kv => kv.Key.Value, StringComparer.Ordinal));
-        Assert.Equal(17540, map.World.ResourceNodes.Count);
+        Assert.Equal(17540, ResourceNodes(map.World).Count);
     }
 
     [Fact]
@@ -392,11 +398,11 @@ public class MapLoaderTests
         // Renewable cover and food plants share one amount; finite kinds (rock, stump, log) get
         // a smaller one-shot amount. The hand-placed grass node is the one scattered kind that
         // also exists at a larger amount.
-        var amountsByKind = map.World.ResourceNodes
+        var amountsByKind = ResourceNodes(map.World)
             .GroupBy(n => n.Kind)
-            .ToDictionary(g => g.Key, g => g.Select(n => n.RemainingAmount).Distinct().OrderBy(a => a).ToArray());
+            .ToDictionary(g => g.Key, g => g.Select(n => n.Growth!.RemainingAmount).Distinct().OrderBy(a => a).ToArray());
 
-        var expected = new Dictionary<ResourceKindId, float[]>
+        var expected = new Dictionary<EntityKindId, float[]>
         {
             [TestCatalogs.Apple] = [200f],
             [TestCatalogs.Pear] = [200f],
@@ -427,17 +433,17 @@ public class MapLoaderTests
         // edge reaches one grove radius (65 m) further. Beyond that a node has no ground under it.
         const double limit = 500 + 65;
 
-        Assert.All(map.World.ResourceNodes, n =>
+        Assert.All(ResourceNodes(map.World), n =>
         {
             Assert.InRange(n.Position.X, -limit, limit);
             Assert.InRange(n.Position.Y, -limit, limit);
         });
 
         // ...and it really does reach out that far, rather than huddling near camp.
-        Assert.True(map.World.ResourceNodes.Any(n => n.Position.X < -400), "Nothing was scattered along the far western edge.");
-        Assert.True(map.World.ResourceNodes.Any(n => n.Position.X > 400), "Nothing was scattered along the far eastern edge.");
-        Assert.True(map.World.ResourceNodes.Any(n => n.Position.Y < -400), "Nothing was scattered along the far southern edge.");
-        Assert.True(map.World.ResourceNodes.Any(n => n.Position.Y > 400), "Nothing was scattered along the far northern edge.");
+        Assert.True(ResourceNodes(map.World).Any(n => n.Position.X < -400), "Nothing was scattered along the far western edge.");
+        Assert.True(ResourceNodes(map.World).Any(n => n.Position.X > 400), "Nothing was scattered along the far eastern edge.");
+        Assert.True(ResourceNodes(map.World).Any(n => n.Position.Y < -400), "Nothing was scattered along the far southern edge.");
+        Assert.True(ResourceNodes(map.World).Any(n => n.Position.Y > 400), "Nothing was scattered along the far northern edge.");
     }
 
     [Fact]
@@ -448,12 +454,12 @@ public class MapLoaderTests
         // Beyond the dense zone (110 m) and any grove only the open-world noise pass remains;
         // each of its four bands (forest, thicket, meadow, rocky fallback) must have produced
         // something.
-        var outThere = map.World.ResourceNodes
+        var outThere = ResourceNodes(map.World)
             .Where(n => WorldState.Distance(n.Position, map.CampCenter) > 200)
             .GroupBy(n => n.Kind)
             .ToDictionary(g => g.Key, g => g.Count());
 
-        var perBand = new (string Band, ResourceKindId[] Kinds)[]
+        var perBand = new (string Band, EntityKindId[] Kinds)[]
         {
             ("forest", [TestCatalogs.ConiferTree, TestCatalogs.DeciduousTree]),
             ("thicket", [TestCatalogs.Bush, TestCatalogs.Fern, TestCatalogs.Apple, TestCatalogs.Pear]),
@@ -472,7 +478,7 @@ public class MapLoaderTests
 
         // Only part of the candidates survive their roll against the density field: all would
         // be a uniform sprinkle, none would leave the open world bare.
-        var openWorldNodes = map.World.ResourceNodes.Count(n => WorldState.Distance(n.Position, map.CampCenter) > 200);
+        var openWorldNodes = ResourceNodes(map.World).Count(n => WorldState.Distance(n.Position, map.CampCenter) > 200);
 
         Assert.InRange(openWorldNodes, 1, 15999);
     }
@@ -482,6 +488,6 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        Assert.Empty(map.World.Buildings);
+        Assert.Empty(BuildingEntities(map.World));
     }
 }

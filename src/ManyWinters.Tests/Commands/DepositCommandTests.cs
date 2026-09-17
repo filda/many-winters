@@ -19,7 +19,7 @@ public class DepositCommandTests
         world.Execute(command);
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(15, building.Storage!.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class DepositCommandTests
         world.Execute(command);
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(0, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(0, building.Storage!.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class DepositCommandTests
         world.Execute(command);
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(0, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(0, building.Storage!.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class DepositCommandTests
 
         world.Execute(new DepositCommand(person, building, TestCatalogs.WoodItem, 15));
 
-        Assert.Equal(15, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(15, building.Storage!.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class DepositCommandTests
         world.Execute(command);
 
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(0, building.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(0, building.Storage!.Get(TestCatalogs.WoodItem));
     }
 
     [Fact]

@@ -1,5 +1,4 @@
 using ManyWinters.Core.Commands;
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -27,7 +26,19 @@ internal sealed record TargetMenu(string Heading, IReadOnlyList<ActionOffer> Off
 // decides the rest of the player's prose.
 internal static class TargetActions
 {
-    internal static TargetMenu For(WorldState world, Person actor, ResourceNode node)
+    // One overload per kind of thing there is, per EntityCategory, since Entity now covers a
+    // resource, a pile and a building alike - a tree, a pile of apples and a hut still have
+    // nothing in common but a position, so the switch stands in for what used to be three
+    // separate parameter types.
+    internal static TargetMenu For(WorldState world, Person actor, Entity entity) => entity.Category switch
+    {
+        EntityCategory.Growable => ForResource(world, actor, entity),
+        EntityCategory.Pile => ForPile(world, actor, entity),
+        EntityCategory.Building => ForBuilding(world, actor, entity),
+        _ => throw new ArgumentOutOfRangeException(nameof(entity), entity.Category, "Unknown entity category."),
+    };
+
+    private static TargetMenu ForResource(WorldState world, Person actor, Entity node)
     {
         var resource = world.Configuration.ResourceCatalog.Get(node.Kind);
         var offers = new List<ActionOffer> { Gather(world, actor, node) };
@@ -44,7 +55,7 @@ internal static class TargetActions
 
     // Split out because a left click on a resource means this and nothing else, so Main asks for
     // it by name rather than by taking whichever offer happens to come first.
-    internal static ActionOffer Gather(WorldState world, Person actor, ResourceNode node) =>
+    internal static ActionOffer Gather(WorldState world, Person actor, Entity node) =>
         ActionOffer.For(
             "Gather",
             new GatherCommand(actor, node),
@@ -87,17 +98,17 @@ internal static class TargetActions
         return new TargetMenu(target.Name, offers);
     }
 
-    // A pile is always one kind (see ItemPile), so the heading already names it and the one
-    // offer under it is a bare verb - the same shape as a resource's "Gather".
-    internal static TargetMenu For(WorldState world, Person actor, ItemPile pile) =>
-        new(world.Configuration.ItemCatalog.Get(pile.Kind).DisplayName, [PickUp(world, actor, pile)]);
+    // A pile is always one kind (see Entity.StaticAmount), so the heading already names it and
+    // the one offer under it is a bare verb - the same shape as a resource's "Gather".
+    private static TargetMenu ForPile(WorldState world, Person actor, Entity pile) =>
+        new(world.Configuration.ItemCatalog.Get(new ItemKindId(pile.Kind.Value)).DisplayName, [PickUp(world, actor, pile)]);
 
     // Split out for the same reason as Gather and WalkTo: a left click on a pile means this and
     // nothing else.
-    internal static ActionOffer PickUp(WorldState world, Person actor, ItemPile pile) =>
+    internal static ActionOffer PickUp(WorldState world, Person actor, Entity pile) =>
         ActionOffer.For("Pick up", new PickUpItemCommand(actor, pile), world, target: pile.Position);
 
-    internal static TargetMenu For(WorldState world, Person actor, Building building)
+    private static TargetMenu ForBuilding(WorldState world, Person actor, Entity building)
     {
         var items = world.Configuration.ItemCatalog;
         var offers = new List<ActionOffer>();
@@ -113,7 +124,7 @@ internal static class TargetActions
                 target: building.Position));
         }
 
-        foreach (var (item, count) in Sorted(building.Inventory))
+        foreach (var (item, count) in Sorted(building.Storage!))
         {
             offers.Add(ActionOffer.For(
                 $"Take out {Named(items, item)}",

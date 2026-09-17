@@ -8,21 +8,21 @@ namespace ManyWinters.Tests.Serialization;
 public class StringWrapperJsonConverterTests
 {
     [Fact]
-    public void ResourceKindIdSerializesAsAPlainString()
+    public void EntityKindIdSerializesAsAPlainString()
     {
-        var json = JsonSerializer.Serialize(new ResourceKindId("apple"));
+        var json = JsonSerializer.Serialize(new EntityKindId("apple"));
 
         Assert.Equal("\"apple\"", json);
     }
 
     [Fact]
-    public void ResourceKindIdRoundTripsThroughJson()
+    public void EntityKindIdRoundTripsThroughJson()
     {
-        var json = JsonSerializer.Serialize(new ResourceKindId("apple"));
+        var json = JsonSerializer.Serialize(new EntityKindId("apple"));
 
-        var restored = JsonSerializer.Deserialize<ResourceKindId>(json);
+        var restored = JsonSerializer.Deserialize<EntityKindId>(json);
 
-        Assert.Equal(new ResourceKindId("apple"), restored);
+        Assert.Equal(new EntityKindId("apple"), restored);
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class StringWrapperJsonConverterTests
     [Fact]
     public void ReadingANonStringTokenThrows()
     {
-        var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ResourceKindId>("123"));
+        var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<EntityKindId>("123"));
 
         // "Expected" is unique to our message; System.Text.Json substitutes its own generic
         // message (which also names the type) when a converter throws with an empty one.
@@ -78,7 +78,7 @@ public class StringWrapperJsonConverterTests
     [Fact]
     public void ReadingANullTokenThrowsRatherThanProducingANullValue()
     {
-        var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ResourceKindId>("null"));
+        var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<EntityKindId>("null"));
 
         Assert.Contains("Expected", ex.Message, StringComparison.Ordinal);
     }

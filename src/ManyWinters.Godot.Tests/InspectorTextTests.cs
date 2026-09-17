@@ -55,7 +55,7 @@ public class InspectorTextTests
     public void AGathererNamesWhatTheyAreGathering()
     {
         var person = NewPerson();
-        var node = new ResourceNode { Kind = new ResourceKindId("apple"), Position = new Position(3, 4) };
+        var node = new Entity { Kind = new EntityKindId("apple"), Category = EntityCategory.Growable, Position = new Position(3, 4) };
         person.Tasks.Interrupt(new GatherTask(node, reachDistance: 2f));
 
         Assert.Equal("Gathering apple", InspectorText.ForTask(person));
@@ -239,8 +239,14 @@ public class InspectorTextTests
     {
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
-        var node = new ResourceNode { Kind = TestWorld.AppleTree, Position = new Position(0, 0), RemainingAmount = 10, MaxAmount = 10 };
-        world.AddResourceNode(node);
+        var node = new Entity
+        {
+            Kind = TestWorld.AppleTree,
+            Category = EntityCategory.Growable,
+            Position = new Position(0, 0),
+            Growth = new GrowthState { RemainingAmount = 10, MaxAmount = 10 },
+        };
+        world.AddEntity(node);
         person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance));
 
         Assert.Equal("Gathering apple", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));

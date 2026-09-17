@@ -1,11 +1,10 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record DepositCommand(Person Person, Building Building, ItemKindId Item, int Amount) : ICommand
+public sealed record DepositCommand(Person Person, Entity Building, ItemKindId Item, int Amount) : ICommand
 {
     public ActionBlocker Blocker(WorldState world)
     {
@@ -30,6 +29,6 @@ public sealed record DepositCommand(Person Person, Building Building, ItemKindId
         }
 
         Person.Inventory.Remove(Item, Amount);
-        Building.Inventory.Add(Item, Amount);
+        Building.Storage!.Add(Item, Amount);
     }
 }

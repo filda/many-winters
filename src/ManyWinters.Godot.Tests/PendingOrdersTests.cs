@@ -11,10 +11,16 @@ public class PendingOrdersTests
     private static readonly Position Camp = new(0, 0);
     private static readonly Position FarAway = new(50, 0);
 
-    private static ResourceNode AddNode(WorldState world, Position position)
+    private static Entity AddNode(WorldState world, Position position)
     {
-        var node = new ResourceNode { Kind = TestWorld.AppleTree, Position = position, RemainingAmount = 100, MaxAmount = 100 };
-        world.AddResourceNode(node);
+        var node = new Entity
+        {
+            Kind = TestWorld.AppleTree,
+            Category = EntityCategory.Growable,
+            Position = position,
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        };
+        world.AddEntity(node);
         return node;
     }
 
@@ -91,7 +97,7 @@ public class PendingOrdersTests
         var orders = new PendingOrders();
         orders.Add(person, TargetActions.Gather(world, person, node));
 
-        node.IsAlive = false;
+        node.Growth!.IsAlive = false;
         person.Position = node.Position;
 
         Assert.Empty(orders.Ready(world));

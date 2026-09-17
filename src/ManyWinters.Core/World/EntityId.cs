@@ -1,21 +1,14 @@
 namespace ManyWinters.Core.World;
 
-// Every entity id (PersonId, ResourceNodeId, ...) is a Guid the entity draws for itself when
-// constructed - nobody hands ids out, so nothing has to be counted or saved to keep them
-// unique. Deterministic per-entity systems (visual variation, idle wandering, casual teaching)
-// key off SeedOf.
-public static class EntityId
+// Replaces the old per-kind ResourceNodeId/ItemPileId/BuildingId: every map Entity (a growing
+// resource, a dropped pile, a building) draws one of these the same way (see IdGeneration).
+public readonly record struct EntityId(Guid Value)
 {
-    // For a creator that needs the same world twice (MapLoader's seeded map): 16 bytes off its
-    // own seeded Random, which is stable for a given seed.
-    public static Guid NextGuid(Random rng)
-    {
-        var bytes = new byte[16];
-        rng.NextBytes(bytes);
-        return new Guid(bytes);
-    }
+    public static EntityId New() => new(Guid.NewGuid());
 
-    // The id's first 32 bits, little-endian. Not Guid.GetHashCode(): that is an implementation
-    // detail, and a seed has to survive a reload on another runtime.
-    public static int SeedOf(Guid id) => BitConverter.ToInt32(id.ToByteArray(), 0);
+    public static EntityId New(Random rng) => new(IdGeneration.NextGuid(rng));
+
+    public int Seed => IdGeneration.SeedOf(Value);
+
+    public override string ToString() => Value.ToString();
 }

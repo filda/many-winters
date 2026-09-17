@@ -4,7 +4,7 @@ using ManyWinters.Core.Knowledge;
 namespace ManyWinters.Core.World;
 
 public sealed record ResourceDefinition(
-    ResourceKindId Id,
+    EntityKindId Id,
     string DisplayName,
     SkillTypeId Skill,
     ItemKindId? YieldsItem = null,
@@ -25,7 +25,7 @@ public sealed record ResourceDefinition(
     // pile can be solid.
     float CollisionRadius = 0f)
 {
-    public sealed record FellLeaf(ResourceKindId Kind, float Amount);
+    public sealed record FellLeaf(EntityKindId Kind, float Amount);
 
     public float YieldMultiplierFor(Climate climate)
     {

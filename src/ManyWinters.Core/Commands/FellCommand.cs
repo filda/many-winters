@@ -6,7 +6,7 @@ namespace ManyWinters.Core.Commands;
 // Destroys a fellable resource node (a fruit tree, say), leaving behind one or more one-time
 // piles of whatever ResourceDefinition.FellLeaves says (typically wood) that still have to be
 // gathered - unlike GatherCommand, which takes from the node repeatedly and leaves it standing.
-public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
+public sealed record FellCommand(Person Person, Entity Node) : ICommand
 {
     // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in
     // its own spot - lands from where the tree stood, so the two don't sit exactly on top of
@@ -20,7 +20,7 @@ public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
             return ActionBlocker.ActorIsDead;
         }
 
-        if (!Node.IsAlive)
+        if (Node.Growth is not { IsAlive: true })
         {
             return ActionBlocker.TargetIsGone;
         }
@@ -49,9 +49,10 @@ public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
             return;
         }
 
-        Node.IsAlive = false;
-        Node.DeathTick = world.Clock.CurrentTick;
-        Node.CauseOfDeath = ResourceDeathCause.Felled;
+        var growth = Node.Growth!;
+        growth.IsAlive = false;
+        growth.DeathTick = world.Clock.CurrentTick;
+        growth.CauseOfDeath = ResourceDeathCause.Felled;
 
         if (world.Configuration.ResourceCatalog.Get(Node.Kind).FellLeaves is not { } leftovers)
         {
@@ -71,7 +72,7 @@ public sealed record FellCommand(Person Person, ResourceNode Node) : ICommand
         }
     }
 
-    // Deterministic from the node's own id (see EntityId.SeedOf) and the leftover's index, not
+    // Deterministic from the node's own id (see IdGeneration.SeedOf) and the leftover's index, not
     // a shared mutable Random - the same felled tree drops its log in the same spot on replay.
     private static Position OffsetPosition(Position origin, int nodeSeed, int index)
     {

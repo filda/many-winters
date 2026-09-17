@@ -59,8 +59,14 @@ public class ActionBlockerTextTests
     {
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
-        var node = new ResourceNode { Kind = TestWorld.AppleTree, Position = new Position(50, 0), RemainingAmount = 100, MaxAmount = 100 };
-        world.AddResourceNode(node);
+        var node = new Entity
+        {
+            Kind = TestWorld.AppleTree,
+            Category = EntityCategory.Growable,
+            Position = new Position(50, 0),
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        };
+        world.AddEntity(node);
 
         var gather = TargetActions.Gather(world, person, node);
 

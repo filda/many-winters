@@ -1,5 +1,4 @@
 using ManyWinters.Core.Commands;
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
@@ -446,7 +445,7 @@ public class WorldStateTests
         world.Advance(1);
         Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).Target.Id);
 
-        primary.IsAlive = false;
+        primary.Growth!.IsAlive = false;
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
@@ -596,7 +595,7 @@ public class WorldStateTests
         world.Advance(1);
         Assert.Equal(primary.Id, ((GatherTask)person.Tasks.Current!).Target.Id);
 
-        primary.RemainingAmount = 0f;
+        primary.Growth!.RemainingAmount = 0f;
         world.Advance(1);
 
         var task = Assert.IsType<GatherTask>(person.Tasks.Current);
@@ -608,7 +607,7 @@ public class WorldStateTests
     {
         // Find, not Get: a resource pointing at an unregistered skill means nobody can work it,
         // not a crash mid-tick.
-        var unknownSkillResource = new ResourceKindId("moon_rock");
+        var unknownSkillResource = new EntityKindId("moon_rock");
         var configuration = TestCatalogs.CreateConfiguration() with
         {
             ResourceCatalog = new ResourceCatalog([new ResourceDefinition(unknownSkillResource, "Moon Rock", new SkillTypeId("moon_mining"))]),
@@ -658,13 +657,13 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var node = world.SpawnResourceNode(TestCatalogs.Grass, new Position(0, 0), 100f);
-        node.RemainingAmount = 10f;
-        node.IsAlive = false;
+        node.Growth!.RemainingAmount = 10f;
+        node.Growth!.IsAlive = false;
 
         world.Advance(20);
 
-        Assert.Equal(10f, node.RemainingAmount);
-        Assert.Equal(0f, node.ColdStress);
+        Assert.Equal(10f, node.Growth!.RemainingAmount);
+        Assert.Equal(0f, node.Growth!.ColdStress);
     }
 
     [Fact]
@@ -1244,14 +1243,14 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void AddResourceNodeTracksItInResourceNodes()
+    public void AddEntityTracksItInEntities()
     {
         var world = TestCatalogs.CreateWorld();
-        var node = new ResourceNode { Kind = TestCatalogs.Apple };
+        var node = new Entity { Kind = TestCatalogs.Apple, Category = EntityCategory.Growable };
 
-        world.AddResourceNode(node);
+        world.AddEntity(node);
 
-        Assert.Same(node, Assert.Single(world.ResourceNodes));
+        Assert.Same(node, Assert.Single(world.Entities));
     }
 
     [Fact]
@@ -1276,56 +1275,56 @@ public class WorldStateTests
     }
 
     [Fact]
-    public void AddResourceNodeRaisesResourceNodeAddedWithTheNewNode()
+    public void AddEntityRaisesEntityAddedWithTheNewEntity()
     {
         var world = TestCatalogs.CreateWorld();
-        ResourceNode? raised = null;
-        world.ResourceNodeAdded += n => raised = n;
-        var node = new ResourceNode { Kind = TestCatalogs.Apple };
+        Entity? raised = null;
+        world.EntityAdded += n => raised = n;
+        var node = new Entity { Kind = TestCatalogs.Apple, Category = EntityCategory.Growable };
 
-        world.AddResourceNode(node);
+        world.AddEntity(node);
 
         Assert.Same(node, raised);
     }
 
     [Fact]
-    public void AddResourceNodeDoesNotThrowWhenNothingIsSubscribedToResourceNodeAdded()
+    public void AddEntityDoesNotThrowWhenNothingIsSubscribedToEntityAdded()
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddResourceNode(new ResourceNode { Kind = TestCatalogs.Apple });
+        world.AddEntity(new Entity { Kind = TestCatalogs.Apple, Category = EntityCategory.Growable });
     }
 
     [Fact]
-    public void AddBuildingTracksItInBuildings()
+    public void AddEntityTracksABuildingInEntities()
     {
         var world = TestCatalogs.CreateWorld();
-        var building = new Building { Kind = TestCatalogs.StorageHut };
+        var building = new Entity { Kind = TestCatalogs.StorageHut, Category = EntityCategory.Building };
 
-        world.AddBuilding(building);
+        world.AddEntity(building);
 
-        Assert.Same(building, Assert.Single(world.Buildings));
+        Assert.Same(building, Assert.Single(world.Entities));
     }
 
     [Fact]
-    public void AddBuildingRaisesBuildingAddedWithTheNewBuilding()
+    public void AddEntityRaisesEntityAddedWithTheNewBuilding()
     {
         var world = TestCatalogs.CreateWorld();
-        Building? raised = null;
-        world.BuildingAdded += b => raised = b;
-        var building = new Building { Kind = TestCatalogs.StorageHut };
+        Entity? raised = null;
+        world.EntityAdded += b => raised = b;
+        var building = new Entity { Kind = TestCatalogs.StorageHut, Category = EntityCategory.Building };
 
-        world.AddBuilding(building);
+        world.AddEntity(building);
 
         Assert.Same(building, raised);
     }
 
     [Fact]
-    public void AddBuildingDoesNotThrowWhenNothingIsSubscribedToBuildingAdded()
+    public void AddEntityDoesNotThrowWhenNothingIsSubscribedToEntityAddedForABuilding()
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddBuilding(new Building { Kind = TestCatalogs.StorageHut });
+        world.AddEntity(new Entity { Kind = TestCatalogs.StorageHut, Category = EntityCategory.Building });
     }
 
     [Fact]
@@ -1408,11 +1407,11 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
-        node.RemainingAmount = 50;
+        node.Growth!.RemainingAmount = 50;
 
         world.Advance(10);
 
-        Assert.Equal(50f + (TestCatalogs.FoodRegenPerTick * 10), node.RemainingAmount);
+        Assert.Equal(50f + (TestCatalogs.FoodRegenPerTick * 10), node.Growth!.RemainingAmount);
     }
 
     [Fact]
@@ -1420,11 +1419,11 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
-        node.RemainingAmount = 199;
+        node.Growth!.RemainingAmount = 199;
 
         world.Advance(10);
 
-        Assert.Equal(200f, node.RemainingAmount);
+        Assert.Equal(200f, node.Growth!.RemainingAmount);
     }
 
     [Fact]
@@ -1433,18 +1432,18 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         world.Advance(225);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 200);
-        node.RemainingAmount = 50;
+        node.Growth!.RemainingAmount = 50;
 
         world.Advance(10);
 
         Assert.Equal(Season.Winter, world.CurrentSeason);
-        Assert.Equal(50f, node.RemainingAmount);
+        Assert.Equal(50f, node.Growth!.RemainingAmount);
     }
 
     [Fact]
     public void AdvanceAccumulatesColdStressForANodeWithNoYieldInTheCurrentClimateButKeepsItAliveUnderTheThreshold()
     {
-        var kind = new ResourceKindId("frost_intolerant");
+        var kind = new EntityKindId("frost_intolerant");
         var definition = new ResourceDefinition(
             kind,
             "Frost-Intolerant Plant",
@@ -1457,14 +1456,14 @@ public class WorldStateTests
 
         world.Advance(2);
 
-        Assert.True(node.IsAlive);
-        Assert.Equal(2f, node.ColdStress);
+        Assert.True(node.Growth!.IsAlive);
+        Assert.Equal(2f, node.Growth!.ColdStress);
     }
 
     [Fact]
     public void AdvanceKillsANodeOnceColdStressReachesTicksToWither()
     {
-        var kind = new ResourceKindId("frost_intolerant");
+        var kind = new EntityKindId("frost_intolerant");
         var definition = new ResourceDefinition(
             kind,
             "Frost-Intolerant Plant",
@@ -1477,15 +1476,15 @@ public class WorldStateTests
 
         world.Advance(3);
 
-        Assert.False(node.IsAlive);
-        Assert.Equal(ResourceDeathCause.Climate, node.CauseOfDeath);
-        Assert.Equal(228, node.DeathTick);
+        Assert.False(node.Growth!.IsAlive);
+        Assert.Equal(ResourceDeathCause.Climate, node.Growth!.CauseOfDeath);
+        Assert.Equal(228, node.Growth!.DeathTick);
     }
 
     [Fact]
     public void AdvanceResetsColdStressOnceTheClimateBecomesHospitableAgain()
     {
-        var kind = new ResourceKindId("frost_intolerant");
+        var kind = new EntityKindId("frost_intolerant");
         var definition = new ResourceDefinition(
             kind,
             "Frost-Intolerant Plant",
@@ -1498,21 +1497,21 @@ public class WorldStateTests
         world.Advance(225);
         var node = world.SpawnResourceNode(kind, new Position(0, 0), 100);
         world.Advance(2);
-        Assert.Equal(2f, node.ColdStress);
+        Assert.Equal(2f, node.Growth!.ColdStress);
 
         // Each loop iteration uses the season at its start tick, so the hospitable climate needs
         // tick 300 itself (Spring) processed.
         world.Advance(74);
 
         Assert.Equal(Season.Spring, world.CurrentSeason);
-        Assert.True(node.IsAlive);
-        Assert.Equal(0f, node.ColdStress);
+        Assert.True(node.Growth!.IsAlive);
+        Assert.Equal(0f, node.Growth!.ColdStress);
     }
 
     [Fact]
     public void AdvanceNeverRegrowsANodeWhileItsColdStressIsAccumulating()
     {
-        var kind = new ResourceKindId("frost_intolerant");
+        var kind = new EntityKindId("frost_intolerant");
         var definition = new ResourceDefinition(
             kind,
             "Frost-Intolerant Plant",
@@ -1522,14 +1521,14 @@ public class WorldStateTests
             TicksToWither: 100f);
         var world = new WorldState(new WorldConfiguration { ResourceCatalog = new ResourceCatalog([definition]) });
         var node = world.SpawnResourceNode(kind, new Position(0, 0), 200);
-        node.RemainingAmount = 50;
+        node.Growth!.RemainingAmount = 50;
 
         // Spring (Mild) is inhospitable for this definition despite the nonzero global regen
         // multiplier.
         world.Advance(10);
 
         Assert.Equal(Season.Spring, world.CurrentSeason);
-        Assert.Equal(50f, node.RemainingAmount);
+        Assert.Equal(50f, node.Growth!.RemainingAmount);
     }
 
     [Fact]
@@ -1736,7 +1735,7 @@ public class WorldStateTests
     {
         // Grazed on the spot, not pocketed (GatherCommand), so a full backpack is no reason to
         // pass it by.
-        var grazing = new ResourceKindId("grazing");
+        var grazing = new EntityKindId("grazing");
         var configuration = TestCatalogs.CreateConfiguration() with
         {
             ResourceCatalog = new ResourceCatalog([new ResourceDefinition(grazing, "Grazing", TestCatalogs.Foraging)]),

@@ -1,5 +1,4 @@
 using ManyWinters.Core.Commands;
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
@@ -16,10 +15,8 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private readonly List<Person> _people = new();
     private readonly List<Person> _forebears = new();
-    private readonly List<ResourceNode> _resourceNodes = new();
-    private readonly List<Building> _buildings = new();
+    private readonly List<Entity> _entities = new();
     private readonly List<Grave> _graves = new();
-    private readonly List<ItemPile> _itemPiles = new();
 
     public SimulationClock Clock { get; } = new();
 
@@ -40,27 +37,21 @@ public sealed class WorldState(WorldConfiguration configuration)
     // People - nothing simulates, draws, counts or clicks them.
     public IReadOnlyList<Person> Forebears => _forebears;
 
-    public IReadOnlyList<ResourceNode> ResourceNodes => _resourceNodes;
-
-    public IReadOnlyList<Building> Buildings => _buildings;
+    public IReadOnlyList<Entity> Entities => _entities;
 
     public IReadOnlyList<Grave> Graves => _graves;
-
-    public IReadOnlyList<ItemPile> ItemPiles => _itemPiles;
 
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
     public event Action<Person>? PersonAdded;
 
-    public event Action<ResourceNode>? ResourceNodeAdded;
-
-    public event Action<Building>? BuildingAdded;
+    public event Action<Entity>? EntityAdded;
 
     public event Action<Grave>? GraveAdded;
 
-    public event Action<ItemPile>? ItemPileAdded;
-
-    public event Action<ItemPile>? ItemPileRemoved;
+    // Only a pile-category entity fires this today (see RemoveEntity): a growable entity that
+    // dies stays in Entities with Growth.IsAlive false, and a building is never removed.
+    public event Action<Entity>? EntityRemoved;
 
     // Add* take a finished object: what it is made of is the caller's business
     // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
@@ -84,16 +75,10 @@ public sealed class WorldState(WorldConfiguration configuration)
         _forebears.Add(forebear);
     }
 
-    public void AddResourceNode(ResourceNode node)
+    public void AddEntity(Entity entity)
     {
-        _resourceNodes.Add(node);
-        ResourceNodeAdded?.Invoke(node);
-    }
-
-    public void AddBuilding(Building building)
-    {
-        _buildings.Add(building);
-        BuildingAdded?.Invoke(building);
+        _entities.Add(entity);
+        EntityAdded?.Invoke(entity);
     }
 
     public void AddGrave(Grave grave)
@@ -102,18 +87,13 @@ public sealed class WorldState(WorldConfiguration configuration)
         GraveAdded?.Invoke(grave);
     }
 
-    public void AddItemPile(ItemPile pile)
+    // Called once a pile's StaticAmount reaches zero (see PickUpItemCommand): an empty pile has
+    // nothing left for anyone to point at. A growable entity that dies is never removed this way
+    // (see Advance) - it stays in Entities with Growth.IsAlive false.
+    public void RemoveEntity(Entity entity)
     {
-        _itemPiles.Add(pile);
-        ItemPileAdded?.Invoke(pile);
-    }
-
-    // Called once a pile's Amount reaches zero (see PickUpItemCommand): an empty pile has
-    // nothing left for anyone to point at.
-    public void RemoveItemPile(ItemPile pile)
-    {
-        _itemPiles.Remove(pile);
-        ItemPileRemoved?.Invoke(pile);
+        _entities.Remove(entity);
+        EntityRemoved?.Invoke(entity);
     }
 
     public void Execute(ICommand command) => command.Execute(this);
@@ -261,37 +241,42 @@ public sealed class WorldState(WorldConfiguration configuration)
             ResolveCollisions();
             RefreshExploration();
 
-            foreach (var node in _resourceNodes)
+            foreach (var entity in _entities)
             {
-                if (!node.IsAlive)
+                if (entity.Growth is not { IsAlive: true } growth)
                 {
                     continue;
                 }
 
-                var definition = resourceCatalog.Get(node.Kind);
+                var definition = resourceCatalog.Get(entity.Kind);
                 if (definition.IsInhospitable(climate))
                 {
-                    node.ColdStress += 1f;
-                    if (node.ColdStress >= definition.TicksToWither)
+                    growth.ColdStress += 1f;
+                    if (growth.ColdStress >= definition.TicksToWither)
                     {
-                        node.IsAlive = false;
-                        node.DeathTick = currentTick;
-                        node.CauseOfDeath = ResourceDeathCause.Climate;
+                        growth.IsAlive = false;
+                        growth.DeathTick = currentTick;
+                        growth.CauseOfDeath = ResourceDeathCause.Climate;
                     }
 
                     continue;
                 }
 
-                node.ColdStress = 0f;
+                growth.ColdStress = 0f;
 
                 var regenPerTick = definition.RegenPerTick * regenMultiplier;
-                node.RemainingAmount = Math.Min(node.MaxAmount, node.RemainingAmount + regenPerTick);
+                growth.RemainingAmount = Math.Min(growth.MaxAmount, growth.RemainingAmount + regenPerTick);
             }
         }
 
-        foreach (var building in _buildings)
+        foreach (var entity in _entities)
         {
-            building.Condition = Math.Max(MinCondition, building.Condition - (rules.ConditionDecayPerTick * ticks));
+            if (entity.Condition is not { } condition)
+            {
+                continue;
+            }
+
+            entity.Condition = Math.Max(MinCondition, condition - (rules.ConditionDecayPerTick * ticks));
         }
     }
 
@@ -329,9 +314,9 @@ public sealed class WorldState(WorldConfiguration configuration)
     private bool KnowsHowToEat(Person person) =>
         Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating && person.KnownTechniques.Contains(eating.BaseTechnique);
 
-    private bool IsWorthGathering(Person person, ResourceNode node) =>
-        node is { IsAlive: true, RemainingAmount: > 0f }
-        && GatherCommand.CanTakeAnythingFrom(this, person, Configuration.ResourceCatalog.Get(node.Kind), node.RemainingAmount);
+    private bool IsWorthGathering(Person person, Entity entity) =>
+        entity.Growth is { IsAlive: true, RemainingAmount: > 0f } growth
+        && GatherCommand.CanTakeAnythingFrom(this, person, Configuration.ResourceCatalog.Get(entity.Kind), growth.RemainingAmount);
 
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
     // (IdleTask) is the fallback. Hunger wins over a known skill (see
@@ -352,7 +337,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         if (NeedsToSeekFoodUrgently(person))
         {
             // A food resource this person never learned to gather is as unreachable as none.
-            var foodNode = FindNearestGatherableResourceNode(person, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
+            var foodNode = FindNearestGatherableEntity(person, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
             if (foodNode is not null)
             {
                 return new GatherTask(foodNode, reachDistance);
@@ -361,7 +346,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
         // Nearest wins regardless of which known skill it needs. IsKnownSkill checks the skill's
         // BaseTechnique, since KnownTechniques holds arbitrary techniques rather than skills.
-        var node = FindNearestGatherableResourceNode(person, definition => IsKnownSkill(person, definition.Skill));
+        var node = FindNearestGatherableEntity(person, definition => IsKnownSkill(person, definition.Skill));
         if (node is not null)
         {
             return new GatherTask(node, reachDistance);
@@ -392,22 +377,22 @@ public sealed class WorldState(WorldConfiguration configuration)
     // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
     // the same kind is normally nearby - and so is anything this person could not take from
     // (see GatherCommand.CanTakeAnythingFrom): nobody walks to a source to gather nothing.
-    private ResourceNode? FindNearestGatherableResourceNode(Person person, Func<ResourceDefinition, bool> matches)
+    private Entity? FindNearestGatherableEntity(Person person, Func<ResourceDefinition, bool> matches)
     {
-        ResourceNode? nearest = null;
+        Entity? nearest = null;
         var nearestDistance = double.MaxValue;
-        foreach (var node in _resourceNodes)
+        foreach (var entity in _entities)
         {
-            if (!IsWorthGathering(person, node) || !matches(Configuration.ResourceCatalog.Get(node.Kind)))
+            if (!IsWorthGathering(person, entity) || !matches(Configuration.ResourceCatalog.Get(entity.Kind)))
             {
                 continue;
             }
 
-            var distance = Distance(person.Position, node.Position);
+            var distance = Distance(person.Position, entity.Position);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
-                nearest = node;
+                nearest = entity;
             }
         }
 
@@ -688,12 +673,16 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
 
             var (pushX, pushY) = pushes[i];
-            foreach (var node in _resourceNodes)
+            foreach (var entity in _entities)
             {
-                var collisionRadius = resourceCatalog.Get(node.Kind).CollisionRadius;
-                if (!node.IsAlive
-                    || collisionRadius <= 0f
-                    || !TrySeparation(person.Position, node.Position, personCollisionRadius + collisionRadius, out var nodePushX, out var nodePushY))
+                if (entity.Growth is not { IsAlive: true })
+                {
+                    continue;
+                }
+
+                var collisionRadius = resourceCatalog.Get(entity.Kind).CollisionRadius;
+                if (collisionRadius <= 0f
+                    || !TrySeparation(person.Position, entity.Position, personCollisionRadius + collisionRadius, out var nodePushX, out var nodePushY))
                 {
                     continue;
                 }
@@ -763,11 +752,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     internal void RestoreForebear(Person forebear) => _forebears.Add(forebear);
 
-    internal void RestoreResourceNode(ResourceNode node) => _resourceNodes.Add(node);
-
-    internal void RestoreBuilding(Building building) => _buildings.Add(building);
+    internal void RestoreEntity(Entity entity) => _entities.Add(entity);
 
     internal void RestoreGrave(Grave grave) => _graves.Add(grave);
-
-    internal void RestoreItemPile(ItemPile pile) => _itemPiles.Add(pile);
 }

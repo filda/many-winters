@@ -33,7 +33,13 @@ public class PersonActionsTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Apple, 5);
-        world.AddResourceNode(new ResourceNode { Kind = TestWorld.AppleTree, Position = new Position(0, 0), RemainingAmount = 100, MaxAmount = 100 });
+        world.AddEntity(new Entity
+        {
+            Kind = TestWorld.AppleTree,
+            Category = EntityCategory.Growable,
+            Position = new Position(0, 0),
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        });
 
         var labels = PersonActions.For(world, person).Select(offer => offer.Label).ToList();
 

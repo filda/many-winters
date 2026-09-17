@@ -1,4 +1,5 @@
 using ManyWinters.Core.Construction;
+using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Construction;
@@ -58,7 +59,7 @@ public class BuildingCatalogTests
         {
             var catalog = BuildingCatalog.LoadFromDirectory(root);
 
-            var definition = catalog.Get(new BuildingKindId("storage_hut"));
+            var definition = catalog.Get(new EntityKindId("storage_hut"));
             Assert.Equal("Storage Hut", definition.DisplayName);
             Assert.Equal(20, definition.RequiredAmount);
         }
@@ -83,7 +84,7 @@ public class BuildingCatalogTests
         {
             var catalog = BuildingCatalog.LoadFromDirectory(root);
 
-            var definition = catalog.Get(new BuildingKindId("storage_hut"));
+            var definition = catalog.Get(new EntityKindId("storage_hut"));
             Assert.Equal(20, definition.RequiredAmount);
         }
         finally

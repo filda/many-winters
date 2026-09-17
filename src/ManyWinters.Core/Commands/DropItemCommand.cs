@@ -24,11 +24,12 @@ public sealed record DropItemCommand(Person Person, ItemKindId Item, int Amount)
         }
 
         Person.Inventory.Remove(Item, Amount);
-        world.AddItemPile(new ItemPile
+        world.AddEntity(new Entity
         {
-            Kind = Item,
+            Kind = new EntityKindId(Item.Value),
+            Category = EntityCategory.Pile,
             Position = Person.Position,
-            Amount = Amount,
+            StaticAmount = Amount,
         });
     }
 }

@@ -9,24 +9,24 @@ namespace ManyWinters.Tests.TestSupport;
 // Mirrors src/ManyWinters.Godot/Content/ so tests use the same ids without touching disk.
 public static class TestCatalogs
 {
-    public static readonly ResourceKindId Apple = new("apple");
-    public static readonly ResourceKindId Pear = new("pear");
-    public static readonly ResourceKindId Mushroom = new("mushroom");
-    public static readonly ResourceKindId Potato = new("potato");
-    public static readonly ResourceKindId Wood = new("wood");
-    public static readonly ResourceKindId Grass = new("grass");
+    public static readonly EntityKindId Apple = new("apple");
+    public static readonly EntityKindId Pear = new("pear");
+    public static readonly EntityKindId Mushroom = new("mushroom");
+    public static readonly EntityKindId Potato = new("potato");
+    public static readonly EntityKindId Wood = new("wood");
+    public static readonly EntityKindId Grass = new("grass");
 
     // Placed by MapLoader.ScatterDecorations.
-    public static readonly ResourceKindId ConiferTree = new("conifer_tree");
-    public static readonly ResourceKindId DeciduousTree = new("deciduous_tree");
-    public static readonly ResourceKindId Bush = new("bush");
-    public static readonly ResourceKindId Flower = new("flower");
-    public static readonly ResourceKindId Fern = new("fern");
-    public static readonly ResourceKindId RockPile = new("rock_pile");
-    public static readonly ResourceKindId RockBoulder = new("rock_boulder");
-    public static readonly ResourceKindId RockCluster = new("rock_cluster");
-    public static readonly ResourceKindId TreeStump = new("tree_stump");
-    public static readonly ResourceKindId FallenLog = new("fallen_log");
+    public static readonly EntityKindId ConiferTree = new("conifer_tree");
+    public static readonly EntityKindId DeciduousTree = new("deciduous_tree");
+    public static readonly EntityKindId Bush = new("bush");
+    public static readonly EntityKindId Flower = new("flower");
+    public static readonly EntityKindId Fern = new("fern");
+    public static readonly EntityKindId RockPile = new("rock_pile");
+    public static readonly EntityKindId RockBoulder = new("rock_boulder");
+    public static readonly EntityKindId RockCluster = new("rock_cluster");
+    public static readonly EntityKindId TreeStump = new("tree_stump");
+    public static readonly EntityKindId FallenLog = new("fallen_log");
 
     public static readonly SkillTypeId Foraging = new("foraging");
     public static readonly SkillTypeId MushroomForaging = new("mushroom_foraging");
@@ -119,7 +119,7 @@ public static class TestCatalogs
     private const float BagCarryCapacityBonus = 10f;
     private const float GrassRegenPerTick = 1f;
 
-    public static readonly BuildingKindId StorageHut = new("storage_hut");
+    public static readonly EntityKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
 
     public const float ColdFoodYieldMultiplier = 0.4f;

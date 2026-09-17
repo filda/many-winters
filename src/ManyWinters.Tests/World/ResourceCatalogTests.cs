@@ -41,7 +41,7 @@ public class ResourceCatalogTests
         {
             var catalog = ResourceCatalog.LoadFromDirectory(root);
 
-            var definition = catalog.Get(new ResourceKindId("apple"));
+            var definition = catalog.Get(new EntityKindId("apple"));
             Assert.Equal("Apple", definition.DisplayName);
             Assert.Equal(new SkillTypeId("foraging"), definition.Skill);
         }
@@ -66,7 +66,7 @@ public class ResourceCatalogTests
         {
             var catalog = ResourceCatalog.LoadFromDirectory(root);
 
-            var definition = catalog.Get(new ResourceKindId("apple"));
+            var definition = catalog.Get(new EntityKindId("apple"));
             Assert.Equal("Apple", definition.DisplayName);
         }
         finally

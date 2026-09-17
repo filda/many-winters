@@ -1,6 +1,6 @@
 using System.Text.Json;
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -8,7 +8,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 17;
+    private const int CurrentVersion = 18;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -21,24 +21,19 @@ public static class SaveGameService
         var people = world.People.Select(ToPersonSaveData).ToList();
         var forebears = world.Forebears.Select(ToPersonSaveData).ToList();
 
-        var resourceNodes = world.ResourceNodes
-            .Select(node => new ResourceNodeSaveData(
-                node.Id.Value,
-                node.Kind,
-                node.Position.X,
-                node.Position.Y,
-                node.RemainingAmount,
-                node.MaxAmount))
-            .ToList();
-
-        var buildings = world.Buildings
-            .Select(building => new BuildingSaveData(
-                building.Id.Value,
-                building.Kind,
-                building.Position.X,
-                building.Position.Y,
-                building.Condition,
-                building.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList()))
+        var entities = world.Entities
+            .Select(entity => new EntitySaveData(
+                entity.Id.Value,
+                entity.Kind,
+                entity.Category,
+                entity.Position.X,
+                entity.Position.Y,
+                entity.Growth is { } growth
+                    ? new GrowthSaveData(growth.RemainingAmount, growth.MaxAmount, growth.IsAlive, growth.DeathTick, growth.CauseOfDeath, growth.ColdStress)
+                    : null,
+                entity.StaticAmount,
+                entity.Condition,
+                entity.Storage?.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList()))
             .ToList();
 
         var graves = world.Graves
@@ -55,15 +50,6 @@ public static class SaveGameService
                 grave.KnownTechniques))
             .ToList();
 
-        var itemPiles = world.ItemPiles
-            .Select(pile => new ItemPileSaveData(
-                pile.Id.Value,
-                pile.Kind,
-                pile.Position.X,
-                pile.Position.Y,
-                pile.Amount))
-            .ToList();
-
         var exploredCells = world.Exploration.Explored
             .Select(cell => new ExplorationCellSaveData(cell.X, cell.Y))
             .ToList();
@@ -77,10 +63,8 @@ public static class SaveGameService
             world.Clock.CurrentTick,
             people,
             forebears,
-            resourceNodes,
-            buildings,
+            entities,
             graves,
-            itemPiles,
             exploredCells,
             affections);
     }
@@ -123,36 +107,39 @@ public static class SaveGameService
             world.RestorePerson(RestorePerson(personData, peopleById, configuration.Rules));
         }
 
-        foreach (var nodeData in data.ResourceNodes)
+        foreach (var entityData in data.Entities)
         {
-            var node = new ResourceNode
+            var entity = new Entity
             {
-                Id = new ResourceNodeId(nodeData.Id),
-                Kind = nodeData.Kind,
-                Position = new Position(nodeData.PositionX, nodeData.PositionY),
-                RemainingAmount = nodeData.RemainingAmount,
-                MaxAmount = nodeData.MaxAmount,
+                Id = new EntityId(entityData.Id),
+                Kind = entityData.Kind,
+                Category = entityData.Category,
+                Position = new Position(entityData.PositionX, entityData.PositionY),
+                Growth = entityData.Growth is { } growthData
+                    ? new GrowthState
+                    {
+                        RemainingAmount = growthData.RemainingAmount,
+                        MaxAmount = growthData.MaxAmount,
+                        IsAlive = growthData.IsAlive,
+                        DeathTick = growthData.DeathTick,
+                        CauseOfDeath = growthData.CauseOfDeath,
+                        ColdStress = growthData.ColdStress,
+                    }
+                    : null,
+                StaticAmount = entityData.StaticAmount,
+                Condition = entityData.Condition,
+                Storage = entityData.Storage is not null ? new Inventory() : null,
             };
 
-            world.RestoreResourceNode(node);
-        }
-
-        foreach (var buildingData in data.Buildings)
-        {
-            var building = new Building
+            if (entityData.Storage is { } storage)
             {
-                Id = new BuildingId(buildingData.Id),
-                Kind = buildingData.Kind,
-                Position = new Position(buildingData.PositionX, buildingData.PositionY),
-                Condition = buildingData.Condition,
-            };
-
-            foreach (var stack in buildingData.Inventory)
-            {
-                building.Inventory.Add(stack.Kind, stack.Count);
+                foreach (var stack in storage)
+                {
+                    entity.Storage!.Add(stack.Kind, stack.Count);
+                }
             }
 
-            world.RestoreBuilding(building);
+            world.RestoreEntity(entity);
         }
 
         foreach (var graveData in data.Graves)
@@ -171,17 +158,6 @@ public static class SaveGameService
             };
 
             world.RestoreGrave(grave);
-        }
-
-        foreach (var pileData in data.ItemPiles)
-        {
-            world.RestoreItemPile(new ItemPile
-            {
-                Id = new ItemPileId(pileData.Id),
-                Kind = pileData.Kind,
-                Position = new Position(pileData.PositionX, pileData.PositionY),
-                Amount = pileData.Amount,
-            });
         }
 
         world.Exploration.RestoreExplored(data.ExploredCells.Select(cell => new ExplorationCell(cell.X, cell.Y)));

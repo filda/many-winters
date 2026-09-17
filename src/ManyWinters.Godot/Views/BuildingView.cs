@@ -1,5 +1,5 @@
 using Godot;
-using ManyWinters.Core.Construction;
+using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Sprites;
 
@@ -18,11 +18,11 @@ internal partial class BuildingView : SpriteEntityView
     private const float MaxScale = 1.1f;
     private const float ShadowDiameter = 3.5f;
 
-    private readonly Building _building;
-    private readonly Action<Building, MouseButton> _onClicked;
+    private readonly Entity _building;
+    private readonly Action<Entity, MouseButton> _onClicked;
 
     // Internal for the same reason as PersonView's constructor: only WorldPresenter builds views.
-    internal BuildingView(Building building, HoverArbiter hover, Action<Building, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+    internal BuildingView(Entity building, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(Size, hover, onMissedClick)
     {
         _building = building;
@@ -53,9 +53,9 @@ internal partial class BuildingView : SpriteEntityView
     // Cached per kind for the same reason (and the same C#-bridge crash under repeated
     // ResourceLoader.Load) as ResourceNodeView.VisualDefinitionCache; a camp is a handful of
     // huts, so this is about the two halves of one concern behaving alike.
-    private static readonly Dictionary<BuildingKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
+    private static readonly Dictionary<EntityKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
 
-    private static Color ColorFor(BuildingKindId kind)
+    private static Color ColorFor(EntityKindId kind)
     {
         if (!VisualDefinitionCache.TryGetValue(kind, out var visual))
         {

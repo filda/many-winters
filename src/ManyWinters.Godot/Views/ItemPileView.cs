@@ -1,5 +1,4 @@
 using Godot;
-using ManyWinters.Core.Items;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Sprites;
@@ -16,10 +15,10 @@ internal partial class ItemPileView : SpriteEntityView
     private const float ShadowDiameterRatio = 0.6f / Size;
     private static readonly Color FallbackColor = new(0.55f, 0.45f, 0.3f);
 
-    private readonly ItemPile _pile;
-    private readonly Action<ItemPile, MouseButton> _onClicked;
+    private readonly Entity _pile;
+    private readonly Action<Entity, MouseButton> _onClicked;
 
-    internal ItemPileView(ItemPile pile, HoverArbiter hover, Action<ItemPile, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+    internal ItemPileView(Entity pile, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(Size, hover, onMissedClick)
     {
         _pile = pile;
@@ -38,7 +37,7 @@ internal partial class ItemPileView : SpriteEntityView
     // (wood, apple, pear...) never got one of its own - it already has a ground icon under
     // Content/resources, drawn for the ResourceNode it comes off (ResourceNodeView.TexturePathFor),
     // and a dropped pile of it is the same icon lying on the ground rather than growing.
-    private static string TexturePathFor(ItemKindId kind)
+    private static string TexturePathFor(EntityKindId kind)
     {
         var itemsPath = $"res://Content/items/{kind.Value}/{kind.Value}.png";
         return ResourceLoader.Exists(itemsPath) ? itemsPath : $"res://Content/resources/{kind.Value}/{kind.Value}.png";

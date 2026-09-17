@@ -5,22 +5,26 @@ namespace ManyWinters.Core.Commands;
 // A fresh node is full: MaxAmount is what it regenerates toward (see WorldState.Advance). The
 // id is normally the node's own to draw (see EntityId) - only a creator that must produce the
 // same world twice (MapLoader) names one.
-public sealed record SpawnResourceNodeCommand(ResourceNodeId Id, ResourceKindId Kind, Position Position, float Amount) : ICommand
+public sealed record SpawnResourceNodeCommand(EntityId Id, EntityKindId Kind, Position Position, float Amount) : ICommand
 {
-    public SpawnResourceNodeCommand(ResourceKindId kind, Position position, float amount)
-        : this(ResourceNodeId.New(), kind, position, amount)
+    public SpawnResourceNodeCommand(EntityKindId kind, Position position, float amount)
+        : this(EntityId.New(), kind, position, amount)
     {
     }
 
     // World-building, not a player action (see SpawnPersonCommand.Blocker).
     public ActionBlocker Blocker(WorldState world) => ActionBlocker.None;
 
-    public void Execute(WorldState world) => world.AddResourceNode(new ResourceNode
+    public void Execute(WorldState world) => world.AddEntity(new Entity
     {
         Id = Id,
         Kind = Kind,
+        Category = EntityCategory.Growable,
         Position = Position,
-        RemainingAmount = Amount,
-        MaxAmount = Amount,
+        Growth = new GrowthState
+        {
+            RemainingAmount = Amount,
+            MaxAmount = Amount,
+        },
     });
 }

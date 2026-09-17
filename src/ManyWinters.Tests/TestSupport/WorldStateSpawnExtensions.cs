@@ -1,4 +1,3 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
@@ -70,29 +69,32 @@ public static class WorldStateSpawnExtensions
         return forebear;
     }
 
-    public static ResourceNode SpawnResourceNode(this WorldState world, ResourceKindId kind, Position position, float amount)
+    public static Entity SpawnResourceNode(this WorldState world, EntityKindId kind, Position position, float amount)
     {
-        var node = new ResourceNode
+        var node = new Entity
         {
             Kind = kind,
+            Category = EntityCategory.Growable,
             Position = position,
-            RemainingAmount = amount,
-            MaxAmount = amount,
+            Growth = new GrowthState { RemainingAmount = amount, MaxAmount = amount },
         };
 
-        world.AddResourceNode(node);
+        world.AddEntity(node);
         return node;
     }
 
-    public static Building SpawnBuilding(this WorldState world, BuildingKindId kind, Position position)
+    public static Entity SpawnBuilding(this WorldState world, EntityKindId kind, Position position)
     {
-        var building = new Building
+        var building = new Entity
         {
             Kind = kind,
+            Category = EntityCategory.Building,
             Position = position,
+            Condition = 100f,
+            Storage = new Inventory(),
         };
 
-        world.AddBuilding(building);
+        world.AddEntity(building);
         return building;
     }
 
@@ -123,16 +125,17 @@ public static class WorldStateSpawnExtensions
         return grave;
     }
 
-    public static ItemPile SpawnItemPile(this WorldState world, ItemKindId kind, Position position, int amount)
+    public static Entity SpawnItemPile(this WorldState world, ItemKindId kind, Position position, int amount)
     {
-        var pile = new ItemPile
+        var pile = new Entity
         {
-            Kind = kind,
+            Kind = new EntityKindId(kind.Value),
+            Category = EntityCategory.Pile,
             Position = position,
-            Amount = amount,
+            StaticAmount = amount,
         };
 
-        world.AddItemPile(pile);
+        world.AddEntity(pile);
         return pile;
     }
 }

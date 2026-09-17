@@ -13,10 +13,16 @@ public class TargetActionsTests
     private static readonly Position Camp = new(0, 0);
     private static readonly Position FarAway = new(50, 0);
 
-    private static ResourceNode AddNode(WorldState world, ResourceKindId kind, Position position)
+    private static Entity AddNode(WorldState world, EntityKindId kind, Position position)
     {
-        var node = new ResourceNode { Kind = kind, Position = position, RemainingAmount = 100, MaxAmount = 100 };
-        world.AddResourceNode(node);
+        var node = new Entity
+        {
+            Kind = kind,
+            Category = EntityCategory.Growable,
+            Position = position,
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        };
+        world.AddEntity(node);
         return node;
     }
 
@@ -101,7 +107,7 @@ public class TargetActionsTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", Camp);
         var node = AddNode(world, TestWorld.AppleTree, Camp);
-        node.RemainingAmount = 0;
+        node.Growth!.RemainingAmount = 0;
 
         var gather = TargetActions.Gather(world, person, node);
 
@@ -286,7 +292,7 @@ public class TargetActionsTests
         var ava = TestWorld.AddAdult(world, "Ava", Camp);
         ava.Inventory.Add(TestWorld.Wood, 4);
         var hut = TestWorld.AddStorageHut(world, Camp);
-        hut.Inventory.Add(TestWorld.Apple, 2);
+        hut.Storage!.Add(TestWorld.Apple, 2);
 
         var menu = TargetActions.For(world, ava, hut);
 
@@ -325,13 +331,13 @@ public class TargetActionsTests
     {
         var world = TestWorld.Create();
         var ava = TestWorld.AddAdult(world, "Ava", Camp);
-        var pile = new ItemPile { Kind = TestWorld.Wood, Position = Camp, Amount = 3 };
+        var pile = new Entity { Kind = new EntityKindId(TestWorld.Wood.Value), Category = EntityCategory.Pile, Position = Camp, StaticAmount = 3 };
 
         var menu = TargetActions.For(world, ava, pile);
 
         Assert.Equal("Wood", menu.Heading);
         Assert.Equal(["Pick up"], Labels(menu));
-        Assert.Equal(TestWorld.Wood, Assert.IsType<PickUpItemCommand>(menu.Offers[0].Command).Pile.Kind);
+        Assert.Equal(new EntityKindId(TestWorld.Wood.Value), Assert.IsType<PickUpItemCommand>(menu.Offers[0].Command).Pile.Kind);
     }
 
     [Fact]
@@ -339,7 +345,7 @@ public class TargetActionsTests
     {
         var world = TestWorld.Create();
         var ava = TestWorld.AddAdult(world, "Ava", Camp);
-        var pile = new ItemPile { Kind = TestWorld.Wood, Position = FarAway, Amount = 3 };
+        var pile = new Entity { Kind = new EntityKindId(TestWorld.Wood.Value), Category = EntityCategory.Pile, Position = FarAway, StaticAmount = 3 };
 
         var pickUp = TargetActions.PickUp(world, ava, pile);
 
@@ -353,7 +359,7 @@ public class TargetActionsTests
     {
         var world = TestWorld.Create();
         var ava = TestWorld.AddAdult(world, "Ava", Camp);
-        var pile = new ItemPile { Kind = TestWorld.Wood, Position = Camp, Amount = 3 };
+        var pile = new Entity { Kind = new EntityKindId(TestWorld.Wood.Value), Category = EntityCategory.Pile, Position = Camp, StaticAmount = 3 };
 
         Assert.Equal(TargetActions.PickUp(world, ava, pile), TargetActions.For(world, ava, pile).Offers[0]);
     }
@@ -420,7 +426,7 @@ public class TargetActionsTests
         var corpse = AddCorpse(world, "Tora", Camp);
         corpse.Inventory.Add(TestWorld.Apple, 1);
         var hut = TestWorld.AddStorageHut(world, Camp);
-        hut.Inventory.Add(TestWorld.Apple, 2);
+        hut.Storage!.Add(TestWorld.Apple, 2);
 
         IReadOnlyList<TargetMenu> menus =
         [
@@ -442,8 +448,8 @@ public class TargetActionsTests
         ava.Inventory.Add(TestWorld.Wood, 4);
         ava.Inventory.Add(TestWorld.Apple, 2);
         var hut = TestWorld.AddStorageHut(world, Camp);
-        hut.Inventory.Add(TestWorld.Wood, 1);
-        hut.Inventory.Add(TestWorld.Apple, 1);
+        hut.Storage!.Add(TestWorld.Wood, 1);
+        hut.Storage!.Add(TestWorld.Apple, 1);
 
         Assert.Equal(
             Labels(TargetActions.For(world, ava, hut)),

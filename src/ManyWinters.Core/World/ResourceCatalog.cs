@@ -4,14 +4,14 @@ namespace ManyWinters.Core.World;
 
 public sealed class ResourceCatalog
 {
-    private readonly Dictionary<ResourceKindId, ResourceDefinition> _definitions;
+    private readonly Dictionary<EntityKindId, ResourceDefinition> _definitions;
 
     public ResourceCatalog(IEnumerable<ResourceDefinition> definitions)
     {
         _definitions = definitions.ToDictionary(d => d.Id);
     }
 
-    public ResourceDefinition Get(ResourceKindId id) => _definitions[id];
+    public ResourceDefinition Get(EntityKindId id) => _definitions[id];
 
     public static ResourceCatalog LoadFromDirectory(string rootPath)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));

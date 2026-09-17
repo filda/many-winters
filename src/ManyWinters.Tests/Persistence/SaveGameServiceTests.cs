@@ -24,10 +24,10 @@ public class SaveGameServiceTests
         bran.DeathTick = 42;
         bran.IsBuried = true;
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
-        node.RemainingAmount = 10f;
+        node.Growth!.RemainingAmount = 10f;
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(-1f, -2f));
         building.Condition = 63f;
-        building.Inventory.Add(TestCatalogs.WoodItem, 12);
+        building.Storage!.Add(TestCatalogs.WoodItem, 12);
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -57,21 +57,25 @@ public class SaveGameServiceTests
             Assert.Equal(42, restoredBran.DeathTick);
             Assert.True(restoredBran.IsBuried);
 
-            Assert.Equal(world.ResourceNodes.Count, restored.ResourceNodes.Count);
-            var restoredNode = Assert.Single(restored.ResourceNodes);
+            var resourceNodes = world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+            var restoredResourceNodes = restored.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+            Assert.Equal(resourceNodes.Count, restoredResourceNodes.Count);
+            var restoredNode = Assert.Single(restoredResourceNodes);
             Assert.Equal(node.Id, restoredNode.Id);
             Assert.Equal(node.Kind, restoredNode.Kind);
             Assert.Equal(node.Position, restoredNode.Position);
-            Assert.Equal(node.RemainingAmount, restoredNode.RemainingAmount);
-            Assert.Equal(node.MaxAmount, restoredNode.MaxAmount);
+            Assert.Equal(node.Growth!.RemainingAmount, restoredNode.Growth!.RemainingAmount);
+            Assert.Equal(node.Growth.MaxAmount, restoredNode.Growth.MaxAmount);
 
-            Assert.Equal(world.Buildings.Count, restored.Buildings.Count);
-            var restoredBuilding = Assert.Single(restored.Buildings);
+            var buildings = world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
+            var restoredBuildings = restored.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
+            Assert.Equal(buildings.Count, restoredBuildings.Count);
+            var restoredBuilding = Assert.Single(restoredBuildings);
             Assert.Equal(building.Id, restoredBuilding.Id);
             Assert.Equal(building.Kind, restoredBuilding.Kind);
             Assert.Equal(building.Position, restoredBuilding.Position);
             Assert.Equal(building.Condition, restoredBuilding.Condition);
-            Assert.Equal(building.Inventory.Get(TestCatalogs.WoodItem), restoredBuilding.Inventory.Get(TestCatalogs.WoodItem));
+            Assert.Equal(building.Storage!.Get(TestCatalogs.WoodItem), restoredBuilding.Storage!.Get(TestCatalogs.WoodItem));
 
             Assert.NotEmpty(world.Exploration.Explored);
             Assert.Equal(world.Exploration.Explored.ToHashSet(), restored.Exploration.Explored.ToHashSet());
@@ -274,11 +278,11 @@ public class SaveGameServiceTests
             SaveGameService.Save(world, path);
             var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
 
-            var restoredPile = Assert.Single(restored.ItemPiles);
+            var restoredPile = Assert.Single(restored.Entities, e => e.Category == EntityCategory.Pile);
             Assert.Equal(pile.Id, restoredPile.Id);
             Assert.Equal(pile.Kind, restoredPile.Kind);
             Assert.Equal(pile.Position, restoredPile.Position);
-            Assert.Equal(pile.Amount, restoredPile.Amount);
+            Assert.Equal(pile.StaticAmount, restoredPile.StaticAmount);
         }
         finally
         {

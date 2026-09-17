@@ -1,4 +1,3 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
@@ -11,10 +10,8 @@ public sealed record SaveData(
     long Tick,
     IReadOnlyList<PersonSaveData> People,
     IReadOnlyList<PersonSaveData> Forebears,
-    IReadOnlyList<ResourceNodeSaveData> ResourceNodes,
-    IReadOnlyList<BuildingSaveData> Buildings,
+    IReadOnlyList<EntitySaveData> Entities,
     IReadOnlyList<GraveSaveData> Graves,
-    IReadOnlyList<ItemPileSaveData> ItemPiles,
     IReadOnlyList<ExplorationCellSaveData> ExploredCells,
     IReadOnlyList<AffectionSaveData> Affections);
 
@@ -48,21 +45,28 @@ public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
 public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 
-public sealed record ResourceNodeSaveData(
-    Guid Id,
-    ResourceKindId Kind,
-    double PositionX,
-    double PositionY,
+// Nested rather than flattened onto EntitySaveData: only a Growable entity has one, and its
+// fields (IsAlive, DeathTick, CauseOfDeath, ColdStress) previously fell out of ResourceNodeSaveData
+// silently on every save - keeping them together as one nullable block makes that omission
+// impossible to repeat by accident.
+public sealed record GrowthSaveData(
     float RemainingAmount,
-    float MaxAmount);
+    float MaxAmount,
+    bool IsAlive,
+    long? DeathTick,
+    ResourceDeathCause? CauseOfDeath,
+    float ColdStress);
 
-public sealed record BuildingSaveData(
+public sealed record EntitySaveData(
     Guid Id,
-    BuildingKindId Kind,
+    EntityKindId Kind,
+    EntityCategory Category,
     double PositionX,
     double PositionY,
-    float Condition,
-    IReadOnlyList<ItemStackSaveData> Inventory);
+    GrowthSaveData? Growth,
+    int? StaticAmount,
+    float? Condition,
+    IReadOnlyList<ItemStackSaveData>? Storage);
 
 public sealed record GraveSaveData(
     Guid Id,
@@ -75,12 +79,5 @@ public sealed record GraveSaveData(
     string? MotherName,
     string? FatherName,
     IReadOnlyList<TechniqueId> KnownTechniques);
-
-public sealed record ItemPileSaveData(
-    Guid Id,
-    ItemKindId Kind,
-    double PositionX,
-    double PositionY,
-    int Amount);
 
 public sealed record ExplorationCellSaveData(int X, int Y);

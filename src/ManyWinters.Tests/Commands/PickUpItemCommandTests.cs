@@ -16,7 +16,7 @@ public class PickUpItemCommandTests
         world.Execute(new PickUpItemCommand(person, pile));
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Empty(world.ItemPiles);
+        Assert.DoesNotContain(world.Entities, e => e.Category == EntityCategory.Pile);
     }
 
     [Fact]
@@ -30,8 +30,8 @@ public class PickUpItemCommandTests
         world.Execute(new PickUpItemCommand(person, pile));
 
         Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(15, pile.Amount);
-        Assert.Single(world.ItemPiles);
+        Assert.Equal(15, pile.StaticAmount);
+        Assert.Single(world.Entities, e => e.Category == EntityCategory.Pile);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class PickUpItemCommandTests
         world.Execute(new PickUpItemCommand(person, pile));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(5, pile.Amount);
+        Assert.Equal(5, pile.StaticAmount);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class PickUpItemCommandTests
         world.Execute(new PickUpItemCommand(person, pile));
 
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(5, pile.Amount);
+        Assert.Equal(5, pile.StaticAmount);
     }
 
     [Fact]

@@ -1,11 +1,13 @@
-using ManyWinters.Core.Construction;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record ConstructCommand(Person Person, BuildingKindId Kind, Position Position) : ICommand
+public sealed record ConstructCommand(Person Person, EntityKindId Kind, Position Position) : ICommand
 {
+    private const float StartingCondition = 100f;
+
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -34,10 +36,13 @@ public sealed record ConstructCommand(Person Person, BuildingKindId Kind, Positi
         var definition = world.Configuration.BuildingCatalog.Get(Kind);
         Person.Inventory.Remove(definition.RequiredItem, definition.RequiredAmount);
 
-        world.AddBuilding(new Building
+        world.AddEntity(new Entity
         {
             Kind = Kind,
+            Category = EntityCategory.Building,
             Position = Position,
+            Condition = StartingCondition,
+            Storage = new Inventory(),
         });
     }
 }

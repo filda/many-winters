@@ -1,6 +1,5 @@
 using Godot;
 using ManyWinters.Core.Commands;
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
@@ -150,7 +149,7 @@ public partial class Main : Node3D
 
         ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
-        GD.Print($"Main ready. World has {_world.People.Count} people and {_world.ResourceNodes.Count} resource nodes at tick {_world.Clock.CurrentTick}.");
+        GD.Print($"Main ready. World has {_world.People.Count} people and {_world.Entities.Count(e => e.Category == EntityCategory.Growable)} resource nodes at tick {_world.Clock.CurrentTick}.");
         // Answers "am I running the build I think I am" (a stale process after hot-reload or a
         // forgotten relaunch) with one log line; derived from the assembly, not bumped by hand.
         GD.Print($"Build tag: {BuildTag.For(AssemblyBuildTimeUtc())}");
@@ -237,9 +236,14 @@ public partial class Main : Node3D
             _presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)_pacing.TickIntervalSeconds : 0f);
         }
 
-        foreach (var node in _world.ResourceNodes)
+        foreach (var node in _world.Entities)
         {
-            if (!node.IsAlive)
+            if (node.Growth is not { } growth)
+            {
+                continue;
+            }
+
+            if (!growth.IsAlive)
             {
                 // Nodes that withered from climate stress (see WorldState.Advance); felling
                 // removes its own view immediately.
@@ -247,7 +251,7 @@ public partial class Main : Node3D
                 continue;
             }
 
-            _presenter.SetResourceNodeHasFruit(node.Id, node.RemainingAmount > 0);
+            _presenter.SetResourceNodeHasFruit(node.Id, growth.RemainingAmount > 0);
         }
 
         GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
@@ -1043,7 +1047,7 @@ public partial class Main : Node3D
     //
     // Depleting a node to zero keeps its view - the plant is still there, fruitless until
     // RegenPerTick refills it. Only IsAlive turning false (felled or withered) removes it.
-    private void OnResourceNodeClicked(ResourceNode node, MouseButton button)
+    private void OnResourceNodeClicked(Entity node, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
@@ -1059,7 +1063,7 @@ public partial class Main : Node3D
 
     // A left click on a pile is the one shortcut kept, the same as a resource's Gather: "pick
     // that up" is the only thing anybody means by pointing at it.
-    private void OnItemPileClicked(ItemPile pile, MouseButton button)
+    private void OnItemPileClicked(Entity pile, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
@@ -1075,7 +1079,7 @@ public partial class Main : Node3D
 
     // Either button opens the store's menu: a hut has no one obvious thing to do with it, so
     // putting something in, taking something out and mending it are equally the point.
-    private void OnBuildingClicked(Building building, MouseButton button)
+    private void OnBuildingClicked(Entity building, MouseButton button)
     {
         _pointedAt = actor => TargetActions.For(_world, actor, building);
 
@@ -1230,8 +1234,9 @@ public partial class Main : Node3D
 
     private void RefreshBuildingsLabel()
     {
-        _buildingsLabel.Text = "Buildings: " + (_world.Buildings.Count > 0
-            ? string.Join(", ", _world.Buildings.Select(BuildingSummary))
+        var buildings = _world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
+        _buildingsLabel.Text = "Buildings: " + (buildings.Count > 0
+            ? string.Join(", ", buildings.Select(BuildingSummary))
             : "none");
     }
 
@@ -1243,11 +1248,11 @@ public partial class Main : Node3D
         _gravesLabel.Text = $"Graves: {_world.Graves.Count}";
     }
 
-    private static string BuildingSummary(Building building)
+    private static string BuildingSummary(Entity building)
     {
-        var inventory = building.Inventory.Counts.Count > 0
-            ? string.Join(", ", building.Inventory.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
+        var inventory = building.Storage!.Counts.Count > 0
+            ? string.Join(", ", building.Storage.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
             : "empty";
-        return $"{building.Kind} #{building.Id} ({building.Condition:0}%) [{inventory}]";
+        return $"{building.Kind} #{building.Id} ({building.Condition!.Value:0}%) [{inventory}]";
     }
 }

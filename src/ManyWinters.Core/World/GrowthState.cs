@@ -1,13 +1,10 @@
 namespace ManyWinters.Core.World;
 
-public sealed class ResourceNode
+// A resource's life cycle: how much is left to harvest, whether it is still standing, and how
+// long it has been suffering a climate it cannot survive (see WorldState.Advance). Only entities
+// with EntityCategory.Growable carry one - a dropped pile or a building has nothing here.
+public sealed class GrowthState
 {
-    public ResourceNodeId Id { get; init; } = ResourceNodeId.New();
-
-    public required ResourceKindId Kind { get; init; }
-
-    public Position Position { get; init; }
-
     public float RemainingAmount { get; set; }
 
     public float MaxAmount { get; init; }

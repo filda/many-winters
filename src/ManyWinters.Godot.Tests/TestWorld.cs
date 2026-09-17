@@ -17,8 +17,8 @@ internal static class TestWorld
     internal static readonly ItemKindId Apple = new("apple");
     private static readonly ItemKindId Axe = new("axe");
 
-    internal static readonly ResourceKindId AppleTree = new("apple");
-    internal static readonly ResourceKindId Stump = new("tree_stump");
+    internal static readonly EntityKindId AppleTree = new("apple");
+    internal static readonly EntityKindId Stump = new("tree_stump");
 
     private static readonly SkillTypeId Foraging = new("foraging");
     private static readonly SkillTypeId Teaching = new("teaching");
@@ -27,7 +27,7 @@ internal static class TestWorld
     private static readonly TechniqueId BasicEating = new("basic_eating");
     internal static readonly TechniqueId BasicTeaching = new("basic_teaching");
 
-    private static readonly BuildingKindId StorageHut = new("storage_hut");
+    private static readonly EntityKindId StorageHut = new("storage_hut");
 
     internal const int AxeInputAmount = 5;
     internal const int StorageHutInputAmount = 20;
@@ -50,7 +50,7 @@ internal static class TestWorld
 
         return new WorldState(new WorldConfiguration(
             new ResourceCatalog([
-                new ResourceDefinition(AppleTree, "Apple", Foraging, Apple, CanFell: true, FellLeaves: [new(new ResourceKindId("wood"), 30f)]),
+                new ResourceDefinition(AppleTree, "Apple", Foraging, Apple, CanFell: true, FellLeaves: [new(new EntityKindId("wood"), 30f)]),
                 new ResourceDefinition(Stump, "Tree Stump", Foraging, Wood),
             ]),
             new SkillCatalog([
@@ -85,10 +85,17 @@ internal static class TestWorld
     }
 
     // A hut to put things into and take them back out of, for the menu a store offers.
-    internal static Building AddStorageHut(WorldState world, Position position)
+    internal static Entity AddStorageHut(WorldState world, Position position)
     {
-        var building = new Building { Kind = StorageHut, Position = position };
-        world.AddBuilding(building);
+        var building = new Entity
+        {
+            Kind = StorageHut,
+            Category = EntityCategory.Building,
+            Position = position,
+            Condition = 100f,
+            Storage = new Inventory(),
+        };
+        world.AddEntity(building);
         return building;
     }
 

@@ -1,11 +1,10 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record WithdrawCommand(Person Person, Building Building, ItemKindId Item, int Amount) : ICommand
+public sealed record WithdrawCommand(Person Person, Entity Building, ItemKindId Item, int Amount) : ICommand
 {
     public ActionBlocker Blocker(WorldState world)
     {
@@ -21,7 +20,7 @@ public sealed record WithdrawCommand(Person Person, Building Building, ItemKindI
 
         // The store's shortage, not the person's - the two read differently to a player standing
         // at an empty hut (see ActionBlocker.MissingMaterials).
-        return Building.Inventory.Get(Item) < Amount ? ActionBlocker.StoreIsEmpty : ActionBlocker.None;
+        return Building.Storage!.Get(Item) < Amount ? ActionBlocker.StoreIsEmpty : ActionBlocker.None;
     }
 
     public void Execute(WorldState world)
@@ -31,7 +30,7 @@ public sealed record WithdrawCommand(Person Person, Building Building, ItemKindI
             return;
         }
 
-        Building.Inventory.Remove(Item, Amount);
+        Building.Storage!.Remove(Item, Amount);
 
         // Unlike Deposit into a building's uncapped storage, this goes into the person's capped
         // inventory (see WorldState.MaxCarryWeightFor); what does not fit goes back into the
@@ -39,7 +38,7 @@ public sealed record WithdrawCommand(Person Person, Building Building, ItemKindI
         var added = Person.Inventory.AddUpToCapacity(Item, Amount, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
         if (added < Amount)
         {
-            Building.Inventory.Add(Item, Amount - added);
+            Building.Storage!.Add(Item, Amount - added);
         }
     }
 }

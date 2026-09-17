@@ -1,4 +1,4 @@
-using ManyWinters.Core.Construction;
+using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
@@ -48,6 +48,6 @@ public class TexturePathTests
     {
         Assert.Equal(
             "res://Content/buildings/storage_hut/storage_hut.png",
-            TexturePaths.ForBuilding(new BuildingKindId("storage_hut")));
+            TexturePaths.ForBuilding(new EntityKindId("storage_hut")));
     }
 }

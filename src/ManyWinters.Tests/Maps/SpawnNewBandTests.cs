@@ -34,6 +34,9 @@ public class SpawnNewBandTests
         new(-500, 500),
     ];
 
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+
     private static (WorldState World, Position Camp) Spawn(int seed, Position oldCamp)
     {
         var world = new WorldState(TestCatalogs.CreateConfiguration());
@@ -62,7 +65,7 @@ public class SpawnNewBandTests
 
                 AssertOnTerrain(camp, "the camp center", oldCamp, seed);
                 Assert.All(world.People, person => AssertOnTerrain(person.Position, person.Name, oldCamp, seed));
-                Assert.All(world.ResourceNodes, node => AssertOnTerrain(node.Position, node.Kind.Value, oldCamp, seed));
+                Assert.All(ResourceNodes(world), node => AssertOnTerrain(node.Position, node.Kind.Value, oldCamp, seed));
             }
         }
     }
@@ -113,10 +116,10 @@ public class SpawnNewBandTests
 
         Assert.Equal(15, world.People.Count);
 
-        var nodes = world.ResourceNodes.ToList();
+        var nodes = ResourceNodes(world).ToList();
         Assert.Equal(10, nodes.Count);
-        Assert.Equal(300f, Assert.Single(nodes, n => n.Kind == TestCatalogs.Wood).RemainingAmount);
-        Assert.Equal(200f, Assert.Single(nodes, n => n.Kind == TestCatalogs.Grass).RemainingAmount);
+        Assert.Equal(300f, Assert.Single(nodes, n => n.Kind == TestCatalogs.Wood).Growth!.RemainingAmount);
+        Assert.Equal(200f, Assert.Single(nodes, n => n.Kind == TestCatalogs.Grass).Growth!.RemainingAmount);
         foreach (var kind in new[] { TestCatalogs.Apple, TestCatalogs.Pear, TestCatalogs.Mushroom, TestCatalogs.Potato })
         {
             Assert.Equal(2, nodes.Count(n => n.Kind == kind));
@@ -170,6 +173,6 @@ public class SpawnNewBandTests
 
         Assert.Equal(firstCamp, secondCamp);
         Assert.Equal(firstWorld.People.Select(p => p.Position), secondWorld.People.Select(p => p.Position));
-        Assert.Equal(firstWorld.ResourceNodes.Select(n => (n.Kind, n.Position)), secondWorld.ResourceNodes.Select(n => (n.Kind, n.Position)));
+        Assert.Equal(ResourceNodes(firstWorld).Select(n => (n.Kind, n.Position)), ResourceNodes(secondWorld).Select(n => (n.Kind, n.Position)));
     }
 }

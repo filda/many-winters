@@ -1,4 +1,4 @@
-using ManyWinters.Core.Construction;
+using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
 
@@ -6,7 +6,7 @@ namespace ManyWinters.Godot.Logic;
 // whether a path exists is ResourceLoader's job, with the caller that can afford to ask.
 internal static class TexturePaths
 {
-    internal static string ForBuilding(BuildingKindId kind)
+    internal static string ForBuilding(EntityKindId kind)
         => $"res://Content/buildings/{kind.Value}/{kind.Value}.png";
 
     // Splits at the last dot, so a directory containing one is not mistaken for the extension.

@@ -15,10 +15,10 @@ public class GatherTaskTests
     private static Person NewPerson(Position position) =>
         new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
-    private static ResourceNode NewTargetNode() =>
-        new() { Kind = new ResourceKindId("apple"), Position = Target };
+    private static Entity NewTargetNode() =>
+        new() { Kind = new EntityKindId("apple"), Category = EntityCategory.Growable, Position = Target };
 
-    private static GatherTask NewTask(float? reach = null, ResourceNode? target = null) => new(target ?? NewTargetNode(), reach ?? Reach);
+    private static GatherTask NewTask(float? reach = null, Entity? target = null) => new(target ?? NewTargetNode(), reach ?? Reach);
 
     [Fact]
     public void IsNeverComplete()

@@ -3,7 +3,7 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-public class EntityIdTests
+public class IdGenerationTests
 {
     [Fact]
     public void NextGuidIsTheSameForTheSameSeedInTheSameOrder()
@@ -11,8 +11,8 @@ public class EntityIdTests
         var first = new Random(42);
         var second = new Random(42);
 
-        Assert.Equal(EntityId.NextGuid(first), EntityId.NextGuid(second));
-        Assert.Equal(EntityId.NextGuid(first), EntityId.NextGuid(second));
+        Assert.Equal(IdGeneration.NextGuid(first), IdGeneration.NextGuid(second));
+        Assert.Equal(IdGeneration.NextGuid(first), IdGeneration.NextGuid(second));
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public class EntityIdTests
     {
         var rng = new Random(42);
 
-        var drawn = Enumerable.Range(0, 1000).Select(_ => EntityId.NextGuid(rng)).ToList();
+        var drawn = Enumerable.Range(0, 1000).Select(_ => IdGeneration.NextGuid(rng)).ToList();
 
         Assert.Equal(drawn.Count, drawn.Distinct().Count());
         Assert.DoesNotContain(Guid.Empty, drawn);
@@ -31,13 +31,13 @@ public class EntityIdTests
     {
         var id = new Guid(new byte[] { 0x78, 0x56, 0x34, 0x12, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9 });
 
-        Assert.Equal(0x12345678, EntityId.SeedOf(id));
+        Assert.Equal(0x12345678, IdGeneration.SeedOf(id));
     }
 
     [Fact]
     public void SeedOfTheEmptyIdIsZero()
     {
-        Assert.Equal(0, EntityId.SeedOf(Guid.Empty));
+        Assert.Equal(0, IdGeneration.SeedOf(Guid.Empty));
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class EntityIdTests
     public void NewIdsAreDistinctAndNeverEmpty()
     {
         Assert.NotEqual(PersonId.New(), PersonId.New());
-        Assert.NotEqual(ResourceNodeId.New(), ResourceNodeId.New());
+        Assert.NotEqual(EntityId.New(), EntityId.New());
         Assert.NotEqual(Guid.Empty, PersonId.New().Value);
     }
 
@@ -59,6 +59,6 @@ public class EntityIdTests
     public void SeededIdsFollowTheirGenerator()
     {
         Assert.Equal(PersonId.New(new Random(5)), PersonId.New(new Random(5)));
-        Assert.Equal(ResourceNodeId.New(new Random(5)).Value, PersonId.New(new Random(5)).Value);
+        Assert.Equal(EntityId.New(new Random(5)).Value, PersonId.New(new Random(5)).Value);
     }
 }

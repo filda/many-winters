@@ -7,7 +7,7 @@ namespace ManyWinters.Core.Tasks;
 // Only walks there; harvesting is GatherCommand at WorldState level, since PersonTask.Advance
 // sees only the Person. Never completes - WorldState.Advance re-evaluates it every tick.
 // `reachDistance` is SimulationRules.MaxInteractionDistance, passed in as Advance has no world.
-public sealed class GatherTask(ResourceNode target, float reachDistance) : PersonTask
+public sealed class GatherTask(Entity target, float reachDistance) : PersonTask
 {
     private const float SpeedPerTick = 0.3f;
 
@@ -19,7 +19,7 @@ public sealed class GatherTask(ResourceNode target, float reachDistance) : Perso
     private Position? _approachPosition;
     private MoveTask? _move;
 
-    public ResourceNode Target { get; } = target;
+    public Entity Target { get; } = target;
 
     public float ReachDistance { get; } = reachDistance;
 
