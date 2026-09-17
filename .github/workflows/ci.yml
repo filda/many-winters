@@ -76,20 +76,31 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
-  release:
-    needs: [build-and-test, check-game-changes]
+  version:
+    needs: check-game-changes
     if: needs.check-game-changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Compute version
+        id: version
+        run: |
+          v="0.1.${{ github.run_number }}"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+
+  release-windows:
+    needs: [build-and-test, version]
     runs-on: windows-latest
-    permissions:
-      contents: write
-    concurrency:
-      group: release
-      cancel-in-progress: false
     env:
       GODOT_RELEASE: 4.7.1-stable
       GODOT_TEMPLATE_DIR: 4.7.1.stable.mono
       GODOT_EDITOR_SETTINGS: editor_settings-4.7.tres
       EXPORT_PRESET: Of Folks and Many Winters
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
@@ -108,13 +119,6 @@ jobs:
           path: ~/.nuget/packages
           key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: nuget-
-
-      - name: Compute version
-        id: version
-        run: |
-          $v = "0.1.${{ github.run_number }}"
-          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "tag=v$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Cache Godot editor and export templates
         id: godot-cache
@@ -175,7 +179,7 @@ jobs:
       - name: Stamp version
         run: |
           $ErrorActionPreference = "Stop"
-          $v = "${{ steps.version.outputs.version }}"
+          $v = $env:VERSION
           $presets = "src/ManyWinters.Godot/export_presets.cfg"
           $project = "src/ManyWinters.Godot/project.godot"
           $name = "Of Folks and Many Winters"
@@ -261,8 +265,8 @@ jobs:
             $errs | ForEach-Object { $_.Line }
             throw "Godot logged $($errs.Count) error(s) during export"
           }
-          "Of Folks and Many Winters ${{ steps.version.outputs.version }}",
-          "build ${{ steps.version.outputs.tag }}",
+          "Of Folks and Many Winters $env:VERSION",
+          "build $env:TAG",
           "commit ${{ github.sha }}" | Set-Content build/ManyWinters/version.txt
 
       - name: Smoke-test the exported build
@@ -296,21 +300,211 @@ jobs:
           7z a -tzip -mx=7 ManyWinters-win64.zip .\build\ManyWinters
           "zip size: {0:N0} MB" -f ((Get-Item ManyWinters-win64.zip).Length / 1MB)
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ManyWinters-win64
+          path: ManyWinters-win64.zip
+          retention-days: 1
+
+  release-linux:
+    needs: [build-and-test, version]
+    runs-on: ubuntu-latest
+    env:
+      GODOT_RELEASE: 4.7.1-stable
+      GODOT_TEMPLATE_DIR: 4.7.1.stable.mono
+      EXPORT_PRESET: Of Folks and Many Winters (Linux)
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      # Same rationale as the Windows job: Godot's export shells out to `dotnet publish` for a
+      # self-contained linux-x64 build, which pulls the .NET runtime packs.
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: Cache Godot editor and export templates
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            tools/godot
+            ~/.local/share/godot/export_templates
+          # Bump the trailing suffix whenever the trim rules in the next step change: the key does
+          # not otherwise depend on them, so a cache saved under the old rules would be reused
+          # silently and show up as a mysterious export failure.
+          key: godot-${{ env.GODOT_RELEASE }}-mono-linux64-v1
+
+      - name: Download Godot editor and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/$GODOT_RELEASE"
+          mkdir -p tools/godot
+
+          curl -sL "$base/Godot_v${GODOT_RELEASE}_mono_linux_x86_64.zip" -o godot.zip
+          unzip -q godot.zip -d tools/godot
+
+          # The template archive is a plain zip with a .tpz extension and carries every platform
+          # in both debug and release; we only ever export Linux release, so trim the rest.
+          curl -sL "$base/Godot_v${GODOT_RELEASE}_mono_export_templates.tpz" -o templates.zip
+          unzip -q templates.zip -d templates
+          dest="$HOME/.local/share/godot/export_templates/$GODOT_TEMPLATE_DIR"
+          mkdir -p "$dest"
+          mv templates/templates/* "$dest"
+
+          find "$dest" -maxdepth 1 -type f \
+            ! -name "linux_release.x86_64" ! -name "version.txt" ! -name "icudt_godot.dat" \
+            -delete
+          find "$dest" -maxdepth 1 -type f -printf "kept: %f (%s bytes)\n"
+
+      - name: Stamp version
+        run: |
+          set -euo pipefail
+          v="$VERSION"
+          presets="src/ManyWinters.Godot/export_presets.cfg"
+          project="src/ManyWinters.Godot/project.godot"
+          name="Of Folks and Many Winters"
+
+          sed -i \
+            -e "s/application\/file_version=\"\"/application\/file_version=\"$v.0\"/" \
+            -e "s/application\/product_version=\"\"/application\/product_version=\"$v.0\"/" \
+            -e "s/application\/product_name=\"\"/application\/product_name=\"$name\"/" \
+            -e "s/application\/file_description=\"\"/application\/file_description=\"$name\"/" \
+            "$presets"
+
+          # Readable at runtime as ProjectSettings.GetSetting("application/config/version").
+          sed -i "s/config\/name=\"ManyWinters Godot\"/config\/name=\"ManyWinters Godot\"\nconfig\/version=\"$v\"/" "$project"
+
+      - name: Locate Godot
+        run: |
+          godot=$(find tools/godot -type f -name "Godot_v*_mono_linux.x86_64" | head -n1)
+          if [ -z "$godot" ]; then echo "Godot Linux binary not found under tools/godot" >&2; exit 1; fi
+          chmod +x "$godot"
+          echo "GODOT=$godot" >> "$GITHUB_ENV"
+
+      - name: Restore editor plugins
+        run: |
+          # See the equivalent step in release-windows for why the exit code is ignored here.
+          "$GODOT" --headless --path src/ManyWinters.Godot -s plug.gd install || true
+          if [ ! -f src/ManyWinters.Godot/addons/beckett/plugin.cfg ]; then
+            echo "gd-plug did not install Beckett into src/ManyWinters.Godot/addons" >&2
+            exit 1
+          fi
+
+      - name: Import assets
+        run: |
+          # First headless run builds the .godot/ import cache; a non-zero exit here is normal.
+          "$GODOT" --headless --path src/ManyWinters.Godot --import || true
+
+      - name: Export Linux build
+        run: |
+          set -euo pipefail
+          root="$PWD"
+          mkdir -p build/ManyWinters-linux
+          out="$root/build/ManyWinters-linux/ManyWinters"
+
+          sw_start=$(date +%s)
+          "$GODOT" --headless --path "$root/src/ManyWinters.Godot" \
+            --export-release "$EXPORT_PRESET" "$out" \
+            > "$root/export.out.log" 2> "$root/export.err.log" || true
+          echo "godot exit after $(( $(date +%s) - sw_start ))s"
+          tail -n 20 "$root/export.out.log"
+          cat "$root/export.err.log"
+
+          # An exit code of 0 means nothing here: a run that fails to publish any C# at all still
+          # writes a launchable binary and reports success. Check what actually landed on disk.
+          if [ ! -f "$out" ]; then echo "Export produced no executable" >&2; exit 1; fi
+          data=$(find build/ManyWinters-linux -maxdepth 1 -type d -name "data_*" | head -n1)
+          if [ -z "$data" ]; then echo "No data_* folder: the .NET half of the export never ran" >&2; exit 1; fi
+          if [ ! -f "$data/ManyWinters.Godot.dll" ]; then
+            echo "Export is missing ManyWinters.Godot.dll" >&2; exit 1
+          fi
+          if grep -H "^ERROR:" "$root/export.out.log" "$root/export.err.log"; then
+            echo "Godot logged error(s) during export" >&2; exit 1
+          fi
+          printf "Of Folks and Many Winters %s\nbuild %s\ncommit %s\n" \
+            "$VERSION" "$TAG" "${{ github.sha }}" > build/ManyWinters-linux/version.txt
+
+      - name: Smoke-test the exported build
+        run: |
+          set -euo pipefail
+          root="$PWD"
+          game="$root/build/ManyWinters-linux"
+          chmod +x "$game/ManyWinters"
+          # Boots the real exported game headless for a couple of seconds. An export can load its
+          # C# perfectly and still be dead on arrival, because content that resolves under the
+          # editor's loose files does not resolve inside a .pck.
+          set +e
+          "$game/ManyWinters" --headless --quit-after 120 \
+            > "$root/smoke.out.log" 2> "$root/smoke.err.log"
+          code=$?
+          set -e
+          echo "smoke exit code: $code"
+          tail -n 20 "$root/smoke.out.log"
+          cat "$root/smoke.err.log"
+          if [ "$code" -ne 0 ]; then echo "The exported build exited with $code" >&2; exit 1; fi
+          if grep -HE "^ERROR:|Unhandled exception" "$root/smoke.out.log" "$root/smoke.err.log"; then
+            echo "The exported build logged error(s) on startup" >&2; exit 1
+          fi
+
+      - name: Package zip
+        run: |
+          set -euo pipefail
+          cd build
+          zip -rq -9 ../ManyWinters-linux64.zip ManyWinters-linux
+          cd ..
+          echo "zip size: $(du -m ManyWinters-linux64.zip | cut -f1) MB"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ManyWinters-linux64
+          path: ManyWinters-linux64.zip
+          retention-days: 1
+
+  publish:
+    needs: [version, release-windows, release-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: ManyWinters-*
+          merge-multiple: true
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Of Folks and Many Winters ${{ steps.version.outputs.version }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Of Folks and Many Winters ${{ needs.version.outputs.version }}
           make_latest: "true"
-          files: ManyWinters-win64.zip
+          files: |
+            ManyWinters-win64.zip
+            ManyWinters-linux64.zip
           body: |
             Automatic alpha build from `main`.
 
-            Download `ManyWinters-win64.zip`, unpack it and run `ManyWinters.exe`.
-            Nothing to install — the .NET runtime ships inside. Windows x86-64 only.
+            Windows: download `ManyWinters-win64.zip`, unpack it and run `ManyWinters.exe`.
+            Linux: download `ManyWinters-linux64.zip`, unpack it and run `ManyWinters`.
+            Nothing to install — the .NET runtime ships inside. x86-64 only.
 
             Windows SmartScreen will warn about an unknown publisher; the build is unsigned.
-            If the game misbehaves, run `ManyWinters.console.exe` instead and send the output.
+            If the Windows build misbehaves, run `ManyWinters.console.exe` instead and send the output.
 
             Commit ${{ github.sha }}:
 
@@ -322,6 +516,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $stale = gh release list --limit 100 --json tagName,createdAt `
-            --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName'
-          foreach ($tag in $stale) { gh release delete $tag --yes --cleanup-tag }
+          stale=$(gh release list --limit 100 --json tagName,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName')
+          for tag in $stale; do gh release delete "$tag" --yes --cleanup-tag; done
