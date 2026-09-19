@@ -88,7 +88,6 @@ public static class TestCatalogs
     private static readonly FormId Vessel = new("vessel");
     private static readonly FormId Garment = new("garment");
 
-    public const float AxeHarvestBonus = 15f;
     public const int AxeInputAmount = 5;
     private const int WarmClothingInputAmount = 10;
     private const float FoodHungerRestoredPerUnit = 1f;
@@ -97,6 +96,7 @@ public static class TestCatalogs
     // (ItemCatalog.WeightFor).
     private const float WoodDensity = 0.5f;
     private const float StoneDensity = 2f;
+    private const float StoneHardness = 1f;
     private const float PlantFibreDensity = 0.2f;
     private const float HideDensity = 0.75f;
     private const float FoodDensity = 1f;
@@ -178,7 +178,7 @@ public static class TestCatalogs
         new SkillDefinition(Foraging, "Foraging", BasicForaging, EfficientForaging),
         new SkillDefinition(MushroomForaging, "Mushroom Foraging", BasicMushroomForaging, EfficientMushroomForaging),
         new SkillDefinition(RootDigging, "Root Digging", BasicRootDigging, EfficientRootDigging),
-        new SkillDefinition(Woodcutting, "Woodcutting", BasicWoodcutting, EfficientWoodcutting, Axe, AxeHarvestBonus),
+        new SkillDefinition(Woodcutting, "Woodcutting", BasicWoodcutting, EfficientWoodcutting, UsesChoppingScore: true),
         new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
         new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),
@@ -201,7 +201,7 @@ public static class TestCatalogs
     private static MaterialCatalog CreateMaterialCatalog() => new(new[]
     {
         new MaterialDefinition(WoodMaterial, "Wood", WoodDensity),
-        new MaterialDefinition(StoneMaterial, "Stone", StoneDensity),
+        new MaterialDefinition(StoneMaterial, "Stone", StoneDensity, Hardness: StoneHardness),
         new MaterialDefinition(PlantFibreMaterial, "Plant Fibre", PlantFibreDensity),
         new MaterialDefinition(HideMaterial, "Hide", HideDensity, HideInsulation),
         new MaterialDefinition(AppleMaterial, "Apple Flesh", FoodDensity),

@@ -19,10 +19,31 @@ holds the five pure predicates from section 2 (`CanTwist`, `CanKnap`, `CanCrush`
 `CanBend`, `HoldsTension`), unit-tested at their boundaries with no engine
 involvement. This step also changed no gameplay.
 
-Everything from step 3 onward is unimplemented. Two things are knowingly unfinished:
+**Step 3 (2026-09-19, partial - see caveat below):** `SkillDefinition.Tool` /
+`ToolHarvestBonus` are gone, replaced by `SkillDefinition.UsesChoppingScore` (bool) and
+`ItemCatalog.ChoppingScoreFor` (`Hardness * sqrt(Mass)`) / `Inventory.BestChoppingScore`.
+`GatherCommand` and `FellCommand` now ask the inventory for its best-scoring object
+instead of checking for one authored tool item kind - a stone lump scores the same as
+the stone axe, which is the visible sign that the formula is a placeholder. Only
+`stone` was given a `Hardness` (`1`); nothing else was authored, so nothing but
+woodcutting is affected yet.
+
+**Known gap, deliberately left for step 4:** the formula in section 4 is
+`EdgeSharpness * Hardness * sqrt(Mass) * HaftLeverage`. `EdgeSharpness` needs Form to
+be read (a wedge has an edge, a lump does not) and `HaftLeverage` needs the assembly
+instance tier (a bound haft, not a bare head) - both are step 4 work. Until then any
+sufficiently hard object scores as well as a properly made axe, including a raw stone
+lump the player never worked at all. This is being done in the wrong order on purpose,
+confirmed with the user 2026-09-19: land the score-based *mechanism* now (replacing
+`SkillDefinition.Tool`) since nothing else in the codebase depended on getting the
+number right yet, and correct the *formula* once Form and assemblies exist to feed it
+properly, rather than block the mechanism on both prerequisites landing first.
+
+Everything from step 4 onward is unimplemented. Two things are knowingly unfinished:
 
 - **Nothing reads a form yet.** `FormId` exists so content already says what shape each item
-  is; the predicates that ask arrive with the first verbs (step 4).
+  is; the predicates that ask, including `EdgeSharpness` above, arrive with the first verbs
+  (step 4).
 - **`Flammability` and `Plasticity` are still absent**, per the rule in section 2, because no
   predicate defined there reads them yet; they arrive with their readers.
 

@@ -1,1 +1,1 @@
-{ "id": "stone", "displayName": "Stone", "density": 2 }
+{ "id": "stone", "displayName": "Stone", "density": 2, "hardness": 1 }

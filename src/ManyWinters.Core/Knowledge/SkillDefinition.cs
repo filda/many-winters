@@ -1,5 +1,3 @@
-using ManyWinters.Core.Items;
-
 namespace ManyWinters.Core.Knowledge;
 
 // BaseTechnique makes a skill usable at all (see GatherCommand/FellCommand/EatCommand). Nobody
@@ -11,5 +9,8 @@ public sealed record SkillDefinition(
     string DisplayName,
     TechniqueId BaseTechnique,
     TechniqueId EfficientTechnique,
-    ItemKindId? Tool = null,
-    float ToolHarvestBonus = 0f);
+    // Whether gathering with this skill takes a bonus from the best chopping-scored object the
+    // person carries (see ItemCatalog.ChoppingScoreFor) - no longer naming one specific item as
+    // "the tool" (docs/materials-and-crafting-architecture.md section 4): any hard enough object
+    // scores, not just the one authored as this skill's tool.
+    bool UsesChoppingScore = false);

@@ -19,7 +19,7 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
 
     // A better cook/eater gets more out of the same food rather than eating faster or needing
     // less of it - simplest bonus that still gives EfficientTechnique a real effect, same
-    // pattern as a tool's ToolHarvestBonus for gathering.
+    // pattern as a chopping-scored tool's bonus for gathering (see ItemCatalog.ChoppingScoreFor).
     private const float EfficientHungerRestoredMultiplier = 1.2f;
 
     private const float SkillGainPerMeal = 1f;

@@ -324,15 +324,16 @@ public class GatherCommandTests
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
         person.Inventory.Add(TestCatalogs.Axe, 1);
         var node = world.SpawnResourceNode(TestCatalogs.Wood, new Position(0, 0), 1000);
+        var expectedHarvest = (int)(20 + world.Configuration.ItemCatalog.ChoppingScoreFor(TestCatalogs.Axe));
 
         world.Execute(new GatherCommand(person, node));
 
-        Assert.Equal(20 + TestCatalogs.AxeHarvestBonus, person.Inventory.Get(TestCatalogs.WoodItem));
-        Assert.Equal(1000f - (20 + TestCatalogs.AxeHarvestBonus), node.Growth!.RemainingAmount);
+        Assert.Equal(expectedHarvest, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(1000f - expectedHarvest, node.Growth!.RemainingAmount);
     }
 
     [Fact]
-    public void TheAxeBonusDoesNotApplyToASkillWithNoAssociatedTool()
+    public void TheChoppingBonusDoesNotApplyToASkillThatDoesNotUseIt()
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);

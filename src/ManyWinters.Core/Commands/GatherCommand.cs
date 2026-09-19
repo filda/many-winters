@@ -142,9 +142,9 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
         var technique = skillDefinition.EfficientTechnique;
         var harvestAmount = person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
-        if (skillDefinition.Tool is { } tool && person.Inventory.Get(tool) > 0)
+        if (skillDefinition.UsesChoppingScore)
         {
-            harvestAmount += skillDefinition.ToolHarvestBonus;
+            harvestAmount += person.Inventory.BestChoppingScore(world.Configuration.ItemCatalog);
         }
 
         var climate = world.Configuration.SeasonParameters.ClimateFor(world.CurrentSeason);

@@ -33,6 +33,11 @@ public sealed class Inventory
 
     public float TotalWeight(ItemCatalog catalog) => _counts.Sum(kv => catalog.WeightFor(kv.Key) * kv.Value);
 
+    // The best chopping-scored object carried, or 0 for empty-handed - what GatherCommand and
+    // FellCommand ask instead of checking for one authored "tool" item kind (see
+    // ItemCatalog.ChoppingScoreFor).
+    public float BestChoppingScore(ItemCatalog catalog) => _counts.Keys.Select(catalog.ChoppingScoreFor).DefaultIfEmpty(0f).Max();
+
     // Adds as much of `amount` as fits under maxWeight (a zero-weight item never limits) and
     // returns how many, so a caller pulling from a node, corpse or building removes only that many.
     public int AddUpToCapacity(ItemKindId kind, int amount, ItemCatalog catalog, float maxWeight)
