@@ -482,6 +482,8 @@ jobs:
       group: release
       cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           pattern: ManyWinters-*
