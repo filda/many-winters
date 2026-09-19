@@ -39,7 +39,11 @@ confirmed with the user 2026-09-19: land the score-based *mechanism* now (replac
 number right yet, and correct the *formula* once Form and assemblies exist to feed it
 properly, rather than block the mechanism on both prerequisites landing first.
 
-Everything from step 4 onward is unimplemented. Two things are knowingly unfinished:
+Step 4a (2026-09-19): the `BuildingDefinition`/`ConstructCommand`+`CraftCommand`
+duplication section 5 describes is folded, ahead of the rest of step 4 - see section
+5's "Step 4a done" note for the shape. Step 4b (the recursive part-list object model,
+section 6) and step 4c (the first two verbs, `Twist`/`Bind`, end to end) are not
+started. Two things are knowingly unfinished:
 
 - **Nothing reads a form yet.** `FormId` exists so content already says what shape each item
   is; the predicates that ask, including `EdgeSharpness` above, arrive with the first verbs
@@ -232,41 +236,55 @@ Rather than making everything an instance:
 Roadmap step 8 already lists "item instances", so this is on-plan rather than a detour.
 Save format churn is confined to the assembly tier.
 
-### Buildings are the instance tier, already
+### Buildings are the instance tier, already - one third of this done independently
 
-`Building` — `Id`, `Kind`, `Position`, `Condition`, `Inventory` — is exactly the shape this
-section wants for an assembly instance: one object, its own wear, its own contents. Only its
-name and its `BuildingKindId` key say otherwise. Kept as it is, step 4 would found a second
-instance class beside it, and wear, repair, storage and every later per-object feature would
-be written twice. A parallel view hierarchy already cost buildings their collision shape and
-fog fade once (`docs/status.md`, step 4); the same mistake in the model would cost more.
+**Update 2026-09-19: partially overtaken by events.** A separate refactor
+(`Refactor entities: unify Building, ResourceNode, and ItemPile as Entity`,
+2026-09-17, unrelated to this design) already did the *instance class* merge this
+section asks for, just not by the exact route described below - the original text
+is kept struck through in spirit but corrected here so step 4 does not redo it or
+contradict what already shipped.
 
-So the two collapse into one:
+What already exists: `ResourceNode`, `ItemPile` and `Building` are one `Entity`
+class (`Id`, `Kind: EntityKindId`, `Category: EntityCategory`, `Position`) with
+optional components - `Growth`, `StaticAmount`, `Condition`, `Storage` - and
+`EntityCategory.Building` says which one a given entity is, so nothing is guessed
+from which components happen to be populated. Keyed by `EntityKindId`, not
+`ItemKindId` as this section originally proposed - the right call in hindsight,
+since a placed thing's kind was never really an item kind to begin with, and this
+section's own reasoning (one instance class, no parallel hierarchy) is exactly why
+that refactor happened. `RepairCommand`, `DepositCommand` / `WithdrawCommand` already
+run on `Entity` unchanged, as predicted.
 
-- **One definition.** A storage hut is an `ItemDefinition` — material wood, a shelter form,
-  a volume large enough that its derived weight exceeds any carry capacity — and
-  `storage_hut = 20x wood` is a `RecipeDefinition` like `axe = 5x wood`. `BuildingDefinition`,
-  `BuildingCatalog` and `BuildingKindId` go.
-- **One make command with one placement rule.** What a person makes goes into their
-  inventory if `WorldState.MaxCarryWeightFor` allows it, and otherwise comes into existence
-  in the world within reach of the maker. Position is an optional argument, and the reach
-  check applies only when placing. Nothing carries an "is a building" flag: the hut lands in
-  the world because it is heavy. A `MakeCommand` with `if (isBuilding)` inside would be the
-  two commands in one file, and is the failure mode to watch for.
-- **One instance class.** `Building` is renamed to the placed-object instance this section
-  describes and keyed by `ItemKindId`. `RepairCommand`, `ConditionDecayPerTick` and
-  `DepositCommand` / `WithdrawCommand` keep working on it unchanged; they stop being
-  "building" features. Step 4 then extends this class with the part list instead of founding
-  a new one.
+**Step 4a done (2026-09-19) - both bullets below are resolved, kept for the record:**
+
+- ~~Two definitions.~~ `storage_hut` is now an ordinary `ItemDefinition` (material
+  wood, form `shelter`, volume 200 - deliberately far past any real carry capacity)
+  and a `RecipeDefinition` like any other craftable. `BuildingDefinition`,
+  `BuildingCatalog` and the `buildings` catalog folder are gone. `RepairCommand`
+  reads its cost from `RecipeCatalog` instead. The building's own visuals
+  (`Content/buildings/{kind}/{kind}.png`/`.tres`, read by `BuildingView`/
+  `TexturePaths` off `EntityKindId` directly) were untouched - they were never wired
+  through `BuildingCatalog` to begin with, only the now-deleted `.json` data file
+  living in the same folder was.
+- ~~Two make commands.~~ `ConstructCommand` and `CraftCommand` are gone, replaced by
+  one `MakeCommand(Person, ItemKindId Output, Position? Position = null)`: it asks
+  `Inventory.HasRoomFor` (the same live per-person check `AddUpToCapacity` already
+  used elsewhere) to decide whether the output goes into the pack or is placed in
+  the world within reach. `EntityCategory.Building` is still hardcoded for the
+  placed case, since only one recipe needs it today - the first
+  placeable-but-not-a-building output should turn that into a real per-recipe
+  choice rather than stretching the hardcode.
 
 What this deliberately does not model yet, and must not be stretched to cover: anchoring (a
 pit, a shelter lashed to a standing tree) and the spectrum between carry, drag and immovable
 (a canoe or a sledge is too heavy to carry and still moves). Both need parts and joints — the
-ground or the tree is a part the assembly is bound to — and so arrive with step 4. For today's
-one hut, weight alone is enough. The same instance tier is also where an unfinished object
-lives: a half-built shelter is an assembly missing parts, which anyone can add to and only
-someone who knows the technique can finish. Today's instantaneous `ConstructCommand` cannot
-express that, and it is the construction-side reason to want the merge beyond saving code.
+ground or the tree is a part the assembly is bound to — and so arrive with step 4's object
+model (section 6). For today's one hut, weight alone is enough. The same instance tier is
+also where an unfinished object lives: a half-built shelter is an assembly missing parts,
+which anyone can add to and only someone who knows the technique can finish. Today's
+instantaneous `ConstructCommand` cannot express that, and it is the construction-side reason
+to want the definition/command merge above beyond saving code.
 
 ---
 

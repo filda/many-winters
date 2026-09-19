@@ -48,7 +48,10 @@ internal static class PersonActions
     }
 
     // Making something out of what is in the pack is an act on the person themselves, so it
-    // belongs on their card rather than in a menu aimed at something in the world.
+    // belongs on their card rather than in a menu aimed at something in the world. Only for a
+    // recipe whose output actually fits in the pack - one heavy enough to need placing (a
+    // storage hut) is offered from the ground instead (see TargetActions), the same "goes where
+    // it is heavy enough to need going" rule MakeCommand itself runs on.
     //
     // Offered from the first unit of the material, not from the whole cost: "Make an axe" over
     // two of the five wood it takes is a goal the player can send them after, with the blocker
@@ -58,11 +61,17 @@ internal static class PersonActions
     private static IEnumerable<ActionOffer> Crafts(WorldState world, Person person) =>
         world.Configuration.RecipeCatalog.Definitions
             .Where(recipe => person.Inventory.Get(recipe.InputItem) > 0)
+            .Where(recipe => FitsInInventory(world, person, recipe.Output))
             .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal)
             .Select(recipe => ActionOffer.For(
                 $"Make {world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName.ToLowerInvariant()}",
-                new CraftCommand(person, recipe.Output),
+                new MakeCommand(person, recipe.Output),
                 world));
+
+    // Shared with TargetActions, which offers the opposite half of the same recipe list - the
+    // one live check MakeCommand itself runs to decide where an output lands.
+    internal static bool FitsInInventory(WorldState world, Person person, ItemKindId output) =>
+        person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
 
     // Dropping is offered per item kind actually carried, for the same reason Crafts is: a line
     // for material nobody has would just be an invitation to go find some, which pressing it

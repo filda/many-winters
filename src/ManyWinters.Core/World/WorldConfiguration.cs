@@ -1,4 +1,3 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
@@ -12,7 +11,6 @@ public sealed record WorldConfiguration(
     ResourceCatalog ResourceCatalog,
     SkillCatalog SkillCatalog,
     RecipeCatalog RecipeCatalog,
-    BuildingCatalog BuildingCatalog,
     MaterialCatalog MaterialCatalog,
     ItemCatalog ItemCatalog,
     SeasonParameters SeasonParameters,
@@ -22,7 +20,7 @@ public sealed record WorldConfiguration(
     // starts from when a caller cares about one or two catalogs. The item catalog gets its own
     // empty material catalog; with no items there is nothing whose weight could differ.
     public WorldConfiguration()
-        : this(new([]), new([]), new([]), new([]), new([]), new([], new([])), SeasonParameters.Default, SimulationRules.Default)
+        : this(new([]), new([]), new([]), new([]), new([], new([])), SeasonParameters.Default, SimulationRules.Default)
     {
     }
 
@@ -43,7 +41,6 @@ public sealed record WorldConfiguration(
             ResourceCatalog.LoadFromJson(readCatalog("resources")),
             SkillCatalog.LoadFromJson(readCatalog("skills")),
             RecipeCatalog.LoadFromJson(readCatalog("recipes")),
-            BuildingCatalog.LoadFromJson(readCatalog("buildings")),
             materials,
             ItemCatalog.LoadFromJson(readCatalog("items"), materials),
             SeasonParameters.Default,

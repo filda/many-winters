@@ -1,4 +1,3 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
@@ -70,6 +69,7 @@ public static class TestCatalogs
     private static readonly ItemKindId StoneItem = new("stone");
     private static readonly ItemKindId Basket = new("basket");
     private static readonly ItemKindId Bag = new("bag");
+    public static readonly ItemKindId StorageHutItem = new("storage_hut");
 
     private static readonly MaterialId WoodMaterial = new("wood");
     private static readonly MaterialId StoneMaterial = new("stone");
@@ -87,6 +87,7 @@ public static class TestCatalogs
     private static readonly FormId Wedge = new("wedge");
     private static readonly FormId Vessel = new("vessel");
     private static readonly FormId Garment = new("garment");
+    private static readonly FormId Shelter = new("shelter");
 
     public const int AxeInputAmount = 5;
     private const int WarmClothingInputAmount = 10;
@@ -121,6 +122,9 @@ public static class TestCatalogs
 
     public static readonly EntityKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
+    // Deliberately far beyond any realistic carry capacity (see MakeCommand): what routes it
+    // into the world instead of the maker's pack.
+    private const float StorageHutVolume = 200f;
 
     public const float ColdFoodYieldMultiplier = 0.4f;
     public const float FoodRegenPerTick = 1f;
@@ -191,11 +195,7 @@ public static class TestCatalogs
         new RecipeDefinition(WarmClothing, WoodItem, WarmClothingInputAmount),
         new RecipeDefinition(Basket, WoodItem, BasketInputAmount),
         new RecipeDefinition(Bag, GrassItem, BagInputAmount),
-    });
-
-    private static BuildingCatalog CreateBuildingCatalog() => new(new[]
-    {
-        new BuildingDefinition(StorageHut, "Storage Hut", WoodItem, StorageHutInputAmount),
+        new RecipeDefinition(StorageHutItem, WoodItem, StorageHutInputAmount),
     });
 
     private static MaterialCatalog CreateMaterialCatalog() => new(new[]
@@ -225,6 +225,7 @@ public static class TestCatalogs
         new ItemDefinition(StoneItem, "Stone", StoneMaterial, Lump, StoneVolume),
         new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),
+        new ItemDefinition(StorageHutItem, "Storage Hut", WoodMaterial, Shelter, StorageHutVolume),
     }, materials);
 
     public static WorldConfiguration CreateConfiguration()
@@ -235,7 +236,6 @@ public static class TestCatalogs
             CreateResourceCatalog(),
             CreateSkillCatalog(),
             CreateRecipeCatalog(),
-            CreateBuildingCatalog(),
             materials,
             CreateItemCatalog(materials),
             SeasonParameters.Default,

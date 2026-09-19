@@ -137,23 +137,26 @@ internal static class TargetActions
         // about, and "Nothing to mend" is the answer.
         offers.Add(ActionOffer.For("Mend", new RepairCommand(actor, building), world, target: building.Position));
 
-        return new TargetMenu(world.Configuration.BuildingCatalog.Get(building.Kind).DisplayName, offers);
+        return new TargetMenu(items.Get(new ItemKindId(building.Kind.Value)).DisplayName, offers);
     }
 
     internal static TargetMenu For(WorldState world, Person actor, Position ground)
     {
         var offers = new List<ActionOffer> { WalkTo(world, actor, ground) };
 
-        // Same rule as the crafting lines on a person's own card (PersonActions): offered from the
-        // first unit of the material, so "Build a store here" is a goal to work towards with the
+        // The other half of the recipe list PersonActions.Crafts offers: only for a recipe whose
+        // output does not fit in the pack, which is what makes it worth choosing a spot for at
+        // all. Same rule as the crafting lines on a person's own card: offered from the first
+        // unit of the material, so "Build a store here" is a goal to work towards with the
         // blocker saying how far off it is, and absent entirely for somebody carrying none of it.
-        foreach (var building in world.Configuration.BuildingCatalog.Definitions
-                     .Where(building => actor.Inventory.Get(building.RequiredItem) > 0)
-                     .OrderBy(building => building.Id.Value, StringComparer.Ordinal))
+        foreach (var recipe in world.Configuration.RecipeCatalog.Definitions
+                     .Where(recipe => actor.Inventory.Get(recipe.InputItem) > 0)
+                     .Where(recipe => !PersonActions.FitsInInventory(world, actor, recipe.Output))
+                     .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal))
         {
             offers.Add(ActionOffer.For(
-                $"Build {Lowered(building.DisplayName)}",
-                new ConstructCommand(actor, building.Id, ground),
+                $"Build {Lowered(world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName)}",
+                new MakeCommand(actor, recipe.Output, ground),
                 world,
                 target: ground));
         }

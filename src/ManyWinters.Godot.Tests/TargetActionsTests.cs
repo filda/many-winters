@@ -410,7 +410,7 @@ public class TargetActionsTests
 
         var build = Labelled(TargetActions.For(world, ava, FarAway), "Build storage hut");
 
-        Assert.Equal(FarAway, Assert.IsType<ConstructCommand>(build.Command).Position);
+        Assert.Equal(FarAway, Assert.IsType<MakeCommand>(build.Command).Position);
         Assert.True(build.NeedsWalkingTo);
     }
 

@@ -1,4 +1,3 @@
-using ManyWinters.Core.Construction;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
@@ -28,9 +27,13 @@ internal static class TestWorld
     internal static readonly TechniqueId BasicTeaching = new("basic_teaching");
 
     private static readonly EntityKindId StorageHut = new("storage_hut");
+    private static readonly ItemKindId StorageHutItem = new("storage_hut");
 
     internal const int AxeInputAmount = 5;
     internal const int StorageHutInputAmount = 20;
+    // Deliberately far beyond any realistic carry capacity (see MakeCommand): what routes it
+    // into the world instead of the maker's pack.
+    private const float StorageHutVolume = 200f;
 
     internal static WorldState Create()
     {
@@ -45,6 +48,7 @@ internal static class TestWorld
                 new ItemDefinition(Wood, "Wood", new MaterialId("wood"), new FormId("stick"), 2f),
                 new ItemDefinition(Apple, "Apple", new MaterialId("apple"), new FormId("whole"), 1f, 1f),
                 new ItemDefinition(Axe, "Axe", new MaterialId("stone"), new FormId("wedge"), 2.5f),
+                new ItemDefinition(StorageHutItem, "Storage Hut", new MaterialId("wood"), new FormId("shelter"), StorageHutVolume),
             ],
             materials);
 
@@ -59,8 +63,10 @@ internal static class TestWorld
                 new SkillDefinition(new SkillTypeId("burial"), "Burial", new TechniqueId("basic_burial"), new TechniqueId("efficient_burial")),
                 new SkillDefinition(Teaching, "Teaching", BasicTeaching, new TechniqueId("efficient_teaching")),
             ]),
-            new RecipeCatalog([new RecipeDefinition(Axe, Wood, AxeInputAmount)]),
-            new BuildingCatalog([new BuildingDefinition(StorageHut, "Storage Hut", Wood, StorageHutInputAmount)]),
+            new RecipeCatalog([
+                new RecipeDefinition(Axe, Wood, AxeInputAmount),
+                new RecipeDefinition(StorageHutItem, Wood, StorageHutInputAmount),
+            ]),
             materials,
             items,
             SeasonParameters.Default,

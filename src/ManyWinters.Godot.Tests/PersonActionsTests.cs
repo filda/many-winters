@@ -91,11 +91,11 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Wood, TestWorld.AxeInputAmount);
 
-        var craft = OfType<CraftCommand>(world, person);
+        var craft = OfType<MakeCommand>(world, person);
 
         Assert.Equal("Make axe", craft.Label);
         Assert.True(craft.IsAvailable);
-        Assert.IsType<CraftCommand>(craft.Command);
+        Assert.IsType<MakeCommand>(craft.Command);
     }
 
     // Offered from the first unit, not from the whole cost: "Make axe" over two of the five wood
@@ -107,7 +107,7 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Wood, 1);
 
-        Assert.Equal(ActionBlocker.MissingMaterials, OfType<CraftCommand>(world, person).Blocker);
+        Assert.Equal(ActionBlocker.MissingMaterials, OfType<MakeCommand>(world, person).Blocker);
     }
 
     // Carrying none of the material at all and the line is absent, the same rule Eat follows -
@@ -119,7 +119,7 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Apple, 5);
 
-        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is CraftCommand);
+        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is MakeCommand);
     }
 
     [Fact]

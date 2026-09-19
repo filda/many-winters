@@ -42,9 +42,11 @@ public sealed record RepairCommand(Person Person, Entity Building) : ICommand
         Building.Condition = Math.Min(MaxCondition, Building.Condition!.Value + RepairConditionAmount);
     }
 
-    private ItemKindId CostItem(WorldState world) => world.Configuration.BuildingCatalog.Get(Building.Kind).RequiredItem;
+    private ItemKindId CostItem(WorldState world) => Recipe(world).InputItem;
 
     // A quarter of what the building cost to put up, and never free.
-    private int RepairCost(WorldState world) =>
-        Math.Max(1, world.Configuration.BuildingCatalog.Get(Building.Kind).RequiredAmount / 4);
+    private int RepairCost(WorldState world) => Math.Max(1, Recipe(world).InputAmount / 4);
+
+    private RecipeDefinition Recipe(WorldState world) =>
+        world.Configuration.RecipeCatalog.Get(new ItemKindId(Building.Kind.Value));
 }
