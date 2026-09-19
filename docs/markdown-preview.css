@@ -1,0 +1,146 @@
+/*
+ * Markdown preview — readability stylesheet for JetBrains Rider.
+ *
+ * Apply via Settings (Ctrl+Alt+S) > Languages & Frameworks > Markdown > Custom CSS:
+ *   - "Load from"  -> point it at this file, OR
+ *   - "CSS rules"  -> paste everything below.
+ *
+ * The rules focus on typography and spacing and are intentionally theme-agnostic:
+ * they use relative (em) metrics and translucent grey overlays (rgba), so the
+ * preview stays readable in both light and dark IDE themes. The base font size
+ * is left to the IDE's "Preview font size" setting; everything here scales from it.
+ *
+ * `!important` is used throughout because Rider injects its own stylesheet
+ * alongside this one and it can otherwise win the cascade.
+ */
+
+/* ---- Base typography --------------------------------------------------- */
+body {
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 16px !important;
+    line-height: 1.65 !important;
+    color: inherit !important;            /* keep the theme's text colour */
+    max-width: 720px !important;          /* comfortable measure, centred */
+    margin: 0 auto !important;
+    padding: 16px 24px 64px !important;
+}
+
+/* ---- Headings ---------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+    line-height: 1.25 !important;
+    font-weight: 600 !important;
+    margin: 1.6em 0 0.6em !important;     /* breathing room above each heading */
+}
+h1 {
+    font-size: 1.9em !important;
+    margin-top: 0.2em !important;
+    padding-bottom: 0.3em !important;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.30) !important;
+}
+h2 {
+    font-size: 1.5em !important;
+    padding-bottom: 0.25em !important;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.20) !important;
+}
+h3 { font-size: 1.25em !important; }
+h4 { font-size: 1.10em !important; }
+
+/* ---- Paragraphs & inline text ----------------------------------------- */
+p { margin: 0 0 1em !important; }
+a {
+    color: inherit !important;
+    text-decoration: none !important;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.35) !important;
+}
+a:hover { border-bottom-color: rgba(127, 127, 127, 0.75) !important; }
+strong { font-weight: 700 !important; }
+del    { opacity: 0.7 !important; }
+
+/* ---- Lists ------------------------------------------------------------- */
+ul, ol {
+    margin: 0 0 1em !important;
+    padding-left: 1.6em !important;
+    line-height: 1.6 !important;
+}
+li { margin: 0.25em 0 !important; }
+li > ul, li > ol { margin: 0.25em 0 !important; }
+li input[type="checkbox"] { margin-right: 0.45em !important; }   /* task lists */
+
+/* ---- Code --------------------------------------------------------------- */
+code {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace !important;
+    font-size: 0.9em !important;
+    padding: 0.15em 0.4em !important;
+    border-radius: 4px !important;
+    background: rgba(127, 127, 127, 0.16) !important;
+}
+pre {
+    margin: 0 0 1.2em !important;
+    padding: 14px 16px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(127, 127, 127, 0.20) !important;
+    background: rgba(127, 127, 127, 0.10) !important;
+    overflow-x: auto !important;
+    line-height: 1.5 !important;
+}
+pre code {
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;   /* the block already has a background */
+    font-size: 0.92em !important;
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 0 0 1.2em !important;
+    font-size: 0.95em !important;
+}
+th, td {
+    padding: 8px 12px !important;
+    border: 1px solid rgba(127, 127, 127, 0.28) !important;
+    text-align: left !important;
+    vertical-align: top !important;
+}
+thead th {
+    background: rgba(127, 127, 127, 0.14) !important;
+    font-weight: 600 !important;
+}
+tbody tr:nth-child(even) td { background: rgba(127, 127, 127, 0.06) !important; }
+
+/* ---- Blockquotes -------------------------------------------------------- */
+blockquote {
+    margin: 0 0 1.2em !important;
+    padding: 0.2em 1.1em !important;
+    border-left: 3px solid rgba(127, 127, 127, 0.40) !important;
+    color: rgba(127, 127, 127, 0.95) !important;
+    background: rgba(127, 127, 127, 0.06) !important;
+}
+blockquote p:last-child { margin-bottom: 0 !important; }
+
+/* ---- Horizontal rule & images ------------------------------------------ */
+hr {
+    border: none !important;
+    border-top: 1px solid rgba(127, 127, 127, 0.30) !important;
+    margin: 2em 0 !important;
+}
+img { max-width: 100% !important; height: auto !important; border-radius: 4px !important; }
+
+/*
+ * OPTIONAL — pin an explicit colour scheme.
+ * The stylesheet above is theme-agnostic on purpose. If you would rather force
+ * exact colours, uncomment the block that matches your IDE theme.
+ *
+ * LIGHT (for a light IDE theme)
+ * body { background: #ffffff; color: #24292e; }
+ * a    { color: #0969da; border-bottom-color: #0969da55; }
+ * code { background: #f3f4f6; }
+ * pre  { background: #f6f8fa; border-color: #d0d7de; }
+ *
+ * DARK (for a dark IDE theme)
+ * body { background: #1e1e1e; color: #d4d4d4; }
+ * a    { color: #4da3ff; border-bottom-color: #4da3ff55; }
+ * code { background: #2d2d2d; }
+ * pre  { background: #252526; border-color: #3c3c3c; }
+ */

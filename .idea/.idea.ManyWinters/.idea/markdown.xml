@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="MarkdownSettings">
+    <option name="customStylesheetPath" value="C:\Users\fsubr\workspace\many-winters\docs\markdown-preview.css" />
+    <option name="previewPanelProviderInfo">
+      <ProviderInfo name="Compose (experimental)" className="com.intellij.markdown.compose.preview.ComposePanelProvider" />
+    </option>
+    <option name="useCustomStylesheetPath" value="true" />
+    <option name="useCustomStylesheetText" value="true" />
+  </component>
+</project>
