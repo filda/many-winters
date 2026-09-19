@@ -2,21 +2,29 @@
 
 ## Status
 
-**Step 1 of section 11 is implemented** (`ManyWinters.Core/Materials/`): `MaterialDefinition`
-with `Density` and `Insulation`, `MaterialId`, `FormId`, `MaterialCatalog`, a `materials`
-content folder, and `ItemDefinition` now stating a material, a form and a volume instead of an
-authored weight and insulation — `ItemCatalog.WeightFor` multiplies the material's density by
-the item's volume, and `InsulationFor` reads the material. Content densities and volumes were
-chosen so every shipped item's derived weight equals the number it used to state, so the step
+**Steps 1-2 of section 11 are implemented** (`ManyWinters.Core/Materials/`).
+
+Step 1: `MaterialDefinition` with `Density` and `Insulation`, `MaterialId`, `FormId`,
+`MaterialCatalog`, a `materials` content folder, and `ItemDefinition` now stating a
+material, a form and a volume instead of an authored weight and insulation —
+`ItemCatalog.WeightFor` multiplies the material's density by the item's volume, and
+`InsulationFor` reads the material. Content densities and volumes were chosen so
+every shipped item's derived weight equals the number it used to state, so the step
 changed no gameplay.
 
-Everything from step 2 onward is unimplemented. Two things are knowingly unfinished:
+Step 2 (2026-09-19): `MaterialDefinition` gained `Hardness`, `Toughness`,
+`Flexibility`, `Elasticity`, `Fibrousness` (all `0f` by default; no content authored
+yet, since nothing reads them for gameplay until step 3), and `MaterialAffordances`
+holds the five pure predicates from section 2 (`CanTwist`, `CanKnap`, `CanCrush`,
+`CanBend`, `HoldsTension`), unit-tested at their boundaries with no engine
+involvement. This step also changed no gameplay.
+
+Everything from step 3 onward is unimplemented. Two things are knowingly unfinished:
 
 - **Nothing reads a form yet.** `FormId` exists so content already says what shape each item
-  is; the predicates that ask arrive in step 2.
-- **Only the two properties something reads are defined.** Hardness, toughness, flexibility,
-  elasticity, fibrousness, flammability and plasticity are absent by the rule in section 2 and
-  arrive with their readers.
+  is; the predicates that ask arrive with the first verbs (step 4).
+- **`Flammability` and `Plasticity` are still absent**, per the rule in section 2, because no
+  predicate defined there reads them yet; they arrive with their readers.
 
 What still exists, and this design still replaces:
 `RecipeDefinition(Output, InputItem, InputAmount)` — one input kind, one output kind,
@@ -42,7 +50,14 @@ never a shared mutable `Random`.
 Settled in discussion: no cap on assembly part count (section 6); discovery is both
 autonomous and player-driven (section 7); function scoring lands before the first verbs
 (section 11); a building is not a different kind of thing from an item, only a placed one, and
-where a made object lands is derived from its weight rather than authored (section 5).
+where a made object lands is derived from its weight rather than authored (section 5); a verb
+is a fixed enum, but where it lands each item declares for itself rather than reading a global
+form-transition table (section 3); quality lives on the part while identity lives on the
+assembly, which is also where the deferred item-provenance idea attaches (section 6); function
+scores surface as generated wording shared with the chronicle, not as numbers (section 4);
+property knowledge is a belief `(MaterialId, PropertyId, believedValue, confidence)` from the
+start, not a plain `TechniqueId`, so distorted transmission has something to corrupt later
+without a rework (section 7).
 
 ---
 
@@ -130,6 +145,24 @@ of capped (section 6).
 Each verb is a `TechniqueId`, so it inherits teaching, sharing, and loss on death for
 free.
 
+### Where a verb lands is the item's own business
+
+A verb is the same fixed enum for every item it can apply to - `Twist` never gets a
+per-material variant. What it produces is not read from a global table keyed by form
+(there is no single `fibre --Twist--> cord` rule everyone shares); each item states
+its own outcome for the verbs that apply to it, the same way it already states its
+own material, form and volume. Grass twisted is a grass cord; sinew twisted is a
+sinew cord - two different outcomes for the same verb, declared where the rest of
+grass's and sinew's own data already lives, not in a second table that has to be kept
+in step with the item roster.
+
+This keeps the verb vocabulary itself small and closed (a handful of enum values,
+easy to teach and to draw icons for) while leaving content free to say precisely what
+each material becomes, without either inventing a parallel form-state-machine or
+falling back to an authored `RecipeDefinition`-style per-outcome table: the predicate
+that gates *whether* the verb is even offered still comes from properties (section
+2), only the *result* is authored per item.
+
 ---
 
 ## 4. Function scores, and why they come first
@@ -150,6 +183,20 @@ in with better numbers and no new code.
 **Without this step, property crafting is a decorative front-end for the same fixed item
 list.** It is also the first step that changes anything a player can see, which is why
 it is scheduled before the first verbs.
+
+### Surfacing a score: words, not numbers, and words the chronicle can reuse
+
+A function score never appears to the player as a number (section 9). It surfaces as
+comparative wording generated from the same properties the score reads - "chops
+better than the bare flake", "barely holds an edge" - rather than as nothing at all:
+silence would waste the one place the player learns that the simulation is actually
+modelling the object, not just flavour-texting a fixed "axe" noun.
+
+That wording is not a UI-only concern: `docs/chronicles-and-memory-architecture.md`
+needs sentences about what a person made and used, and a function-score-derived
+phrase is exactly the kind of fact a chronicle line already wants ("felled with a
+poorly-hafted axe" reads like an epitaph detail, not a stat readout). The wording
+function should live where both callers can reach it, not be written twice.
 
 ---
 
@@ -226,6 +273,33 @@ sprite selection, UI. Those are content and presentation concerns, and they can 
 shallow (recognise the patterns worth recognising, generate a name for the rest) while
 the model underneath stays general.
 
+### Quality is per-part; identity is per-assembly
+
+Quality lives on the part, as the object model already states above — replacing one
+part reworks only that part's quality, not a single number for the whole object. This
+settles former open question "does quality belong on the part or the assembly?" in
+favour of per-part: it is what makes "I replaced the handle on father's axe" a
+sentence the model can actually represent — the haft becomes a new part with its own
+quality while the rest of the assembly, and *what the assembly is*, does not reset.
+
+That sentence needs one more thing the part list alone does not give: the assembly
+itself has to persist as the same object across a part swap, not be re-derived fresh
+each time from its current parts. An axe that has had its handle replaced twice is
+still "father's axe", not a new axe that happens to look the same — the assembly
+instance (section 5) carries an identity (at minimum: who first made it, and
+optionally a name the band gave it) independent of, and outliving, any single part.
+This is exactly the deferred idea already on file about items remembering a previous
+owner: this section is where it attaches, once assemblies are instances at all
+(section 5, step 4).
+
+This also answers, in the simpler direction, whether resource nodes need individual
+material identity (former open question): they do not. A felled tree does not need
+its own tracked properties for this to work — ordinary per-resource-kind material
+(section 1) is enough, because the identity a player cares about ("father's axe") is
+carried by the *assembly instance*, not inherited from which literal trunk the wood
+came from. Per-tree property variation stays a possible future refinement
+(`ResourceDefinition.YieldsItem` today assumes the simpler shape), not a prerequisite.
+
 ---
 
 ## 7. Discovery
@@ -268,6 +342,54 @@ This is the loop worth playing — the player forms a hypothesis and the simulat
 on it — and it lets a player outpace what the simulation would have discovered on its
 own, which is where the skill expression lives. Both paths feed the same three layers;
 neither is a shortcut around the other.
+
+### Player path UI: a workshop panel, not a recipe menu
+
+A dedicated panel, opened from the selected person's card ("Workshop"), rather than
+folding this into the selection card's existing action list. Combining reaches across
+everything a person carries, and a single-item verb (squeezing an apple, twisting
+grass) still needs its own screen real estate for the outcome - neither fits the
+one-button-per-row shape `ActionList` already has.
+
+Opening it holds the world clock exactly the way `PausePanel` already does (Main.cs) -
+no new pause primitive, and the same "Space to resume" framing applies. This is a
+deliberate choice, not just a courtesy: experimenting is meant to be unhurried
+tinkering, not something to rush before the world moves on.
+
+**No verb picker.** The player selects one carried item, or two, and presses a single
+"try it" action - never `Twist`, `Crush`, `Bind` as a chosen option. The simulation
+resolves which verb (if any) the selected item(s) afford from their properties, same
+as every other knowledge blocker in this game hides rather than greys out (see
+`ActionBlocker`'s circumstance/knowledge split): offering a verb list would let the
+player read the solution off the menu, which is exactly the "craft axe" button this
+plan exists to avoid, just wearing a longer list. It also means the panel's shape
+never has to grow when a new verb is added - it stays two selection slots and one
+button regardless of how much section 3's vocabulary grows.
+
+The outcome is prose in the panel, not a new item that silently appears - "the cord
+holds fast" or "it slips loose, wasting the grass" (section 9's legibility rule
+applies here too: no numbers, no probability shown before the attempt).
+
+### Skill level as a success modifier, not a gate
+
+Whether an experiment is even attemptable is a property question (section 2): a
+person who has never handled a hard material at all has nothing to reach for. But
+whether a *sound* pairing succeeds should not be all-or-nothing on property gates
+alone, or the first correct guess always works and skill has nothing to express.
+
+The relevant `Skills` level (the skill whose actions handle the materials involved —
+woodcutting for a wood-and-stone pairing, for instance) instead scales the **success
+chance** of a directed experiment, the same way it already scales `GatherCommand`'s
+harvest amount. A property-sound pairing (wedge + shaft) always has *some* chance at
+level zero — a lucky novice can still bind an axe — but a practiced hand succeeds far
+more reliably and wastes less material on a miss. This keeps the two failure modes
+distinct: a property-unsound pairing (grass + water) is refused outright, a
+property-sound one at low skill can still fail and cost the material.
+
+Idle experimentation reads the same chance, since it runs the identical adjudication
+with a random rather than a chosen pairing (section 7's three layers apply to both
+paths). Skill level therefore also explains why a settled, practiced band invents
+faster than a young one even before anyone directs an experiment on purpose.
 
 ### How the two paths differ
 
@@ -348,8 +470,8 @@ Which means the representation chosen here decides whether it stays cheap later:
 The same applies to the negative knowledge above: "this does not work" is also a belief that
 can be mistaken — someone was told grass will not twist, and so never tried.
 
-Recommendation: model property knowledge as a belief from the start, even while every belief
-is transmitted perfectly and no distortion exists. Verbs themselves can stay plain
+**Decided:** property knowledge is modelled as a belief from the start, even while every
+belief is transmitted perfectly and no distortion exists yet. Verbs themselves stay plain
 `TechniqueId`s.
 
 ---
@@ -430,15 +552,6 @@ tool whitelist.
 
 ## 12. Open questions
 
-- Where do form transitions live — is `Form` an enum with verb-authored transitions
-  (`fibre --Twist--> cord`), or does each verb declare its own output form? The second
-  scales better with content but scatters the vocabulary.
-- Does quality belong on the part (each part separately worked) or on the assembly (one
-  number for the finished thing)? Per-part is more faithful and multiplies bookkeeping.
-- How does a function score expose itself to the player without becoming a number
-  (section 9's legibility rule) — comparative wording ("chops better than the flake"), or
-  nothing at all, letting outcomes teach it?
-- Do resource nodes carry material identity directly, so that felling a particular tree
-  yields *that* wood with its own properties, or is material resolved per resource kind?
-  The former opens per-region material variation; the latter is what the current
-  `ResourceDefinition.YieldsItem` shape assumes.
+None remaining as of 2026-09-19 — form transitions (section 3), quality and assembly
+identity (section 6) and function-score wording (section 4) are all resolved above.
+New questions belong here as they turn up.
