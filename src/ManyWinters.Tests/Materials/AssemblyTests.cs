@@ -9,6 +9,10 @@ public class AssemblyTests
     private static readonly MaterialId Grass = new("grass");
     private static readonly MaterialId Unknown = new("unobtainium");
 
+    private static readonly FormId Wedge = new("wedge");
+    private static readonly FormId Shaft = new("shaft");
+    private static readonly FormId Cord = new("cord");
+
     private const float WoodDensity = 0.5f;
     private const float WoodToughness = 0.6f;
     private const float StoneDensity = 2f;
@@ -25,7 +29,7 @@ public class AssemblyTests
     [Fact]
     public void APartWeighsItsMaterialsDensityTimesItsVolume()
     {
-        var head = new Assembly.Part(Stone, Quality: 0.5f, Volume: 3f);
+        var head = new Assembly.Part(Stone, Wedge, Quality: 0.5f, Volume: 3f);
 
         Assert.Equal(6f, head.Weight(Materials));
     }
@@ -33,7 +37,7 @@ public class AssemblyTests
     [Fact]
     public void APartOfAnUndescribedMaterialWeighsNothingRatherThanThrowing()
     {
-        var part = new Assembly.Part(Unknown, Quality: 1f, Volume: 10f);
+        var part = new Assembly.Part(Unknown, Wedge, Quality: 1f, Volume: 10f);
 
         Assert.Equal(0f, part.Weight(Materials));
     }
@@ -41,8 +45,8 @@ public class AssemblyTests
     [Fact]
     public void AJoinedAssemblyWeighsBothOfItsSidesTogether()
     {
-        var head = new Assembly.Part(Stone, Volume: 3f);
-        var haft = new Assembly.Part(Wood, Volume: 4f);
+        var head = new Assembly.Part(Stone, Wedge, Volume: 3f);
+        var haft = new Assembly.Part(Wood, Shaft, Volume: 4f);
 
         // 2 * 3 for the head, 0.5 * 4 for the haft.
         Assert.Equal(8f, new Assembly.Joined(0.9f, head, haft).Weight(Materials));
@@ -53,8 +57,8 @@ public class AssemblyTests
     [Fact]
     public void AJointAddsNoWeightOfItsOwn()
     {
-        var head = new Assembly.Part(Stone, Volume: 3f);
-        var haft = new Assembly.Part(Wood, Volume: 4f);
+        var head = new Assembly.Part(Stone, Wedge, Volume: 3f);
+        var haft = new Assembly.Part(Wood, Shaft, Volume: 4f);
 
         var axe = new Assembly.Joined(0.9f, head, haft);
 
@@ -64,10 +68,10 @@ public class AssemblyTests
     [Fact]
     public void WeightAccumulatesThroughEveryLevelOfNesting()
     {
-        var axe = new Assembly.Joined(0.9f, new Assembly.Part(Stone, Volume: 3f), new Assembly.Part(Wood, Volume: 4f));
+        var axe = new Assembly.Joined(0.9f, new Assembly.Part(Stone, Wedge, Volume: 3f), new Assembly.Part(Wood, Shaft, Volume: 4f));
 
         // A second head lashed onto the finished axe: 6 + 2 and 6 again.
-        var absurd = new Assembly.Joined(0.9f, axe, new Assembly.Part(Stone, Volume: 3f));
+        var absurd = new Assembly.Joined(0.9f, axe, new Assembly.Part(Stone, Wedge, Volume: 3f));
 
         Assert.Equal(14f, absurd.Weight(Materials));
     }
@@ -75,7 +79,7 @@ public class AssemblyTests
     [Fact]
     public void APartsDurabilityIsItsMaterialsToughnessTimesHowWellItWasWorked()
     {
-        var haft = new Assembly.Part(Wood, Quality: 0.5f, Volume: 4f);
+        var haft = new Assembly.Part(Wood, Shaft, Quality: 0.5f, Volume: 4f);
 
         Assert.Equal(0.3f, haft.Durability(Materials), 5);
     }
@@ -85,8 +89,8 @@ public class AssemblyTests
     [Fact]
     public void BotchedWorkIsAsPoorAsBrittleSubstance()
     {
-        var botchedWood = new Assembly.Part(Wood, Quality: 0.2f, Volume: 1f);
-        var wellWorkedStone = new Assembly.Part(Stone, Quality: 0.6f, Volume: 1f);
+        var botchedWood = new Assembly.Part(Wood, Shaft, Quality: 0.2f, Volume: 1f);
+        var wellWorkedStone = new Assembly.Part(Stone, Wedge, Quality: 0.6f, Volume: 1f);
 
         Assert.Equal(botchedWood.Durability(Materials), wellWorkedStone.Durability(Materials), 5);
     }
@@ -94,7 +98,7 @@ public class AssemblyTests
     [Fact]
     public void APerfectlyWorkedPartIsStillOnlyAsSoundAsItsSubstance()
     {
-        var part = new Assembly.Part(Stone, Quality: 1f, Volume: 1f);
+        var part = new Assembly.Part(Stone, Wedge, Quality: 1f, Volume: 1f);
 
         Assert.Equal(StoneToughness, part.Durability(Materials), 5);
     }
@@ -102,7 +106,7 @@ public class AssemblyTests
     [Fact]
     public void AnUnworkedPartHasNoDurabilityAtAll()
     {
-        var part = new Assembly.Part(Wood, Quality: 0f, Volume: 1f);
+        var part = new Assembly.Part(Wood, Shaft, Quality: 0f, Volume: 1f);
 
         Assert.Equal(0f, part.Durability(Materials));
     }
@@ -110,7 +114,7 @@ public class AssemblyTests
     [Fact]
     public void APartOfAnUndescribedMaterialHasNoDurabilityRatherThanThrowing()
     {
-        var part = new Assembly.Part(Unknown, Quality: 1f, Volume: 1f);
+        var part = new Assembly.Part(Unknown, Wedge, Quality: 1f, Volume: 1f);
 
         Assert.Equal(0f, part.Durability(Materials));
     }
@@ -120,7 +124,7 @@ public class AssemblyTests
     [Fact]
     public void AWeakJointCapsAnAssemblyOfTwoSoundParts()
     {
-        var sound = new Assembly.Part(Wood, Quality: 1f, Volume: 1f);
+        var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
 
         Assert.Equal(0.1f, new Assembly.Joined(0.1f, sound, sound).Durability(Materials), 5);
     }
@@ -128,8 +132,8 @@ public class AssemblyTests
     [Fact]
     public void AWeakLeftPartCapsAnAssemblyWithASoundJoint()
     {
-        var weak = new Assembly.Part(Wood, Quality: 0.1f, Volume: 1f);
-        var sound = new Assembly.Part(Wood, Quality: 1f, Volume: 1f);
+        var weak = new Assembly.Part(Wood, Shaft, Quality: 0.1f, Volume: 1f);
+        var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
 
         Assert.Equal(WoodToughness * 0.1f, new Assembly.Joined(1f, weak, sound).Durability(Materials), 5);
     }
@@ -137,8 +141,8 @@ public class AssemblyTests
     [Fact]
     public void AWeakRightPartCapsAnAssemblyWithASoundJoint()
     {
-        var sound = new Assembly.Part(Wood, Quality: 1f, Volume: 1f);
-        var weak = new Assembly.Part(Wood, Quality: 0.1f, Volume: 1f);
+        var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
+        var weak = new Assembly.Part(Wood, Shaft, Quality: 0.1f, Volume: 1f);
 
         Assert.Equal(WoodToughness * 0.1f, new Assembly.Joined(1f, sound, weak).Durability(Materials), 5);
     }
@@ -148,7 +152,7 @@ public class AssemblyTests
     [Fact]
     public void TheWeakestLinkAnywhereInTheDepthGovernsTheWholeAssembly()
     {
-        var rope = new Assembly.Part(Grass, Quality: 0.5f, Volume: 1f);
+        var rope = new Assembly.Part(Grass, Cord, Quality: 0.5f, Volume: 1f);
         var ropeOnRope = new Assembly.Joined(0.8f, rope, rope);
         var ropeOnRopeOnRope = new Assembly.Joined(0.9f, ropeOnRope, rope);
 
@@ -159,7 +163,7 @@ public class AssemblyTests
     [Fact]
     public void ABadJointBuriedDeepStillGovernsTheWholeAssembly()
     {
-        var sound = new Assembly.Part(Wood, Quality: 1f, Volume: 1f);
+        var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
         var buriedBadJoint = new Assembly.Joined(0.05f, sound, sound);
 
         Assert.Equal(0.05f, new Assembly.Joined(1f, buriedBadJoint, sound).Durability(Materials), 5);
@@ -169,7 +173,7 @@ public class AssemblyTests
     [Fact]
     public void NothingCapsHowManyPartsAnAssemblyMayHave()
     {
-        var part = new Assembly.Part(Wood, Quality: 1f, Volume: 1f);
+        var part = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
         Assembly grown = part;
 
         for (var i = 0; i < 50; i++)

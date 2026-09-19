@@ -216,4 +216,58 @@ public class InventoryTests
 
         Assert.True(inventory.HasRoomFor(Feather, catalog, maxWeight: 0f));
     }
+
+    // The instance tier: a worked thing is held as itself, not as a count (see Inventory).
+    [Fact]
+    public void AWorkedThingIsHeldAsItselfRatherThanCounted()
+    {
+        var inventory = new Inventory();
+        var cord = new Assembly.Part(Stuff, new FormId("cord"), Quality: 0.5f, Volume: 3f);
+
+        inventory.AddAssembly(cord);
+
+        Assert.Equal(cord, Assert.Single(inventory.Assemblies));
+        Assert.Empty(inventory.Counts);
+    }
+
+    [Fact]
+    public void TwoWorkedThingsOfTheSameShapeDoNotCollapseIntoOne()
+    {
+        var inventory = new Inventory();
+        var form = new FormId("cord");
+
+        inventory.AddAssembly(new Assembly.Part(Stuff, form, Quality: 0.2f, Volume: 3f));
+        inventory.AddAssembly(new Assembly.Part(Stuff, form, Quality: 0.9f, Volume: 3f));
+
+        Assert.Equal(2, inventory.Assemblies.Count);
+    }
+
+    [Fact]
+    public void TotalWeightCountsWorkedThingsAlongsideStackedOnes()
+    {
+        var inventory = new Inventory();
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 2f));
+        inventory.Add(Wood, 3);
+        inventory.AddAssembly(new Assembly.Part(Stuff, new FormId("cord"), Quality: 0.5f, Volume: 4f));
+
+        // Six for the stacked wood, four for the cord: density is 1 in this catalog.
+        Assert.Equal(10f, inventory.TotalWeight(catalog));
+    }
+
+    [Fact]
+    public void AnEmptyInventoryCarriesNoWorkedThings()
+    {
+        Assert.Empty(new Inventory().Assemblies);
+    }
+
+    // Carry capacity is the whole pack's business, so a worked thing fills it like anything else.
+    [Fact]
+    public void AWorkedThingTakesUpCarryCapacity()
+    {
+        var inventory = new Inventory();
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 2f));
+        inventory.AddAssembly(new Assembly.Part(Stuff, new FormId("cord"), Quality: 0.5f, Volume: 9f));
+
+        Assert.False(inventory.HasRoomFor(Wood, catalog, maxWeight: 10f));
+    }
 }

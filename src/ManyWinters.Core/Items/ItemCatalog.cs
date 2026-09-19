@@ -1,3 +1,4 @@
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Serialization;
 
@@ -46,6 +47,18 @@ public sealed class ItemCatalog
               * (_materials.Find(definition.Material)?.Hardness ?? 0f)
               * MathF.Sqrt(WeightOf(definition))
             : 0f;
+
+    // An assembly weighs itself, but only this catalog knows the substances behind its parts -
+    // so the weighing of both tiers is asked for in one place, and Inventory.TotalWeight needs
+    // no second catalog to add a worked thing to a stack of raw ones.
+    public float WeightOf(Assembly assembly) => assembly.Weight(_materials);
+
+    // What this kind turns into when worked with the given verb, or null if it answers to no
+    // such verb (see FormTransition).
+    public FormTransition? TransitionFor(ItemKindId id, TechniqueId verb) =>
+        _definitions.TryGetValue(id, out var definition)
+            ? definition.Transitions?.FirstOrDefault(transition => transition.Verb == verb)
+            : null;
 
     private float WeightOf(ItemDefinition definition) => (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume;
 

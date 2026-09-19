@@ -1,10 +1,22 @@
+using ManyWinters.Core.Materials;
+
 namespace ManyWinters.Core.Items;
 
+// Two tiers, because they are two different kinds of thing (see
+// docs/materials-and-crafting-architecture.md section 5). Raw materials stack - twelve grass is
+// twelve of the same grass, and a count is the whole truth about them. A worked object does not:
+// two cords twisted by different hands are not interchangeable, since each carries the quality
+// its maker gave it, so each is held as itself.
 public sealed class Inventory
 {
     private readonly Dictionary<ItemKindId, int> _counts = new();
+    private readonly List<Assembly> _assemblies = [];
 
     public IReadOnlyDictionary<ItemKindId, int> Counts => _counts;
+
+    public IReadOnlyList<Assembly> Assemblies => _assemblies;
+
+    public void AddAssembly(Assembly assembly) => _assemblies.Add(assembly);
 
     public int Get(ItemKindId kind) => _counts.GetValueOrDefault(kind);
 
@@ -31,7 +43,10 @@ public sealed class Inventory
         return true;
     }
 
-    public float TotalWeight(ItemCatalog catalog) => _counts.Sum(kv => catalog.WeightFor(kv.Key) * kv.Value);
+    // Both tiers weigh on the same scale, so a pack full of worked things is as heavy to carry
+    // as the material that went into them.
+    public float TotalWeight(ItemCatalog catalog) =>
+        _counts.Sum(kv => catalog.WeightFor(kv.Key) * kv.Value) + _assemblies.Sum(catalog.WeightOf);
 
     // The best chopping-scored object carried, or 0 for empty-handed - what GatherCommand and
     // FellCommand ask instead of checking for one authored "tool" item kind (see

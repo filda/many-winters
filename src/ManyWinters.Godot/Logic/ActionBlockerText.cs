@@ -34,6 +34,7 @@ internal static class ActionBlockerText
         ActionBlocker.NotEdible => "Not food",
         ActionBlocker.CannotBeFelled => "Nothing to fell",
         ActionBlocker.MissingTool => "Needs the right tool",
+        ActionBlocker.NotTwistable => "Will not take a twist",
         ActionBlocker.SamePerson => "Needs two people",
         ActionBlocker.WrongSex => "Needs a man and a woman",
         ActionBlocker.CloseKin => "Too closely related",

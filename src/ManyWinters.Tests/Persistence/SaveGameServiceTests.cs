@@ -1,3 +1,4 @@
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Persistence;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -350,6 +351,36 @@ public class SaveGameServiceTests
 
             Assert.Contains(mother.Id.Value.ToString(), ex.Message, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("as a parent before", ex.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    // The instance tier has to survive a reload as itself: a cord's quality is its maker's work,
+    // and re-deriving it on load would hand every cord the same one.
+    [Fact]
+    public void RoundTripPreservesWorkedThingsWithTheirQuality()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var ava = world.SpawnPerson("Ava", new Position(0f, 0f));
+        ava.Inventory.Add(TestCatalogs.WoodItem, 2);
+        ava.Inventory.AddAssembly(new Assembly.Part(new MaterialId("plant_fibre"), TestCatalogs.Cord, Quality: 0.42f, Volume: 15f));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var person = Assert.Single(restored.People);
+            var cord = Assert.IsType<Assembly.Part>(Assert.Single(person.Inventory.Assemblies));
+            Assert.Equal(new MaterialId("plant_fibre"), cord.Material);
+            Assert.Equal(TestCatalogs.Cord, cord.Form);
+            Assert.Equal(0.42f, cord.Quality, 5);
+            Assert.Equal(15f, cord.Volume, 5);
+            Assert.Equal(2, person.Inventory.Get(TestCatalogs.WoodItem));
         }
         finally
         {

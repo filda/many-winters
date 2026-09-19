@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
@@ -14,6 +15,7 @@ internal static class TestWorld
 {
     internal static readonly ItemKindId Wood = new("wood");
     internal static readonly ItemKindId Apple = new("apple");
+    internal static readonly ItemKindId Grass = new("grass");
     private static readonly ItemKindId Axe = new("axe");
 
     internal static readonly EntityKindId AppleTree = new("apple");
@@ -29,6 +31,10 @@ internal static class TestWorld
     private static readonly EntityKindId StorageHut = new("storage_hut");
     private static readonly ItemKindId StorageHutItem = new("storage_hut");
 
+    internal const int GrassPerCord = 3;
+    internal static readonly FormId Cord = new("cord");
+    internal static readonly TechniqueId BasicTwisting = new("basic_twisting");
+
     internal const int AxeInputAmount = 5;
     internal const int StorageHutInputAmount = 20;
     // Deliberately far beyond any realistic carry capacity (see MakeCommand): what routes it
@@ -41,6 +47,7 @@ internal static class TestWorld
             new MaterialDefinition(new MaterialId("wood"), "Wood", 0.5f),
             new MaterialDefinition(new MaterialId("apple"), "Apple Flesh", 1f),
             new MaterialDefinition(new MaterialId("stone"), "Stone", 2f),
+            new MaterialDefinition(new MaterialId("plant_fibre"), "Plant Fibre", 0.2f, Toughness: 0.5f, Flexibility: 0.7f, Fibrousness: 0.9f),
         ]);
 
         var forms = new FormCatalog([
@@ -48,6 +55,8 @@ internal static class TestWorld
             new FormDefinition(new FormId("whole"), "Whole"),
             new FormDefinition(new FormId("wedge"), "Wedge", EdgeSharpness: 1f),
             new FormDefinition(new FormId("shelter"), "Shelter"),
+            new FormDefinition(new FormId("fibre"), "Fibre"),
+            new FormDefinition(Cord, "Cord"),
         ]);
 
         var items = new ItemCatalog(
@@ -56,6 +65,8 @@ internal static class TestWorld
                 new ItemDefinition(Apple, "Apple", new MaterialId("apple"), new FormId("whole"), 1f, 1f),
                 new ItemDefinition(Axe, "Axe", new MaterialId("stone"), new FormId("wedge"), 2.5f),
                 new ItemDefinition(StorageHutItem, "Storage Hut", new MaterialId("wood"), new FormId("shelter"), StorageHutVolume),
+                new ItemDefinition(Grass, "Grass", new MaterialId("plant_fibre"), new FormId("fibre"), 5f,
+                    Transitions: [new FormTransition(TwistCommand.Verb, Cord, GrassPerCord)]),
             ],
             materials,
             forms);
@@ -70,6 +81,7 @@ internal static class TestWorld
                 new SkillDefinition(new SkillTypeId("eating"), "Eating", BasicEating, new TechniqueId("efficient_eating")),
                 new SkillDefinition(new SkillTypeId("burial"), "Burial", new TechniqueId("basic_burial"), new TechniqueId("efficient_burial")),
                 new SkillDefinition(Teaching, "Teaching", BasicTeaching, new TechniqueId("efficient_teaching")),
+                new SkillDefinition(TwistCommand.Skill, "Twisting", BasicTwisting, new TechniqueId("efficient_twisting")),
             ]),
             new RecipeCatalog([
                 new RecipeDefinition(Axe, Wood, AxeInputAmount),

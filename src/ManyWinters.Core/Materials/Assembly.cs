@@ -13,9 +13,9 @@ namespace ManyWinters.Core.Materials;
 // read, test and mutate.
 //
 // Deliberately thinner than section 6's full description for now, by the same rule that holds
-// back unread material properties (section 2): a part states no Form and a joint names neither
-// the verb that made it nor the material that binds it, because nothing reads any of those
-// until the first verbs (step 4c) and archetype recognition (section 8) arrive to do so.
+// back unread material properties (section 2): a joint names neither the verb that made it nor
+// the material that binds it, because nothing reads either until the combinative verbs arrive
+// to set them.
 public abstract record Assembly
 {
     private Assembly()
@@ -32,11 +32,11 @@ public abstract record Assembly
     // rope lashed to a rope lashed to a rope constructible and useless.
     public abstract float Durability(MaterialCatalog materials);
 
-    // One worked piece: the substance, how well it was worked (Quality, 0-1, earned by whoever
-    // shaped it) and how much of it there is. Volume is bulk in the same arbitrary units as
-    // ItemDefinition.Volume, so an assembly's weight comes out comparable to a stackable item's
-    // (see ItemCatalog.WeightFor).
-    public sealed record Part(MaterialId Material, float Quality = 0f, float Volume = 0f) : Assembly
+    // One worked piece: the substance, the shape it was worked into, how well it was worked
+    // (Quality, 0-1, earned by whoever shaped it) and how much of it there is. Volume is bulk in
+    // the same arbitrary units as ItemDefinition.Volume, so an assembly's weight comes out
+    // comparable to a stackable item's (see ItemCatalog.WeightFor).
+    public sealed record Part(MaterialId Material, FormId Form, float Quality = 0f, float Volume = 0f) : Assembly
     {
         // An undescribed material weighs nothing rather than throwing, as everywhere else that
         // reads one (see ItemCatalog.WeightFor, MaterialCatalog.Find).

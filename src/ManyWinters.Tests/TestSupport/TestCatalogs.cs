@@ -31,6 +31,7 @@ public static class TestCatalogs
     public static readonly SkillTypeId MushroomForaging = new("mushroom_foraging");
     private static readonly SkillTypeId RootDigging = new("root_digging");
     public static readonly SkillTypeId Woodcutting = new("woodcutting");
+    private static readonly SkillTypeId Twisting = new("twisting");
     private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
@@ -44,6 +45,7 @@ public static class TestCatalogs
     public static readonly TechniqueId BasicMushroomForaging = new("basic_mushroom_foraging");
     private static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
     public static readonly TechniqueId BasicWoodcutting = new("basic_woodcutting");
+    public static readonly TechniqueId BasicTwisting = new("basic_twisting");
     public static readonly TechniqueId BasicMining = new("basic_mining");
     private static readonly TechniqueId BasicBurial = new("basic_burial");
     public static readonly TechniqueId BasicEating = new("basic_eating");
@@ -53,6 +55,7 @@ public static class TestCatalogs
     public static readonly TechniqueId EfficientMushroomForaging = new("efficient_mushroom_foraging");
     private static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
+    private static readonly TechniqueId EfficientTwisting = new("efficient_twisting");
     private static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
     public static readonly TechniqueId EfficientEating = new("efficient_eating");
@@ -88,8 +91,11 @@ public static class TestCatalogs
     private static readonly FormId Vessel = new("vessel");
     private static readonly FormId Garment = new("garment");
     private static readonly FormId Shelter = new("shelter");
+    public static readonly FormId Cord = new("cord");
 
     public const int AxeInputAmount = 5;
+    public const int GrassPerCord = 3;
+    private static readonly TechniqueId TwistVerb = new("twist");
     private const int WarmClothingInputAmount = 10;
     private const float FoodHungerRestoredPerUnit = 1f;
 
@@ -99,6 +105,9 @@ public static class TestCatalogs
     private const float StoneDensity = 2f;
     private const float StoneHardness = 1f;
     private const float PlantFibreDensity = 0.2f;
+    private const float PlantFibreToughness = 0.5f;
+    private const float PlantFibreFlexibility = 0.7f;
+    private const float PlantFibreFibrousness = 0.9f;
     private const float HideDensity = 0.75f;
     private const float FoodDensity = 1f;
     private const float HideInsulation = 1f;
@@ -183,6 +192,7 @@ public static class TestCatalogs
         new SkillDefinition(MushroomForaging, "Mushroom Foraging", BasicMushroomForaging, EfficientMushroomForaging),
         new SkillDefinition(RootDigging, "Root Digging", BasicRootDigging, EfficientRootDigging),
         new SkillDefinition(Woodcutting, "Woodcutting", BasicWoodcutting, EfficientWoodcutting, UsesChoppingScore: true),
+        new SkillDefinition(Twisting, "Twisting", BasicTwisting, EfficientTwisting),
         new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
         new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),
@@ -212,13 +222,14 @@ public static class TestCatalogs
         new FormDefinition(Vessel, "Vessel"),
         new FormDefinition(Garment, "Garment"),
         new FormDefinition(Shelter, "Shelter"),
+        new FormDefinition(Cord, "Cord"),
     });
 
     private static MaterialCatalog CreateMaterialCatalog() => new(new[]
     {
         new MaterialDefinition(WoodMaterial, "Wood", WoodDensity),
         new MaterialDefinition(StoneMaterial, "Stone", StoneDensity, Hardness: StoneHardness),
-        new MaterialDefinition(PlantFibreMaterial, "Plant Fibre", PlantFibreDensity),
+        new MaterialDefinition(PlantFibreMaterial, "Plant Fibre", PlantFibreDensity, Toughness: PlantFibreToughness, Flexibility: PlantFibreFlexibility, Fibrousness: PlantFibreFibrousness),
         new MaterialDefinition(HideMaterial, "Hide", HideDensity, HideInsulation),
         new MaterialDefinition(AppleMaterial, "Apple Flesh", FoodDensity),
         new MaterialDefinition(PearMaterial, "Pear Flesh", FoodDensity),
@@ -237,7 +248,7 @@ public static class TestCatalogs
         new ItemDefinition(PearItem, "Pear", PearMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
         new ItemDefinition(MushroomItem, "Mushroom", MushroomMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
         new ItemDefinition(PotatoItem, "Potato", PotatoMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
-        new ItemDefinition(GrassItem, "Grass", PlantFibreMaterial, Fibre, GrassVolume),
+        new ItemDefinition(GrassItem, "Grass", PlantFibreMaterial, Fibre, GrassVolume, Transitions: [new FormTransition(TwistVerb, Cord, GrassPerCord)]),
         new ItemDefinition(StoneItem, "Stone", StoneMaterial, Lump, StoneVolume),
         new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),

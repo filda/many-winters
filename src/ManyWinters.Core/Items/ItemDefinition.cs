@@ -18,4 +18,7 @@ public sealed record ItemDefinition(
     float HungerRestoredPerUnit = 0f,
     // Flat carry-capacity bonus for having this kind at all (see WorldState.MaxCarryWeightFor) -
     // presence, not count. A property of the shape, not the substance, so it stays on the item.
-    float CarryCapacityBonus = 0f);
+    float CarryCapacityBonus = 0f,
+    // What working this item leaves behind, one entry per verb it answers to (see
+    // FormTransition). Null for anything nothing can be done to yet.
+    IReadOnlyList<FormTransition>? Transitions = null);

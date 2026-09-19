@@ -51,13 +51,32 @@ times volume, summed) and `Durability` (the weakest of joint, left and right).
 Uncapped depth, no `MaxParts`. Foundation only: nothing produces or stores an
 assembly yet, so this changed no gameplay, exactly as steps 1 and 2 did.
 
-Step 4c (the first two verbs, `Twist`/`Bind`, end to end, plus the two-tier
-`Inventory` and the per-assembly identity of section 6 that they are the producers
-for) is not started. Three things are knowingly unfinished:
+Step 4c-1 (2026-09-19): the first verb, `Twist`, end to end - and with it the two-tier
+`Inventory` of section 5, which only a verb could justify. `Inventory` now holds
+stackable counts *and* a list of worked objects; `TotalWeight` adds both, so carry
+capacity is honest about a pack full of cord. `TwistCommand` reads what an item turns
+into from the item itself (`FormTransition` on `ItemDefinition`, the settled "where a
+verb lands is the item's own business" of section 3) and whether the substance will
+take a twist at all from `MaterialAffordances.CanTwist`, so neither answer is authored
+per outcome. Bulk carries over from what went in, so twisting conserves weight. The
+piece's `Quality` is its maker's practice at the moment of making, floored so a
+beginner's first cord is poor but not worthless. The worked thing is named from its
+own material and form ("plant fibre cord"), which is section 8's fallback naming
+standing in until there are patterns worth recognising. It is offered on the person's
+own card, and directing it teaches it, exactly as pointing at a tree teaches gathering.
 
-- **An assembly's parts state no form yet.** Items do, and `ChoppingScoreFor` reads it, but
-  `Assembly.Part` carries only material, quality and volume - it gets a form when something
-  reads one off an assembly (naming, section 8; the verbs' own form transitions, section 3).
+Still open in 4c: `Bind` (the first combinative verb, and the first thing that will
+make a cord *useful* - until it lands, a cord is a thing a player can make and not yet
+spend), per-assembly identity (section 6 - deferred again because nothing reads a
+maker's name yet), and the workshop panel of section 7, which replaces the per-verb
+lines on the card with "pick one or two things and try it". Three things are knowingly
+unfinished:
+
+- **A worked thing cannot be put down, stored or inherited yet.** Dropping, depositing,
+  withdrawing and looting all still speak in counts, so the instance tier is reachable only
+  through the pack that made it. Each of those is a small change, but each is also a design
+  question of its own (a pile on the ground is one kind and one count today), so they wait
+  until `Bind` says what a worked thing is finally for.
 - **A joint names neither its verb nor its binder yet.** Section 6 describes both; step 4b
   left them out because nothing reads them until the verbs that set them exist (step 4c),
   the same rule that holds back unread material properties.

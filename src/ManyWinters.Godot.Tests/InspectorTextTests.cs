@@ -1,5 +1,6 @@
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
@@ -304,5 +305,54 @@ public class InspectorTextTests
         var world = TestWorld.Create();
 
         Assert.Empty(InspectorText.ForKnowledge([], world.Configuration.SkillCatalog));
+    }
+
+    // A worked thing has no authored name, so one is made of what it is (see
+    // docs/materials-and-crafting-architecture.md section 8).
+    [Fact]
+    public void AWorkedThingIsNamedAfterItsSubstanceAndItsShape()
+    {
+        var world = TestWorld.Create();
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, Quality: 0.5f, Volume: 15f);
+
+        Assert.Equal(
+            "plant fibre cord",
+            InspectorText.ForWorkedThing(cord, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog));
+    }
+
+    [Fact]
+    public void AWorkedThingOfAnUndescribedSubstanceIsNamedByItsShapeAlone()
+    {
+        var world = TestWorld.Create();
+        var cord = new Assembly.Part(new MaterialId("unobtainium"), TestWorld.Cord, Quality: 0.5f, Volume: 1f);
+
+        Assert.Equal(
+            "cord",
+            InspectorText.ForWorkedThing(cord, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog));
+    }
+
+    [Fact]
+    public void AWorkedThingNothingCanBeSaidAboutStillReadsAsAThing()
+    {
+        var world = TestWorld.Create();
+        var nameless = new Assembly.Part(new MaterialId("unobtainium"), new FormId("unheard_of"), Quality: 0.5f, Volume: 1f);
+
+        Assert.Equal(
+            "something made",
+            InspectorText.ForWorkedThing(nameless, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog));
+    }
+
+    // Both tiers on one line, the counted stock first and the worked things after it.
+    [Fact]
+    public void TheCarriedListNamesWorkedThingsBesideCountedStock()
+    {
+        var world = TestWorld.Create();
+        var inventory = new Inventory();
+        inventory.Add(TestWorld.Wood, 3);
+        inventory.AddAssembly(new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, Quality: 0.5f, Volume: 15f));
+
+        Assert.Equal(
+            "Wood x3, plant fibre cord",
+            InspectorText.ForCarried(inventory, world.Configuration.ItemCatalog, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog));
     }
 }

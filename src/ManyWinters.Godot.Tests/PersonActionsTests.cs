@@ -220,4 +220,68 @@ public class PersonActionsTests
         Assert.NotEmpty(offers);
         Assert.DoesNotContain(offers, offer => offer.IsAvailable);
     }
+
+    // Working a material by hand belongs on the person's own card, like making something out of
+    // the pack. Offered only for what they actually carry.
+    [Fact]
+    public void TwistingIsOfferedToSomebodyCarryingSomethingThatTakesATwist()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestWorld.BasicTwisting);
+        person.Inventory.Add(TestWorld.Grass, TestWorld.GrassPerCord);
+
+        var twist = OfType<TwistCommand>(world, person);
+
+        Assert.Equal("Twist grass", twist.Label);
+        Assert.True(twist.IsAvailable);
+    }
+
+    [Fact]
+    public void TwistingIsNotOfferedForSomethingThatTakesNoTwist()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 5);
+
+        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is TwistCommand);
+    }
+
+    [Fact]
+    public void TwistingIsNotOfferedWithAnEmptyPack()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+
+        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is TwistCommand);
+    }
+
+    // Being told to twist is the player showing them how, as with eating and gathering, so never
+    // having learned it cannot be what stops the offer.
+    [Fact]
+    public void TwistingIsNotBlockedForNotHavingBeenTaughtIt()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Grass, TestWorld.GrassPerCord);
+
+        var twist = OfType<TwistCommand>(world, person);
+
+        Assert.Empty(person.KnownTechniques);
+        Assert.True(twist.IsAvailable);
+        Assert.Equal(TwistCommand.Skill, twist.TeachFirst);
+    }
+
+    // Offered from the first unit, like the crafting lines, with the blocker saying how far off
+    // the whole handful is.
+    [Fact]
+    public void SomebodyPartWayToAHandfulIsToldWhatIsMissing()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestWorld.BasicTwisting);
+        person.Inventory.Add(TestWorld.Grass, TestWorld.GrassPerCord - 1);
+
+        Assert.Equal(ActionBlocker.MissingMaterials, OfType<TwistCommand>(world, person).Blocker);
+    }
 }

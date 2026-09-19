@@ -1,1 +1,1 @@
-{ "id": "grass", "displayName": "Grass", "material": "plant_fibre", "form": "fibre", "volume": 5 }
+{ "id": "grass", "displayName": "Grass", "material": "plant_fibre", "form": "fibre", "volume": 5, "transitions": [{ "verb": "twist", "form": "cord", "inputAmount": 3 }] }

@@ -1,5 +1,6 @@
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -26,6 +27,7 @@ public sealed record PersonSaveData(
     IReadOnlyList<SkillLevelSaveData> Skills,
     IReadOnlyList<TechniqueId> KnownTechniques,
     IReadOnlyList<ItemStackSaveData> Inventory,
+    IReadOnlyList<AssemblySaveData> WorkedThings,
     long BirthTick,
     long? DeathTick,
     DeathCause? CauseOfDeath,
@@ -44,6 +46,11 @@ public sealed record AffectionSaveData(Guid PersonA, Guid PersonB, float Value);
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
 public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
+
+// One worked object out of the instance tier (see Inventory). Only the single-part case exists
+// so far, so this is flat; a joined assembly gets its own nesting when the combinative verbs
+// arrive to make one.
+public sealed record AssemblySaveData(MaterialId Material, FormId Form, float Quality, float Volume);
 
 // Nested rather than flattened onto EntitySaveData: only a Growable entity has one, and its
 // fields (IsAlive, DeathTick, CauseOfDeath, ColdStress) previously fell out of ResourceNodeSaveData

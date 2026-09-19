@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -8,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 18;
+    private const int CurrentVersion = 19;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -80,6 +81,9 @@ public static class SaveGameService
         person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
         person.KnownTechniques.ToList(),
         person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
+        person.Inventory.Assemblies.OfType<Assembly.Part>()
+            .Select(part => new AssemblySaveData(part.Material, part.Form, part.Quality, part.Volume))
+            .ToList(),
         person.BirthTick,
         person.DeathTick,
         person.CauseOfDeath,
@@ -205,6 +209,11 @@ public static class SaveGameService
         foreach (var stack in personData.Inventory)
         {
             person.Inventory.Add(stack.Kind, stack.Count);
+        }
+
+        foreach (var worked in personData.WorkedThings)
+        {
+            person.Inventory.AddAssembly(new Assembly.Part(worked.Material, worked.Form, worked.Quality, worked.Volume));
         }
 
         peopleById[personData.Id] = person;
