@@ -40,31 +40,40 @@ number right yet, and correct the *formula* once Form and assemblies exist to fe
 properly, rather than block the mechanism on both prerequisites landing first.
 
 Step 4a (2026-09-19): the `BuildingDefinition`/`ConstructCommand`+`CraftCommand`
-duplication section 5 describes is folded, ahead of the rest of step 4 - see section
-5's "Step 4a done" note for the shape. Step 4b (the recursive part-list object model,
-section 6) and step 4c (the first two verbs, `Twist`/`Bind`, end to end) are not
-started. Two things are knowingly unfinished:
+duplication section 5 describes is folded - see section 5's "Step 4a done" note.
+
+Step 4b (2026-09-19): `Assembly` (`ManyWinters.Core/Materials/`) is the recursive
+object model of section 6 - a closed two-case union of `Part` (material, quality,
+volume) and `Joined` (joint strength, two sub-assemblies), with `Weight` (density
+times volume, summed) and `Durability` (the weakest of joint, left and right).
+Uncapped depth, no `MaxParts`. Foundation only: nothing produces or stores an
+assembly yet, so this changed no gameplay, exactly as steps 1 and 2 did.
+
+Step 4c (the first two verbs, `Twist`/`Bind`, end to end, plus the two-tier
+`Inventory` and the per-assembly identity of section 6 that they are the producers
+for) is not started. Three things are knowingly unfinished:
 
 - **Nothing reads a form yet.** `FormId` exists so content already says what shape each item
   is; the predicates that ask, including `EdgeSharpness` above, arrive with the first verbs
-  (step 4).
+  (step 4c). `Assembly.Part` states no form for the same reason.
+- **A joint names neither its verb nor its binder yet.** Section 6 describes both; step 4b
+  left them out because nothing reads them until the verbs that set them exist (step 4c),
+  the same rule that holds back unread material properties.
 - **`Flammability` and `Plasticity` are still absent**, per the rule in section 2, because no
   predicate defined there reads them yet; they arrive with their readers.
 
 What still exists, and this design still replaces:
 `RecipeDefinition(Output, InputItem, InputAmount)` — one input kind, one output kind,
-`axe = 5x wood` — plus `SkillDefinition.Tool` / `ToolHarvestBonus`, a whitelist saying
-"this item kind is the tool for this skill". Both are authored per outcome, which is
-what makes the item roster grow by hand. The placeholder recipes are also now visibly at odds
-with the materials: the axe is stone and the warm clothing is hide, but both are still crafted
-out of wood. Step 4 removes the recipes rather than reconciling them.
+`axe = 5x wood` — authored per outcome, which is what makes the item roster grow by hand. The
+placeholder recipes are also visibly at odds with the materials: the axe is stone and the warm
+clothing is hide, but both are still made out of wood. Step 4c removes the recipes rather than
+reconciling them.
 
-Also still existing, and folded into the same replacement: `BuildingDefinition(Id, DisplayName,
-RequiredItem, RequiredAmount)` / `BuildingCatalog` / `BuildingKindId` and `ConstructCommand`.
-Beside `RecipeDefinition` and `CraftCommand` they are the same twenty lines twice — check the
-person is alive, remove the input, produce the output — differing only in where the output
-lands, and that difference is stated by the *type* of the output id rather than by anything
-about the object. Section 5 says why that is the wrong place to state it and what replaces it.
+Already replaced, and no longer to be planned for: `SkillDefinition.Tool` /
+`ToolHarvestBonus` (the whitelist saying "this item kind is the tool for this skill") went in
+step 3, and `BuildingDefinition` / `BuildingCatalog` / `ConstructCommand` / `CraftCommand`
+went in step 4a — the last two were the same twenty lines twice, differing only in where the
+output landed, which is now derived from weight by the one `MakeCommand` (section 5).
 
 What already exists and this design builds on rather than replaces: `TechniqueId` /
 `Person.KnownTechniques`, with teaching (`TeachCommand`, casual teaching in
