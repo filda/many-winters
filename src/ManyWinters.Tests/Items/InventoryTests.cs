@@ -15,7 +15,7 @@ public class InventoryTests
     // These tests are about how weight adds up, not where a unit weight comes from: density 1,
     // so an item's volume reads directly as its weight.
     private static ItemCatalog CatalogOf(params ItemDefinition[] items) =>
-        new(items, new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f)]));
+        new(items, new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f)]), new FormCatalog([]));
 
     private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
         new(id, displayName, Stuff, Lump, weight);

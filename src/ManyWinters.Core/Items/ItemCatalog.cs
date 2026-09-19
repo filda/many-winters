@@ -7,11 +7,13 @@ public sealed class ItemCatalog
 {
     private readonly Dictionary<ItemKindId, ItemDefinition> _definitions;
     private readonly MaterialCatalog _materials;
+    private readonly FormCatalog _forms;
 
-    public ItemCatalog(IEnumerable<ItemDefinition> definitions, MaterialCatalog materials)
+    public ItemCatalog(IEnumerable<ItemDefinition> definitions, MaterialCatalog materials, FormCatalog forms)
     {
         _definitions = definitions.ToDictionary(d => d.Id);
         _materials = materials;
+        _forms = forms;
     }
 
     public ItemDefinition Get(ItemKindId id) => _definitions[id];
@@ -28,15 +30,21 @@ public sealed class ItemCatalog
     public float WeightFor(ItemKindId id) =>
         _definitions.TryGetValue(id, out var definition) ? WeightOf(definition) : 0f;
 
-    // Hardness times the square root of mass - a hard, heavy object chops well (see
-    // docs/materials-and-crafting-architecture.md section 4). Placeholder until Form is read and
-    // assemblies exist (step 4): the full formula there also wants an edge (from Form) and haft
-    // leverage (from being bound to a shaft), neither of which exists yet, so today a raw lump of
-    // the same hard material scores identically to a properly hafted axe. GatherCommand and
-    // FellCommand read this instead of a per-skill authored "tool" item kind.
+    // Edge times hardness times the square root of weight (see
+    // docs/materials-and-crafting-architecture.md section 4): the shape has to present an edge,
+    // the substance has to be hard enough to hold it, and mass behind the blow does the rest.
+    // A raw lump of the very same stone the axe head is made of therefore scores nothing, which
+    // is the whole point of keeping geometry and substance apart.
+    //
+    // Still short of the formula in section 4 by its HaftLeverage term, which needs an object
+    // made of parts to have a haft at all; it arrives with the assembly tier.
+    //
+    // GatherCommand and FellCommand read this instead of a per-skill authored "tool" item kind.
     public float ChoppingScoreFor(ItemKindId id) =>
         _definitions.TryGetValue(id, out var definition)
-            ? (_materials.Find(definition.Material)?.Hardness ?? 0f) * MathF.Sqrt(WeightOf(definition))
+            ? (_forms.Find(definition.Form)?.EdgeSharpness ?? 0f)
+              * (_materials.Find(definition.Material)?.Hardness ?? 0f)
+              * MathF.Sqrt(WeightOf(definition))
             : 0f;
 
     private float WeightOf(ItemDefinition definition) => (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume;
@@ -45,11 +53,11 @@ public sealed class ItemCatalog
 
     public float CarryCapacityBonusFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.CarryCapacityBonus : 0f;
 
-    public static ItemCatalog LoadFromDirectory(string rootPath, MaterialCatalog materials)
-        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath), materials);
+    public static ItemCatalog LoadFromDirectory(string rootPath, MaterialCatalog materials, FormCatalog forms)
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath), materials, forms);
 
     // Takes documents, not a path: in an exported Godot build only Godot's file access reaches
     // the content inside the .pck.
-    public static ItemCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents, MaterialCatalog materials)
-        => new(JsonDefinitions.Parse<ItemDefinition>(documents, "Item"), materials);
+    public static ItemCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents, MaterialCatalog materials, FormCatalog forms)
+        => new(JsonDefinitions.Parse<ItemDefinition>(documents, "Item"), materials, forms);
 }

@@ -19,25 +19,27 @@ holds the five pure predicates from section 2 (`CanTwist`, `CanKnap`, `CanCrush`
 `CanBend`, `HoldsTension`), unit-tested at their boundaries with no engine
 involvement. This step also changed no gameplay.
 
-**Step 3 (2026-09-19, partial - see caveat below):** `SkillDefinition.Tool` /
-`ToolHarvestBonus` are gone, replaced by `SkillDefinition.UsesChoppingScore` (bool) and
-`ItemCatalog.ChoppingScoreFor` (`Hardness * sqrt(Mass)`) / `Inventory.BestChoppingScore`.
-`GatherCommand` and `FellCommand` now ask the inventory for its best-scoring object
-instead of checking for one authored tool item kind - a stone lump scores the same as
-the stone axe, which is the visible sign that the formula is a placeholder. Only
-`stone` was given a `Hardness` (`1`); nothing else was authored, so nothing but
-woodcutting is affected yet.
+**Step 3 (2026-09-19, in two passes):** first pass replaced `SkillDefinition.Tool` /
+`ToolHarvestBonus` with `SkillDefinition.UsesChoppingScore` (bool) and
+`ItemCatalog.ChoppingScoreFor` / `Inventory.BestChoppingScore` - `GatherCommand` and
+`FellCommand` now ask the inventory for its best-scoring object instead of checking for
+one authored tool item kind. That pass left the score at `Hardness * sqrt(Weight)`, so
+a raw stone lump scored exactly as well as the stone axe; landing the *mechanism*
+before the *formula* was deliberate and agreed, since nothing else depended on the
+number being right yet.
 
-**Known gap, deliberately left for step 4:** the formula in section 4 is
-`EdgeSharpness * Hardness * sqrt(Mass) * HaftLeverage`. `EdgeSharpness` needs Form to
-be read (a wedge has an edge, a lump does not) and `HaftLeverage` needs the assembly
-instance tier (a bound haft, not a bare head) - both are step 4 work. Until then any
-sufficiently hard object scores as well as a properly made axe, including a raw stone
-lump the player never worked at all. This is being done in the wrong order on purpose,
-confirmed with the user 2026-09-19: land the score-based *mechanism* now (replacing
-`SkillDefinition.Tool`) since nothing else in the codebase depended on getting the
-number right yet, and correct the *formula* once Form and assemblies exist to feed it
-properly, rather than block the mechanism on both prerequisites landing first.
+Second pass closed that gap: forms are now content in their own right
+(`FormDefinition` / `FormCatalog`, a `forms/` folder beside `materials/`), the score is
+`EdgeSharpness * Hardness * sqrt(Weight)`, and only a `wedge` carries an edge. A lump
+of the very same stone the axe head is made of therefore scores nothing, which is
+section 1's split between geometry and substance finally doing visible work. Authored
+so far: `Hardness` on `stone`, `EdgeSharpness` on `wedge`; everything else sits at
+zero, so nothing but woodcutting is affected.
+
+**Still short of section 4's full formula by its `HaftLeverage` term**, which needs an
+object made of parts to have a haft at all - it arrives when assemblies are things a
+person can actually hold (step 4c), together with per-part quality feeding the same
+score.
 
 Step 4a (2026-09-19): the `BuildingDefinition`/`ConstructCommand`+`CraftCommand`
 duplication section 5 describes is folded - see section 5's "Step 4a done" note.
@@ -53,9 +55,9 @@ Step 4c (the first two verbs, `Twist`/`Bind`, end to end, plus the two-tier
 `Inventory` and the per-assembly identity of section 6 that they are the producers
 for) is not started. Three things are knowingly unfinished:
 
-- **Nothing reads a form yet.** `FormId` exists so content already says what shape each item
-  is; the predicates that ask, including `EdgeSharpness` above, arrive with the first verbs
-  (step 4c). `Assembly.Part` states no form for the same reason.
+- **An assembly's parts state no form yet.** Items do, and `ChoppingScoreFor` reads it, but
+  `Assembly.Part` carries only material, quality and volume - it gets a form when something
+  reads one off an assembly (naming, section 8; the verbs' own form transitions, section 3).
 - **A joint names neither its verb nor its binder yet.** Section 6 describes both; step 4b
   left them out because nothing reads them until the verbs that set them exist (step 4c),
   the same rule that holds back unread material properties.

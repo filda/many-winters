@@ -242,7 +242,8 @@ public class WorldStateTests
         {
             ItemCatalog = new ItemCatalog(
                 new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
-                new MaterialCatalog([])),
+                new MaterialCatalog([]),
+                new FormCatalog([])),
         });
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 1);
@@ -258,7 +259,8 @@ public class WorldStateTests
         {
             ItemCatalog = new ItemCatalog(
                 new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
-                new MaterialCatalog([])),
+                new MaterialCatalog([]),
+                new FormCatalog([])),
         });
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 3);

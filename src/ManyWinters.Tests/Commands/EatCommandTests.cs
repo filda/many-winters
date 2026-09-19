@@ -173,7 +173,8 @@ public class EatCommandTests
             MaterialCatalog = materials,
             ItemCatalog = new ItemCatalog(
                 [new ItemDefinition(stew, "Stew", new MaterialId("stew"), new FormId("vessel"), Volume: 1f, HungerRestoredPerUnit: 4f)],
-                materials),
+                materials,
+                new FormCatalog([])),
         };
         var world = new WorldState(configuration);
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);

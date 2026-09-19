@@ -17,6 +17,7 @@ public class WorldConfigurationTests
         Assert.Throws<KeyNotFoundException>(() => configuration.RecipeCatalog.Get(new ItemKindId("axe")));
         Assert.Throws<KeyNotFoundException>(() => configuration.ItemCatalog.Get(new ItemKindId("axe")));
         Assert.Null(configuration.MaterialCatalog.Find(new MaterialId("stone")));
+        Assert.Null(configuration.FormCatalog.Find(new FormId("wedge")));
         Assert.Same(SeasonParameters.Default, configuration.SeasonParameters);
         Assert.Same(SimulationRules.Default, configuration.Rules);
     }
@@ -44,16 +45,18 @@ public class WorldConfigurationTests
                 "skills" => [("foraging.json", """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""")],
                 "recipes" => [("axe.json", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""")],
                 "materials" => [("stone.json", """{ "id": "stone", "displayName": "Stone", "density": 2 }""")],
+                "forms" => [("wedge.json", """{ "id": "wedge", "displayName": "Wedge", "edgeSharpness": 1 }""")],
                 "items" => [("axe.json", """{ "id": "axe", "displayName": "Axe", "material": "stone", "form": "wedge", "volume": 2.5 }""")],
                 _ => throw new InvalidOperationException($"Unexpected catalog folder '{catalog}'."),
             };
         });
 
-        Assert.Equal(["materials", "resources", "skills", "recipes", "items"], asked);
+        Assert.Equal(["materials", "forms", "resources", "skills", "recipes", "items"], asked);
         Assert.Equal("Apple", configuration.ResourceCatalog.Get(new EntityKindId("apple")).DisplayName);
         Assert.Equal("Foraging", configuration.SkillCatalog.Get(new SkillTypeId("foraging")).DisplayName);
         Assert.Equal(5, configuration.RecipeCatalog.Get(new ItemKindId("axe")).InputAmount);
         Assert.Equal(2f, configuration.MaterialCatalog.Find(new MaterialId("stone"))?.Density);
+        Assert.Equal(1f, configuration.FormCatalog.Find(new FormId("wedge"))?.EdgeSharpness);
         // Derived, not stated: stone's density times the axe's volume.
         Assert.Equal(5f, configuration.ItemCatalog.WeightFor(new ItemKindId("axe")));
         Assert.Same(SeasonParameters.Default, configuration.SeasonParameters);
@@ -68,6 +71,7 @@ public class WorldConfigurationTests
         WriteDefinition(root, "skills", "foraging", """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""");
         WriteDefinition(root, "recipes", "axe", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""");
         WriteDefinition(root, "materials", "stone", """{ "id": "stone", "displayName": "Stone", "density": 2 }""");
+        WriteDefinition(root, "forms", "wedge", """{ "id": "wedge", "displayName": "Wedge", "edgeSharpness": 1 }""");
         WriteDefinition(root, "items", "axe", """{ "id": "axe", "displayName": "Axe", "material": "stone", "form": "wedge", "volume": 2.5 }""");
 
         try
@@ -79,6 +83,7 @@ public class WorldConfigurationTests
             Assert.Equal(new ItemKindId("wood"), configuration.RecipeCatalog.Get(new ItemKindId("axe")).InputItem);
             Assert.Equal("Axe", configuration.ItemCatalog.Get(new ItemKindId("axe")).DisplayName);
             Assert.Equal("Stone", configuration.MaterialCatalog.Find(new MaterialId("stone"))?.DisplayName);
+            Assert.Equal("Wedge", configuration.FormCatalog.Find(new FormId("wedge"))?.DisplayName);
             Assert.Equal(5f, configuration.ItemCatalog.WeightFor(new ItemKindId("axe")));
         }
         finally

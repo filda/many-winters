@@ -198,6 +198,22 @@ public static class TestCatalogs
         new RecipeDefinition(StorageHutItem, WoodItem, StorageHutInputAmount),
     });
 
+    // Mirrors Content/forms/{id}/{id}.json: only a wedge presents an edge, which is what keeps a
+    // raw lump of the same stone from scoring as a tool (see ItemCatalog.ChoppingScoreFor).
+    private const float WedgeEdgeSharpness = 1f;
+
+    private static FormCatalog CreateFormCatalog() => new(new[]
+    {
+        new FormDefinition(Whole, "Whole"),
+        new FormDefinition(Stick, "Stick"),
+        new FormDefinition(Lump, "Lump"),
+        new FormDefinition(Fibre, "Fibre"),
+        new FormDefinition(Wedge, "Wedge", WedgeEdgeSharpness),
+        new FormDefinition(Vessel, "Vessel"),
+        new FormDefinition(Garment, "Garment"),
+        new FormDefinition(Shelter, "Shelter"),
+    });
+
     private static MaterialCatalog CreateMaterialCatalog() => new(new[]
     {
         new MaterialDefinition(WoodMaterial, "Wood", WoodDensity),
@@ -212,7 +228,7 @@ public static class TestCatalogs
 
     // The axe is stone and the warm clothing hide although both are crafted from wood: the
     // single-input recipes are placeholders, and a wooden garment would make wood itself warm.
-    private static ItemCatalog CreateItemCatalog(MaterialCatalog materials) => new(new[]
+    private static ItemCatalog CreateItemCatalog(MaterialCatalog materials, FormCatalog forms) => new(new[]
     {
         new ItemDefinition(WarmClothing, "Warm Clothing", HideMaterial, Garment, WarmClothingVolume),
         new ItemDefinition(WoodItem, "Wood", WoodMaterial, Stick, WoodVolume),
@@ -226,18 +242,20 @@ public static class TestCatalogs
         new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),
         new ItemDefinition(StorageHutItem, "Storage Hut", WoodMaterial, Shelter, StorageHutVolume),
-    }, materials);
+    }, materials, forms);
 
     public static WorldConfiguration CreateConfiguration()
     {
         var materials = CreateMaterialCatalog();
+        var forms = CreateFormCatalog();
 
         return new(
             CreateResourceCatalog(),
             CreateSkillCatalog(),
             CreateRecipeCatalog(),
             materials,
-            CreateItemCatalog(materials),
+            forms,
+            CreateItemCatalog(materials, forms),
             SeasonParameters.Default,
             SimulationRules.Default);
     }

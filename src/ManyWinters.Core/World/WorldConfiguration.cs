@@ -12,15 +12,17 @@ public sealed record WorldConfiguration(
     SkillCatalog SkillCatalog,
     RecipeCatalog RecipeCatalog,
     MaterialCatalog MaterialCatalog,
+    FormCatalog FormCatalog,
     ItemCatalog ItemCatalog,
     SeasonParameters SeasonParameters,
     SimulationRules Rules)
 {
     // Nothing defined, default calendar and rules - what `new WorldConfiguration { X = ... }`
     // starts from when a caller cares about one or two catalogs. The item catalog gets its own
-    // empty material catalog; with no items there is nothing whose weight could differ.
+    // empty material and form catalogs; with no items there is nothing whose weight or edge
+    // could differ.
     public WorldConfiguration()
-        : this(new([]), new([]), new([]), new([]), new([], new([])), SeasonParameters.Default, SimulationRules.Default)
+        : this(new([]), new([]), new([]), new([]), new([]), new([], new([]), new([])), SeasonParameters.Default, SimulationRules.Default)
     {
     }
 
@@ -33,16 +35,18 @@ public sealed record WorldConfiguration(
     // ...) and returns its JSON documents, so the folder names live here once.
     public static WorldConfiguration LoadFromJson(Func<string, IEnumerable<(string Source, string Json)>> readCatalog)
     {
-        // Materials first and named: items derive weight and insulation from them, so the item
-        // catalog needs the same instance rather than a second reading.
+        // Materials and forms first and named: items derive weight, insulation and edge from the
+        // two of them, so the item catalog needs the same instances rather than a second reading.
         var materials = MaterialCatalog.LoadFromJson(readCatalog("materials"));
+        var forms = FormCatalog.LoadFromJson(readCatalog("forms"));
 
         return new(
             ResourceCatalog.LoadFromJson(readCatalog("resources")),
             SkillCatalog.LoadFromJson(readCatalog("skills")),
             RecipeCatalog.LoadFromJson(readCatalog("recipes")),
             materials,
-            ItemCatalog.LoadFromJson(readCatalog("items"), materials),
+            forms,
+            ItemCatalog.LoadFromJson(readCatalog("items"), materials, forms),
             SeasonParameters.Default,
             SimulationRules.Default);
     }

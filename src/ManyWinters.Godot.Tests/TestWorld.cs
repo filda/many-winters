@@ -43,6 +43,13 @@ internal static class TestWorld
             new MaterialDefinition(new MaterialId("stone"), "Stone", 2f),
         ]);
 
+        var forms = new FormCatalog([
+            new FormDefinition(new FormId("stick"), "Stick"),
+            new FormDefinition(new FormId("whole"), "Whole"),
+            new FormDefinition(new FormId("wedge"), "Wedge", EdgeSharpness: 1f),
+            new FormDefinition(new FormId("shelter"), "Shelter"),
+        ]);
+
         var items = new ItemCatalog(
             [
                 new ItemDefinition(Wood, "Wood", new MaterialId("wood"), new FormId("stick"), 2f),
@@ -50,7 +57,8 @@ internal static class TestWorld
                 new ItemDefinition(Axe, "Axe", new MaterialId("stone"), new FormId("wedge"), 2.5f),
                 new ItemDefinition(StorageHutItem, "Storage Hut", new MaterialId("wood"), new FormId("shelter"), StorageHutVolume),
             ],
-            materials);
+            materials,
+            forms);
 
         return new WorldState(new WorldConfiguration(
             new ResourceCatalog([
@@ -68,6 +76,7 @@ internal static class TestWorld
                 new RecipeDefinition(StorageHutItem, Wood, StorageHutInputAmount),
             ]),
             materials,
+            forms,
             items,
             SeasonParameters.Default,
             SimulationRules.Default));
