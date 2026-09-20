@@ -646,6 +646,7 @@ public partial class Main : Node3D
         // rather than a full interval later - as dismissing the controls page does.
         _workshop.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         _workshop.Attempted += OnWorkshopAttempt;
+        _workshop.Named += OnWorkshopNamed;
         _workshop.PickChanged += RefreshWorkshopOffer;
         canvas.AddChild(_workshop);
     }
@@ -715,7 +716,43 @@ public partial class Main : Node3D
             ? "It comes apart in your hands."
             : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
 
+        // A shape nobody in the band has a word for is a thing worth naming, and this is the
+        // moment to ask: they are looking at what they just made (see Vocabulary).
+        if (made is not null && !_world.Vocabulary.HasAWordFor(made))
+        {
+            _justMade = made;
+            _workshop.AskForAName();
+        }
+
         RefreshWorkshopOffer();
+    }
+
+    // What the last attempt turned out, held only long enough for the player to name it.
+    private Core.Materials.Assembly? _justMade;
+
+    private void OnWorkshopNamed(string word)
+    {
+        if (_justMade is not { } made)
+        {
+            return;
+        }
+
+        _world.Vocabulary.Name(made, word);
+        _justMade = null;
+
+        // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
+        // than only into the panel that asked for it.
+        ShowInscription(
+            new Inscription(
+                "A name for it",
+                [$"{_selectedPerson?.Name ?? "Somebody"} made a thing the band had no word for.", $"They are calling it {word}."],
+                null),
+            offerAnotherBand: false);
+
+        if (_selectedPerson is { } person)
+        {
+            _workshop.Show(WorkshopActions.Carried(_world, person));
+        }
     }
 
     private void SetUpBandPanel(CanvasLayer canvas)

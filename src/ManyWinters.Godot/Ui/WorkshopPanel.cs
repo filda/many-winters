@@ -32,6 +32,8 @@ public partial class WorkshopPanel : FloatingPanel
     private Label _words = null!;
     private Button _try = null!;
     private Label _outcome = null!;
+    private VBoxContainer _naming = null!;
+    private LineEdit _name = null!;
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
     public WorkshopPanel()
@@ -65,6 +67,23 @@ public partial class WorkshopPanel : FloatingPanel
         _outcome = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, Ink);
         _outcome.Visible = false;
         Body.AddChild(_outcome);
+
+        // Only ever up in the moment a thing nobody has a word for has just been made. Naming
+        // is not a screen the player visits; it is the discovery itself asking to be called
+        // something (see Vocabulary).
+        _naming = new VBoxContainer { Visible = false };
+        _naming.AddThemeConstantOverride("separation", SectionSpacing);
+        Body.AddChild(_naming);
+
+        _naming.AddChild(InscriptionFont.BodyLabel("Nobody has a word for this. What is it called?", BodyFontSize, QuietInk));
+
+        _name = new LineEdit { PlaceholderText = "a name for it" };
+        _name.TextSubmitted += _ => Christen();
+        _naming.AddChild(_name);
+
+        var christen = new Button { Text = "Call it that", Alignment = HorizontalAlignment.Left };
+        christen.Pressed += Christen;
+        _naming.AddChild(christen);
     }
 
     // Opened fresh: nothing picked, nothing yet said about the last attempt.
@@ -72,6 +91,7 @@ public partial class WorkshopPanel : FloatingPanel
     {
         _picked.Clear();
         _outcome.Visible = false;
+        _naming.Visible = false;
         Visible = true;
         Show(carried);
     }
@@ -131,6 +151,31 @@ public partial class WorkshopPanel : FloatingPanel
     {
         _outcome.Text = sentence;
         _outcome.Visible = sentence.Length > 0;
+    }
+
+    // The band has just made something there is no word for. Asked here and now, because this
+    // is the moment of discovery rather than an interruption of it.
+    internal void AskForAName()
+    {
+        _naming.Visible = true;
+        _name.Text = string.Empty;
+        _name.GrabFocus();
+    }
+
+    // What the player called it. Main is what writes it down; this panel knows a word was
+    // typed, not what having a word for a thing means.
+    internal event Action<string>? Named;
+
+    private void Christen()
+    {
+        var word = _name.Text.Trim();
+        if (word.Length == 0)
+        {
+            return;
+        }
+
+        _naming.Visible = false;
+        Named?.Invoke(word);
     }
 
     internal IReadOnlyList<WorkshopEntry> Picked => _picked;

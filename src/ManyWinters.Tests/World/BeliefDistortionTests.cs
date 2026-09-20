@@ -27,8 +27,10 @@ public class BeliefDistortionTests
             },
         });
 
-    private static Person Somebody(WorldState world, string name, Position? position = null) =>
-        world.SpawnPerson(name, position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+    // Pinned ids, because every roll here runs on them (see WorldState.Distorted): with random
+    // ones these would re-roll the dice on every run and pass or fail by luck.
+    private static Person Somebody(WorldState world, int seed, Position? position = null) =>
+        world.SpawnPerson(TestIds.Person(seed), $"Person{seed}", position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 
     private static void Holds(Person person, float value) =>
         person.Beliefs.Learn(PlantFibre, Fibrousness, value, confidenceGained: 1f);
@@ -40,8 +42,8 @@ public class BeliefDistortionTests
     public void WhatArrivesIsNotQuiteWhatWasSaid()
     {
         var world = TalkativeWorld();
-        var teller = Somebody(world, "Ava");
-        var listener = Somebody(world, "Bran");
+        var teller = Somebody(world, 1);
+        var listener = Somebody(world, 2);
         Holds(teller, 0.9f);
 
         world.Advance(1);
@@ -54,8 +56,8 @@ public class BeliefDistortionTests
     public void TellingSomebodyDoesNotDisturbWhatTheTellerBelieves()
     {
         var world = TalkativeWorld();
-        var teller = Somebody(world, "Ava");
-        var listener = Somebody(world, "Bran");
+        var teller = Somebody(world, 1);
+        var listener = Somebody(world, 2);
         Holds(teller, 0.9f);
 
         world.Advance(1);
@@ -64,28 +66,43 @@ public class BeliefDistortionTests
         Assert.NotEqual(0.9f, Heard(listener));
     }
 
-    // Nobody tells it better than they know it, so error is laid on error and a long chain ends
-    // up further out than a short one.
+    // Nobody tells it better than they know it, so error is laid on error and a chain drifts
+    // further than a single telling.
+    //
+    // Measured across many chains rather than one, because a hop is a step of a random walk:
+    // any given second telling may happen to land back nearer the truth, and asserting on one
+    // chain would be asserting on a coin toss. What the mechanic promises is that error
+    // accumulates, and that is a statement about the average.
     [Fact]
     public void ErrorAccumulatesAlongAChainOfTellings()
     {
-        var world = TalkativeWorld();
-        var first = Somebody(world, "Ava");
-        var second = Somebody(world, "Bran", new Position(100, 0));
-        var third = Somebody(world, "Cass", new Position(200, 0));
-        Holds(first, 0.9f);
+        var afterOneHop = 0f;
+        var afterTwoHops = 0f;
+        const int chains = 40;
 
-        // Out of earshot of each other, so the chain runs one hop at a time: Ava to Bran, then
-        // Bran to Cass, rather than everyone hearing it from the source.
-        second.Position = first.Position;
-        world.Advance(1);
-        second.Position = third.Position;
-        world.Advance(1);
+        for (var chain = 0; chain < chains; chain++)
+        {
+            var world = TalkativeWorld();
+            var first = Somebody(world, (chain * 3) + 1);
+            var second = Somebody(world, (chain * 3) + 2, new Position(100, 0));
+            var third = Somebody(world, (chain * 3) + 3, new Position(200, 0));
+            Holds(first, 0.9f);
 
-        var afterOneHop = Math.Abs(Heard(second) - 0.9f);
-        var afterTwoHops = Math.Abs(Heard(third) - 0.9f);
+            // Out of each other's earshot, so the tale travels one hop at a time rather than
+            // everybody hearing it from the source.
+            second.Position = first.Position;
+            world.Advance(1);
+            second.Position = third.Position;
+            world.Advance(1);
+
+            afterOneHop += Math.Abs(Heard(second) - 0.9f);
+            afterTwoHops += Math.Abs(Heard(third) - 0.9f);
+        }
+
         Assert.True(afterOneHop > 0f);
-        Assert.True(afterTwoHops > afterOneHop, $"one hop was off by {afterOneHop}, two hops by {afterTwoHops}");
+        Assert.True(
+            afterTwoHops > afterOneHop,
+            $"over {chains} chains, one hop drifted {afterOneHop / chains} on average and two hops {afterTwoHops / chains}");
     }
 
     // The lever the player has over drift: somebody who knows how to teach passes it on as they
@@ -94,8 +111,8 @@ public class BeliefDistortionTests
     public void APractisedTeacherPassesItOnIntact()
     {
         var world = TalkativeWorld();
-        var teller = Somebody(world, "Ava");
-        var listener = Somebody(world, "Bran");
+        var teller = Somebody(world, 1);
+        var listener = Somebody(world, 2);
         Holds(teller, 0.9f);
         for (var i = 0; i < 50; i++)
         {
@@ -113,7 +130,7 @@ public class BeliefDistortionTests
     public void WorkingTheStuffSettlesTheMatter()
     {
         var world = TalkativeWorld();
-        var person = Somebody(world, "Ava");
+        var person = Somebody(world, 1);
         person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
         person.Inventory.Add(TestCatalogs.GrassItem, TestCatalogs.GrassPerCord);
         Holds(person, 0.1f);
@@ -129,11 +146,11 @@ public class BeliefDistortionTests
     public void NoTaleMakesASubstanceLessThanNothing()
     {
         var world = TalkativeWorld(distortion: 5f);
-        var teller = Somebody(world, "Ava");
+        var teller = Somebody(world, 1);
         var listeners = new List<Person>();
         for (var i = 0; i < 20; i++)
         {
-            listeners.Add(Somebody(world, $"Listener{i}"));
+            listeners.Add(Somebody(world, i + 2));
         }
 
         Holds(teller, 0.05f);
@@ -147,8 +164,8 @@ public class BeliefDistortionTests
     public void WithNothingToDistortItWordPassesExactly()
     {
         var world = TalkativeWorld(distortion: 0f);
-        var teller = Somebody(world, "Ava");
-        var listener = Somebody(world, "Bran");
+        var teller = Somebody(world, 1);
+        var listener = Somebody(world, 2);
         Holds(teller, 0.9f);
 
         world.Advance(1);
@@ -162,9 +179,9 @@ public class BeliefDistortionTests
     public void TwoPeopleCanEndUpDisagreeingAboutTheSameSubstance()
     {
         var world = TalkativeWorld();
-        var ava = Somebody(world, "Ava");
-        var bran = Somebody(world, "Bran", new Position(100, 0));
-        var cass = Somebody(world, "Cass", new Position(100, 0));
+        var ava = Somebody(world, 1);
+        var bran = Somebody(world, 2, new Position(100, 0));
+        var cass = Somebody(world, 3, new Position(100, 0));
         Holds(ava, 0.9f);
 
         bran.Position = ava.Position;
