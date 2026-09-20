@@ -3,6 +3,9 @@ name: Export Investigation
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   GODOT_RELEASE: 4.7.1-stable
   GODOT_TEMPLATE_DIR: 4.7.1.stable.mono
