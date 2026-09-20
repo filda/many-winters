@@ -115,21 +115,51 @@ regression would be visible immediately.
 
 Picked up again in a manual workflow: `.github/workflows/export-investigation.yml`.
 It exists specifically to answer the open questions without making every push slower
-or less deterministic. One dispatch runs four controls side by side:
+or less deterministic. One dispatch runs five controls side by side:
 
 - `windows-latest` as the current release environment,
-- the same runner with the intentionally broken diagnostic `dotnet publish` warm-up,
+- the same runner with a diagnostic `dotnet publish` warm-up in front of the export,
+- the same runner with `application/modify_resources=false`,
 - `windows-2022` as a second Windows environment,
-- `ubuntu-latest` as the Linux control.
+- `ubuntu-latest` as the Linux control — its image is selectable through the
+  `linux_runner` input, which is also how the Ubuntu 26.04 migration gets rehearsed.
 
 It also adds a direct incremental `dotnet publish` probe after the Godot export on
 both platforms. Because it runs after Godot has already published the same
 project/configuration/RID, it is only a warm comparison point rather than a cold
 measure of raw .NET publish throughput on the runner.
 
-The diagnostic warm-up intentionally overrides `BaseIntermediateOutputPath` and is
-expected to fail. The point is not to fix that publish; it is to test whether
-reproducing the old broken step again changes the immediately following export time.
+The first dispatch (run 35538619833, 2026-09-20) killed three more hypotheses:
+
+4. **It is the runner image.** No: `windows-2022` took 631 s against
+   `windows-latest`'s 623 s.
+5. **It is Defender.** No: the runner reports `RealTimeProtectionEnabled: False`.
+6. **It is .NET.** No: on that same runner, from cold, a full
+   `dotnet publish -c ExportRelease -r win-x64` finished in 15.4 s, restore included.
+
+It also placed the time *inside* the export. The smoke test prints a build tag taken
+from the exported assembly's last-write time, and it read 21:26:23 for an export that
+started at 21:25:58 and ended at 21:36:21 — our C# was compiled 25 s in and the other
+~598 s happened after it. Godot's log names two phases (`dotnet_publish_project`,
+`savepack`) and carries no clock, so the export step now tails the redirected log and
+writes `export.timeline.log` with an elapsed-time stamp per line. Godot writes that
+file in blocks, so a stamp places a phase boundary rather than timing a single line,
+which is all it takes to say which phase holds the ten minutes.
+
+The only Windows-only work left after the compile is rewriting icon and version
+metadata into the 104 MB `.exe` and the console wrapper with rcedit. That is what the
+`no-rcedit` variant switches off, and it is the next hypothesis in line.
+
+Two mechanics cost that dispatch its two most interesting cells, and are fixed:
+
+- The warm-up publish is not broken any more. With the SDK pinned by `global.json` it
+  exits 0 in ~15 s, and the step's guard — a `throw` for the publish unexpectedly
+  succeeding — aborted the job before the export it exists to time. Either outcome is
+  now simply recorded.
+- The Linux job failed *after* a green 15 s export, on a diagnostic
+  `find … | sort -nr | head -n 10`: `head` closes the pipe, `sort` dies of SIGPIPE and
+  `pipefail` turns that into exit 2. `ci.yml` never carried that line, so the release
+  was never at risk.
 
 ## 4. Asset growth is the cost that will actually rise
 

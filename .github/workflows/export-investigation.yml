@@ -2,6 +2,21 @@ name: Export Investigation
 
 on:
   workflow_dispatch:
+    inputs:
+      linux_runner:
+        # `ubuntu-latest` moves to Ubuntu 26.04 between 2026-10-19 and 2026-11-19
+        # (actions/runner-images#14748). The linux job below is the only one that leans on
+        # prebuilt binaries and system libraries — a downloaded Godot editor, its export
+        # templates and a self-contained linux-x64 publish that then gets booted — so run it
+        # against `ubuntu-26.04` here before the default flips, instead of finding out in a
+        # release. Pin `release-linux` in ci.yml to `ubuntu-24.04` only if this comes back red.
+        description: Runner image for the linux export job
+        type: choice
+        default: ubuntu-latest
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-26.04
 
 permissions:
   contents: read
@@ -25,14 +40,25 @@ jobs:
             runner_label: latest
             variant_label: control
             diagnostic_warmup: "false"
+            modify_resources: "true"
           - runner: windows-latest
             runner_label: latest
-            variant_label: broken-warmup
+            variant_label: warmup
             diagnostic_warmup: "true"
+            modify_resources: "true"
+          # The C# is compiled ~25 s into a ~620 s export - the exported assembly's own timestamp
+          # says so - and rewriting icon and version metadata into the 104 MB .exe with rcedit is
+          # the one thing Windows does after that which Linux does not. This row switches it off.
+          - runner: windows-latest
+            runner_label: latest
+            variant_label: no-rcedit
+            diagnostic_warmup: "false"
+            modify_resources: "false"
           - runner: windows-2022
             runner_label: 2022
             variant_label: control
             diagnostic_warmup: "false"
+            modify_resources: "true"
     env:
       EXPORT_PRESET: Of Folks and Many Winters
     steps:
@@ -129,6 +155,16 @@ jobs:
             -replace 'config/name="ManyWinters Godot"', "config/name=`"ManyWinters Godot`"`nconfig/version=`"$v`"" `
             | Set-Content $project -NoNewline
 
+      - name: Disable Windows resource rewrite
+        if: matrix.modify_resources == 'false'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $presets = "src/ManyWinters.Godot/export_presets.cfg"
+          (Get-Content $presets -Raw) `
+            -replace 'application/modify_resources=true', 'application/modify_resources=false' `
+            | Set-Content $presets -NoNewline
+          Select-String -Path $presets -Pattern "application/modify_resources" | ForEach-Object { $_.Line }
+
       - name: Locate Godot
         run: |
           $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64_console.exe" |
@@ -151,7 +187,7 @@ jobs:
           "import exit code: $LASTEXITCODE"
           exit 0
 
-      - name: Broken diagnostic publish warm-up
+      - name: Diagnostic publish warm-up
         if: matrix.diagnostic_warmup == 'true'
         run: |
           $ErrorActionPreference = "Continue"
@@ -170,9 +206,10 @@ jobs:
           $code = $LASTEXITCODE
           "diagnostic publish exit code: $code after {0:N1}s" -f $sw.Elapsed.TotalSeconds
           if (Test-Path $log) { Get-Content $log -Tail 120 }
-          if ($code -eq 0) {
-            throw "Diagnostic publish unexpectedly succeeded; the warm-up experiment is no longer reproducing a failure."
-          }
+          # Either outcome is data. The step used to insist on a non-zero exit, because failing is
+          # what it did when it was first seen to make the export fast; since the SDK was pinned it
+          # succeeds in ~15 s instead, and throwing here only aborted the job before the export it
+          # exists to time.
           exit 0
 
       - name: Export Windows build
@@ -186,11 +223,32 @@ jobs:
           $godotArgs = @("--headless", "--path", "$root\src\ManyWinters.Godot",
                          "--export-release", $env:EXPORT_PRESET, $out) |
             ForEach-Object { '"' + $_ + '"' }
-          $p = Start-Process -FilePath $env:GODOT -NoNewWindow -Wait -PassThru -WorkingDirectory $root `
+          $p = Start-Process -FilePath $env:GODOT -NoNewWindow -PassThru -WorkingDirectory $root `
             -ArgumentList $godotArgs `
             -RedirectStandardOutput "$root\export.out.log" -RedirectStandardError "$root\export.err.log"
+
+          # Godot names two phases (dotnet_publish_project, savepack) and never says when, so the
+          # ten minutes are invisible in its log. Tail the redirected log from here and stamp every
+          # line with the elapsed time. Godot itself runs exactly as before: piping its stdout
+          # would change how the process under measurement writes, and this workflow exists
+          # because such a side effect has already moved the number once. Godot writes the file in
+          # blocks, so a stamp places a phase boundary rather than timing a single line.
+          while (-not (Test-Path "$root\export.out.log")) { Start-Sleep -Milliseconds 100 }
+          $handle = [IO.File]::Open("$root\export.out.log", "Open", "Read", "ReadWrite")
+          $reader = New-Object IO.StreamReader($handle)
+          $timeline = New-Object IO.StreamWriter("$root\export.timeline.log")
+          do {
+            $running = -not $p.HasExited
+            while ($null -ne ($line = $reader.ReadLine())) {
+              $timeline.WriteLine("+{0,5:N0}s {1}" -f $sw.Elapsed.TotalSeconds, $line)
+            }
+            if ($running) { Start-Sleep -Milliseconds 500 }
+          } while ($running)
+          $p.WaitForExit()
+          $timeline.Close(); $reader.Close(); $handle.Close()
+
           "godot exit code: $($p.ExitCode) after {0:N0}s" -f $sw.Elapsed.TotalSeconds
-          Get-Content "$root\export.out.log" -Tail 20
+          Get-Content "$root\export.timeline.log" -Tail 20
           Get-Content "$root\export.err.log"
 
           if (-not (Test-Path $out)) { throw "Export produced no executable" }
@@ -271,6 +329,7 @@ jobs:
             ManyWinters-win64.zip
             export.out.log
             export.err.log
+            export.timeline.log
             smoke.out.log
             smoke.err.log
             incremental-publish-probe.log
@@ -278,8 +337,8 @@ jobs:
             diagnostic-publish.binlog
 
   linux-export-control:
-    name: linux control
-    runs-on: ubuntu-latest
+    name: linux control (${{ inputs.linux_runner }})
+    runs-on: ${{ inputs.linux_runner }}
     env:
       EXPORT_PRESET: Of Folks and Many Winters (Linux)
     steps:
@@ -400,7 +459,9 @@ jobs:
           size_mb=$(du -sm build/ManyWinters-linux | cut -f1)
           echo "exported files: $files"
           echo "exported size: ${size_mb} MB"
-          find build/ManyWinters-linux -type f -printf "%s %p\n" | sort -nr | head -n 10
+          # head closes the pipe on the tenth line and sort dies of SIGPIPE, which pipefail
+          # turns into a failed step after a perfectly good export.
+          find build/ManyWinters-linux -type f -printf "%s %p\n" | sort -nr | head -n 10 || true
           printf "Of Folks and Many Winters %s\nbuild %s\ncommit %s\n" \
             "$VERSION" "$TAG" "${{ github.sha }}" > build/ManyWinters-linux/version.txt
 
@@ -455,7 +516,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: export-investigation-linux-control
+          name: export-investigation-linux-control-${{ inputs.linux_runner }}
           retention-days: 3
           path: |
             ManyWinters-linux64.zip
