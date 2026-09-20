@@ -17,8 +17,9 @@ public static class WorldStateSpawnExtensions
         long initialAgeTicks = 0,
         Person? mother = null,
         Person? father = null,
-        Sex? sex = null) =>
-        world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father, sex);
+        Sex? sex = null,
+        float curiosity = 1f) =>
+        world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father, sex, curiosity);
 
     // With a chosen id - for tests pinning an outcome that runs on the id's seed (see TestIds).
     public static Person SpawnPerson(
@@ -31,7 +32,10 @@ public static class WorldStateSpawnExtensions
         Person? father = null,
         // Unset when the test has no stake in it, in which case the id decides (Person.Sex). Tests
         // about who can have a child with whom pin it, or they assert against a coin flip.
-        Sex? sex = null)
+        Sex? sex = null,
+        // One is the rate the shipped band works things out at (see Person.Curiosity); tests
+        // about idle discovery turn it.
+        float curiosity = 1f)
     {
         var person = new Person
         {
@@ -43,6 +47,7 @@ public static class WorldStateSpawnExtensions
             Father = father ?? Person.Unknown,
             Sex = sex ?? Person.SexOf(id),
             MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
+            Curiosity = curiosity,
         };
 
         world.AddPerson(person);

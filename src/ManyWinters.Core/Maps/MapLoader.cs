@@ -281,6 +281,7 @@ public static class MapLoader
                 Father = Person.Unknown,
                 Sex = sex,
                 MaxHunger = rules.MaxHungerFor(id),
+                Curiosity = rules.StartingBandCuriosity,
             };
 
             world.AddForebear(forebear);

@@ -74,6 +74,16 @@ public sealed class Person
     // world. Not saved: unlike Sex it is only ever the draw, and the draw comes back off the id.
     public float MaxHunger { get; init; } = SimulationRules.Default.MaxHunger;
 
+    // How readily this person works a thing out for themselves, as a multiplier on the idle
+    // discovery roll (see WorldState.DiscoverByFiddling). One is the rate the shipped band
+    // learns at. It sits on the person rather than in the rules because it is meant to differ
+    // between bands: an NPC tribe that should develop more slowly than the player's own is the
+    // same world with a lower number here, not a second set of rules (docs/todo/todo.md, NPC
+    // tribes). Uniform within a band today; section 7 of
+    // docs/materials-and-crafting-architecture.md notes per-person variation as an option
+    // nobody has decided on.
+    public float Curiosity { get; init; } = SimulationRules.Default.StartingBandCuriosity;
+
     public Needs Needs { get; } = new();
 
     public Skills Skills { get; } = new();

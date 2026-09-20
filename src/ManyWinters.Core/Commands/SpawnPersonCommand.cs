@@ -15,7 +15,10 @@ public sealed record SpawnPersonCommand(
     long InitialAgeTicks = 0,
     // Null lets the id decide (see Person.Sex). MapLoader sets it: its family table has already
     // settled who bore whom.
-    Sex? Sex = null) : ICommand
+    Sex? Sex = null,
+    // Null takes the player band's rate from the rules; an NPC band passes its own (see
+    // Person.Curiosity).
+    float? Curiosity = null) : ICommand
 {
     public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0)
         : this(PersonId.New(), name, position, mother, father, initialAgeTicks)
@@ -36,5 +39,6 @@ public sealed record SpawnPersonCommand(
         Father = Father,
         Sex = Sex ?? Person.SexOf(Id),
         MaxHunger = world.Configuration.Rules.MaxHungerFor(Id),
+        Curiosity = Curiosity ?? world.Configuration.Rules.StartingBandCuriosity,
     });
 }

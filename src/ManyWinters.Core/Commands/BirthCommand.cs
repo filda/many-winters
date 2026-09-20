@@ -75,6 +75,9 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
             Mother = Mother,
             Father = Father,
             MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
+            // Born into its mother's band, so it works things out at that band's rate rather
+            // than the player band's (see Person.Curiosity).
+            Curiosity = Mother.Curiosity,
         };
 
         world.AddPerson(child);

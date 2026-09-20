@@ -37,7 +37,9 @@ public sealed record PersonSaveData(
     Guid FatherId,
     // Stored, not re-derived from the id: MapLoader pins the starting band's sex, and a pinned
     // sex has to survive a reload (see Person.Sex).
-    Sex Sex);
+    Sex Sex,
+    // Set per band rather than per rules, so it has to survive a reload (see Person.Curiosity).
+    float Curiosity);
 
 // One bond per pair, not per direction - Affections is symmetric; which id is A is storage
 // order.

@@ -1,6 +1,8 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Population.Naming;
 using ManyWinters.Core.Tasks;
@@ -236,6 +238,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
 
             AutoTeachNearbyPeople(currentTick);
+            DiscoverByFiddling(currentTick);
             AdvanceAffections();
             StartFamilies(currentTick);
             ResolveCollisions();
@@ -397,6 +400,101 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
 
         return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
+    }
+
+    // Idle hands turning something over, and now and then working out how it is done (see
+    // docs/materials-and-crafting-architecture.md section 7, "idle experimentation"). This is
+    // what keeps knowledge living in people rather than in the player's head: a settlement left
+    // alone still develops, and a band that comes after an extinction re-derives things for
+    // itself instead of waiting to be shown.
+    //
+    // The rule is one sentence: a person works out how to do the thing they could have done
+    // already, if only they had known how. Each verb's own command is asked what stands in the
+    // way, and discovery happens exactly when the answer is "nothing but not knowing" - so
+    // nothing here re-states what a verb needs, and a verb that grows a new requirement is
+    // obeyed here for free.
+    //
+    // Undirected, unlike the workbench: what is tried is whatever is in their hands, taken at
+    // random, and they do not choose it. The player who aims an attempt is buying aim, which is
+    // what makes directing worth the time it costs (section 7, "How the two paths differ").
+    private void DiscoverByFiddling(long currentTick)
+    {
+        foreach (var person in _people)
+        {
+            // Only genuinely idle hands: somebody walking somewhere or working a resource is
+            // busy with that, and a person nobody has taught to be anywhere is the one with
+            // time to turn a thing over.
+            if (!person.IsAlive || person.Tasks.Current is not IdleTask)
+            {
+                continue;
+            }
+
+            if (TrialOf(person, currentTick) is not { } trial)
+            {
+                continue;
+            }
+
+            var (skill, command) = trial;
+            if (command.Blocker(this) is not ActionBlocker.NotLearned)
+            {
+                continue;
+            }
+
+            if (Configuration.SkillCatalog.Find(skill) is { } definition
+                && PassesIdleDiscoveryRoll(person, skill, currentTick))
+            {
+                person.KnownTechniques.Add(definition.BaseTechnique);
+            }
+        }
+    }
+
+    // What this person happens to be turning over this tick: one thing out of the pack, or two.
+    // Drawn from the same seeded stream as every other autonomous roll, so a replay fiddles with
+    // the same things in the same order.
+    private static (SkillTypeId Skill, ICommand Command)? TrialOf(Person person, long currentTick)
+    {
+        var stock = person.Inventory.Counts.Keys.OrderBy(kind => kind.Value, StringComparer.Ordinal).ToList();
+        var worked = person.Inventory.Assemblies;
+        var things = stock.Count + worked.Count;
+        if (things == 0)
+        {
+            return null;
+        }
+
+        var rng = new Random(SeedHash.Avalanche(unchecked((uint)(person.Id.Seed * 40503) ^ ((uint)currentTick * 2654435761u))));
+
+        // Two things in hand is a chance to wonder what they would be together; one is a chance
+        // to wonder what it would be worked down. With only one thing there is nothing to bind.
+        if (things > 1 && rng.Next(2) == 0)
+        {
+            var left = TargetAt(stock, worked, rng.Next(things));
+            var right = TargetAt(stock, worked, rng.Next(things));
+
+            return (BindCommand.Skill, new BindCommand(person, left, right));
+        }
+
+        // Nothing worked can be taken apart again yet, so a reductive trial is a trial of raw
+        // stock; somebody carrying only cord has nothing to try this way.
+        return stock.Count > 0
+            ? (TwistCommand.Skill, new TwistCommand(person, stock[rng.Next(stock.Count)]))
+            : null;
+    }
+
+    private static BindTarget TargetAt(IReadOnlyList<ItemKindId> stock, IReadOnlyList<Assembly> worked, int index) =>
+        index < stock.Count
+            ? new BindTarget.Stock(stock[index])
+            : new BindTarget.Worked(worked[index - stock.Count]);
+
+    // Deterministic from the person, the verb and the tick, as every other roll is. A person's
+    // own Curiosity scales it, which is the knob an NPC band turns down (see Person.Curiosity).
+    private bool PassesIdleDiscoveryRoll(Person person, SkillTypeId skill, long currentTick)
+    {
+        var chance = Configuration.Rules.IdleDiscoveryChancePerTick * person.Curiosity;
+        var mixed = unchecked((uint)(person.Id.Seed * 2246822519) ^ (uint)(StableStringHash(skill.Value) * 3266489917) ^ ((uint)currentTick * 668265263u));
+
+        // Stryker disable once Equality: NextDouble() returning exactly the chance has
+        // probability zero, so < and <= are the same roll
+        return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
     }
 
     // Once somebody knows a technique and how to teach (see TeachCommand), anyone nearby may

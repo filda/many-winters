@@ -107,10 +107,38 @@ spoiled twist wastes the handful, while a slipped lashing wastes only the cordag
 two things that came apart are still two things. Both teach, so a wasted attempt is
 still practice.
 
-Still open in 4c: the *autonomous* half of discovery - idle experimentation, property
-knowledge as beliefs, and pattern recognition (section 7). Nothing is discovered by
-anyone the player is not directing, so a settlement left alone still develops nothing,
-which section 7 says explicitly it must not stay. Also still open: per-assembly
+Step 4c-4 (2026-09-20): idle experimentation - a person with nothing else to do and
+something in their hands now works verbs out for themselves. The rule is one sentence:
+**you work out how to do the thing you could have done already, if only you had known
+how.** Each verb's own command is asked what stands in the way, and discovery happens
+exactly when the answer is `NotLearned` - so nothing in the discovery pass re-states
+what a verb needs, and a verb that grows a new requirement is obeyed there for free.
+What gets tried is undirected, as section 7 says it must be: one thing out of the pack
+or two, taken at random from the same seeded stream as every other autonomous roll.
+Aim is what the player buys by directing an attempt, and what makes the time it costs
+worth paying.
+
+The rate is `SimulationRules.IdleDiscoveryChancePerTick` multiplied by
+**`Person.Curiosity`**, which sits on the person rather than in the rules on purpose:
+an NPC tribe that should develop more slowly than the player's band is the same world
+with a lower number, not a second set of rules (`docs/todo/todo.md`, NPC tribes).
+Uniform within a band today; section 7's per-person variation is still only an option.
+
+**The player's own band is deliberately slow at it too**
+(`SimulationRules.StartingBandCuriosity`, a quarter of the base rate). A band that
+worked things out briskly by itself would leave the player watching rather than
+playing, and teaching them is the game - so what they manage alone is a slow floor
+under a player who has missed something, not a substitute for leading them. A child
+takes its mother's rate rather than the player band's, so a tribe's children stay on
+the tribe's.
+Calibrated as section 7 asks - non-zero but measured in winters, and the test asserts
+it across a crowd rather than one person, since one person's roll is a function of
+their own seed.
+
+Still open in 4c: property knowledge as beliefs and pattern recognition (section 7) -
+a person's discoveries are still binary techniques, with nothing that can be *wrong*
+rather than merely absent, which is the substrate distorted transmission would need.
+Also still open: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked

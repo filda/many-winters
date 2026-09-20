@@ -21,6 +21,21 @@ public sealed record SimulationRules
     // something that just failed is a second stretch of the same afternoon.
     public long TicksPerWorkAttempt { get; } = 3;
 
+    // The chance per tick that somebody idling with something in their hands works out how to
+    // do a thing nobody showed them (see WorldState.DiscoverByFiddling), before their own
+    // Curiosity multiplies it. Deliberately small: idle discovery is what keeps knowledge living
+    // in people rather than in the player's head, so it must be non-zero, but a band left alone
+    // should take winters to arrive at cord rather than an afternoon.
+    public float IdleDiscoveryChancePerTick { get; init; } = 0.002f;
+
+    // What the player's own band works things out at (see Person.Curiosity), as a multiplier on
+    // the rate above. Below one on purpose: a band that discovered things briskly by itself
+    // would leave the player watching rather than playing, and teaching them is the game (see
+    // docs/materials-and-crafting-architecture.md section 7). What they manage alone is a slow
+    // floor under a player who has missed something, not a substitute for leading them. An NPC
+    // band is spawned with its own number instead of this one.
+    public float StartingBandCuriosity { get; } = 0.25f;
+
     // Hunger an average person dies at. Each person gets their own value around it (see
     // MaxHungerFor), so this is the middle of a range, not a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;
