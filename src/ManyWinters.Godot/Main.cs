@@ -679,7 +679,7 @@ public partial class Main : Node3D
         }
 
         var offer = WorkshopActions.Attempt(_world, person, _workshop.Picked);
-        _workshop.Offer(offer, RefusalFor(offer));
+        _workshop.Offer(offer, RefusalFor(offer), WorkshopActions.WordsFor(_world, _workshop.Picked));
     }
 
     // Nothing is said about a pick that leads nowhere until the player has picked something: an

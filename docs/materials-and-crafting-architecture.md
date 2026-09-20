@@ -135,6 +135,26 @@ Calibrated as section 7 asks - non-zero but measured in winters, and the test as
 it across a crowd rather than one person, since one person's roll is a function of
 their own seed.
 
+Step 4c-5 (2026-09-20): properties surfaced as words (`MaterialWords`), which the
+workbench shows for a single pick - "It is fibrous, pliable, light." The bench was
+otherwise blind guessing: section 7 asks the player to form a hypothesis, and a
+hypothesis needs something to go on, while section 9 forbids showing the numbers. The
+words say what a thing *is*, never what it is *for* - no line hands the player a verb,
+because working that out is the game. Two things picked at once are described by
+nothing: that is a question about the pair, and a wall of adjectives is not an answer.
+Capped at three words, since a thing described four ways at once has said nothing.
+
+It lives in Core rather than beside the rest of the player's prose, because the
+chronicle will want to describe a thing in the same words the panel does - the point
+section 4 makes about function-score wording.
+
+Shipped materials were given real property values at the same time (`wood`, `stone`,
+`hide`), which they had gone without since step 2 for want of a reader. That also
+settled a wart the words exposed: `stone` had `Toughness` at zero, which
+`MaterialAffordances.CanKnap` read as perfectly brittle while the words read it as
+"nobody said". A property that two readers disagree about is a property that wants
+authoring.
+
 Still open in 4c: property knowledge as beliefs and pattern recognition (section 7) -
 a person's discoveries are still binary techniques, with nothing that can be *wrong*
 rather than merely absent, which is the substrate distorted transmission would need.

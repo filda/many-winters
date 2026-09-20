@@ -1,1 +1,1 @@
-{ "id": "hide", "displayName": "Hide", "density": 0.75, "insulation": 1 }
+{ "id": "hide", "displayName": "Hide", "density": 0.75, "insulation": 1, "toughness": 0.6, "flexibility": 0.8, "elasticity": 0.15, "fibrousness": 0.4 }

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -38,6 +39,33 @@ internal static class WorkshopActions
             .OrderBy(entry => entry.Label, StringComparer.Ordinal);
 
         return stock.Concat(worked).ToList();
+    }
+
+    // What the one thing in hand is like, in plain words - what the player has to go on when
+    // forming a hypothesis, since the numbers behind it are never shown (see MaterialWords,
+    // section 9). Only for a single pick: two things at once is a question about the pair, and
+    // a wall of adjectives is not an answer to it. Empty when nothing is known of the
+    // substance, and the panel then says nothing rather than saying "unknown".
+    internal static IReadOnlyList<string> WordsFor(WorldState world, IReadOnlyList<WorkshopEntry> picked)
+    {
+        if (picked.Count != 1 || MaterialOf(world, picked[0]) is not { } material)
+        {
+            return [];
+        }
+
+        return MaterialWords.For(material);
+    }
+
+    private static MaterialDefinition? MaterialOf(WorldState world, WorkshopEntry entry)
+    {
+        var id = entry.Target switch
+        {
+            BindTarget.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
+            BindTarget.Worked { Thing: Assembly.Part part } => part.Material,
+            _ => (MaterialId?)null,
+        };
+
+        return id is { } material ? world.Configuration.MaterialCatalog.Find(material) : null;
     }
 
     // What trying the picked things together would be, or null when nothing would come of it -

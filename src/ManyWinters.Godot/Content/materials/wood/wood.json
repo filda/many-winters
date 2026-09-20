@@ -1,1 +1,1 @@
-{ "id": "wood", "displayName": "Wood", "density": 0.5 }
+{ "id": "wood", "displayName": "Wood", "density": 0.5, "hardness": 0.4, "toughness": 0.7, "flexibility": 0.35, "fibrousness": 0.5 }

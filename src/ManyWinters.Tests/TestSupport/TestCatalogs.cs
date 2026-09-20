@@ -105,13 +105,25 @@ public static class TestCatalogs
     // Mirrors Content/materials/{id}/{id}.json. Weight is density times volume
     // (ItemCatalog.WeightFor).
     private const float WoodDensity = 0.5f;
+    private const float WoodHardness = 0.4f;
+    private const float WoodToughness = 0.7f;
+    private const float WoodFlexibility = 0.35f;
+    private const float WoodFibrousness = 0.5f;
     private const float StoneDensity = 2f;
     private const float StoneHardness = 1f;
+    // Hard and brittle is what makes stone knappable (MaterialAffordances.CanKnap); a toughness
+    // left at zero would read as "nobody said" to MaterialWords while the predicate treated it
+    // as perfectly brittle.
+    private const float StoneToughness = 0.15f;
     private const float PlantFibreDensity = 0.2f;
     private const float PlantFibreToughness = 0.5f;
     private const float PlantFibreFlexibility = 0.7f;
     private const float PlantFibreFibrousness = 0.9f;
     private const float HideDensity = 0.75f;
+    private const float HideToughness = 0.6f;
+    private const float HideFlexibility = 0.8f;
+    private const float HideElasticity = 0.15f;
+    private const float HideFibrousness = 0.4f;
     private const float FoodDensity = 1f;
     private const float HideInsulation = 1f;
 
@@ -232,10 +244,10 @@ public static class TestCatalogs
 
     private static MaterialCatalog CreateMaterialCatalog() => new(new[]
     {
-        new MaterialDefinition(WoodMaterial, "Wood", WoodDensity),
-        new MaterialDefinition(StoneMaterial, "Stone", StoneDensity, Hardness: StoneHardness),
+        new MaterialDefinition(WoodMaterial, "Wood", WoodDensity, Hardness: WoodHardness, Toughness: WoodToughness, Flexibility: WoodFlexibility, Fibrousness: WoodFibrousness),
+        new MaterialDefinition(StoneMaterial, "Stone", StoneDensity, Hardness: StoneHardness, Toughness: StoneToughness),
         new MaterialDefinition(PlantFibreMaterial, "Plant Fibre", PlantFibreDensity, Toughness: PlantFibreToughness, Flexibility: PlantFibreFlexibility, Fibrousness: PlantFibreFibrousness),
-        new MaterialDefinition(HideMaterial, "Hide", HideDensity, HideInsulation),
+        new MaterialDefinition(HideMaterial, "Hide", HideDensity, HideInsulation, Toughness: HideToughness, Flexibility: HideFlexibility, Elasticity: HideElasticity, Fibrousness: HideFibrousness),
         new MaterialDefinition(AppleMaterial, "Apple Flesh", FoodDensity),
         new MaterialDefinition(PearMaterial, "Pear Flesh", FoodDensity),
         new MaterialDefinition(PotatoMaterial, "Potato Flesh", FoodDensity),

@@ -29,6 +29,7 @@ public partial class WorkshopPanel : FloatingPanel
 
     private VBoxContainer _entries = null!;
     private Label _hint = null!;
+    private Label _words = null!;
     private Button _try = null!;
     private Label _outcome = null!;
     private IReadOnlyList<WorkshopEntry> _carried = [];
@@ -51,6 +52,11 @@ public partial class WorkshopPanel : FloatingPanel
 
         _entries = new VBoxContainer { CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth, 0) };
         Body.AddChild(_entries);
+
+        // What the thing in hand is like, never what it is for (see MaterialWords).
+        _words = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, QuietInk);
+        _words.Visible = false;
+        Body.AddChild(_words);
 
         _try = new Button { Text = "Try it", Alignment = HorizontalAlignment.Left, Disabled = true };
         _try.Pressed += OnTryPressed;
@@ -105,8 +111,11 @@ public partial class WorkshopPanel : FloatingPanel
     }
 
     // What the panel is currently able to offer, so the button says what pressing it would do.
-    internal void Offer(ActionOffer? offer, string? refusal)
+    internal void Offer(ActionOffer? offer, string? refusal, IReadOnlyList<string> words)
     {
+        _words.Text = words.Count > 0 ? $"It is {string.Join(", ", words)}." : string.Empty;
+        _words.Visible = words.Count > 0;
+
         _try.Disabled = offer is not { IsAvailable: true };
         _try.Text = _picked.Count == 0 ? "Try it" : $"Try it ({_picked.Count})";
 

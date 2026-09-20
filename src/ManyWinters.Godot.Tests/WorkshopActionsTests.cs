@@ -156,4 +156,61 @@ public class WorkshopActionsTests
         Assert.Equal(3, carried.Count);
         Assert.Null(WorkshopActions.Attempt(world, person, carried));
     }
+
+    // What the player has to go on: what the thing is like, never what it is for.
+    [Fact]
+    public void OneThingInHandIsDescribedByWhatItIsLike()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Grass, 5);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Equal(["fibrous", "pliable", "light"], WorkshopActions.WordsFor(world, carried));
+    }
+
+    [Fact]
+    public void AWorkedThingIsDescribedByTheSubstanceItIsMadeOf()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.AddAssembly(Cord());
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Equal(["fibrous", "pliable", "light"], WorkshopActions.WordsFor(world, carried));
+    }
+
+    // Two things at once is a question about the pair; a wall of adjectives is not an answer.
+    [Fact]
+    public void TwoThingsInHandAreNotDescribedAtAll()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Grass, 5);
+        person.Inventory.Add(TestWorld.Wood, 5);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Empty(WorkshopActions.WordsFor(world, carried));
+    }
+
+    [Fact]
+    public void NothingInHandIsDescribedByNothing()
+    {
+        var world = TestWorld.Create();
+
+        Assert.Empty(WorkshopActions.WordsFor(world, []));
+    }
+
+    // Nothing is known of what wood is like in this world, so the bench says nothing about it
+    // rather than saying "unknown".
+    [Fact]
+    public void ASubstanceNobodyDescribedIsPassedOverInSilence()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 5);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Empty(WorkshopActions.WordsFor(world, carried));
+    }
 }
