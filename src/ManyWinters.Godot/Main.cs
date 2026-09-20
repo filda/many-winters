@@ -742,12 +742,15 @@ public partial class Main : Node3D
 
         // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
         // than only into the panel that asked for it.
-        ShowInscription(
-            new Inscription(
-                "A name for it",
-                [$"{_selectedPerson?.Name ?? "Somebody"} made a thing the band had no word for.", $"They are calling it {word}."],
-                null),
-            offerAnotherBand: false);
+        RecordInscription(new Inscription(
+            "A name for it",
+            [$"{_selectedPerson?.Name ?? "Somebody"} made a thing the band had no word for.", $"They are calling it {word}."],
+            // Carried even though the chronicle leaves closing words off the page: an
+            // inscription without them is one the overlay cannot be dismissed from, and that is
+            // meant only for a band with nobody left (see InscriptionOverlay.Show).
+            "The word is passed along"));
+
+        _workshop.ReportOutcome($"They are calling it {word}.");
 
         if (_selectedPerson is { } person)
         {
@@ -951,9 +954,18 @@ public partial class Main : Node3D
     // the overlay and the whole of it into the chronicle, where it stays for the session.
     private void ShowInscription(Inscription inscription, bool offerAnotherBand)
     {
+        RecordInscription(inscription);
+        _inscriptionOverlay.Show(inscription, offerAnotherBand);
+    }
+
+    // Written down without stopping anything. For a moment the player is already living
+    // through - they have just typed the name themselves - taking the whole screen to tell them
+    // what they did would be ceremony in the way of play. The chronicle keeps it either way,
+    // and that is what outlives the band.
+    private void RecordInscription(Inscription inscription)
+    {
         _chronicle.Add(inscription);
         _statusBar.ShowChronicleButton();
-        _inscriptionOverlay.Show(inscription, offerAnotherBand);
         GD.Print($"Inscription: {inscription.Title}");
     }
 
