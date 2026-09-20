@@ -29,4 +29,16 @@ public sealed record MaterialDefinition(
     float Elasticity = 0f,
     // How much the material is made of separable strands, 0-1. Read by
     // MaterialAffordances.CanTwist.
-    float Fibrousness = 0f);
+    float Fibrousness = 0f)
+{
+    public float Of(MaterialProperty property) => property switch
+    {
+        MaterialProperty.Density => Density,
+        MaterialProperty.Hardness => Hardness,
+        MaterialProperty.Toughness => Toughness,
+        MaterialProperty.Flexibility => Flexibility,
+        MaterialProperty.Elasticity => Elasticity,
+        MaterialProperty.Fibrousness => Fibrousness,
+        _ => throw new ArgumentOutOfRangeException(nameof(property), property, null),
+    };
+}

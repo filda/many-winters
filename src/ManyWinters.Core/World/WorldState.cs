@@ -485,16 +485,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         var actual = Configuration.MaterialCatalog.Find(material)
             ?? throw new InvalidOperationException($"Unknown material '{material.Value}'");
-        return property switch
-        {
-            MaterialProperty.Density => actual.Density,
-            MaterialProperty.Hardness => actual.Hardness,
-            MaterialProperty.Toughness => actual.Toughness,
-            MaterialProperty.Flexibility => actual.Flexibility,
-            MaterialProperty.Elasticity => actual.Elasticity,
-            MaterialProperty.Fibrousness => actual.Fibrousness,
-            _ => throw new ArgumentOutOfRangeException(nameof(property), property, null),
-        };
+        return actual.Of(property);
     }
 
     private static float Distorted(float told, float actual, Person teller, Person listener, MaterialId material, MaterialProperty property, long currentTick, SimulationRules rules)
