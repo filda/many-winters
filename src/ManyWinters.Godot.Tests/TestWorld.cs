@@ -37,6 +37,7 @@ internal static class TestWorld
     internal static readonly TechniqueId BasicTwisting = new("basic_twisting");
     internal static readonly TechniqueId BasicBinding = new("basic_binding");
     internal static readonly TechniqueId BasicKnapping = new("basic_knapping");
+    internal static readonly TechniqueId BasicSharpening = new("basic_sharpening");
     private static readonly FormId Wedge = new("wedge");
 
     internal const int AxeInputAmount = 5;
@@ -91,6 +92,7 @@ internal static class TestWorld
                 new SkillDefinition(TwistCommand.Skill, "Twisting", BasicTwisting, new TechniqueId("efficient_twisting")),
                 new SkillDefinition(BindCommand.Skill, "Binding", BasicBinding, new TechniqueId("efficient_binding")),
                 new SkillDefinition(KnapCommand.Skill, "Knapping", BasicKnapping, new TechniqueId("efficient_knapping")),
+                new SkillDefinition(SharpenCommand.Skill, "Sharpening", BasicSharpening, new TechniqueId("efficient_sharpening")),
             ]),
             new RecipeCatalog([
                 new RecipeDefinition(Axe, Wood, AxeInputAmount),

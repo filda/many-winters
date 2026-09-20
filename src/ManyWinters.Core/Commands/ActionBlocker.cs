@@ -29,6 +29,7 @@ public enum ActionBlocker
     MissingTool,
     NotTwistable,
     NotKnappable,
+    NothingToSharpen,
     SamePerson,
     WrongSex,
     CloseKin,

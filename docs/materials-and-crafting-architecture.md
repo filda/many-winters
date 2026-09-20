@@ -2,7 +2,27 @@
 
 ## Status
 
-**Steps 1-2 of section 11 are implemented** (`ManyWinters.Core/Materials/`).
+**Steps 1-6 of section 11 are implemented and step 7 has begun** (one verb of it),
+though the labels below do not say so.
+
+### A note on the numbering
+
+Everything from the first verb onwards is labelled `4c-N`, and after `4c-3` that stopped
+being true. Step 4c-4 was already step 5's work, and each later piece took the next `4c`
+number by habit rather than by belonging there. The entries are left as they were written -
+relabelling finished history reads worse than marking it - so this is where they line up
+against the plan:
+
+| Section 11 | Written up as |
+|---|---|
+| 5 — property knowledge from handling | 4c-6 (beliefs), and 4c-7/4c-8 for how it travels and decays |
+| 5 — verb discovery from idle experimentation | 4c-4 |
+| 5 — pattern recognition on first successful assembly | 4c-9 (`AssemblyPattern`, `Vocabulary`) |
+| 6 — player-directed "try X on Y" | 4c-2 (the workbench), 4c-3 (the attempt and its dice) |
+| 6 — properties surfaced as words | 4c-5 (`MaterialWords`) |
+| 7 — remaining verbs | 4c-10 (`Knap`), the first of them |
+
+Steps 1-3 keep their own numbers below and mean what they say.
 
 Step 1: `MaterialDefinition` with `Density` and `Insulation`, `MaterialId`, `FormId`,
 `MaterialCatalog`, a `materials` content folder, and `ItemDefinition` now stating a
@@ -236,7 +256,8 @@ offered in the workshop when something comes out that the band has no word for, 
 writes a chronicle line rather than taking over the screen - the player has just typed the
 word, and telling them what they did on a full page is ceremony in the way of playing.
 
-Step 4c-10 (2026-09-20): **knapping, and the first real axe.** The arc that started at "a
+Step 4c-10 - **section 11's step 7, the first of the remaining verbs** (2026-09-20):
+**knapping, and the first real axe.** The arc that started at "a
 tree cannot be felled without an axe" closes here: `KnapCommand` strikes a stone lump into a
 wedge - the first edge in the game - and `ItemCatalog.ChoppingScoreOf` finally scores a made
 object, `HaftLeverage` included. A band now fells trees with a thing it worked out how to
@@ -252,9 +273,10 @@ Per-part quality multiplies the edge, so a beginner's wedge is a poor one and pr
 in use rather than only on a card.
 
 Adding the second reductive verb is also what said what a reductive verb *is*:
-`ReductiveWork` holds everything they do alike, so a verb is now three facts - what it is
-called, which skill it is, and what a substance must be like to take it (see
-`MaterialAffordances`). `TwistCommand` and `KnapCommand` keep their own names because the
+`ReductiveWork` holds everything they do alike, so a verb is now three facts in one place -
+what it is called, which skill it is, and what a substance must be like to take it (see
+`MaterialAffordances`) - with the fourth, what each item it touches turns into, on the items
+themselves. `TwistCommand` and `KnapCommand` keep their own names because the
 world speaks in them, but there is one copy of the machinery. `ReductiveVerbs.For` answers
 "which verb does this one thing answer to" from the item's own transitions, and both the
 directed path (`WorkshopActions`) and the autonomous one (`WorldState.TrialOf`) ask it - so
@@ -264,6 +286,61 @@ What is knowingly left conserved: knapping neither wastes stone nor keeps the fl
 `FormTransition` states no yield and adding one would be a second number to author and keep
 in step (see step 4c-1). A wedge therefore weighs its lump. It arrives if and when something
 reads it.
+
+This step also tested step 7's promise that the remaining verbs would be *content, not code*,
+and found it false. `Knap` cost a command record, a value in `ActionBlocker` and a line in
+`ReductiveVerbs` on top of its content. Three of a verb's four facts are data - its name, its
+skill, and what each item it touches turns into - but the fourth is the predicate saying what
+a substance must be like to take it, and that is physics rather than authoring, so it stays
+code on purpose (see section 2). Section 11 now says so.
+
+Step 7, second verb (2026-09-20): **`Sharpen`**, and with it the first verb whose *subject* is
+something already made. A wedge comes out a wedge - keener, and smaller, because an edge is
+renewed by taking material off it. Quality up and mass down are both read by the one score
+(`ItemCatalog.ChoppingScoreOf`), so grinding away at an already-good edge quietly makes a worse
+tool and no rule had to say so.
+
+What it is worth is bounded by the hand doing it: an edge comes up to what that person could
+have struck themselves and no further. A practised knapper rescues the poor wedge somebody else
+made, a beginner cannot improve on a master's, and a tool made in a first winter is worth
+going back to once the hands have learned something. That is the whole reason the verb has a
+reader today, since nothing wears out yet.
+
+It is deliberately **not** a `ReductiveWork` verb: nothing changes form, so there is no
+`FormTransition` to read, and it works on an `Assembly` rather than an `ItemKindId`. The edge it
+renews may sit anywhere inside the object - it is found by shape and substance (which piece
+presents an edge of something hard), not by mass or workmanship, because those decide how well
+the thing chops rather than which part of it is the blade. One attempt renews one edge, even
+where two pieces of the thing are alike in every particular.
+
+The workbench and the idle pass both take a made thing picked alone now, where before only raw
+stock could be worked. That is one corner of "a worked thing has nowhere to go" turned back.
+
+### Why only one verb, when step 7 says "remaining verbs"
+
+Section 3 lists 22 verbs. Four are done (`Twist`, `Knap`, `Bind`, `Sharpen`). The other 18 were
+audited before this step and **not one of them can be added honestly today**, which is worth
+recording so it is not re-derived:
+
+- `Strip`, `Char`, `Fire`, `Dry`, `Soak` change *what a thing is made of*. `FormTransition`
+  conserves material on purpose, so every one of them needs machinery that does not exist.
+- `Split` turns one thing into two. A reductive verb yields one.
+- `Crush`, `Bend`, `Pound` fit the machinery exactly and have **no reader**: crushed fruit
+  cannot be eaten (`EatCommand` speaks in counts), a bent stave has nothing to be, softened
+  fibre is read by nobody. Adding them would put three verbs in the game that do nothing, which
+  is the rule this whole design works under (section 2: a property arrives with its reader).
+- `Glue`, `Wrap`, `Fill` need materials or forms nobody has (resin; a vessel that is an assembly
+  rather than an item).
+- `Wedge` (haft into a socket) is `Bind` without the cordage, and would want a socket form to
+  mean anything different.
+- The five applicative verbs are a group of their own, not "remaining verbs": nothing in the game
+  applies an object to a target today - `Fell` and `Gather` ask for a score instead - so they are
+  a step, not an addition.
+
+**What unlocks the next batch is not verbs.** Two things do: a way for a verb to change a
+material rather than only a form, and somewhere for a worked thing to go (eaten, put down,
+stored, inherited). `Crush` is the cheapest of them and wants nutrition as a property of the
+material - the same move step 1 made with insulation and weight.
 
 Still open in 4c: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
@@ -811,7 +888,13 @@ left behind a comment.
 5. Discovery: property knowledge from handling, verb discovery from idle experimentation,
    pattern recognition on first successful assembly.
 6. Player-directed "try X on Y", and properties surfaced as words in the UI.
-7. Remaining verbs as content, not code.
+7. Remaining verbs, each a small, flat addition rather than a new mechanism. Three of a
+   verb's four facts are content — what it is called, which skill it is, and what each item
+   it touches turns into (`FormTransition`) — and the fourth is a predicate over material
+   properties, which is code because it is physics rather than authoring (section 2). The
+   machinery they share is written once (`ReductiveWork`), so what a new verb adds is those
+   four facts and nothing else. *Originally written as "as content, not code"; step 4c-10
+   showed that overstated it.*
 
 Steps 1-3 can be done without touching discovery at all, and on their own they retire the
 tool whitelist.

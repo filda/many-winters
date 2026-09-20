@@ -79,17 +79,21 @@ internal static class WorkshopActions
         _ => null,
     };
 
-    // Only raw stock can be worked down: the reductive verbs turn a material into a shape, and
-    // nothing worked can be taken apart again yet. Which verb is the item's own business
-    // (FormTransition, ReductiveVerbs), so this grows no wider as the vocabulary does.
-    private static ActionOffer? Reductive(WorldState world, Person person, WorkshopEntry picked)
+    // One thing picked, from either tier. Raw stock is worked down - which verb is the item's
+    // own business (FormTransition, ReductiveVerbs) - and a worked thing is worked over, which
+    // today means its edge renewed (SharpenCommand). Neither branch grows as the vocabulary
+    // does, and neither names a verb to the player.
+    private static ActionOffer? Reductive(WorldState world, Person person, WorkshopEntry picked) => picked.Target switch
     {
-        if (picked.Target is not BindTarget.Stock stock
-            || ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is not { } work)
-        {
-            return null;
-        }
+        BindTarget.Stock stock => ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is { } work
+            ? ActionOffer.For("Try it", work.Command, world, work.Skill)
+            : null,
 
-        return ActionOffer.For("Try it", work.Command, world, work.Skill);
-    }
+        // Asked of the object rather than of the command, because a thing with no edge is not a
+        // refusal to word - it is simply not an offer.
+        BindTarget.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, world) =>
+            ActionOffer.For("Try it", new SharpenCommand(person, worked.Thing), world, SharpenCommand.Skill),
+
+        _ => null,
+    };
 }

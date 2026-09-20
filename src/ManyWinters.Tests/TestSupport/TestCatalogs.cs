@@ -34,6 +34,7 @@ public static class TestCatalogs
     private static readonly SkillTypeId Twisting = new("twisting");
     private static readonly SkillTypeId Binding = new("binding");
     private static readonly SkillTypeId Knapping = new("knapping");
+    private static readonly SkillTypeId Sharpening = new("sharpening");
     private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
@@ -50,6 +51,7 @@ public static class TestCatalogs
     public static readonly TechniqueId BasicTwisting = new("basic_twisting");
     public static readonly TechniqueId BasicBinding = new("basic_binding");
     public static readonly TechniqueId BasicKnapping = new("basic_knapping");
+    public static readonly TechniqueId BasicSharpening = new("basic_sharpening");
     public static readonly TechniqueId BasicMining = new("basic_mining");
     private static readonly TechniqueId BasicBurial = new("basic_burial");
     public static readonly TechniqueId BasicEating = new("basic_eating");
@@ -62,6 +64,7 @@ public static class TestCatalogs
     private static readonly TechniqueId EfficientTwisting = new("efficient_twisting");
     private static readonly TechniqueId EfficientBinding = new("efficient_binding");
     private static readonly TechniqueId EfficientKnapping = new("efficient_knapping");
+    private static readonly TechniqueId EfficientSharpening = new("efficient_sharpening");
     private static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
     public static readonly TechniqueId EfficientEating = new("efficient_eating");
@@ -218,6 +221,7 @@ public static class TestCatalogs
         new SkillDefinition(Twisting, "Twisting", BasicTwisting, EfficientTwisting),
         new SkillDefinition(Binding, "Binding", BasicBinding, EfficientBinding),
         new SkillDefinition(Knapping, "Knapping", BasicKnapping, EfficientKnapping),
+        new SkillDefinition(Sharpening, "Sharpening", BasicSharpening, EfficientSharpening),
         new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
         new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),

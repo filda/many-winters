@@ -1,0 +1,1 @@
+{ "id": "sharpening", "displayName": "Sharpening", "baseTechnique": "basic_sharpening", "efficientTechnique": "efficient_sharpening" }

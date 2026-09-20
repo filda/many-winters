@@ -638,7 +638,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         var rng = new Random(SeedHash.Avalanche(unchecked((uint)(person.Id.Seed * 40503) ^ ((uint)currentTick * 2654435761u))));
 
         // Two things in hand is a chance to wonder what they would be together; one is a chance
-        // to wonder what it would be worked down. With only one thing there is nothing to bind.
+        // to wonder what it would be on its own. With only one thing there is nothing to bind.
         if (things > 1 && rng.Next(2) == 0)
         {
             var left = TargetAt(stock, worked, rng.Next(things));
@@ -647,13 +647,19 @@ public sealed class WorldState(WorldConfiguration configuration)
             return (BindCommand.Skill, new BindCommand(person, left, right));
         }
 
-        // Nothing worked can be taken apart again yet, so a reductive trial is a trial of raw
-        // stock; somebody carrying only cord has nothing to try this way, and neither has
-        // somebody holding only stuff that answers to no reductive verb at all.
-        return stock.Count > 0
-            ? ReductiveVerbs.For(person, stock[rng.Next(stock.Count)], Configuration.ItemCatalog)
-            : null;
+        // Otherwise they turn one thing over by itself: raw stock gets worked down, and something
+        // already made gets worked over, which today means its edge renewed. Either may come to
+        // nothing - stuff that answers to no reductive verb, or a made thing with no edge on it.
+        return WorkingOverOneThing(person, TargetAt(stock, worked, rng.Next(things)));
     }
+
+    private (SkillTypeId Skill, ICommand Command)? WorkingOverOneThing(Person person, BindTarget picked) => picked switch
+    {
+        BindTarget.Stock stock => ReductiveVerbs.For(person, stock.Kind, Configuration.ItemCatalog),
+        BindTarget.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, this) =>
+            (SharpenCommand.Skill, new SharpenCommand(person, worked.Thing)),
+        _ => null,
+    };
 
     // Concrete List rather than the interface: the caller has one, and indexing through
     // IReadOnlyList costs an interface dispatch per pick (CA1859).

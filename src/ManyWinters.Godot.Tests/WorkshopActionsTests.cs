@@ -96,7 +96,7 @@ public class WorkshopActionsTests
     }
 
     [Fact]
-    public void PickingOneWorkedThingAloneOffersNothingYet()
+    public void PickingOneWorkedThingWithNothingToReworkOffersNothing()
     {
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
@@ -104,6 +104,25 @@ public class WorkshopActionsTests
         var carried = WorkshopActions.Carried(world, person);
 
         Assert.Null(WorkshopActions.Attempt(world, person, carried));
+    }
+
+    // A made thing picked alone is worked over rather than worked down - which today means its
+    // edge renewed, and is the first thing the bench offers on the instance tier.
+    [Fact]
+    public void PickingOneWorkedThingWithAnEdgeOffersToWorkItOver()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestWorld.BasicSharpening);
+        person.Inventory.AddAssembly(new Assembly.Part(new MaterialId("stone"), new FormId("wedge"), 0.3f, 1f));
+        var carried = WorkshopActions.Carried(world, person);
+
+        var offer = WorkshopActions.Attempt(world, person, carried);
+
+        Assert.NotNull(offer);
+        Assert.Equal("Try it", offer.Value.Label);
+        Assert.IsType<SharpenCommand>(offer.Value.Command);
+        Assert.True(offer.Value.IsAvailable);
     }
 
     [Fact]

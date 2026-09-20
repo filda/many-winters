@@ -21,6 +21,12 @@ public sealed record SimulationRules
     // something that just failed is a second stretch of the same afternoon.
     public long TicksPerWorkAttempt { get; } = 3;
 
+    // How much of a piece is ground away each time its edge is renewed (see SharpenCommand). An
+    // edge is made by taking material off, so sharpening trades mass for keenness - and both sit
+    // in the same score (ItemCatalog.ChoppingScoreOf), which is what stops a player sharpening a
+    // good edge over and over without any rule forbidding it.
+    public float VolumeLostPerSharpening { get; } = 0.1f;
+
     // The chance per tick that somebody idling with something in their hands works out how to
     // do a thing nobody showed them (see WorldState.DiscoverByFiddling), before their own
     // Curiosity multiplies it. Deliberately small: idle discovery is what keeps knowledge living
