@@ -28,6 +28,10 @@ public sealed class WorldState(WorldConfiguration configuration)
     // world, so it has no Add* and announces nothing - the inspector reads it when it draws.
     public Affections Affections { get; } = new();
 
+    // The words this band has for the things it makes (see Vocabulary). Empty at the start:
+    // nobody has made anything, so there is nothing to have a word for.
+    public Vocabulary Vocabulary { get; } = new();
+
     // Catalogs, calendar and tuning numbers - fixed for the world's lifetime and not part of a
     // save file.
     public WorldConfiguration Configuration { get; } = configuration;

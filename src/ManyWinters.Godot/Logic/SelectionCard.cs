@@ -67,7 +67,7 @@ internal sealed record SelectionCard(
                     carrying,
                 ]
                 : [carrying],
-            InspectorText.ForCarried(person.Inventory, world.Configuration.ItemCatalog, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog),
+            InspectorText.ForCarried(person.Inventory, world),
             person.IsAlive ? "Knows" : "Knew",
             InspectorText.ForKnowledge(person.KnownTechniques, world.Configuration.SkillCatalog));
     }

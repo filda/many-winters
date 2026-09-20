@@ -14,7 +14,8 @@ public sealed record SaveData(
     IReadOnlyList<EntitySaveData> Entities,
     IReadOnlyList<GraveSaveData> Graves,
     IReadOnlyList<ExplorationCellSaveData> ExploredCells,
-    IReadOnlyList<AffectionSaveData> Affections);
+    IReadOnlyList<AffectionSaveData> Affections,
+    IReadOnlyList<WordSaveData> Vocabulary);
 
 public sealed record PersonSaveData(
     Guid Id,
@@ -45,6 +46,10 @@ public sealed record PersonSaveData(
 // One bond per pair, not per direction - Affections is symmetric; which id is A is storage
 // order.
 public sealed record AffectionSaveData(Guid PersonA, Guid PersonB, float Value);
+
+// One word a band coined for one shape of thing (see Vocabulary). The signature is the shape
+// (AssemblyPattern), not the object, so the word covers every later thing built that way.
+public sealed record WordSaveData(string PatternSignature, string Word);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 

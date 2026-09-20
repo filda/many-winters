@@ -34,7 +34,7 @@ internal static class WorkshopActions
 
         var worked = person.Inventory.Assemblies
             .Select(held => new WorkshopEntry(
-                InspectorText.ForWorkedThing(held, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog),
+                InspectorText.ForWorkedThing(held, world),
                 new BindTarget.Worked(held)))
             .OrderBy(entry => entry.Label, StringComparer.Ordinal);
 

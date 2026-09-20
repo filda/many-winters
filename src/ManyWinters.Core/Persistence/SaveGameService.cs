@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 22;
+    private const int CurrentVersion = 23;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -59,6 +59,10 @@ public static class SaveGameService
             .Select(bond => new AffectionSaveData(bond.A.Value, bond.B.Value, bond.Value))
             .ToList();
 
+        var vocabulary = world.Vocabulary.Words
+            .Select(word => new WordSaveData(word.Key, word.Value))
+            .ToList();
+
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
@@ -67,7 +71,8 @@ public static class SaveGameService
             entities,
             graves,
             exploredCells,
-            affections);
+            affections,
+            vocabulary);
     }
 
     private static PersonSaveData ToPersonSaveData(Person person) => new(
@@ -193,6 +198,11 @@ public static class SaveGameService
         }
 
         world.Exploration.RestoreExplored(data.ExploredCells.Select(cell => new ExplorationCell(cell.X, cell.Y)));
+
+        foreach (var word in data.Vocabulary)
+        {
+            world.Vocabulary.Restore(word.PatternSignature, word.Word);
+        }
 
         foreach (var bond in data.Affections)
         {

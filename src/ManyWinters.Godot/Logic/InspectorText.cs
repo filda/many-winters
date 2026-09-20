@@ -92,25 +92,30 @@ internal static class InspectorText
     // Raw stock first and counted, then the worked things one by one - which is what the two
     // tiers are (see Inventory): a count is the whole truth about twelve grass, and no truth at
     // all about two cords of different quality.
-    internal static string ForCarried(Inventory inventory, ItemCatalog items, MaterialCatalog materials, FormCatalog forms)
+    internal static string ForCarried(Inventory inventory, WorldState world)
     {
         var carried = inventory.Counts
             .OrderBy(entry => entry.Key.Value, StringComparer.Ordinal)
-            .Select(entry => $"{items.Get(entry.Key).DisplayName} x{entry.Value}")
+            .Select(entry => $"{world.Configuration.ItemCatalog.Get(entry.Key).DisplayName} x{entry.Value}")
             .Concat(inventory.Assemblies
-                .Select(assembly => ForWorkedThing(assembly, materials, forms))
+                .Select(assembly => ForWorkedThing(assembly, world))
                 .OrderBy(name => name, StringComparer.Ordinal))
             .ToList();
 
         return carried.Count > 0 ? string.Join(", ", carried) : "nothing";
     }
 
-    // No name is authored for a worked thing, so one is made of what it is: the substance and
-    // the shape for a single piece ("grass cord"), and what was tied to what for a bound one
-    // ("lashed stone wedge and wood stick"). This is the fallback half of
-    // docs/materials-and-crafting-architecture.md section 8 - the pattern catalogue that would
-    // recognise a configuration as "an axe" is a later thing, and until it exists a made object
-    // still has to be something the player can read off their card.
+    // The band's own word for this kind of thing, if they have coined one (see Vocabulary). A
+    // word earned at the moment of discovery outranks anything generated here - which is the
+    // point of letting people name what they make rather than recognising it for them.
+    internal static string ForWorkedThing(Assembly assembly, WorldState world) =>
+        world.Vocabulary.WordFor(assembly)
+        ?? ForWorkedThing(assembly, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog);
+
+    // What a thing is made of, for anything nobody has a word for: the substance and the shape
+    // for a single piece ("grass cord"), and what was tied to what for a bound one ("lashed
+    // stone wedge and wood stick"). Section 8's fallback naming - a description, never a claim
+    // about what the thing is for.
     internal static string ForWorkedThing(Assembly assembly, MaterialCatalog materials, FormCatalog forms) => assembly switch
     {
         Assembly.Part part => ForPiece(part, materials, forms),

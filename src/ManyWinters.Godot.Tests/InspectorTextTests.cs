@@ -353,11 +353,11 @@ public class InspectorTextTests
 
         Assert.Equal(
             "Wood x3, plant fibre cord",
-            InspectorText.ForCarried(inventory, world.Configuration.ItemCatalog, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog));
+            InspectorText.ForCarried(inventory, world));
     }
 
-    // Until a pattern catalogue can call a configuration "an axe", a bound thing still has to
-    // read as something (section 8's fallback naming).
+    // Until the band has coined a word for it, a bound thing still has to read as something
+    // (section 8's fallback naming).
     [Fact]
     public void ABoundThingIsNamedByWhatWasTiedToWhat()
     {

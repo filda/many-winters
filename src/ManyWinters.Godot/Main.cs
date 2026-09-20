@@ -713,7 +713,7 @@ public partial class Main : Node3D
         _workshop.Show(WorkshopActions.Carried(_world, person));
         _workshop.ReportOutcome(made is null
             ? "It comes apart in your hands."
-            : $"It comes out {InspectorText.ForWorkedThing(made, _world.Configuration.MaterialCatalog, _world.Configuration.FormCatalog)}.");
+            : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
 
         RefreshWorkshopOffer();
     }
