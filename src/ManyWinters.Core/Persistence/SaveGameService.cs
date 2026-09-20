@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 21;
+    private const int CurrentVersion = 22;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -80,6 +80,9 @@ public static class SaveGameService
         person.Needs.Fatigue,
         person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
         person.KnownTechniques.ToList(),
+        person.Beliefs.Held
+            .Select(held => new BeliefSaveData(held.Key.Material, held.Key.Property, held.Value.Value, held.Value.Confidence))
+            .ToList(),
         person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
         person.Inventory.Assemblies.Select(ToAssemblySaveData).ToList(),
         person.BirthTick,
@@ -230,6 +233,11 @@ public static class SaveGameService
         foreach (var technique in personData.KnownTechniques)
         {
             person.KnownTechniques.Add(technique);
+        }
+
+        foreach (var belief in personData.Beliefs)
+        {
+            person.Beliefs.Restore(belief.Material, belief.Property, belief.Value, belief.Confidence);
         }
 
         foreach (var stack in personData.Inventory)

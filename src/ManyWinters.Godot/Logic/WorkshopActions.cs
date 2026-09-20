@@ -46,14 +46,16 @@ internal static class WorkshopActions
     // section 9). Only for a single pick: two things at once is a question about the pair, and
     // a wall of adjectives is not an answer to it. Empty when nothing is known of the
     // substance, and the panel then says nothing rather than saying "unknown".
-    internal static IReadOnlyList<string> WordsFor(WorldState world, IReadOnlyList<WorkshopEntry> picked)
+    internal static IReadOnlyList<string> WordsFor(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked)
     {
         if (picked.Count != 1 || MaterialOf(world, picked[0]) is not { } material)
         {
             return [];
         }
 
-        return MaterialWords.For(material);
+        // What this person takes it to be, not what it is: somebody who has never handled the
+        // stuff has nothing to say about it, and the bench says nothing on their behalf.
+        return MaterialWords.For(person.Beliefs.AsBelieved(material));
     }
 
     private static MaterialDefinition? MaterialOf(WorldState world, WorkshopEntry entry)

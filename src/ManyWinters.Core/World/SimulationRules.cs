@@ -36,6 +36,12 @@ public sealed record SimulationRules
     // band is spawned with its own number instead of this one.
     public float StartingBandCuriosity { get; } = 0.25f;
 
+    // How much of a substance's nature somebody takes in per tick of carrying it about (see
+    // Beliefs.Learn). Roughly a season's handling for a full understanding - deliberately a
+    // little faster than exactly a season, because a rate that reached certainty on the last
+    // tick of one would turn a hair of floating-point drift into "they never quite learned it".
+    public float MaterialUnderstandingPerTick { get; init; } = 1f / 70f;
+
     // Hunger an average person dies at. Each person gets their own value around it (see
     // MaxHungerFor), so this is the middle of a range, not a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;

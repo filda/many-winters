@@ -155,10 +155,34 @@ settled a wart the words exposed: `stone` had `Toughness` at zero, which
 "nobody said". A property that two readers disagree about is a property that wants
 authoring.
 
-Still open in 4c: property knowledge as beliefs and pattern recognition (section 7) -
-a person's discoveries are still binary techniques, with nothing that can be *wrong*
-rather than merely absent, which is the substrate distorted transmission would need.
-Also still open: per-assembly
+Step 4c-6 (2026-09-20): **beliefs**, the decision section 7 gates everything else on.
+`Beliefs` holds, per person, what they take each property of each substance to be, and
+how sure they are. Nothing writes a wrong belief yet - everyone who learns one learns
+it true - but every *reader* already copes with one, so distortion is a new writer
+rather than a rewrite.
+
+The shape that made this cheap: `Beliefs.AsBelieved(actual)` returns a
+`MaterialDefinition` as that person understands it, so `MaterialAffordances`,
+`MaterialWords` and anything else that reads a material can be pointed at somebody's
+understanding without knowing beliefs exist. No new intermediate type, and no reader
+had to change.
+
+Beliefs come from **handling**: carrying a thing about teaches what it is like, over
+roughly a season (`SimulationRules.MaterialUnderstandingPerTick`), including every
+substance inside a made object. Below firmness a person has an inkling rather than
+knowledge, and `AsBelieved` leaves the property blank - *not* the truth leaking
+through. So a band that never picks anything up learns nothing about anything.
+
+This is also where section 7's **reach** difference finally bites: idle hands only turn
+over the familiar, so nobody idly works a substance they have not come to know, while
+the player may direct an attempt on anything. Aim, not just speed, is what directing
+buys. The workbench likewise describes a substance as the *selected person* believes it
+to be, so a material nobody has handled says nothing.
+
+Still open in 4c: belief transmission (they do not yet ride `TeachCommand` or the
+casual pass, which section 7 claims they would "for free" - they will not, since those
+pass `TechniqueId`s), negative beliefs ("this does not work"), distortion itself, and
+pattern recognition. Also still open: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked

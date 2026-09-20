@@ -238,6 +238,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
 
             AutoTeachNearbyPeople(currentTick);
+            LearnWhatIsInHand();
             DiscoverByFiddling(currentTick);
             AdvanceAffections();
             StartFamilies(currentTick);
@@ -402,6 +403,67 @@ public sealed class WorldState(WorldConfiguration configuration)
         return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
     }
 
+    // Handling a thing teaches what it is like (see Beliefs). Nobody is told that grass is
+    // fibrous; they carry it about and come to know. A person's understanding of the world is
+    // therefore the sum of what they have actually had in their hands, which is why a band that
+    // never picks anything up learns nothing about anything.
+    private void LearnWhatIsInHand()
+    {
+        var gained = Configuration.Rules.MaterialUnderstandingPerTick;
+
+        foreach (var person in _people)
+        {
+            if (!person.IsAlive)
+            {
+                continue;
+            }
+
+            foreach (var material in MaterialsInHand(person))
+            {
+                if (Configuration.MaterialCatalog.Find(material) is not { } actual)
+                {
+                    continue;
+                }
+
+                // Learned true: nothing distorts a belief yet, and what is noticed first-hand
+                // would be the last thing to (see Beliefs).
+                foreach (var (property, value) in PropertiesOf(actual))
+                {
+                    person.Beliefs.Learn(material, property, value, gained);
+                }
+            }
+        }
+    }
+
+    private IEnumerable<MaterialId> MaterialsInHand(Person person)
+    {
+        var items = Configuration.ItemCatalog;
+
+        return person.Inventory.Counts.Keys
+            .Select(kind => items.Get(kind).Material)
+            .Concat(person.Inventory.Assemblies.SelectMany(PartMaterialsOf))
+            .Distinct();
+    }
+
+    // Every substance in a made thing, however deep: somebody carrying a hafted axe about has
+    // their hands on both the stone and the wood.
+    private static IEnumerable<MaterialId> PartMaterialsOf(Assembly assembly) => assembly switch
+    {
+        Assembly.Part part => [part.Material],
+        Assembly.Joined joined => PartMaterialsOf(joined.Left).Concat(PartMaterialsOf(joined.Right)),
+        _ => [],
+    };
+
+    private static IEnumerable<(MaterialProperty Property, float Value)> PropertiesOf(MaterialDefinition material)
+    {
+        yield return (MaterialProperty.Density, material.Density);
+        yield return (MaterialProperty.Hardness, material.Hardness);
+        yield return (MaterialProperty.Toughness, material.Toughness);
+        yield return (MaterialProperty.Flexibility, material.Flexibility);
+        yield return (MaterialProperty.Elasticity, material.Elasticity);
+        yield return (MaterialProperty.Fibrousness, material.Fibrousness);
+    }
+
     // Idle hands turning something over, and now and then working out how it is done (see
     // docs/materials-and-crafting-architecture.md section 7, "idle experimentation"). This is
     // what keeps knowledge living in people rather than in the player's head: a settlement left
@@ -451,9 +513,16 @@ public sealed class WorldState(WorldConfiguration configuration)
     // What this person happens to be turning over this tick: one thing out of the pack, or two.
     // Drawn from the same seeded stream as every other autonomous roll, so a replay fiddles with
     // the same things in the same order.
-    private static (SkillTypeId Skill, ICommand Command)? TrialOf(Person person, long currentTick)
+    // Only what they understand. Idle hands turn over the familiar, so a substance nobody has
+    // yet come to know (see Beliefs) is not one they will idly think to work - the player can
+    // direct an attempt on anything, and that difference in *reach* is what directing buys
+    // beyond speed (docs/materials-and-crafting-architecture.md section 7).
+    private (SkillTypeId Skill, ICommand Command)? TrialOf(Person person, long currentTick)
     {
-        var stock = person.Inventory.Counts.Keys.OrderBy(kind => kind.Value, StringComparer.Ordinal).ToList();
+        var stock = person.Inventory.Counts.Keys
+            .Where(kind => person.Beliefs.HoldsAnythingAbout(Configuration.ItemCatalog.Get(kind).Material))
+            .OrderBy(kind => kind.Value, StringComparer.Ordinal)
+            .ToList();
         var worked = person.Inventory.Assemblies;
         var things = stock.Count + worked.Count;
         if (things == 0)

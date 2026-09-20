@@ -164,9 +164,10 @@ public class WorkshopActionsTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Grass, 5);
+        TestWorld.LetThemComeToKnow(world, person);
         var carried = WorkshopActions.Carried(world, person);
 
-        Assert.Equal(["fibrous", "pliable", "light"], WorkshopActions.WordsFor(world, carried));
+        Assert.Equal(["fibrous", "pliable", "light"], WorkshopActions.WordsFor(world, person, carried));
     }
 
     [Fact]
@@ -175,9 +176,10 @@ public class WorkshopActionsTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.AddAssembly(Cord());
+        TestWorld.LetThemComeToKnow(world, person);
         var carried = WorkshopActions.Carried(world, person);
 
-        Assert.Equal(["fibrous", "pliable", "light"], WorkshopActions.WordsFor(world, carried));
+        Assert.Equal(["fibrous", "pliable", "light"], WorkshopActions.WordsFor(world, person, carried));
     }
 
     // Two things at once is a question about the pair; a wall of adjectives is not an answer.
@@ -190,15 +192,16 @@ public class WorkshopActionsTests
         person.Inventory.Add(TestWorld.Wood, 5);
         var carried = WorkshopActions.Carried(world, person);
 
-        Assert.Empty(WorkshopActions.WordsFor(world, carried));
+        Assert.Empty(WorkshopActions.WordsFor(world, person, carried));
     }
 
     [Fact]
     public void NothingInHandIsDescribedByNothing()
     {
         var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
 
-        Assert.Empty(WorkshopActions.WordsFor(world, []));
+        Assert.Empty(WorkshopActions.WordsFor(world, person, []));
     }
 
     // Nothing is known of what wood is like in this world, so the bench says nothing about it
@@ -211,6 +214,6 @@ public class WorkshopActionsTests
         person.Inventory.Add(TestWorld.Wood, 5);
         var carried = WorkshopActions.Carried(world, person);
 
-        Assert.Empty(WorkshopActions.WordsFor(world, carried));
+        Assert.Empty(WorkshopActions.WordsFor(world, person, carried));
     }
 }

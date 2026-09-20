@@ -84,6 +84,11 @@ public sealed class Person
     // nobody has decided on.
     public float Curiosity { get; init; } = SimulationRules.Default.StartingBandCuriosity;
 
+    // What this person takes the substances they have handled to be (see Beliefs). Per person,
+    // like Skills and KnownTechniques: two people who have handled different things understand
+    // different things, and what nobody alive believes is lost with them.
+    public Beliefs Beliefs { get; } = new();
+
     public Needs Needs { get; } = new();
 
     public Skills Skills { get; } = new();

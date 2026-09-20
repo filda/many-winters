@@ -15,10 +15,20 @@ public class IdleDiscoveryTests
 {
     // Certain rather than rare, so a test about *what* gets discovered is not also a test of how
     // long it takes. The rate itself has its own tests below.
-    private static WorldState WorldWhereIdlingAlwaysTeaches() =>
+    //
+    // Understanding comes at once too: idle hands only turn over what they already know (see
+    // Beliefs, LearningByHandlingTests), and how long coming to know something takes is that
+    // pass's business rather than this one's.
+    private static WorldState WorldWhereIdlingAlwaysTeaches() => WorldWhere(discoveryChance: 1f);
+
+    private static WorldState WorldWhere(float discoveryChance) =>
         new(TestCatalogs.CreateConfiguration() with
         {
-            Rules = SimulationRules.Default with { IdleDiscoveryChancePerTick = 1f },
+            Rules = SimulationRules.Default with
+            {
+                IdleDiscoveryChancePerTick = discoveryChance,
+                MaterialUnderstandingPerTick = 1f,
+            },
         });
 
     private static Person Idler(WorldState world, float curiosity = 1f)
@@ -115,10 +125,7 @@ public class IdleDiscoveryTests
     [Fact]
     public void ALessCuriousBandWorksThingsOutMoreSlowlyInTheSameWorld()
     {
-        var world = new WorldState(TestCatalogs.CreateConfiguration() with
-        {
-            Rules = SimulationRules.Default with { IdleDiscoveryChancePerTick = 0.3f },
-        });
+        var world = WorldWhere(discoveryChance: 0.3f);
 
         var eager = Idler(world);
         var incurious = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks, curiosity: 0f);
@@ -140,7 +147,9 @@ public class IdleDiscoveryTests
     [Fact]
     public void TheShippedRateTakesWintersRatherThanAnAfternoon()
     {
-        var world = TestCatalogs.CreateWorld();
+        // The shipped discovery rate, but understanding at once: what is being measured is how
+        // long working a thing out takes, not how long coming to know the grass does.
+        var world = WorldWhere(SimulationRules.Default.IdleDiscoveryChancePerTick);
         var idlers = new List<Person>();
         for (var i = 0; i < 30; i++)
         {

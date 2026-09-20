@@ -26,6 +26,7 @@ public sealed record PersonSaveData(
     float Fatigue,
     IReadOnlyList<SkillLevelSaveData> Skills,
     IReadOnlyList<TechniqueId> KnownTechniques,
+    IReadOnlyList<BeliefSaveData> Beliefs,
     IReadOnlyList<ItemStackSaveData> Inventory,
     IReadOnlyList<AssemblySaveData> WorkedThings,
     long BirthTick,
@@ -46,6 +47,10 @@ public sealed record PersonSaveData(
 public sealed record AffectionSaveData(Guid PersonA, Guid PersonB, float Value);
 
 public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
+
+// What one person takes one property of one substance to be (see Beliefs). Saved rather than
+// re-derived: the whole point of a belief is that it need not match the world.
+public sealed record BeliefSaveData(MaterialId Material, MaterialProperty Property, float Value, float Confidence);
 
 public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 

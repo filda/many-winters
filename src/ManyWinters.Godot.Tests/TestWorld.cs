@@ -128,6 +128,36 @@ internal static class TestWorld
         return building;
     }
 
+    // Long enough with what they are carrying to have come to know it (see Beliefs): what the
+    // bench says about a substance is what this person believes of it, not what is true.
+    internal static void LetThemComeToKnow(WorldState world, Person person)
+    {
+        var perTick = world.Configuration.Rules.MaterialUnderstandingPerTick;
+        foreach (var material in new[] { new MaterialId("plant_fibre"), new MaterialId("wood"), new MaterialId("stone"), new MaterialId("apple") })
+        {
+            if (world.Configuration.MaterialCatalog.Find(material) is not { } actual)
+            {
+                continue;
+            }
+
+            foreach (var property in Enum.GetValues<MaterialProperty>())
+            {
+                var value = property switch
+                {
+                    MaterialProperty.Density => actual.Density,
+                    MaterialProperty.Hardness => actual.Hardness,
+                    MaterialProperty.Toughness => actual.Toughness,
+                    MaterialProperty.Flexibility => actual.Flexibility,
+                    MaterialProperty.Elasticity => actual.Elasticity,
+                    MaterialProperty.Fibrousness => actual.Fibrousness,
+                    _ => 0f,
+                };
+
+                person.Beliefs.Learn(material, property, value, perTick * 100f);
+            }
+        }
+    }
+
     // Grown, so nothing in a test is refused merely for being a child.
     internal static Person AddAdult(WorldState world, string name, Position position, Sex sex = Sex.Female)
     {
