@@ -514,7 +514,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
         var random = new Random(SeedHash.Avalanche(mixed));
         var magnitude = (float)random.NextDouble() * reach;
-        var direction = MathF.Abs(told - actual) < float.Epsilon
+        var direction = MathF.Abs(told - actual) <= (reach / 100f)
             ? (random.Next(2) == 0 ? -1f : 1f)
             : MathF.Sign(told - actual);
 
