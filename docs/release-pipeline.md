@@ -122,10 +122,10 @@ or less deterministic. One dispatch runs four controls side by side:
 - `windows-2022` as a second Windows environment,
 - `ubuntu-latest` as the Linux control.
 
-It also adds a direct `dotnet publish` probe after the Godot export on both
-platforms, so the "hidden inside Godot" part is narrowed down a bit further: if the
-probe is fast while Godot export is slow, the mystery is in Godot's Windows export
-path rather than in raw .NET publish throughput on the runner.
+It also adds a direct incremental `dotnet publish` probe after the Godot export on
+both platforms. Because it runs after Godot has already published the same
+project/configuration/RID, it is only a warm comparison point rather than a cold
+measure of raw .NET publish throughput on the runner.
 
 The diagnostic warm-up intentionally overrides `BaseIntermediateOutputPath` and is
 expected to fail. The point is not to fix that publish; it is to test whether

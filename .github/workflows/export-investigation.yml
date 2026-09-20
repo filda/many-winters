@@ -49,12 +49,14 @@ jobs:
             Get-MpComputerStatus |
               Select-Object AMServiceEnabled, AntivirusEnabled, RealTimeProtectionEnabled, IoavProtectionEnabled
           }
-          dotnet --info
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
+
+      - name: .NET SDK diagnostics
+        run: dotnet --info
 
       - name: Cache NuGet packages
         uses: actions/cache@v6
@@ -212,12 +214,12 @@ jobs:
           "build $env:TAG",
           "commit ${{ github.sha }}" | Set-Content build/ManyWinters/version.txt
 
-      - name: Probe direct dotnet publish
+      - name: Probe incremental dotnet publish
         run: |
           $ErrorActionPreference = "Stop"
           $root = (Get-Location).Path
           $publishDir = Join-Path $root "build\publish-probe"
-          $log = Join-Path $root "publish-probe.log"
+          $log = Join-Path $root "incremental-publish-probe.log"
           Remove-Item $publishDir -Recurse -Force -ErrorAction SilentlyContinue
 
           $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -225,13 +227,13 @@ jobs:
             -c ExportRelease -r win-x64 --self-contained true `
             -o $publishDir *> $log
           $code = $LASTEXITCODE
-          "publish probe exit code: $code after {0:N1}s" -f $sw.Elapsed.TotalSeconds
+          "incremental publish probe exit code: $code after {0:N1}s" -f $sw.Elapsed.TotalSeconds
           if (Test-Path $log) { Get-Content $log -Tail 120 }
-          if ($code -ne 0) { throw "Direct dotnet publish probe failed" }
+          if ($code -ne 0) { throw "Incremental dotnet publish probe failed" }
 
           $files = Get-ChildItem $publishDir -Recurse -File
-          "publish probe files: $($files.Count)"
-          "publish probe size: {0:N1} MB" -f (($files | Measure-Object -Property Length -Sum).Sum / 1MB)
+          "incremental publish probe files: $($files.Count)"
+          "incremental publish probe size: {0:N1} MB" -f (($files | Measure-Object -Property Length -Sum).Sum / 1MB)
 
       - name: Smoke-test the exported build
         run: |
@@ -264,13 +266,14 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: export-investigation-${{ matrix.runner_label }}-${{ matrix.variant_label }}
+          retention-days: 3
           path: |
             ManyWinters-win64.zip
             export.out.log
             export.err.log
             smoke.out.log
             smoke.err.log
-            publish-probe.log
+            incremental-publish-probe.log
             diagnostic-publish.log
             diagnostic-publish.binlog
 
@@ -287,12 +290,14 @@ jobs:
           uname -a
           cat /etc/os-release
           printf 'ImageOS=%s\nImageVersion=%s\n' "$ImageOS" "$ImageVersion"
-          dotnet --info
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
+
+      - name: .NET SDK diagnostics
+        run: dotnet --info
 
       - name: Cache NuGet packages
         uses: actions/cache@v6
@@ -399,25 +404,25 @@ jobs:
           printf "Of Folks and Many Winters %s\nbuild %s\ncommit %s\n" \
             "$VERSION" "$TAG" "${{ github.sha }}" > build/ManyWinters-linux/version.txt
 
-      - name: Probe direct dotnet publish
+      - name: Probe incremental dotnet publish
         run: |
           set -euo pipefail
           root="$PWD"
           publish_dir="$root/build/publish-probe"
-          log="$root/publish-probe.log"
+          log="$root/incremental-publish-probe.log"
           rm -rf "$publish_dir"
 
           sw_start=$(date +%s)
           dotnet publish src/ManyWinters.Godot/ManyWinters.Godot.csproj \
             -c ExportRelease -r linux-x64 --self-contained true \
             -o "$publish_dir" > "$log" 2>&1
-          echo "publish probe exit after $(( $(date +%s) - sw_start ))s"
+          echo "incremental publish probe exit after $(( $(date +%s) - sw_start ))s"
           tail -n 120 "$log"
 
           files=$(find "$publish_dir" -type f | wc -l)
           size_mb=$(du -sm "$publish_dir" | cut -f1)
-          echo "publish probe files: $files"
-          echo "publish probe size: ${size_mb} MB"
+          echo "incremental publish probe files: $files"
+          echo "incremental publish probe size: ${size_mb} MB"
 
       - name: Smoke-test the exported build
         run: |
@@ -451,10 +456,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: export-investigation-linux-control
+          retention-days: 3
           path: |
             ManyWinters-linux64.zip
             export.out.log
             export.err.log
             smoke.out.log
             smoke.err.log
-            publish-probe.log
+            incremental-publish-probe.log
