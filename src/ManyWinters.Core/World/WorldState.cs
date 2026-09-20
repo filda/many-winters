@@ -441,7 +441,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // One thing per pair per tick, as casual teaching passes at most one technique: a
     // conversation, not a lecture.
-    private static void MentionSomething(Person teller, Person listener, SimulationRules rules, long currentTick)
+    private void MentionSomething(Person teller, Person listener, SimulationRules rules, long currentTick)
     {
         // Ordered, because a dictionary's own order is nobody's promise and this has to replay
         // the same way twice (see AutoTeachNearbyPeople).
@@ -483,7 +483,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     // disagree, and reality settles it when somebody next works the stuff.
     private float ActualValueOf(MaterialId material, MaterialProperty property)
     {
-        var actual = Configuration.MaterialCatalog.Get(material);
+        var actual = Configuration.MaterialCatalog.Find(material)
+            ?? throw new InvalidOperationException($"Unknown material '{material.Value}'");
         return property switch
         {
             MaterialProperty.Density => actual.Density,
