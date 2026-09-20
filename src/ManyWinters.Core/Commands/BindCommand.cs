@@ -35,13 +35,10 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
     // Directing somebody to bind is how they learn to bind (see ActionOffer.TeachFirst).
     public static readonly SkillTypeId Skill = new("binding");
 
+    // The verb itself, as a joint made by it would be named.
+    public static readonly TechniqueId Verb = new("bind");
+
     private const float SkillGainPerBind = 1f;
-
-    // A first lashing holds, badly; a practised one holds as well as the cordage itself allows.
-    private const float NoviceStrength = 0.2f;
-    private const int PracticesForMastery = 50;
-
-    private static readonly float MasteryLevel = Skills.LevelAfter(PracticesForMastery);
 
     public ActionBlocker Blocker(WorldState world)
     {
@@ -70,16 +67,23 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
             return;
         }
 
+        // The cordage is spent whichever way it goes - a lashing that slipped is not cord any
+        // more. What it was tied around is not: two things that came apart are still two things,
+        // so a failed try costs the binding and the time, not the work that went before it.
         var binding = BestBinding(world)!;
-        var left = TakeFromPack(Left, world);
-        var right = TakeFromPack(Right, world);
         Person.Inventory.RemoveAssembly(binding);
 
-        Person.Inventory.AddAssembly(new Assembly.Joined(
-            StrengthOf(binding, world),
-            world.Configuration.ItemCatalog.WeightOf(binding),
-            left,
-            right));
+        if (WorkAttempt.Succeeds(Person, Skill, Verb, world.Clock.CurrentTick))
+        {
+            var left = TakeFromPack(Left, world);
+            var right = TakeFromPack(Right, world);
+
+            Person.Inventory.AddAssembly(new Assembly.Joined(
+                StrengthOf(binding, world),
+                world.Configuration.ItemCatalog.WeightOf(binding),
+                left,
+                right));
+        }
 
         Person.Skills.Increase(Skill, SkillGainPerBind);
     }
@@ -92,9 +96,7 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
             ? world.Configuration.FormCatalog.Find(part.Form)?.LashingStrength ?? 0f
             : 0f;
 
-        var hand = NoviceStrength + ((1f - NoviceStrength) * Math.Clamp(Person.Skills.Get(Skill) / MasteryLevel, 0f, 1f));
-
-        return lashing * binding.Durability(world.Configuration.MaterialCatalog) * hand;
+        return lashing * binding.Durability(world.Configuration.MaterialCatalog) * WorkAttempt.QualityFor(Person, Skill);
     }
 
     // The soundest cordage in the pack, so a person who has made a better cord uses it without

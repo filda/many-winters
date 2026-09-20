@@ -12,7 +12,18 @@ public class BindCommandTests
     private static readonly BindTarget Stone = new BindTarget.Stock(TestCatalogs.StoneItem);
 
     // Somebody who knows how to bind, carrying a stick, a stone and one cord to lash them with.
+    // Practised enough that the hands never fail, so a test about what binding produces is not
+    // also a test of the dice (WorkAttempt.ChanceFor reaches 1 at mastery). The rolling has its
+    // own tests below.
     private static Person Binder(WorldState world, float cordQuality = 0.5f)
+    {
+        var person = Novice(world, cordQuality);
+        Practise(person);
+
+        return person;
+    }
+
+    private static Person Novice(WorldState world, float cordQuality = 0.5f)
     {
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicBinding);
@@ -21,6 +32,22 @@ public class BindCommandTests
         person.Inventory.AddAssembly(Cord(cordQuality));
 
         return person;
+    }
+
+    private static void Practise(Person person, int times = 50)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            person.Skills.Increase(BindCommand.Skill, 1f);
+        }
+    }
+
+    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
+    {
+        while (WorkAttempt.Succeeds(person, BindCommand.Skill, BindCommand.Verb, world.Clock.CurrentTick) != succeed)
+        {
+            world.Clock.Advance();
+        }
     }
 
     private static Assembly.Part Cord(float quality = 0.5f) =>
@@ -113,12 +140,9 @@ public class BindCommandTests
     public void APractisedHandTiesAStrongerJointThanABeginner()
     {
         var world = TestCatalogs.CreateWorld();
-        var beginner = Binder(world);
+        var beginner = Novice(world);
         var practised = Binder(world);
-        for (var i = 0; i < 40; i++)
-        {
-            practised.Skills.Increase(BindCommand.Skill, 1f);
-        }
+        AdvanceToATickThatWill(world, beginner, succeed: true);
 
         world.Execute(new BindCommand(beginner, Wood, Stone));
         world.Execute(new BindCommand(practised, Wood, Stone));
@@ -254,5 +278,33 @@ public class BindCommandTests
         var person = Binder(world);
 
         Assert.Equal(ActionBlocker.None, new BindCommand(person, Wood, Stone).Blocker(world));
+    }
+
+    // A lashing that slipped costs the cordage and the time, but not what it was tied around:
+    // two things that came apart are still two things.
+    [Fact]
+    public void ASlippedLashingCostsTheCordButNotWhatItHeld()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = Novice(world);
+        AdvanceToATickThatWill(world, person, succeed: false);
+
+        world.Execute(new BindCommand(person, Wood, Stone));
+
+        Assert.Empty(person.Inventory.Assemblies);
+        Assert.Equal(1, person.Inventory.Get(TestCatalogs.WoodItem));
+        Assert.Equal(1, person.Inventory.Get(TestCatalogs.StoneItem));
+    }
+
+    [Fact]
+    public void ASlippedLashingIsStillPractice()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = Novice(world);
+        AdvanceToATickThatWill(world, person, succeed: false);
+
+        world.Execute(new BindCommand(person, Wood, Stone));
+
+        Assert.True(person.Skills.Get(BindCommand.Skill) > 0f);
     }
 }

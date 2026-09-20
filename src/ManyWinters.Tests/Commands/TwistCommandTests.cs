@@ -9,13 +9,42 @@ namespace ManyWinters.Tests.Commands;
 
 public class TwistCommandTests
 {
+    // Practised enough that the hands never fail (WorkAttempt.ChanceFor reaches 1 at mastery),
+    // so a test about what twisting produces is not also a test of the dice. The rolling itself
+    // has its own tests below.
     private static Person Twister(WorldState world, int grass = TestCatalogs.GrassPerCord)
+    {
+        var person = Novice(world, grass);
+        Practise(person);
+
+        return person;
+    }
+
+    private static Person Novice(WorldState world, int grass = TestCatalogs.GrassPerCord)
     {
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
         person.Inventory.Add(TestCatalogs.GrassItem, grass);
 
         return person;
+    }
+
+    private static void Practise(Person person, int times = 50)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            person.Skills.Increase(TwistCommand.Skill, 1f);
+        }
+    }
+
+    // Walks the clock to a tick this person's roll falls the wanted way - the real roll, not a
+    // stubbed one, so the test bends time rather than the simulation.
+    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
+    {
+        while (WorkAttempt.Succeeds(person, TwistCommand.Skill, TwistCommand.Verb, world.Clock.CurrentTick) != succeed)
+        {
+            world.Clock.Advance();
+        }
     }
 
     [Fact]
@@ -88,7 +117,8 @@ public class TwistCommandTests
     public void ABeginnersWorkIsPoorButNotWorthless()
     {
         var world = TestCatalogs.CreateWorld();
-        var person = Twister(world);
+        var person = Novice(world);
+        AdvanceToATickThatWill(world, person, succeed: true);
 
         world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
 
@@ -101,12 +131,9 @@ public class TwistCommandTests
     public void APractisedHandTurnsOutBetterWorkThanABeginner()
     {
         var world = TestCatalogs.CreateWorld();
-        var beginner = Twister(world);
+        var beginner = Novice(world);
         var practised = Twister(world);
-        for (var i = 0; i < 40; i++)
-        {
-            practised.Skills.Increase(TwistCommand.Skill, 1f);
-        }
+        AdvanceToATickThatWill(world, beginner, succeed: true);
 
         world.Execute(new TwistCommand(beginner, TestCatalogs.GrassItem));
         world.Execute(new TwistCommand(practised, TestCatalogs.GrassItem));
@@ -121,12 +148,59 @@ public class TwistCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = Twister(world);
-        for (var i = 0; i < 5000; i++)
+        Practise(person, times: 5000);
+
+        Assert.Equal(1f, WorkAttempt.QualityFor(person, TwistCommand.Skill), 5);
+    }
+
+    // The dice, and what a spoiled handful costs: the grass is gone either way, and the hands
+    // learned from it either way.
+    [Fact]
+    public void ASpoiledAttemptCostsTheMaterialAndLeavesNothingBehind()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = Novice(world);
+        AdvanceToATickThatWill(world, person, succeed: false);
+
+        world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.GrassItem));
+        Assert.Empty(person.Inventory.Assemblies);
+    }
+
+    [Fact]
+    public void ASpoiledAttemptIsStillPractice()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = Novice(world);
+        AdvanceToATickThatWill(world, person, succeed: false);
+
+        world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
+
+        Assert.True(person.Skills.Get(TwistCommand.Skill) > 0f);
+    }
+
+    // A sound idea is never refused for want of skill: a beginner gets there, just not every time
+    // (see docs/materials-and-crafting-architecture.md section 7).
+    [Fact]
+    public void ABeginnerSucceedsSometimesAndAPractisedHandAlways()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var beginner = Novice(world);
+        var practised = Twister(world);
+
+        var beginnerWins = 0;
+        for (var tick = 0; tick < 200; tick++)
         {
-            person.Skills.Increase(TwistCommand.Skill, 1f);
+            if (WorkAttempt.Succeeds(beginner, TwistCommand.Skill, TwistCommand.Verb, tick))
+            {
+                beginnerWins++;
+            }
+
+            Assert.True(WorkAttempt.Succeeds(practised, TwistCommand.Skill, TwistCommand.Verb, tick));
         }
 
-        Assert.Equal(1f, TwistCommand.QualityFor(person), 5);
+        Assert.InRange(beginnerWins, 1, 199);
     }
 
     [Fact]

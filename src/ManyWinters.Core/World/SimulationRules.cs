@@ -16,6 +16,11 @@ public sealed record SimulationRules
 
     public float HungerPerTick { get; init; } = 1f;
 
+    // What one directed attempt at the workbench costs in time (see WorkAttempt). Working a
+    // thing over is not free: somebody doing it is somebody not gathering, and a second try at
+    // something that just failed is a second stretch of the same afternoon.
+    public long TicksPerWorkAttempt { get; } = 3;
+
     // Hunger an average person dies at. Each person gets their own value around it (see
     // MaxHungerFor), so this is the middle of a range, not a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;

@@ -25,14 +25,6 @@ public sealed record TwistCommand(Person Person, ItemKindId Item) : ICommand
 
     private const float SkillGainPerTwist = 1f;
 
-    // A first cord is poor but real, and a practiced hand's is sound: quality walks from the one
-    // to the other, and never starts at zero, or a beginner's work would be worth nothing at all
-    // (Assembly.Durability multiplies by it).
-    private const float NoviceQuality = 0.2f;
-    private const int PracticesForMastery = 50;
-
-    private static readonly float MasteryLevel = Skills.LevelAfter(PracticesForMastery);
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -67,24 +59,23 @@ public sealed record TwistCommand(Person Person, ItemKindId Item) : ICommand
         var transition = Transition(world)!;
         var definition = world.Configuration.ItemCatalog.Get(Item);
 
+        // Spent either way: a handful mangled in the trying is gone as surely as one twisted
+        // well. Practice is earned either way too - a spoiled attempt still taught the hands
+        // something.
         Person.Inventory.Remove(Item, transition.InputAmount);
 
-        // Bulk carries over from what went in, so twisting neither creates nor destroys weight.
-        Person.Inventory.AddAssembly(new Assembly.Part(
-            definition.Material,
-            transition.Form,
-            QualityFor(Person),
-            definition.Volume * transition.InputAmount));
+        if (WorkAttempt.Succeeds(Person, Skill, Verb, world.Clock.CurrentTick))
+        {
+            // Bulk carries over from what went in, so twisting neither creates nor destroys
+            // weight.
+            Person.Inventory.AddAssembly(new Assembly.Part(
+                definition.Material,
+                transition.Form,
+                WorkAttempt.QualityFor(Person, Skill),
+                definition.Volume * transition.InputAmount));
+        }
 
         Person.Skills.Increase(Skill, SkillGainPerTwist);
-    }
-
-    // How good a piece this person turns out right now: their practice at twisting, read off the
-    // same curve every other skill uses (Skills.Increase).
-    public static float QualityFor(Person person)
-    {
-        var mastery = Math.Clamp(person.Skills.Get(Skill) / MasteryLevel, 0f, 1f);
-        return NoviceQuality + ((1f - NoviceQuality) * mastery);
     }
 
     private FormTransition? Transition(WorldState world) =>

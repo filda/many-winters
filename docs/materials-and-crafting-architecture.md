@@ -91,13 +91,30 @@ The save format changed with it: a bound object is recursive, so `AssemblySaveDa
 mirrors `Assembly`'s two cases as two nullable blocks. The flat shape 4c-1 shipped would
 have dropped a bound object silently on save.
 
-Still open in 4c: per-assembly identity (section 6 - deferred a third time, and now for
-a stated reason: an assembly is a value, so two that match in every part and joint are
-indistinguishable to anyone who could tell them apart, and identity only starts earning
-its keep the day a worked thing carries a maker or its own wear), and the whole
-discovery layer of section 7 - the verbs currently run deterministically, with no
-skill-rolled chance of failure, no idle experimentation and no beliefs. Three things
-are knowingly unfinished:
+Step 4c-3 (2026-09-20): the first half of the discovery layer - a directed attempt can
+now fail. `WorkAttempt` rolls it, deterministic from the person's seed, the verb and
+the tick, as every other roll in the game is. Skill moves the odds without opening or
+closing the door: a beginner lands about one try in five and a practised hand never
+fails, which is section 7's "success modifier, not a gate". The same curve gives the
+quality of what comes out, because it is one fact about a person seen twice.
+
+**An attempt costs time** (`SimulationRules.TicksPerWorkAttempt`), and that is load
+bearing rather than flavour: the bench holds the clock, so without a time cost a player
+could press "Try it" at a frozen tick until the same roll finally came up different -
+except it never would, the roll being a function of the tick. Paying time is what makes
+a second try a second roll. Failure also costs material, and differently per verb: a
+spoiled twist wastes the handful, while a slipped lashing wastes only the cordage -
+two things that came apart are still two things. Both teach, so a wasted attempt is
+still practice.
+
+Still open in 4c: the *autonomous* half of discovery - idle experimentation, property
+knowledge as beliefs, and pattern recognition (section 7). Nothing is discovered by
+anyone the player is not directing, so a settlement left alone still develops nothing,
+which section 7 says explicitly it must not stay. Also still open: per-assembly
+identity (section 6 - deferred a third time, and now for a stated reason: an assembly
+is a value, so two that match in every part and joint are indistinguishable to anyone
+who could tell them apart, and identity only starts earning its keep the day a worked
+thing carries a maker or its own wear). Three things are knowingly unfinished:
 
 - **A worked thing cannot be put down, stored or inherited yet.** Dropping, depositing,
   withdrawing and looting all still speak in counts, so the instance tier is reachable only

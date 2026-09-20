@@ -704,10 +704,15 @@ public partial class Main : Node3D
         var before = person.Inventory.Assemblies.ToList();
         Perform(person, offer);
 
+        // An attempt costs time whether or not it came off - the clock is held while the bench is
+        // open, so this is the only thing that moves it, and it is what stops a player pressing
+        // until the dice land (see WorkAttempt, SimulationRules.TicksPerWorkAttempt).
+        _world.Advance(_world.Configuration.Rules.TicksPerWorkAttempt);
+
         var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
         _workshop.Show(WorkshopActions.Carried(_world, person));
         _workshop.ReportOutcome(made is null
-            ? "Nothing comes of it."
+            ? "It comes apart in your hands."
             : $"It comes out {InspectorText.ForWorkedThing(made, _world.Configuration.MaterialCatalog, _world.Configuration.FormCatalog)}.");
 
         RefreshWorkshopOffer();
