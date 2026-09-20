@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
@@ -217,6 +218,19 @@ public class TargetActionsTests
         var ava = TestWorld.AddAdult(world, "Ava", Camp);
         var bran = AddCorpse(world, "Bran", Camp);
         bran.Inventory.Add(TestWorld.Wood, 3);
+
+        Assert.Equal(["Bury", "Take what they carried"], Labels(TargetActions.For(world, ava, bran)));
+    }
+
+    // Somebody who died holding nothing but the thing they made is carrying what is most worth
+    // taking, and the line has to be there to take it.
+    [Fact]
+    public void ADeadPersonCarryingOnlySomethingTheyMadeCanStillBeRobbedOfIt()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var bran = AddCorpse(world, "Bran", Camp);
+        bran.Inventory.AddAssembly(new Assembly.Part(new MaterialId("stone"), new FormId("wedge"), 1f, 1f));
 
         Assert.Equal(["Bury", "Take what they carried"], Labels(TargetActions.For(world, ava, bran)));
     }

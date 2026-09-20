@@ -342,17 +342,32 @@ material rather than only a form, and somewhere for a worked thing to go (eaten,
 stored, inherited). `Crush` is the cheapest of them and wants nutrition as a property of the
 material - the same move step 1 made with insulation and weight.
 
+Beyond section 11 (2026-09-21): **what somebody made outlives them.** The plan runs out at step
+7, so this comes from the list of knowingly unfinished things below rather than from a numbered
+step. `LootCommand` now takes worked things off a body as well as counted stock, and
+`TargetActions` offers "Take what they carried" for a body carrying only a made thing - which it
+did not, so somebody who died holding nothing but the axe they had made showed no way to take it
+at all.
+
+What they made comes off the body **before** the firewood: a worked thing is the one thing the
+band cannot simply go and gather again, and a pack filled with a corpse's stock would leave no
+room for it. It is taken whole or not at all (`Inventory.AddAssemblyIfItFits`), because half an
+axe is nothing - which is the difference between the two tiers showing up in one more place.
+
+Burying changes none of this: a buried body stays in the world and stays lootable, so a grave is
+not a way to lose a tool.
+
 Still open in 4c: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked
 thing carries a maker or its own wear). Three things are knowingly unfinished:
 
-- **A worked thing cannot be put down, stored or inherited yet.** Dropping, depositing,
-  withdrawing and looting all still speak in counts, so the instance tier is reachable only
-  through the pack that made it. Each of those is a small change, but each is also a design
-  question of its own (a pile on the ground is one kind and one count today), so they wait
-  until `Bind` says what a worked thing is finally for.
+- **A worked thing still cannot be put down or stored.** Inheriting one is done (see above);
+  dropping, depositing and withdrawing all still speak in counts, so a made thing moves between
+  a pack and a body and nowhere else. The remaining three share one design question that looting
+  did not have to answer: a pile on the ground is one kind and one count today, so a made thing
+  put down has no shape to be.
 - **A joint names neither its verb nor its binder yet.** Section 6 describes both; step 4b
   left them out because nothing reads them until the verbs that set them exist (step 4c),
   the same rule that holds back unread material properties.

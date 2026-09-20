@@ -20,6 +20,33 @@ public class InventoryTests
     private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
         new(id, displayName, Stuff, Lump, weight);
 
+    // A made object goes in whole or not at all, unlike a stack (see AddUpToCapacity): half an
+    // axe is nothing.
+    [Fact]
+    public void AnAssemblyIsTakenWholeOrNotAtAll()
+    {
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 2f));
+        var inventory = new Inventory();
+        var heavy = new Assembly.Part(Stuff, Lump, Quality: 1f, Volume: 10f);
+
+        Assert.False(inventory.AddAssemblyIfItFits(heavy, catalog, maxWeight: 5f));
+        Assert.Empty(inventory.Assemblies);
+
+        Assert.True(inventory.AddAssemblyIfItFits(heavy, catalog, maxWeight: 10f));
+        Assert.Single(inventory.Assemblies);
+    }
+
+    // What is already carried counts against the room for it.
+    [Fact]
+    public void AnAssemblyDoesNotFitOnceThePackIsAlreadyFull()
+    {
+        var catalog = CatalogOf(Weighing(Wood, "Wood", 2f));
+        var inventory = new Inventory();
+        inventory.Add(Wood, 2);
+
+        Assert.False(inventory.AddAssemblyIfItFits(new Assembly.Part(Stuff, Lump, 1f, 2f), catalog, maxWeight: 5f));
+    }
+
     // What is worth chopping with is asked of the whole pack, not of one tier: a hafted edge
     // somebody made is a worked object, and a found flint would be a count (see
     // ItemCatalog.ChoppingScoreOf).

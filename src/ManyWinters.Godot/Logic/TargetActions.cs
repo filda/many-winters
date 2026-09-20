@@ -89,8 +89,9 @@ internal static class TargetActions
         offers.Add(ActionOffer.For("Bury", new BuryCommand(actor, target), world, target: target.Position));
 
         // Nothing on the body, nothing to take: an enabled "Take what they carried" that empties
-        // an empty pack is worse than no line at all.
-        if (target.Inventory.Counts.Count > 0)
+        // an empty pack is worse than no line at all. Both tiers count - somebody who died
+        // holding nothing but the axe they made is carrying the thing most worth taking.
+        if (target.Inventory.Counts.Count > 0 || target.Inventory.Assemblies.Count > 0)
         {
             offers.Add(ActionOffer.For("Take what they carried", new LootCommand(actor, target), world, target: target.Position));
         }

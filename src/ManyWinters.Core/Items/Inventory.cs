@@ -67,6 +67,24 @@ public sealed class Inventory
             .DefaultIfEmpty(0f)
             .Max();
 
+    // Takes the whole thing or none of it, and says which: a made object is one object, so
+    // unlike a stack it cannot be taken as much as fits. A caller pulling from a corpse or a
+    // store needs the answer to know whether to take it off the body.
+    public bool AddAssemblyIfItFits(Assembly assembly, ItemCatalog catalog, float maxWeight)
+    {
+        var weight = catalog.WeightOf(assembly);
+
+        // A weightless thing never limits, the same forgiveness UnitsThatFit gives a weightless
+        // item kind.
+        if (weight > 0f && TotalWeight(catalog) + weight > maxWeight)
+        {
+            return false;
+        }
+
+        AddAssembly(assembly);
+        return true;
+    }
+
     // Adds as much of `amount` as fits under maxWeight (a zero-weight item never limits) and
     // returns how many, so a caller pulling from a node, corpse or building removes only that many.
     public int AddUpToCapacity(ItemKindId kind, int amount, ItemCatalog catalog, float maxWeight)

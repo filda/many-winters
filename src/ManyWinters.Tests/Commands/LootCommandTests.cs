@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -19,6 +20,66 @@ public class LootCommandTests
 
         Assert.Equal(0, deceased.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(5, looter.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    // What somebody made outlives them. Until worked things could be taken off a body, a winter
+    // of practice went into the ground with whoever was holding it (see
+    // docs/materials-and-crafting-architecture.md, the instance tier).
+    private static Assembly.Part Axehead(float volume = 1f) =>
+        new(new MaterialId("stone"), TestCatalogs.Wedge, 1f, volume);
+
+    [Fact]
+    public void LootingTakesWhatTheyMadeAsWellAsWhatTheyGathered()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        deceased.IsAlive = false;
+        deceased.Inventory.AddAssembly(Axehead());
+        deceased.Inventory.Add(TestCatalogs.WoodItem, 2);
+        var looter = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+        world.Execute(new LootCommand(looter, deceased));
+
+        Assert.Empty(deceased.Inventory.Assemblies);
+        Assert.Equal(Axehead(), Assert.Single(looter.Inventory.Assemblies));
+        Assert.Equal(2, looter.Inventory.Get(TestCatalogs.WoodItem));
+    }
+
+    // A made thing is the one thing the band cannot go and gather again, so a pack that will not
+    // hold everything holds that first.
+    [Fact]
+    public void AMadeThingComesOffTheBodyBeforeTheFirewood()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        deceased.IsAlive = false;
+        deceased.Inventory.AddAssembly(Axehead());
+        var looter = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+        // Far more wood than anyone can carry, so the pack is full long before the list ends.
+        deceased.Inventory.Add(TestCatalogs.WoodItem, 500);
+
+        world.Execute(new LootCommand(looter, deceased));
+
+        Assert.Equal(Axehead(), Assert.Single(looter.Inventory.Assemblies));
+        Assert.True(deceased.Inventory.Get(TestCatalogs.WoodItem) > 0);
+    }
+
+    // Taken whole or not at all: half an axe is nothing.
+    [Fact]
+    public void AMadeThingTooHeavyToCarryStaysOnTheBody()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var deceased = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        deceased.IsAlive = false;
+        var millstone = Axehead(volume: 1000f);
+        deceased.Inventory.AddAssembly(millstone);
+        var looter = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+        world.Execute(new LootCommand(looter, deceased));
+
+        Assert.Equal(millstone, Assert.Single(deceased.Inventory.Assemblies));
+        Assert.Empty(looter.Inventory.Assemblies);
     }
 
     [Fact]
