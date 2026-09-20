@@ -465,7 +465,8 @@ public sealed class WorldState(WorldConfiguration configuration)
                 continue;
             }
 
-            var asTold = Distorted(held.Value.Value, teller, listener, material, property, currentTick, rules);
+            var actual = ActualValueOf(material, property);
+            var asTold = Distorted(held.Value.Value, actual, teller, listener, material, property, currentTick, rules);
             listener.Beliefs.Learn(material, property, asTold, rules.HearsayConfidence);
             return;
         }
@@ -480,7 +481,22 @@ public sealed class WorldState(WorldConfiguration configuration)
     // somebody to teach, or send people to find things out first-hand. Nothing here marks a
     // belief as wrong, and nobody holding one can tell (section 6) - two people simply come to
     // disagree, and reality settles it when somebody next works the stuff.
-    private static float Distorted(float told, Person teller, Person listener, MaterialId material, MaterialProperty property, long currentTick, SimulationRules rules)
+    private float ActualValueOf(MaterialId material, MaterialProperty property)
+    {
+        var actual = Configuration.MaterialCatalog.Get(material);
+        return property switch
+        {
+            MaterialProperty.Density => actual.Density,
+            MaterialProperty.Hardness => actual.Hardness,
+            MaterialProperty.Toughness => actual.Toughness,
+            MaterialProperty.Flexibility => actual.Flexibility,
+            MaterialProperty.Elasticity => actual.Elasticity,
+            MaterialProperty.Fibrousness => actual.Fibrousness,
+            _ => throw new ArgumentOutOfRangeException(nameof(property), property, null),
+        };
+    }
+
+    private static float Distorted(float told, float actual, Person teller, Person listener, MaterialId material, MaterialProperty property, long currentTick, SimulationRules rules)
     {
         var fidelity = WorkAttempt.QualityFor(teller, TeachCommand.TeachingSkill);
         var reach = rules.HearsayDistortion * (1f - fidelity);
@@ -495,12 +511,16 @@ public sealed class WorldState(WorldConfiguration configuration)
                               ^ (uint)((int)property * 83492791)
                               ^ ((uint)currentTick * 73856093u));
 
-        var drift = ((float)new Random(SeedHash.Avalanche(mixed)).NextDouble() * 2f) - 1f;
+        var random = new Random(SeedHash.Avalanche(mixed));
+        var magnitude = (float)random.NextDouble() * reach;
+        var direction = told == actual
+            ? (random.Next(2) == 0 ? -1f : 1f)
+            : MathF.Sign(told - actual);
 
         // Never below nothing: a substance cannot be less than not fibrous at all. No ceiling,
         // because density is not on a 0-1 scale and a tall tale about how heavy stone is should
         // be tellable.
-        return Math.Max(0f, told + (drift * reach));
+        return Math.Max(0f, told + (direction * magnitude));
     }
 
     // Deterministic from the pair, what is being said and the tick, as every other roll is.
