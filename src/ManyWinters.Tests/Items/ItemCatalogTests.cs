@@ -16,6 +16,8 @@ public class ItemCatalogTests
     private static readonly ItemKindId Wood = new("wood");
 
     private static readonly FormId Wedge = new("wedge");
+    private static readonly FormId Stick = new("stick");
+    private static readonly MaterialId WoodMaterial = new("wood");
     private static readonly ItemKindId Axe = new("axe");
 
     private const float StoneHardness = 0.8f;
@@ -24,11 +26,13 @@ public class ItemCatalogTests
         new FormDefinition(Garment, "Garment"),
         new FormDefinition(Lump, "Lump"),
         new FormDefinition(Wedge, "Wedge", EdgeSharpness: 1f),
+        new FormDefinition(Stick, "Stick", HaftLeverage: 1f),
     ]);
 
     private static MaterialCatalog Materials() => new([
         new MaterialDefinition(Hide, "Hide", Density: 0.75f, Insulation: 1f),
         new MaterialDefinition(Stone, "Stone", Density: 2f, Hardness: StoneHardness),
+        new MaterialDefinition(WoodMaterial, "Wood", Density: 0.5f, Hardness: 0.4f),
     ]);
 
     [Fact]
@@ -233,6 +237,83 @@ public class ItemCatalogTests
         ], Materials(), Forms());
 
         Assert.True(catalog.ChoppingScoreFor(heavyAxe) > catalog.ChoppingScoreFor(Axe));
+    }
+
+    // What a made thing chops like (section 4's formula in full). A knapped wedge is already an
+    // edge in the hand; lashing it to a shaft is what turns a held stone into a swung one.
+    private static Assembly.Part Head(float quality = 1f) => new(Stone, Wedge, quality, Volume: 1f);
+
+    private static Assembly.Part Haft() => new(WoodMaterial, Stick, Quality: 1f, Volume: 2f);
+
+    [Fact]
+    public void AKnappedWedgeChopsInTheBareHandAndChopsBetterHafted()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+        var head = Head();
+
+        var hafted = catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, head, Haft()));
+
+        Assert.True(catalog.ChoppingScoreOf(head) > 0f);
+        Assert.Equal(catalog.ChoppingScoreOf(head) * 2f, hafted, 5);
+    }
+
+    // The joint is what lets the haft count for anything: a head tied on badly is a head swung
+    // by hand, however long the shaft.
+    [Fact]
+    public void AHeadThatWobblesGainsNothingFromItsHaft()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+        var head = Head();
+
+        var loose = catalog.ChoppingScoreOf(new Assembly.Joined(JointStrength: 0f, 0.5f, head, Haft()));
+
+        Assert.Equal(catalog.ChoppingScoreOf(head), loose, 5);
+    }
+
+    // Where practice shows in use rather than only on a card: the same stone, struck by a
+    // steadier hand, is a better edge.
+    [Fact]
+    public void APoorlyKnappedHeadChopsWorseThanAWellKnappedOne()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+
+        Assert.True(catalog.ChoppingScoreOf(Head(quality: 1f)) > catalog.ChoppingScoreOf(Head(quality: 0.2f)));
+    }
+
+    // Nothing declares which part is the head and which the haft - the object is whichever
+    // reading serves it better, so tying it the other way round is the same axe.
+    [Fact]
+    public void WhichWayRoundItWasTiedDoesNotChangeWhatItChopsLike()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+
+        Assert.Equal(
+            catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Head(), Haft())),
+            catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Haft(), Head())),
+            5);
+    }
+
+    // Two things with no edge between them are not a tool, however well they are lashed.
+    [Fact]
+    public void TwoShaftsLashedTogetherChopNothing()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+
+        Assert.Equal(0f, catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Haft(), Haft())));
+    }
+
+    // Depth costs the shape nothing: a shaft with something else tied to its far end is still a
+    // shaft to the head at this one.
+    [Fact]
+    public void SomethingLashedToTheFarEndOfTheHaftDoesNotCostTheHeadItsLeverage()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+        var longer = new Assembly.Joined(1f, 0.5f, Haft(), Haft());
+
+        Assert.Equal(
+            catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Head(), Haft())),
+            catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Head(), longer)),
+            5);
     }
 
     [Fact]

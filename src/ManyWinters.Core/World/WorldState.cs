@@ -648,9 +648,10 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
 
         // Nothing worked can be taken apart again yet, so a reductive trial is a trial of raw
-        // stock; somebody carrying only cord has nothing to try this way.
+        // stock; somebody carrying only cord has nothing to try this way, and neither has
+        // somebody holding only stuff that answers to no reductive verb at all.
         return stock.Count > 0
-            ? (TwistCommand.Skill, new TwistCommand(person, stock[rng.Next(stock.Count)]))
+            ? ReductiveVerbs.For(person, stock[rng.Next(stock.Count)], Configuration.ItemCatalog)
             : null;
     }
 

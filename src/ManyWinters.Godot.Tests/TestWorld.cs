@@ -17,6 +17,7 @@ internal static class TestWorld
     internal static readonly ItemKindId Apple = new("apple");
     internal static readonly ItemKindId Grass = new("grass");
     private static readonly ItemKindId Axe = new("axe");
+    internal static readonly ItemKindId Stone = new("stone");
 
     internal static readonly EntityKindId AppleTree = new("apple");
     internal static readonly EntityKindId Stump = new("tree_stump");
@@ -35,6 +36,8 @@ internal static class TestWorld
     internal static readonly FormId Cord = new("cord");
     internal static readonly TechniqueId BasicTwisting = new("basic_twisting");
     internal static readonly TechniqueId BasicBinding = new("basic_binding");
+    internal static readonly TechniqueId BasicKnapping = new("basic_knapping");
+    private static readonly FormId Wedge = new("wedge");
 
     internal const int AxeInputAmount = 5;
     internal const int StorageHutInputAmount = 20;
@@ -47,7 +50,7 @@ internal static class TestWorld
         var materials = new MaterialCatalog([
             new MaterialDefinition(new MaterialId("wood"), "Wood", 0.5f),
             new MaterialDefinition(new MaterialId("apple"), "Apple Flesh", 1f),
-            new MaterialDefinition(new MaterialId("stone"), "Stone", 2f),
+            new MaterialDefinition(new MaterialId("stone"), "Stone", 2f, Hardness: 1f, Toughness: 0.15f),
             new MaterialDefinition(new MaterialId("plant_fibre"), "Plant Fibre", 0.2f, Toughness: 0.5f, Flexibility: 0.7f, Fibrousness: 0.9f),
         ]);
 
@@ -55,6 +58,7 @@ internal static class TestWorld
             new FormDefinition(new FormId("stick"), "Stick"),
             new FormDefinition(new FormId("whole"), "Whole"),
             new FormDefinition(new FormId("wedge"), "Wedge", EdgeSharpness: 1f),
+            new FormDefinition(new FormId("lump"), "Lump"),
             new FormDefinition(new FormId("shelter"), "Shelter"),
             new FormDefinition(new FormId("fibre"), "Fibre"),
             new FormDefinition(Cord, "Cord", LashingStrength: 1f),
@@ -68,6 +72,8 @@ internal static class TestWorld
                 new ItemDefinition(StorageHutItem, "Storage Hut", new MaterialId("wood"), new FormId("shelter"), StorageHutVolume),
                 new ItemDefinition(Grass, "Grass", new MaterialId("plant_fibre"), new FormId("fibre"), 5f,
                     Transitions: [new FormTransition(TwistCommand.Verb, Cord, GrassPerCord)]),
+                new ItemDefinition(Stone, "Stone", new MaterialId("stone"), new FormId("lump"), 1f,
+                    Transitions: [new FormTransition(KnapCommand.Verb, Wedge, 1)]),
             ],
             materials,
             forms);
@@ -84,6 +90,7 @@ internal static class TestWorld
                 new SkillDefinition(Teaching, "Teaching", BasicTeaching, new TechniqueId("efficient_teaching")),
                 new SkillDefinition(TwistCommand.Skill, "Twisting", BasicTwisting, new TechniqueId("efficient_twisting")),
                 new SkillDefinition(BindCommand.Skill, "Binding", BasicBinding, new TechniqueId("efficient_binding")),
+                new SkillDefinition(KnapCommand.Skill, "Knapping", BasicKnapping, new TechniqueId("efficient_knapping")),
             ]),
             new RecipeCatalog([
                 new RecipeDefinition(Axe, Wood, AxeInputAmount),

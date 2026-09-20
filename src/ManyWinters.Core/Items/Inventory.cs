@@ -58,7 +58,14 @@ public sealed class Inventory
     // The best chopping-scored object carried, or 0 for empty-handed - what GatherCommand and
     // FellCommand ask instead of checking for one authored "tool" item kind (see
     // ItemCatalog.ChoppingScoreFor).
-    public float BestChoppingScore(ItemCatalog catalog) => _counts.Keys.Select(catalog.ChoppingScoreFor).DefaultIfEmpty(0f).Max();
+    //
+    // Both tiers answer, because a hafted axe is a worked object and a raw lump is a count, and
+    // the question "what is the best thing in this pack to chop with" does not care which.
+    public float BestChoppingScore(ItemCatalog catalog) =>
+        _counts.Keys.Select(catalog.ChoppingScoreFor)
+            .Concat(_assemblies.Select(catalog.ChoppingScoreOf))
+            .DefaultIfEmpty(0f)
+            .Max();
 
     // Adds as much of `amount` as fits under maxWeight (a zero-weight item never limits) and
     // returns how many, so a caller pulling from a node, corpse or building removes only that many.

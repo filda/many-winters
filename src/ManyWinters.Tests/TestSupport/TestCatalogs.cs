@@ -33,6 +33,7 @@ public static class TestCatalogs
     public static readonly SkillTypeId Woodcutting = new("woodcutting");
     private static readonly SkillTypeId Twisting = new("twisting");
     private static readonly SkillTypeId Binding = new("binding");
+    private static readonly SkillTypeId Knapping = new("knapping");
     private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
@@ -48,6 +49,7 @@ public static class TestCatalogs
     public static readonly TechniqueId BasicWoodcutting = new("basic_woodcutting");
     public static readonly TechniqueId BasicTwisting = new("basic_twisting");
     public static readonly TechniqueId BasicBinding = new("basic_binding");
+    public static readonly TechniqueId BasicKnapping = new("basic_knapping");
     public static readonly TechniqueId BasicMining = new("basic_mining");
     private static readonly TechniqueId BasicBurial = new("basic_burial");
     public static readonly TechniqueId BasicEating = new("basic_eating");
@@ -59,6 +61,7 @@ public static class TestCatalogs
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
     private static readonly TechniqueId EfficientTwisting = new("efficient_twisting");
     private static readonly TechniqueId EfficientBinding = new("efficient_binding");
+    private static readonly TechniqueId EfficientKnapping = new("efficient_knapping");
     private static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
     public static readonly TechniqueId EfficientEating = new("efficient_eating");
@@ -98,7 +101,12 @@ public static class TestCatalogs
 
     public const int AxeInputAmount = 5;
     public const int GrassPerCord = 3;
+
+    // One lump makes one wedge: knapping takes a stone whole rather than a handful, the way
+    // twisting takes several blades of grass.
+    public const int StonePerWedge = 1;
     private static readonly TechniqueId TwistVerb = new("twist");
+    private static readonly TechniqueId KnapVerb = new("knap");
     private const int WarmClothingInputAmount = 10;
     private const float FoodHungerRestoredPerUnit = 1f;
 
@@ -209,6 +217,7 @@ public static class TestCatalogs
         new SkillDefinition(Woodcutting, "Woodcutting", BasicWoodcutting, EfficientWoodcutting, UsesChoppingScore: true),
         new SkillDefinition(Twisting, "Twisting", BasicTwisting, EfficientTwisting),
         new SkillDefinition(Binding, "Binding", BasicBinding, EfficientBinding),
+        new SkillDefinition(Knapping, "Knapping", BasicKnapping, EfficientKnapping),
         new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
         new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),
@@ -229,10 +238,13 @@ public static class TestCatalogs
     private const float WedgeEdgeSharpness = 1f;
     private const float CordLashingStrength = 1f;
 
+    // A shaft doubles the blow of what is lashed to its end (see ItemCatalog.ChoppingScoreOf).
+    private const float StickHaftLeverage = 1f;
+
     private static FormCatalog CreateFormCatalog() => new(new[]
     {
         new FormDefinition(Whole, "Whole"),
-        new FormDefinition(Stick, "Stick"),
+        new FormDefinition(Stick, "Stick", HaftLeverage: StickHaftLeverage),
         new FormDefinition(Lump, "Lump"),
         new FormDefinition(Fibre, "Fibre"),
         new FormDefinition(Wedge, "Wedge", WedgeEdgeSharpness),
@@ -266,7 +278,7 @@ public static class TestCatalogs
         new ItemDefinition(MushroomItem, "Mushroom", MushroomMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
         new ItemDefinition(PotatoItem, "Potato", PotatoMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
         new ItemDefinition(GrassItem, "Grass", PlantFibreMaterial, Fibre, GrassVolume, Transitions: [new FormTransition(TwistVerb, Cord, GrassPerCord)]),
-        new ItemDefinition(StoneItem, "Stone", StoneMaterial, Lump, StoneVolume),
+        new ItemDefinition(StoneItem, "Stone", StoneMaterial, Lump, StoneVolume, Transitions: [new FormTransition(KnapVerb, Wedge, StonePerWedge)]),
         new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),
         new ItemDefinition(StorageHutItem, "Storage Hut", WoodMaterial, Shelter, StorageHutVolume),

@@ -36,10 +36,8 @@ section 1's split between geometry and substance finally doing visible work. Aut
 so far: `Hardness` on `stone`, `EdgeSharpness` on `wedge`; everything else sits at
 zero, so nothing but woodcutting is affected.
 
-**Still short of section 4's full formula by its `HaftLeverage` term**, which needs an
-object made of parts to have a haft at all - it arrives when assemblies are things a
-person can actually hold (step 4c), together with per-part quality feeding the same
-score.
+Section 4's full formula, `HaftLeverage` term and all, arrived in step 4c-10, once
+there were objects made of parts to have a haft at all.
 
 Step 4a (2026-09-19): the `BuildingDefinition`/`ConstructCommand`+`CraftCommand`
 duplication section 5 describes is folded - see section 5's "Step 4a done" note.
@@ -219,7 +217,55 @@ to be loosened to make chains possible at all: people repeat what they were *tol
 only what they have proved, or a tale could never travel past its first listener - though
 a vague inkling is still beneath saying out loud.
 
-Still open in 4c: pattern recognition. Also still open: per-assembly
+Step 4c-9 (2026-09-20): **the band names what it makes.** A made thing had been described
+by its substance and shape ("lashed stone wedge and wood stick"), which is a description
+and not a name. Section 8 wanted recognition against a catalogue of authored patterns; that
+was dropped in discussion for something better - the player types the word, at the moment
+of discovery, and the band keeps it.
+
+`AssemblyPattern.SignatureOf` is what the word is hung on: forms only, children sorted, so
+the word is for the *shape*. An axe is an axe whether its head is stone or flint, which is
+how a band gets the word for free on everything it makes that way afterwards - including
+out of substances nobody had then heard of. Depth tells things apart, so a thing with
+another thing lashed to it is not the first thing.
+
+`Vocabulary` holds the words, on the world rather than on a person: it is the band's
+language, not one settler's. `InspectorText.ForWorkedThing` asks it first and falls back to
+the description, so a named thing is called by its name everywhere at once. Naming is
+offered in the workshop when something comes out that the band has no word for, and it
+writes a chronicle line rather than taking over the screen - the player has just typed the
+word, and telling them what they did on a full page is ceremony in the way of playing.
+
+Step 4c-10 (2026-09-20): **knapping, and the first real axe.** The arc that started at "a
+tree cannot be felled without an axe" closes here: `KnapCommand` strikes a stone lump into a
+wedge - the first edge in the game - and `ItemCatalog.ChoppingScoreOf` finally scores a made
+object, `HaftLeverage` included. A band now fells trees with a thing it worked out how to
+make, and **the `axe = 5x wood` recipe and the `axe` item are gone** along with the button
+that made one.
+
+Nothing in the game is called an axe. What fells a tree is a chopping score, and a hafted
+knapped wedge has one: the head's edge, its substance's hardness and its mass, multiplied by
+what the haft lends it - narrowed by the joint, because a head that wobbles is a head swung
+by hand however long the shaft. Which part is the head and which the haft is declared
+nowhere; the object is scored both ways round and is whichever reading serves it better.
+Per-part quality multiplies the edge, so a beginner's wedge is a poor one and practice shows
+in use rather than only on a card.
+
+Adding the second reductive verb is also what said what a reductive verb *is*:
+`ReductiveWork` holds everything they do alike, so a verb is now three facts - what it is
+called, which skill it is, and what a substance must be like to take it (see
+`MaterialAffordances`). `TwistCommand` and `KnapCommand` keep their own names because the
+world speaks in them, but there is one copy of the machinery. `ReductiveVerbs.For` answers
+"which verb does this one thing answer to" from the item's own transitions, and both the
+directed path (`WorkshopActions`) and the autonomous one (`WorldState.TrialOf`) ask it - so
+the workbench grows no wider as the vocabulary does, and nothing anywhere lists the verbs.
+
+What is knowingly left conserved: knapping neither wastes stone nor keeps the flakes, because
+`FormTransition` states no yield and adding one would be a second number to author and keep
+in step (see step 4c-1). A wedge therefore weighs its lump. It arrives if and when something
+reads it.
+
+Still open in 4c: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked
@@ -237,11 +283,11 @@ thing carries a maker or its own wear). Three things are knowingly unfinished:
   predicate defined there reads them yet; they arrive with their readers.
 
 What still exists, and this design still replaces:
-`RecipeDefinition(Output, InputItem, InputAmount)` — one input kind, one output kind,
-`axe = 5x wood` — authored per outcome, which is what makes the item roster grow by hand. The
-placeholder recipes are also visibly at odds with the materials: the axe is stone and the warm
-clothing is hide, but both are still made out of wood. Step 4c removes the recipes rather than
-reconciling them.
+`RecipeDefinition(Output, InputItem, InputAmount)` — one input kind, one output kind — authored
+per outcome, which is what makes the item roster grow by hand. The axe went in step 4c-10, and
+with it the worst of the mismatch the placeholders showed: what is left (bag, basket, warm
+clothing, storage hut) is still visibly at odds with its materials, the warm clothing being hide
+but made out of wood. Each goes the way the axe went, when the verbs that would make it exist.
 
 Already replaced, and no longer to be planned for: `SkillDefinition.Tool` /
 `ToolHarvestBonus` (the whitelist saying "this item kind is the tool for this skill") went in

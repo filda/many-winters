@@ -1,1 +1,1 @@
-{ "id": "stone", "displayName": "Stone", "material": "stone", "form": "lump", "volume": 1 }
+{ "id": "stone", "displayName": "Stone", "material": "stone", "form": "lump", "volume": 1, "transitions": [{ "verb": "knap", "form": "wedge", "inputAmount": 1 }] }

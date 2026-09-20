@@ -63,6 +63,25 @@ public class WorkshopActionsTests
         Assert.True(offer.Value.IsAvailable);
     }
 
+    // The bench does not grow a second button for a second verb: the same one pick, and the item
+    // says which verb it is (see ReductiveVerbs).
+    [Fact]
+    public void PickingAStoneOffersTheSameOneAttemptAndItIsKnapping()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestWorld.BasicKnapping);
+        person.Inventory.Add(TestWorld.Stone, 1);
+        var carried = WorkshopActions.Carried(world, person);
+
+        var offer = WorkshopActions.Attempt(world, person, carried);
+
+        Assert.NotNull(offer);
+        Assert.Equal("Try it", offer.Value.Label);
+        Assert.IsType<KnapCommand>(offer.Value.Command);
+        Assert.True(offer.Value.IsAvailable);
+    }
+
     // Nothing is said about what a thing could become: a pick that leads nowhere is simply not an
     // offer, so the bench cannot hand the player the answer.
     [Fact]

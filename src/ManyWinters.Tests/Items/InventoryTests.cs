@@ -20,6 +20,28 @@ public class InventoryTests
     private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
         new(id, displayName, Stuff, Lump, weight);
 
+    // What is worth chopping with is asked of the whole pack, not of one tier: a hafted edge
+    // somebody made is a worked object, and a found flint would be a count (see
+    // ItemCatalog.ChoppingScoreOf).
+    [Fact]
+    public void BestChoppingScoreWeighsWorkedThingsAlongsideRawStock()
+    {
+        var edge = new MaterialId("flint");
+        var wedge = new FormId("wedge");
+        var catalog = new ItemCatalog(
+            [Weighing(Wood, "Wood", 2f)],
+            new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f), new MaterialDefinition(edge, "Flint", Density: 2f, Hardness: 1f)]),
+            new FormCatalog([new FormDefinition(Lump, "Lump"), new FormDefinition(wedge, "Wedge", EdgeSharpness: 1f)]));
+        var inventory = new Inventory();
+        inventory.Add(Wood, 1);
+
+        Assert.Equal(0f, inventory.BestChoppingScore(catalog));
+
+        inventory.AddAssembly(new Assembly.Part(edge, wedge, Quality: 1f, Volume: 1f));
+
+        Assert.True(inventory.BestChoppingScore(catalog) > 0f);
+    }
+
     [Fact]
     public void GetReturnsZeroForAKindThatWasNeverAdded()
     {

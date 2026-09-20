@@ -79,16 +79,17 @@ internal static class WorkshopActions
         _ => null,
     };
 
-    // Only raw stock can be worked down so far: the one reductive verb there is turns a material
-    // into a shape, and what it turns into is the item's own business (FormTransition).
+    // Only raw stock can be worked down: the reductive verbs turn a material into a shape, and
+    // nothing worked can be taken apart again yet. Which verb is the item's own business
+    // (FormTransition, ReductiveVerbs), so this grows no wider as the vocabulary does.
     private static ActionOffer? Reductive(WorldState world, Person person, WorkshopEntry picked)
     {
         if (picked.Target is not BindTarget.Stock stock
-            || world.Configuration.ItemCatalog.TransitionFor(stock.Kind, TwistCommand.Verb) is null)
+            || ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is not { } work)
         {
             return null;
         }
 
-        return ActionOffer.For("Try it", new TwistCommand(person, stock.Kind), world, TwistCommand.Skill);
+        return ActionOffer.For("Try it", work.Command, world, work.Skill);
     }
 }

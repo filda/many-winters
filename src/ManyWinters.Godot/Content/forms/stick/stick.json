@@ -1,1 +1,1 @@
-{ "id": "stick", "displayName": "Stick" }
+{ "id": "stick", "displayName": "Stick", "haftLeverage": 1 }
