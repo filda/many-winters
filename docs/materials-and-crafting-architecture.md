@@ -204,8 +204,22 @@ work", and now a spoiled attempt teaches the very properties that explain why - 
 which neither the person nor the idle pass reaches for that stuff again. A mistaken
 account can equally put somebody off trying, because the same belief can be wrong.
 
-Still open in 4c: distortion itself (nothing writes a false belief yet) and pattern
-recognition. Also still open: per-assembly
+Step 4c-8 (2026-09-20): **distortion**, which is what the belief shape existed for.
+A retelling now strays from what the teller believes
+(`SimulationRules.HearsayDistortion`), narrowed to nothing by the teller's skill at
+teaching. Error is laid on what the teller already held, so it accumulates along a chain
+without any hop count, and two people who heard a thing from different directions come to
+disagree. Details and what remains are in `docs/knowledge-transmission-architecture.md`,
+whose prerequisite - beliefs rather than bare techniques - this plan has now met.
+
+That doc's sequencing rule was followed: **correction before corruption**. Both
+correcting forces (handling, and working a thing) were already in place from 4c-6 and
+4c-7, so the world was never in a state where knowledge only decayed. Retelling also had
+to be loosened to make chains possible at all: people repeat what they were *told*, not
+only what they have proved, or a tale could never travel past its first listener - though
+a vague inkling is still beneath saying out loud.
+
+Still open in 4c: pattern recognition. Also still open: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked

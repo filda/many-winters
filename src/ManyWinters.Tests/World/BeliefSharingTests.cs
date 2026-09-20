@@ -22,6 +22,10 @@ public class BeliefSharingTests
                 BeliefSharingChancePerTick = 1f,
                 MaterialUnderstandingPerTick = 0f,
                 IdleDiscoveryChancePerTick = 0f,
+                // These tests are about whether a thing is passed on at all and how firmly it
+                // lands; what a retelling does to the value has its own tests
+                // (BeliefDistortionTests).
+                HearsayDistortion = 0f,
             },
         });
 

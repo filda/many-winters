@@ -56,6 +56,14 @@ public sealed record SimulationRules
     // somebody.
     public float BeliefSharingChancePerTick { get; init; } = 0.02f;
 
+    // How far a retelling may stray from what the teller actually believes, before their skill
+    // at teaching narrows it (see WorldState.MentionSomething and
+    // docs/knowledge-transmission-architecture.md section 4). Talk is the lossy channel: a
+    // belief that only ever gets passed along by word drifts, while one people keep checking
+    // against the stuff itself stays true. That is knowledge decaying exactly when a settlement
+    // stops doing the thing, which is the point.
+    public float HearsayDistortion { get; init; } = 0.15f;
+
     // How firmly a person holds what they were merely told, against the certainty that handling
     // a thing themselves eventually brings. Under certainty on purpose: hearsay once is talk,
     // hearsay twice - or once and then handling it - is something they will act on. It is also
