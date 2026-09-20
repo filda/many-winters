@@ -20,6 +20,17 @@ jobs:
       - name: Cake Frosting CI
         run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=CI
 
+      # InspectCode names the issues it found but not where they are; the XML has the file and
+      # line for each. Only worth keeping when something failed, hence the condition.
+      - name: Upload build reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-reports
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
   codeql:
     runs-on: ubuntu-latest
     permissions:

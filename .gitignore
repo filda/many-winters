@@ -4,6 +4,9 @@ obj/
 *.user
 .vs/
 
+# Reports a failing build task leaves behind (InspectCode's XML); ci.yml uploads them
+/artifacts/
+
 # Stryker.NET mutation testing output
 StrykerOutput/
 

@@ -6,7 +6,7 @@ How to set up a machine, build, run, and check Of Folk and Many Winters. For wha
 
 | Tool | Version | Notes |
 |---|---|---|
-| [.NET SDK](https://dotnet.microsoft.com/download) | 8.0 (LTS) | Required to build the C# simulation core and tools. |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 8.0.4xx (LTS) | Required to build the C# simulation core and tools. Pinned by `global.json`, so a newer SDK on the machine is ignored rather than used (see below). |
 | [Godot Engine — .NET/Mono build](https://godotengine.org/download) | 4.7.x | Must be the **.NET** build specifically — the standard Godot build does not support C#. |
 | IDE with C# support | — | [JetBrains Rider](https://www.jetbrains.com/rider/) is recommended (best Godot debugger integration). VS Code with the C# Dev Kit and Godot extensions also works. |
 | Git | any recent | |
@@ -24,6 +24,16 @@ After installation, restart your shell so the updated `PATH` takes effect, then 
 dotnet --version
 godot --version
 ```
+
+`dotnet --version` should report an `8.0.4xx` SDK. It will, even on a machine that also
+has .NET 9 or 10 installed, because `global.json` pins the feature band.
+
+That pin is not housekeeping. Without it MSBuild picks the *highest* SDK on the machine,
+and the GitHub runner image carries 9.x and 10.x alongside the 8.0 SDK the workflow
+installs — so CI compiled with .NET 10 analyzers while a developer on 8.0 compiled with
+8.0's. The gap is invisible until a rule that only the newer analyzers implement fails
+CI on code that produced no warning at all locally (`CA1859`, 2026-09-20). Pinning makes
+a green local gate mean the same thing as a green CI.
 
 ## Getting the code
 
@@ -231,7 +241,7 @@ dotnet format ManyWinters.sln
 
 ## Inspections
 
-Roslyn analyzers run as part of every build (`Directory.Build.props`), but they only ever see one project at a time, so a public member nothing outside its type reads, a collection only ever written to, or a class nothing instantiates all pass them silently. [ReSharper InspectCode](https://www.jetbrains.com/help/resharper/InspectCode.html) — free, pinned as a local tool alongside Stryker — does solution-wide analysis and is what catches those. CI runs it after the build and fails on anything at warning severity or above.
+Roslyn analyzers run as part of every build (`Directory.Build.props`), but they only ever see one project at a time, so a public member nothing outside its type reads, a collection only ever written to, or a class nothing instantiates all pass them silently. [ReSharper InspectCode](https://www.jetbrains.com/help/resharper/InspectCode.html) — free, pinned as a local tool alongside Stryker — does solution-wide analysis and is what catches those. CI runs it after the build and fails on anything at warning severity or above. The `InspectCode` target writes its XML report to `artifacts/inspectcode.xml` (git-ignored); on a failed CI run `ci.yml` uploads that folder as the `build-reports` job artifact, so the file and line of each issue is downloadable from the run page.
 
 ```powershell
 dotnet tool restore

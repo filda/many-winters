@@ -147,7 +147,8 @@ public sealed class InspectCodeTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
     {
-        var report = Path.Combine(Path.GetTempPath(), "many-winters-inspectcode.xml");
+        Directory.CreateDirectory(context.ArtifactsDirectory);
+        var report = Path.Combine(context.ArtifactsDirectory, "inspectcode.xml");
         var arguments = new List<string>
         {
             "jb", "inspectcode", context.SolutionPath, "--swea", "--no-build", "--severity=WARNING",
