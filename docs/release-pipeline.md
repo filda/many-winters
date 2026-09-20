@@ -113,11 +113,23 @@ Parked deliberately. It costs wall-clock, not money, and it will not grow with t
 game. The export step reports its own duration (`godot exit code: 0 after Ns`) so a
 regression would be visible immediately.
 
-If it is picked up again, the honest next step is to reproduce hypothesis 3 exactly —
-including the broken `-p:BaseIntermediateOutputPath` override that caused it — purely
-to establish whether the correlation is real. That override is what made the step
-fail: Godot.NET.Sdk stops resolving `GodotSharp` and emits ~240 spurious `CS0246`
-annotations against source files that are perfectly fine.
+Picked up again in a manual workflow: `.github/workflows/export-investigation.yml`.
+It exists specifically to answer the open questions without making every push slower
+or less deterministic. One dispatch runs four controls side by side:
+
+- `windows-latest` as the current release environment,
+- the same runner with the intentionally broken diagnostic `dotnet publish` warm-up,
+- `windows-2022` as a second Windows environment,
+- `ubuntu-latest` as the Linux control.
+
+It also adds a direct incremental `dotnet publish` probe after the Godot export on
+both platforms. Because it runs after Godot has already published the same
+project/configuration/RID, it is only a warm comparison point rather than a cold
+measure of raw .NET publish throughput on the runner.
+
+The diagnostic warm-up intentionally overrides `BaseIntermediateOutputPath` and is
+expected to fail. The point is not to fix that publish; it is to test whether
+reproducing the old broken step again changes the immediately following export time.
 
 ## 4. Asset growth is the cost that will actually rise
 
