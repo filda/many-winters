@@ -239,6 +239,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
             AutoTeachNearbyPeople(currentTick);
             LearnWhatIsInHand();
+            ShareWhatTheyKnow(currentTick);
             DiscoverByFiddling(currentTick);
             AdvanceAffections();
             StartFamilies(currentTick);
@@ -403,6 +404,80 @@ public sealed class WorldState(WorldConfiguration configuration)
         return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
     }
 
+    // What people standing together say to each other about the stuff of the world (see
+    // Beliefs). Talk, not instruction: nobody needs to know how to teach to mention that a
+    // stone shatters, which is why this does not go through TeachCommand and why understanding
+    // can spread through a band before anyone has learned to teach at all.
+    //
+    // What is passed on is only what the teller would act on themselves, and it lands as
+    // hearsay - held less firmly than what the listener could have found out by handling it.
+    // So one mention is talk and two are conviction, and somebody who then handles the stuff
+    // settles the matter for themselves. That is the seam distortion will run along: today the
+    // account is always true, and the listener's only doubt is how often they have heard it.
+    private void ShareWhatTheyKnow(long currentTick)
+    {
+        var rules = Configuration.Rules;
+
+        foreach (var teller in _people)
+        {
+            if (!teller.IsAlive)
+            {
+                continue;
+            }
+
+            foreach (var listener in _people)
+            {
+                if (ReferenceEquals(listener, teller)
+                    || !listener.IsAlive
+                    || !IsWithinReach(teller.Position, listener.Position))
+                {
+                    continue;
+                }
+
+                MentionSomething(teller, listener, rules, currentTick);
+            }
+        }
+    }
+
+    // One thing per pair per tick, as casual teaching passes at most one technique: a
+    // conversation, not a lecture.
+    private static void MentionSomething(Person teller, Person listener, SimulationRules rules, long currentTick)
+    {
+        // Ordered, because a dictionary's own order is nobody's promise and this has to replay
+        // the same way twice (see AutoTeachNearbyPeople).
+        foreach (var held in teller.Beliefs.Held.OrderBy(entry => entry.Key.Material.Value, StringComparer.Ordinal).ThenBy(entry => entry.Key.Property))
+        {
+            var (material, property) = held.Key;
+            if (!teller.Beliefs.IsFirm(material, property)
+                || listener.Beliefs.ConfidenceIn(material, property) >= teller.Beliefs.ConfidenceIn(material, property))
+            {
+                continue;
+            }
+
+            if (!PassesBeliefSharingRoll(teller, listener, material, property, currentTick, rules.BeliefSharingChancePerTick))
+            {
+                continue;
+            }
+
+            listener.Beliefs.Learn(material, property, held.Value.Value, rules.HearsayConfidence);
+            return;
+        }
+    }
+
+    // Deterministic from the pair, what is being said and the tick, as every other roll is.
+    private static bool PassesBeliefSharingRoll(Person teller, Person listener, MaterialId material, MaterialProperty property, long currentTick, float chance)
+    {
+        var mixed = unchecked((uint)(teller.Id.Seed * 73856093)
+                              ^ (uint)(listener.Id.Seed * 19349663)
+                              ^ (uint)(StableStringHash(material.Value) * 83492791)
+                              ^ (uint)((int)property * 2654435761u)
+                              ^ ((uint)currentTick * 40503u));
+
+        // Stryker disable once Equality: NextDouble() returning exactly the chance has
+        // probability zero, so < and <= are the same roll
+        return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
+    }
+
     // Handling a thing teaches what it is like (see Beliefs). Nobody is told that grass is
     // fibrous; they carry it about and come to know. A person's understanding of the world is
     // therefore the sum of what they have actually had in their hands, which is why a band that
@@ -427,10 +502,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
                 // Learned true: nothing distorts a belief yet, and what is noticed first-hand
                 // would be the last thing to (see Beliefs).
-                foreach (var (property, value) in PropertiesOf(actual))
-                {
-                    person.Beliefs.Learn(material, property, value, gained);
-                }
+                person.Beliefs.LearnAll(actual, gained);
             }
         }
     }
@@ -453,16 +525,6 @@ public sealed class WorldState(WorldConfiguration configuration)
         Assembly.Joined joined => PartMaterialsOf(joined.Left).Concat(PartMaterialsOf(joined.Right)),
         _ => [],
     };
-
-    private static IEnumerable<(MaterialProperty Property, float Value)> PropertiesOf(MaterialDefinition material)
-    {
-        yield return (MaterialProperty.Density, material.Density);
-        yield return (MaterialProperty.Hardness, material.Hardness);
-        yield return (MaterialProperty.Toughness, material.Toughness);
-        yield return (MaterialProperty.Flexibility, material.Flexibility);
-        yield return (MaterialProperty.Elasticity, material.Elasticity);
-        yield return (MaterialProperty.Fibrousness, material.Fibrousness);
-    }
 
     // Idle hands turning something over, and now and then working out how it is done (see
     // docs/materials-and-crafting-architecture.md section 7, "idle experimentation"). This is
@@ -549,7 +611,9 @@ public sealed class WorldState(WorldConfiguration configuration)
             : null;
     }
 
-    private static BindTarget TargetAt(IReadOnlyList<ItemKindId> stock, IReadOnlyList<Assembly> worked, int index) =>
+    // Concrete List rather than the interface: the caller has one, and indexing through
+    // IReadOnlyList costs an interface dispatch per pick (CA1859).
+    private static BindTarget TargetAt(List<ItemKindId> stock, IReadOnlyList<Assembly> worked, int index) =>
         index < stock.Count
             ? new BindTarget.Stock(stock[index])
             : new BindTarget.Worked(worked[index - stock.Count]);

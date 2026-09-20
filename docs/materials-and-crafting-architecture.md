@@ -179,10 +179,33 @@ the player may direct an attempt on anything. Aim, not just speed, is what direc
 buys. The workbench likewise describes a substance as the *selected person* believes it
 to be, so a material nobody has handled says nothing.
 
-Still open in 4c: belief transmission (they do not yet ride `TeachCommand` or the
-casual pass, which section 7 claims they would "for free" - they will not, since those
-pass `TechniqueId`s), negative beliefs ("this does not work"), distortion itself, and
-pattern recognition. Also still open: per-assembly
+Step 4c-7 (2026-09-20): beliefs now spread two more ways, which between them close
+section 7's "How the two paths differ" table.
+
+**Telling.** People standing together mention what substances are like
+(`WorldState.ShareWhatTheyKnow`). Talk rather than instruction: it does *not* go through
+`TeachCommand` and needs no teaching skill, so understanding spreads through a band
+before anyone has learned to teach. Section 7 assumed property knowledge would ride the
+technique channel "for free"; it does not, since that channel carries `TechniqueId`s.
+What is passed is only what the teller would act on themselves, and it lands as
+**hearsay** (`SimulationRules.HearsayConfidence`) - held less firmly than what the
+listener could have found out by handling it. One mention is talk, two are conviction,
+and handling the stuff settles it. That is the seam distortion will run along.
+
+**Trying.** A directed attempt teaches the properties of everything it had hands on -
+both things joined and the cordage - at once and firmly, whether or not it came off
+(`WorkAttempt.TeachesWhatItIs`). This is the *reach* the player buys: somebody can be
+sent to try a substance the whole band understands nothing about and come back
+understanding it, where idle hands only ever turn over the familiar.
+
+It also makes **negative knowledge** fall out rather than needing a notion of its own:
+section 7 wanted "attempting Bind with something non-fibrous teaches this does not
+work", and now a spoiled attempt teaches the very properties that explain why - after
+which neither the person nor the idle pass reaches for that stuff again. A mistaken
+account can equally put somebody off trying, because the same belief can be wrong.
+
+Still open in 4c: distortion itself (nothing writes a false belief yet) and pattern
+recognition. Also still open: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked

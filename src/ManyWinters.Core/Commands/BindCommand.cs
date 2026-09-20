@@ -73,6 +73,12 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
         var binding = BestBinding(world)!;
         Person.Inventory.RemoveAssembly(binding);
 
+        // Everything they had their hands on, whether or not the lashing held.
+        foreach (var material in MaterialsWorked(world, binding))
+        {
+            WorkAttempt.TeachesWhatItIs(world, Person, material);
+        }
+
         if (WorkAttempt.Succeeds(Person, Skill, Verb, world.Clock.CurrentTick))
         {
             var left = TakeFromPack(Left, world);
@@ -98,6 +104,20 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
 
         return lashing * binding.Durability(world.Configuration.MaterialCatalog) * WorkAttempt.QualityFor(Person, Skill);
     }
+
+    // Both things being joined and the cordage doing the joining.
+    private IEnumerable<MaterialId> MaterialsWorked(WorldState world, Assembly binding) =>
+        new[] { Left, Right }
+            .Select(target => MaterialOf(world, target))
+            .OfType<MaterialId>()
+            .Concat(binding is Assembly.Part part ? [part.Material] : Array.Empty<MaterialId>());
+
+    private static MaterialId? MaterialOf(WorldState world, BindTarget target) => target switch
+    {
+        BindTarget.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
+        BindTarget.Worked { Thing: Assembly.Part part } => part.Material,
+        _ => null,
+    };
 
     // The soundest cordage in the pack, so a person who has made a better cord uses it without
     // being told to. Anything the content says cannot lash is not cordage at all.

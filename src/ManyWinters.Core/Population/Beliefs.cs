@@ -31,9 +31,28 @@ public sealed class Beliefs
         _held[key] = new Belief(value, Math.Clamp(confidence + confidenceGained, 0f, 1f));
     }
 
+    // Everything there is to notice about one substance at once - what having it in your hands
+    // teaches, whether that is carrying it about or working it.
+    public void LearnAll(MaterialDefinition material, float confidenceGained)
+    {
+        Learn(material.Id, MaterialProperty.Density, material.Density, confidenceGained);
+        Learn(material.Id, MaterialProperty.Hardness, material.Hardness, confidenceGained);
+        Learn(material.Id, MaterialProperty.Toughness, material.Toughness, confidenceGained);
+        Learn(material.Id, MaterialProperty.Flexibility, material.Flexibility, confidenceGained);
+        Learn(material.Id, MaterialProperty.Elasticity, material.Elasticity, confidenceGained);
+        Learn(material.Id, MaterialProperty.Fibrousness, material.Fibrousness, confidenceGained);
+    }
+
     // Restoring a saved belief, which is not the same as noticing it again (see Skills.Restore).
     public void Restore(MaterialId material, MaterialProperty property, float value, float confidence) =>
         _held[(material, property)] = new Belief(value, confidence);
+
+    // Firm enough that this person would act on it, and so firm enough to pass on as fact.
+    public bool IsFirm(MaterialId material, MaterialProperty property) =>
+        ConfidenceIn(material, property) >= FirmEnoughToAct;
+
+    public float ConfidenceIn(MaterialId material, MaterialProperty property) =>
+        _held.TryGetValue((material, property), out var belief) ? belief.Confidence : 0f;
 
     public bool HoldsAnythingAbout(MaterialId material) =>
         _held.Any(entry => entry.Key.Material == material && entry.Value.Confidence >= FirmEnoughToAct);

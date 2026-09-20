@@ -59,6 +59,12 @@ public sealed record TwistCommand(Person Person, ItemKindId Item) : ICommand
         var transition = Transition(world)!;
         var definition = world.Configuration.ItemCatalog.Get(Item);
 
+        // Whatever comes of it, they learn what the stuff is: they had it in their hands and
+        // worked it, and a handful spoiled teaches as much as one twisted well (see
+        // Beliefs, SimulationRules.UnderstandingFromWorkingIt). This is how a player reaches
+        // past what their band already understands.
+        WorkAttempt.TeachesWhatItIs(world, Person, definition.Material);
+
         // Spent either way: a handful mangled in the trying is gone as surely as one twisted
         // well. Practice is earned either way too - a spoiled attempt still taught the hands
         // something.

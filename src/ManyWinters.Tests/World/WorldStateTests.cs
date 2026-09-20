@@ -840,14 +840,18 @@ public class WorldStateTests
     public void AutoTeachNearbyPeopleSpreadsGraduallyNotInstantlyToEveryNearbyStudentAtOnce()
     {
         var world = TestCatalogs.CreateWorld();
-        var teacher = world.SpawnPerson("Teacher", new Position(0, 0));
+
+        // Pinned ids, because the casual teaching roll runs on them (see
+        // WorldState.PassesCasualTeachingRoll). With random ones this asserts a probabilistic
+        // outcome against a fresh draw every run, and it did occasionally fail on one.
+        var teacher = world.SpawnPerson(TestIds.Person(1), "Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
 
         var students = new List<Person>();
         for (var i = 0; i < 20; i++)
         {
-            students.Add(world.SpawnPerson($"Student{i}", new Position(0, 0)));
+            students.Add(world.SpawnPerson(TestIds.Person(i + 2), $"Student{i}", new Position(0, 0)));
         }
 
         world.Advance(1);

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
@@ -21,6 +22,19 @@ public static class WorkAttempt
     private const int PracticesForMastery = 50;
 
     private static readonly float MasteryLevel = Skills.LevelAfter(PracticesForMastery);
+
+    // Working a thing is how somebody comes to know it, whether or not the attempt came off:
+    // they had it in their hands and saw what it did, and a spoiled try says as much as a good
+    // one (see Beliefs, SimulationRules.UnderstandingFromWorkingIt). This is the *reach* a
+    // player buys by directing an attempt - somebody can be sent to try a substance the whole
+    // band understands nothing about, and they come back understanding it.
+    public static void TeachesWhatItIs(WorldState world, Person person, MaterialId material)
+    {
+        if (world.Configuration.MaterialCatalog.Find(material) is { } actual)
+        {
+            person.Beliefs.LearnAll(actual, world.Configuration.Rules.UnderstandingFromWorkingIt);
+        }
+    }
 
     public static float ChanceFor(Person person, SkillTypeId skill) => Practised(person, skill);
 

@@ -42,6 +42,26 @@ public sealed record SimulationRules
     // tick of one would turn a hair of floating-point drift into "they never quite learned it".
     public float MaterialUnderstandingPerTick { get; init; } = 1f / 70f;
 
+    // What working a thing teaches about it, against the slow understanding that merely carrying
+    // it brings. Certainty from a single go: they had it in their hands and saw what it did, and
+    // a spoiled attempt says as much as a good one. This is the *reach* a player buys by
+    // directing an attempt - somebody can be sent to try a substance nobody understands, and
+    // they come back understanding it (see docs/materials-and-crafting-architecture.md
+    // section 7, "How the two paths differ").
+    public float UnderstandingFromWorkingIt { get; } = 1f;
+
+    // The chance per tick that one person standing by another mentions what some substance is
+    // like (see WorldState.ShareWhatTheyKnow). Talk is cheap and constant, so this is far higher
+    // than a discovery roll: the slow part of knowing things is finding them out, not telling
+    // somebody.
+    public float BeliefSharingChancePerTick { get; init; } = 0.02f;
+
+    // How firmly a person holds what they were merely told, against the certainty that handling
+    // a thing themselves eventually brings. Under certainty on purpose: hearsay once is talk,
+    // hearsay twice - or once and then handling it - is something they will act on. It is also
+    // the seam distortion will run along, when an account can arrive wrong.
+    public float HearsayConfidence { get; } = 0.5f;
+
     // Hunger an average person dies at. Each person gets their own value around it (see
     // MaxHungerFor), so this is the middle of a range, not a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;
