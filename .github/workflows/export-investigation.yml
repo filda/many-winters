@@ -1,0 +1,457 @@
+name: Export Investigation
+
+on:
+  workflow_dispatch:
+
+env:
+  GODOT_RELEASE: 4.7.1-stable
+  GODOT_TEMPLATE_DIR: 4.7.1.stable.mono
+  GODOT_EDITOR_SETTINGS: editor_settings-4.7.tres
+  VERSION: 0.1.${{ github.run_number }}
+  TAG: v0.1.${{ github.run_number }}
+
+jobs:
+  windows-export-investigation:
+    name: windows (${{ matrix.runner_label }}, ${{ matrix.variant_label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            runner_label: latest
+            variant_label: control
+            diagnostic_warmup: "false"
+          - runner: windows-latest
+            runner_label: latest
+            variant_label: broken-warmup
+            diagnostic_warmup: "true"
+          - runner: windows-2022
+            runner_label: 2022
+            variant_label: control
+            diagnostic_warmup: "false"
+    env:
+      EXPORT_PRESET: Of Folks and Many Winters
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Runner diagnostics
+        run: |
+          $ErrorActionPreference = "Stop"
+          "ImageOS=$env:ImageOS"
+          "ImageVersion=$env:ImageVersion"
+          Get-ComputerInfo |
+            Select-Object WindowsProductName, WindowsVersion, OsBuildNumber, CsProcessors, CsNumberOfLogicalProcessors, CsTotalPhysicalMemory
+          if (Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue) {
+            Get-MpComputerStatus |
+              Select-Object AMServiceEnabled, AntivirusEnabled, RealTimeProtectionEnabled, IoavProtectionEnabled
+          }
+          dotnet --info
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: Cache Godot editor and export templates
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            tools/godot
+            ~/AppData/Roaming/Godot/export_templates
+          key: godot-${{ env.GODOT_RELEASE }}-mono-win64-v1
+
+      - name: Download Godot editor and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_RELEASE"
+          New-Item -ItemType Directory -Force tools/godot | Out-Null
+
+          Invoke-WebRequest "$base/Godot_v${env:GODOT_RELEASE}_mono_win64.zip" -OutFile godot.zip
+          Expand-Archive godot.zip -DestinationPath tools/godot
+
+          Invoke-WebRequest "$base/Godot_v${env:GODOT_RELEASE}_mono_export_templates.tpz" -OutFile templates.zip
+          Expand-Archive templates.zip -DestinationPath templates
+          $dest = "$env:APPDATA\Godot\export_templates\$env:GODOT_TEMPLATE_DIR"
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          Move-Item templates/templates/* $dest
+
+          Get-ChildItem $dest -File | Where-Object {
+            $_.Name -notlike "windows_release_x86_64*" -and $_.Name -notin @("version.txt", "icudt_godot.dat")
+          } | Remove-Item -Force
+          Get-ChildItem $dest -File | ForEach-Object { "kept: {0} ({1:N0} MB)" -f $_.Name, ($_.Length / 1MB) }
+
+      - name: Configure rcedit
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force tools | Out-Null
+          Invoke-WebRequest "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile tools/rcedit.exe
+          $rcedit = (Resolve-Path tools/rcedit.exe).Path -replace '\\', '/'
+          New-Item -ItemType Directory -Force "$env:APPDATA\Godot" | Out-Null
+          $settings = @"
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/windows/rcedit = "$rcedit"
+          "@
+          Set-Content "$env:APPDATA\Godot\$env:GODOT_EDITOR_SETTINGS" $settings -Encoding utf8
+
+      - name: Stamp version
+        run: |
+          $ErrorActionPreference = "Stop"
+          $v = $env:VERSION
+          $presets = "src/ManyWinters.Godot/export_presets.cfg"
+          $project = "src/ManyWinters.Godot/project.godot"
+          $name = "Of Folks and Many Winters"
+
+          (Get-Content $presets -Raw) `
+            -replace 'application/file_version=""', "application/file_version=`"$v.0`"" `
+            -replace 'application/product_version=""', "application/product_version=`"$v.0`"" `
+            -replace 'application/product_name=""', "application/product_name=`"$name`"" `
+            -replace 'application/file_description=""', "application/file_description=`"$name`"" `
+            | Set-Content $presets -NoNewline
+
+          (Get-Content $project -Raw) `
+            -replace 'config/name="ManyWinters Godot"', "config/name=`"ManyWinters Godot`"`nconfig/version=`"$v`"" `
+            | Set-Content $project -NoNewline
+
+      - name: Locate Godot
+        run: |
+          $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64_console.exe" |
+            Select-Object -First 1).FullName
+          if (-not $godot) { throw "Godot console binary not found under tools/godot" }
+          "GODOT=$godot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore editor plugins
+        run: |
+          & $env:GODOT --headless --path src/ManyWinters.Godot -s plug.gd install
+          "gd-plug exit code: $LASTEXITCODE"
+          if (-not (Test-Path src/ManyWinters.Godot/addons/beckett/plugin.cfg)) {
+            throw "gd-plug did not install Beckett into src/ManyWinters.Godot/addons"
+          }
+          exit 0
+
+      - name: Import assets
+        run: |
+          & $env:GODOT --headless --path src/ManyWinters.Godot --import
+          "import exit code: $LASTEXITCODE"
+          exit 0
+
+      - name: Broken diagnostic publish warm-up
+        if: matrix.diagnostic_warmup == 'true'
+        run: |
+          $ErrorActionPreference = "Continue"
+          $root = (Get-Location).Path
+          $broken = Join-Path $root "build\diagnostic-broken-obj"
+          $baseIntermediate = "$broken\"
+          $log = Join-Path $root "diagnostic-publish.log"
+          $binlog = Join-Path $root "diagnostic-publish.binlog"
+          New-Item -ItemType Directory -Force $broken | Out-Null
+
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          & dotnet publish src/ManyWinters.Godot/ManyWinters.Godot.csproj `
+            -c ExportRelease -r win-x64 `
+            "-p:BaseIntermediateOutputPath=$baseIntermediate" `
+            "-bl:$binlog" *> $log
+          $code = $LASTEXITCODE
+          "diagnostic publish exit code: $code after {0:N1}s" -f $sw.Elapsed.TotalSeconds
+          if (Test-Path $log) { Get-Content $log -Tail 120 }
+          if ($code -eq 0) {
+            throw "Diagnostic publish unexpectedly succeeded; the warm-up experiment is no longer reproducing a failure."
+          }
+          exit 0
+
+      - name: Export Windows build
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = (Get-Location).Path
+          New-Item -ItemType Directory -Force build/ManyWinters | Out-Null
+          $out = Join-Path (Resolve-Path build/ManyWinters).Path "ManyWinters.exe"
+
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $godotArgs = @("--headless", "--path", "$root\src\ManyWinters.Godot",
+                         "--export-release", $env:EXPORT_PRESET, $out) |
+            ForEach-Object { '"' + $_ + '"' }
+          $p = Start-Process -FilePath $env:GODOT -NoNewWindow -Wait -PassThru -WorkingDirectory $root `
+            -ArgumentList $godotArgs `
+            -RedirectStandardOutput "$root\export.out.log" -RedirectStandardError "$root\export.err.log"
+          "godot exit code: $($p.ExitCode) after {0:N0}s" -f $sw.Elapsed.TotalSeconds
+          Get-Content "$root\export.out.log" -Tail 20
+          Get-Content "$root\export.err.log"
+
+          if (-not (Test-Path $out)) { throw "Export produced no executable" }
+          $data = Get-ChildItem build/ManyWinters -Directory -Filter "data_*" | Select-Object -First 1
+          if (-not $data) { throw "No data_* folder: the .NET half of the export never ran" }
+          if (-not (Test-Path (Join-Path $data.FullName "ManyWinters.Godot.dll"))) {
+            throw "Export is missing ManyWinters.Godot.dll"
+          }
+          $errs = Select-String -Path "$root\export.out.log", "$root\export.err.log" -Pattern "^ERROR:"
+          if ($errs) {
+            $errs | ForEach-Object { $_.Line }
+            throw "Godot logged $($errs.Count) error(s) during export"
+          }
+
+          $files = Get-ChildItem build/ManyWinters -Recurse -File
+          "exported files: $($files.Count)"
+          "exported size: {0:N1} MB" -f (($files | Measure-Object -Property Length -Sum).Sum / 1MB)
+          $files | Sort-Object Length -Descending | Select-Object -First 10 |
+            ForEach-Object { "largest: {0} ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) }
+          "Of Folks and Many Winters $env:VERSION",
+          "build $env:TAG",
+          "commit ${{ github.sha }}" | Set-Content build/ManyWinters/version.txt
+
+      - name: Probe direct dotnet publish
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = (Get-Location).Path
+          $publishDir = Join-Path $root "build\publish-probe"
+          $log = Join-Path $root "publish-probe.log"
+          Remove-Item $publishDir -Recurse -Force -ErrorAction SilentlyContinue
+
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          & dotnet publish src/ManyWinters.Godot/ManyWinters.Godot.csproj `
+            -c ExportRelease -r win-x64 --self-contained true `
+            -o $publishDir *> $log
+          $code = $LASTEXITCODE
+          "publish probe exit code: $code after {0:N1}s" -f $sw.Elapsed.TotalSeconds
+          if (Test-Path $log) { Get-Content $log -Tail 120 }
+          if ($code -ne 0) { throw "Direct dotnet publish probe failed" }
+
+          $files = Get-ChildItem $publishDir -Recurse -File
+          "publish probe files: $($files.Count)"
+          "publish probe size: {0:N1} MB" -f (($files | Measure-Object -Property Length -Sum).Sum / 1MB)
+
+      - name: Smoke-test the exported build
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = (Get-Location).Path
+          $game = "$root\build\ManyWinters"
+          $smokeArgs = @("--headless", "--quit-after", "120") | ForEach-Object { '"' + $_ + '"' }
+          $p = Start-Process -FilePath "$game\ManyWinters.console.exe" -NoNewWindow -Wait -PassThru `
+            -WorkingDirectory $game -ArgumentList $smokeArgs `
+            -RedirectStandardOutput "$root\smoke.out.log" -RedirectStandardError "$root\smoke.err.log"
+          "smoke exit code: $($p.ExitCode)"
+          Get-Content "$root\smoke.out.log" -Tail 20
+          Get-Content "$root\smoke.err.log"
+          if ($p.ExitCode -ne 0) { throw "The exported build exited with $($p.ExitCode)" }
+          $errs = Select-String -Path "$root\smoke.out.log", "$root\smoke.err.log" `
+            -Pattern "^ERROR:|Unhandled exception"
+          if ($errs) {
+            $errs | ForEach-Object { $_.Line }
+            throw "The exported build logged $($errs.Count) error(s) on startup"
+          }
+
+      - name: Package zip
+        run: |
+          $ErrorActionPreference = "Stop"
+          7z a -tzip -mx=7 ManyWinters-win64.zip .\build\ManyWinters
+          "zip size: {0:N0} MB" -f ((Get-Item ManyWinters-win64.zip).Length / 1MB)
+
+      - name: Upload investigation artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: export-investigation-${{ matrix.runner_label }}-${{ matrix.variant_label }}
+          path: |
+            ManyWinters-win64.zip
+            export.out.log
+            export.err.log
+            smoke.out.log
+            smoke.err.log
+            publish-probe.log
+            diagnostic-publish.log
+            diagnostic-publish.binlog
+
+  linux-export-control:
+    name: linux control
+    runs-on: ubuntu-latest
+    env:
+      EXPORT_PRESET: Of Folks and Many Winters (Linux)
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Runner diagnostics
+        run: |
+          uname -a
+          cat /etc/os-release
+          printf 'ImageOS=%s\nImageVersion=%s\n' "$ImageOS" "$ImageVersion"
+          dotnet --info
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: Cache Godot editor and export templates
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            tools/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_RELEASE }}-mono-linux64-v1
+
+      - name: Download Godot editor and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/$GODOT_RELEASE"
+          mkdir -p tools/godot
+
+          curl -sL "$base/Godot_v${GODOT_RELEASE}_mono_linux_x86_64.zip" -o godot.zip
+          unzip -q godot.zip -d tools/godot
+
+          curl -sL "$base/Godot_v${GODOT_RELEASE}_mono_export_templates.tpz" -o templates.zip
+          unzip -q templates.zip -d templates
+          dest="$HOME/.local/share/godot/export_templates/$GODOT_TEMPLATE_DIR"
+          mkdir -p "$dest"
+          mv templates/templates/* "$dest"
+
+          find "$dest" -maxdepth 1 -type f \
+            ! -name "linux_release.x86_64" ! -name "version.txt" ! -name "icudt_godot.dat" \
+            -delete
+          find "$dest" -maxdepth 1 -type f -printf "kept: %f (%s bytes)\n"
+
+      - name: Stamp version
+        run: |
+          set -euo pipefail
+          v="$VERSION"
+          presets="src/ManyWinters.Godot/export_presets.cfg"
+          project="src/ManyWinters.Godot/project.godot"
+          name="Of Folks and Many Winters"
+
+          sed -i \
+            -e "s/application\/file_version=\"\"/application\/file_version=\"$v.0\"/" \
+            -e "s/application\/product_version=\"\"/application\/product_version=\"$v.0\"/" \
+            -e "s/application\/product_name=\"\"/application\/product_name=\"$name\"/" \
+            -e "s/application\/file_description=\"\"/application\/file_description=\"$name\"/" \
+            "$presets"
+          sed -i "s/config\/name=\"ManyWinters Godot\"/config\/name=\"ManyWinters Godot\"\nconfig\/version=\"$v\"/" "$project"
+
+      - name: Locate Godot
+        run: |
+          godot=$(find tools/godot -type f -name "Godot_v*_mono_linux.x86_64" | head -n1)
+          if [ -z "$godot" ]; then echo "Godot Linux binary not found under tools/godot" >&2; exit 1; fi
+          chmod +x "$godot"
+          echo "GODOT=$godot" >> "$GITHUB_ENV"
+
+      - name: Restore editor plugins
+        run: |
+          "$GODOT" --headless --path src/ManyWinters.Godot -s plug.gd install || true
+          if [ ! -f src/ManyWinters.Godot/addons/beckett/plugin.cfg ]; then
+            echo "gd-plug did not install Beckett into src/ManyWinters.Godot/addons" >&2
+            exit 1
+          fi
+
+      - name: Import assets
+        run: |
+          "$GODOT" --headless --path src/ManyWinters.Godot --import || true
+
+      - name: Export Linux build
+        run: |
+          set -euo pipefail
+          root="$PWD"
+          mkdir -p build/ManyWinters-linux
+          out="$root/build/ManyWinters-linux/ManyWinters"
+
+          sw_start=$(date +%s)
+          "$GODOT" --headless --path "$root/src/ManyWinters.Godot" \
+            --export-release "$EXPORT_PRESET" "$out" \
+            > "$root/export.out.log" 2> "$root/export.err.log" || true
+          echo "godot exit after $(( $(date +%s) - sw_start ))s"
+          tail -n 20 "$root/export.out.log"
+          cat "$root/export.err.log"
+
+          if [ ! -f "$out" ]; then echo "Export produced no executable" >&2; exit 1; fi
+          data=$(find build/ManyWinters-linux -maxdepth 1 -type d -name "data_*" | head -n1)
+          if [ -z "$data" ]; then echo "No data_* folder: the .NET half of the export never ran" >&2; exit 1; fi
+          if [ ! -f "$data/ManyWinters.Godot.dll" ]; then
+            echo "Export is missing ManyWinters.Godot.dll" >&2; exit 1
+          fi
+          if grep -H "^ERROR:" "$root/export.out.log" "$root/export.err.log"; then
+            echo "Godot logged error(s) during export" >&2; exit 1
+          fi
+
+          files=$(find build/ManyWinters-linux -type f | wc -l)
+          size_mb=$(du -sm build/ManyWinters-linux | cut -f1)
+          echo "exported files: $files"
+          echo "exported size: ${size_mb} MB"
+          find build/ManyWinters-linux -type f -printf "%s %p\n" | sort -nr | head -n 10
+          printf "Of Folks and Many Winters %s\nbuild %s\ncommit %s\n" \
+            "$VERSION" "$TAG" "${{ github.sha }}" > build/ManyWinters-linux/version.txt
+
+      - name: Probe direct dotnet publish
+        run: |
+          set -euo pipefail
+          root="$PWD"
+          publish_dir="$root/build/publish-probe"
+          log="$root/publish-probe.log"
+          rm -rf "$publish_dir"
+
+          sw_start=$(date +%s)
+          dotnet publish src/ManyWinters.Godot/ManyWinters.Godot.csproj \
+            -c ExportRelease -r linux-x64 --self-contained true \
+            -o "$publish_dir" > "$log" 2>&1
+          echo "publish probe exit after $(( $(date +%s) - sw_start ))s"
+          tail -n 120 "$log"
+
+          files=$(find "$publish_dir" -type f | wc -l)
+          size_mb=$(du -sm "$publish_dir" | cut -f1)
+          echo "publish probe files: $files"
+          echo "publish probe size: ${size_mb} MB"
+
+      - name: Smoke-test the exported build
+        run: |
+          set -euo pipefail
+          root="$PWD"
+          game="$root/build/ManyWinters-linux"
+          chmod +x "$game/ManyWinters"
+          set +e
+          "$game/ManyWinters" --headless --quit-after 120 \
+            > "$root/smoke.out.log" 2> "$root/smoke.err.log"
+          code=$?
+          set -e
+          echo "smoke exit code: $code"
+          tail -n 20 "$root/smoke.out.log"
+          cat "$root/smoke.err.log"
+          if [ "$code" -ne 0 ]; then echo "The exported build exited with $code" >&2; exit 1; fi
+          if grep -HE "^ERROR:|Unhandled exception" "$root/smoke.out.log" "$root/smoke.err.log"; then
+            echo "The exported build logged error(s) on startup" >&2; exit 1
+          fi
+
+      - name: Package zip
+        run: |
+          set -euo pipefail
+          cd build
+          zip -rq -9 ../ManyWinters-linux64.zip ManyWinters-linux
+          cd ..
+          echo "zip size: $(du -m ManyWinters-linux64.zip | cut -f1) MB"
+
+      - name: Upload investigation artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: export-investigation-linux-control
+          path: |
+            ManyWinters-linux64.zip
+            export.out.log
+            export.err.log
+            smoke.out.log
+            smoke.err.log
+            publish-probe.log
