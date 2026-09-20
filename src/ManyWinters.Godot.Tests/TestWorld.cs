@@ -34,6 +34,7 @@ internal static class TestWorld
     internal const int GrassPerCord = 3;
     internal static readonly FormId Cord = new("cord");
     internal static readonly TechniqueId BasicTwisting = new("basic_twisting");
+    internal static readonly TechniqueId BasicBinding = new("basic_binding");
 
     internal const int AxeInputAmount = 5;
     internal const int StorageHutInputAmount = 20;
@@ -56,7 +57,7 @@ internal static class TestWorld
             new FormDefinition(new FormId("wedge"), "Wedge", EdgeSharpness: 1f),
             new FormDefinition(new FormId("shelter"), "Shelter"),
             new FormDefinition(new FormId("fibre"), "Fibre"),
-            new FormDefinition(Cord, "Cord"),
+            new FormDefinition(Cord, "Cord", LashingStrength: 1f),
         ]);
 
         var items = new ItemCatalog(
@@ -82,6 +83,7 @@ internal static class TestWorld
                 new SkillDefinition(new SkillTypeId("burial"), "Burial", new TechniqueId("basic_burial"), new TechniqueId("efficient_burial")),
                 new SkillDefinition(Teaching, "Teaching", BasicTeaching, new TechniqueId("efficient_teaching")),
                 new SkillDefinition(TwistCommand.Skill, "Twisting", BasicTwisting, new TechniqueId("efficient_twisting")),
+                new SkillDefinition(BindCommand.Skill, "Binding", BasicBinding, new TechniqueId("efficient_binding")),
             ]),
             new RecipeCatalog([
                 new RecipeDefinition(Axe, Wood, AxeInputAmount),

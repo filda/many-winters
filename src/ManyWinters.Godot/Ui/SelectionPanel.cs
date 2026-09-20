@@ -38,7 +38,7 @@ internal partial class SelectionPanel : PanelContainer
     private Label _task = null!;
     private VBoxContainer _meters = null!;
     private ActionList _actions = null!;
-    private Label _carried = null!;
+    private Button _carried = null!;
     private Label _death = null!;
     private VBoxContainer _knowledge = null!;
     private VBoxContainer _personBody = null!;
@@ -50,6 +50,9 @@ internal partial class SelectionPanel : PanelContainer
     // Which action the player pressed. Main runs it: the panel knows what an offer is, not what
     // executing one means for the rest of the game.
     internal event Action<ActionOffer>? ActionInvoked;
+
+    // The player asked to see the pack itself. Main opens the workshop over it.
+    internal event Action? PackRequested;
 
     public override void _Ready()
     {
@@ -118,7 +121,12 @@ internal partial class SelectionPanel : PanelContainer
         _meters = new VBoxContainer();
         _personBody.AddChild(_meters);
 
-        _carried = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
+        // A button, not a line of text: the pack is the way into the workshop, where what is in
+        // it can be worked (see WorkshopPanel). Left-aligned and quiet, so it still reads as part
+        // of the card rather than as a control shouting to be pressed.
+        _carried = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
+        _carried.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
+        _carried.Pressed += () => PackRequested?.Invoke();
         _personBody.AddChild(_carried);
 
         _task = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);

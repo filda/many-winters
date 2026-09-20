@@ -30,29 +30,16 @@ internal static class PersonActions
         }
 
         offers.AddRange(Crafts(world, person));
-        offers.AddRange(Twists(world, person));
         offers.AddRange(Drops(world, person));
 
         return offers;
     }
 
-    // Working a material with one's hands is an act on the person themselves, like making
-    // something out of the pack, so it belongs on their card. Offered only for what this person
-    // actually carries and what the stuff itself will take (MaterialAffordances.CanTwist read
-    // through the command), so the card never lists a way to ruin something that cannot be done.
-    //
-    // This is the plain first home for a verb; the workshop panel described in
-    // docs/materials-and-crafting-architecture.md section 7 is where the player will eventually
-    // try things on each other without being told in advance what works.
-    private static IEnumerable<ActionOffer> Twists(WorldState world, Person person) =>
-        person.Inventory.Counts.Keys
-            .Where(kind => world.Configuration.ItemCatalog.TransitionFor(kind, TwistCommand.Verb) is not null)
-            .OrderBy(kind => kind.Value, StringComparer.Ordinal)
-            .Select(kind => ActionOffer.For(
-                $"Twist {world.Configuration.ItemCatalog.Get(kind).DisplayName.ToLowerInvariant()}",
-                new TwistCommand(person, kind),
-                world,
-                TwistCommand.Skill));
+    // No line per verb here. Working what is in the pack is asked for at the workbench instead
+    // (WorkshopActions, opened from the pack line on the card), where the player picks the things
+    // and not the verb - a card that grew a "Twist grass" line would be telling them in advance
+    // what works, which is the thing the design is built to avoid (see
+    // docs/materials-and-crafting-architecture.md section 7).
 
     // Offered only to someone actually carrying something edible. An Eat button on an empty pack
     // is an instruction to go and find food, which is not what pressing it would do.

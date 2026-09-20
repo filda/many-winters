@@ -65,12 +65,39 @@ own material and form ("plant fibre cord"), which is section 8's fallback naming
 standing in until there are patterns worth recognising. It is offered on the person's
 own card, and directing it teaches it, exactly as pointing at a tree teaches gathering.
 
-Still open in 4c: `Bind` (the first combinative verb, and the first thing that will
-make a cord *useful* - until it lands, a cord is a thing a player can make and not yet
-spend), per-assembly identity (section 6 - deferred again because nothing reads a
-maker's name yet), and the workshop panel of section 7, which replaces the per-verb
-lines on the card with "pick one or two things and try it". Three things are knowingly
-unfinished:
+Step 4c-2 (2026-09-20): `Bind`, and the workshop panel that `Bind` forced - a card of
+flat buttons cannot express "this one with that one" without a line per pair, which
+would also hand the player the list of pairs that work.
+
+`BindCommand` takes two `BindTarget`s, either of which may be a unit of raw stock or a
+worked thing already carried, which is what makes depth need no special case: a bound
+thing is a thing, so it binds again. The cordage is not asked of the player - the
+simulation reaches for the soundest binding in the pack - and it is consumed, its
+weight passing into the joint (`Assembly.Joined.JointWeight`), so nothing is created or
+destroyed by tying a knot. What may serve as cordage is content's call, not the
+command's: `FormDefinition.LashingStrength` gates it and feeds the joint's strength
+along with the cord's own durability and the binder's practice.
+
+The panel (`WorkshopPanel` + the testable `WorkshopActions` beside it) opens from the
+pack line on the person's card, holds the clock exactly as the pause page does, and
+offers one button: "Try it". The number of things picked is the whole question - one is
+a reductive verb, two a combinative one - so the panel's shape does not grow as the verb
+vocabulary does, and nothing anywhere lists the verbs. A pick that leads nowhere comes
+back as no offer at all and the bench says only "Nothing comes of it."; a pick that is
+refused for a reason carries the world's own answer, as every other offer does. The
+card's per-verb "Twist grass" line from 4c-1 is gone, replaced by this.
+
+The save format changed with it: a bound object is recursive, so `AssemblySaveData`
+mirrors `Assembly`'s two cases as two nullable blocks. The flat shape 4c-1 shipped would
+have dropped a bound object silently on save.
+
+Still open in 4c: per-assembly identity (section 6 - deferred a third time, and now for
+a stated reason: an assembly is a value, so two that match in every part and joint are
+indistinguishable to anyone who could tell them apart, and identity only starts earning
+its keep the day a worked thing carries a maker or its own wear), and the whole
+discovery layer of section 7 - the verbs currently run deterministically, with no
+skill-rolled chance of failure, no idle experimentation and no beliefs. Three things
+are knowingly unfinished:
 
 - **A worked thing cannot be put down, stored or inherited yet.** Dropping, depositing,
   withdrawing and looting all still speak in counts, so the instance tier is reachable only

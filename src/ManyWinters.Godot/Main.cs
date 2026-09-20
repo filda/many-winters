@@ -45,6 +45,7 @@ public partial class Main : Node3D
     private PausePanel _pausePanel = null!;
     private HelpPanel _helpPanel = null!;
     private ChroniclePanel _chronicle = null!;
+    private WorkshopPanel _workshop = null!;
     private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
     private EndingAnnouncements _endingAnnouncements = new();
@@ -206,7 +207,7 @@ public partial class Main : Node3D
         // the player decides when the world moves on (at the start, a chance to look around before
         // hunger counts). A pause the player asked for (TogglePause) holds the clock the same way,
         // and so does the controls page - it is read instead of playing, not while playing.
-        if (_inscriptionOverlay.Visible || _pausePanel.Visible || _helpPanel.Visible)
+        if (_inscriptionOverlay.Visible || _pausePanel.Visible || _helpPanel.Visible || _workshop.Visible)
         {
             return;
         }
@@ -296,6 +297,7 @@ public partial class Main : Node3D
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
             _contextMenu.Close();
+            _workshop.Close();
             if (_helpPanel.Visible)
             {
                 _helpPanel.Dismiss();
@@ -627,10 +629,88 @@ public partial class Main : Node3D
         SetUpSelectionPanel(canvas);
         SetUpBandPanel(canvas);
         SetUpChronicle(canvas);
+        SetUpWorkshop(canvas);
         SetUpContextMenu(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
         SetUpHelpPanel(canvas);
+    }
+
+    // The workbench, opened from the pack line on the selected person's card. Like the pause
+    // page it holds the clock while it is up (see _Process): working a thing over is meant to be
+    // unhurried.
+    private void SetUpWorkshop(CanvasLayer canvas)
+    {
+        _workshop = new WorkshopPanel();
+        // Letting it go primes the tick accumulator, so the world starts again on the next frame
+        // rather than a full interval later - as dismissing the controls page does.
+        _workshop.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        _workshop.Attempted += OnWorkshopAttempt;
+        _workshop.PickChanged += RefreshWorkshopOffer;
+        canvas.AddChild(_workshop);
+    }
+
+    private void OpenWorkshop()
+    {
+        // Pressing the pack line again puts the workbench away: the way in is the way out.
+        if (_workshop.Visible)
+        {
+            _workshop.Close();
+            return;
+        }
+
+        if (_selectedPerson is not { } person)
+        {
+            return;
+        }
+
+        _workshop.Position = new Vector2(SelectionPanel.Margin, SelectionPanel.Margin);
+        _workshop.Open(WorkshopActions.Carried(_world, person));
+        RefreshWorkshopOffer();
+    }
+
+    // What the current pick would do, asked of the world rather than of the panel: the panel
+    // holds no world and no opinion about what works (see WorkshopActions).
+    private void RefreshWorkshopOffer()
+    {
+        if (_selectedPerson is not { } person)
+        {
+            return;
+        }
+
+        var offer = WorkshopActions.Attempt(_world, person, _workshop.Picked);
+        _workshop.Offer(offer, RefusalFor(offer));
+    }
+
+    // Nothing is said about a pick that leads nowhere until the player has picked something: an
+    // empty workbench that already says "nothing comes of it" is answering a question nobody
+    // asked.
+    private string? RefusalFor(ActionOffer? offer) => (offer, _workshop.Picked.Count) switch
+    {
+        (null, 0) => null,
+        (null, _) => "Nothing comes of it.",
+        ({ IsAvailable: false }, _) => ActionBlockerText.For(offer.Value),
+        _ => null,
+    };
+
+    private void OnWorkshopAttempt()
+    {
+        if (_selectedPerson is not { } person
+            || WorkshopActions.Attempt(_world, person, _workshop.Picked) is not { } offer)
+        {
+            return;
+        }
+
+        var before = person.Inventory.Assemblies.ToList();
+        Perform(person, offer);
+
+        var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
+        _workshop.Show(WorkshopActions.Carried(_world, person));
+        _workshop.ReportOutcome(made is null
+            ? "Nothing comes of it."
+            : $"It comes out {InspectorText.ForWorkedThing(made, _world.Configuration.MaterialCatalog, _world.Configuration.FormCatalog)}.");
+
+        RefreshWorkshopOffer();
     }
 
     private void SetUpBandPanel(CanvasLayer canvas)
@@ -787,11 +867,11 @@ public partial class Main : Node3D
     // takes their place on screen. The old band's dead and graves stay where they are.
     private void OnAnotherBandRequested()
     {
-        // Put away the old band's windows — the roster and selection are about dead people.
+        // Put away the old band's windows â€” the roster and selection are about dead people.
         _bandPanel.Visible = false;
         _selectionPanel.ClearSelection();
 
-        // The new band has not walked this land yet — fog clears around their new camp.
+        // The new band has not walked this land yet â€” fog clears around their new camp.
         _world.Exploration.Reset();
 
         // Clear selection: the old person is dead.
@@ -911,6 +991,7 @@ public partial class Main : Node3D
     {
         _selectionPanel = new SelectionPanel();
         _selectionPanel.ActionInvoked += OnActionInvoked;
+        _selectionPanel.PackRequested += OpenWorkshop;
         canvas.AddChild(_selectionPanel);
     }
 
