@@ -47,10 +47,15 @@ public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 
 public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 
-// One worked object out of the instance tier (see Inventory). Only the single-part case exists
-// so far, so this is flat; a joined assembly gets its own nesting when the combinative verbs
-// arrive to make one.
-public sealed record AssemblySaveData(MaterialId Material, FormId Form, float Quality, float Volume);
+// One worked object out of the instance tier (see Inventory), mirroring Assembly's two cases as
+// two nullable blocks - the same shape GrowthSaveData uses for "only some entities have one",
+// and the reason a whole bound object cannot fall out of a save silently: a case nobody wrote a
+// block for will not round-trip at all rather than round-tripping as half of itself.
+public sealed record AssemblySaveData(PartSaveData? Part, JointSaveData? Joint);
+
+public sealed record PartSaveData(MaterialId Material, FormId Form, float Quality, float Volume);
+
+public sealed record JointSaveData(float Strength, float Weight, AssemblySaveData Left, AssemblySaveData Right);
 
 // Nested rather than flattened onto EntitySaveData: only a Growable entity has one, and its
 // fields (IsAlive, DeathTick, CauseOfDeath, ColdStress) previously fell out of ResourceNodeSaveData

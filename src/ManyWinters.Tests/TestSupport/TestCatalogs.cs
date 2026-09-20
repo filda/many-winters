@@ -32,6 +32,7 @@ public static class TestCatalogs
     private static readonly SkillTypeId RootDigging = new("root_digging");
     public static readonly SkillTypeId Woodcutting = new("woodcutting");
     private static readonly SkillTypeId Twisting = new("twisting");
+    private static readonly SkillTypeId Binding = new("binding");
     private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
 
@@ -46,6 +47,7 @@ public static class TestCatalogs
     private static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
     public static readonly TechniqueId BasicWoodcutting = new("basic_woodcutting");
     public static readonly TechniqueId BasicTwisting = new("basic_twisting");
+    public static readonly TechniqueId BasicBinding = new("basic_binding");
     public static readonly TechniqueId BasicMining = new("basic_mining");
     private static readonly TechniqueId BasicBurial = new("basic_burial");
     public static readonly TechniqueId BasicEating = new("basic_eating");
@@ -56,6 +58,7 @@ public static class TestCatalogs
     private static readonly TechniqueId EfficientRootDigging = new("efficient_root_digging");
     public static readonly TechniqueId EfficientWoodcutting = new("efficient_woodcutting");
     private static readonly TechniqueId EfficientTwisting = new("efficient_twisting");
+    private static readonly TechniqueId EfficientBinding = new("efficient_binding");
     private static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
     public static readonly TechniqueId EfficientEating = new("efficient_eating");
@@ -69,7 +72,7 @@ public static class TestCatalogs
     private static readonly ItemKindId MushroomItem = new("mushroom");
     private static readonly ItemKindId PotatoItem = new("potato");
     public static readonly ItemKindId GrassItem = new("grass");
-    private static readonly ItemKindId StoneItem = new("stone");
+    public static readonly ItemKindId StoneItem = new("stone");
     private static readonly ItemKindId Basket = new("basket");
     private static readonly ItemKindId Bag = new("bag");
     public static readonly ItemKindId StorageHutItem = new("storage_hut");
@@ -87,7 +90,7 @@ public static class TestCatalogs
     private static readonly FormId Stick = new("stick");
     private static readonly FormId Lump = new("lump");
     private static readonly FormId Fibre = new("fibre");
-    private static readonly FormId Wedge = new("wedge");
+    public static readonly FormId Wedge = new("wedge");
     private static readonly FormId Vessel = new("vessel");
     private static readonly FormId Garment = new("garment");
     private static readonly FormId Shelter = new("shelter");
@@ -193,6 +196,7 @@ public static class TestCatalogs
         new SkillDefinition(RootDigging, "Root Digging", BasicRootDigging, EfficientRootDigging),
         new SkillDefinition(Woodcutting, "Woodcutting", BasicWoodcutting, EfficientWoodcutting, UsesChoppingScore: true),
         new SkillDefinition(Twisting, "Twisting", BasicTwisting, EfficientTwisting),
+        new SkillDefinition(Binding, "Binding", BasicBinding, EfficientBinding),
         new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
         new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),
@@ -211,6 +215,7 @@ public static class TestCatalogs
     // Mirrors Content/forms/{id}/{id}.json: only a wedge presents an edge, which is what keeps a
     // raw lump of the same stone from scoring as a tool (see ItemCatalog.ChoppingScoreFor).
     private const float WedgeEdgeSharpness = 1f;
+    private const float CordLashingStrength = 1f;
 
     private static FormCatalog CreateFormCatalog() => new(new[]
     {
@@ -222,7 +227,7 @@ public static class TestCatalogs
         new FormDefinition(Vessel, "Vessel"),
         new FormDefinition(Garment, "Garment"),
         new FormDefinition(Shelter, "Shelter"),
-        new FormDefinition(Cord, "Cord"),
+        new FormDefinition(Cord, "Cord", LashingStrength: CordLashingStrength),
     });
 
     private static MaterialCatalog CreateMaterialCatalog() => new(new[]

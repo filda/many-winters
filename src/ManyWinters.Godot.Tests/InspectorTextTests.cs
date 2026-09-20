@@ -355,4 +355,36 @@ public class InspectorTextTests
             "Wood x3, plant fibre cord",
             InspectorText.ForCarried(inventory, world.Configuration.ItemCatalog, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog));
     }
+
+    // Until a pattern catalogue can call a configuration "an axe", a bound thing still has to
+    // read as something (section 8's fallback naming).
+    [Fact]
+    public void ABoundThingIsNamedByWhatWasTiedToWhat()
+    {
+        var world = TestWorld.Create();
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, Quality: 0.5f, Volume: 15f);
+        var stick = new Assembly.Part(new MaterialId("wood"), new FormId("stick"), Quality: 1f, Volume: 2f);
+
+        Assert.Equal(
+            "lashed wood stick and plant fibre cord",
+            InspectorText.ForWorkedThing(
+                new Assembly.Joined(0.5f, 1f, stick, cord),
+                world.Configuration.MaterialCatalog,
+                world.Configuration.FormCatalog));
+    }
+
+    [Fact]
+    public void ABoundThingBoundAgainNamesTheWholeDepth()
+    {
+        var world = TestWorld.Create();
+        var stick = new Assembly.Part(new MaterialId("wood"), new FormId("stick"), Quality: 1f, Volume: 2f);
+        var inner = new Assembly.Joined(0.5f, 1f, stick, stick);
+
+        Assert.Equal(
+            "lashed lashed wood stick and wood stick and wood stick",
+            InspectorText.ForWorkedThing(
+                new Assembly.Joined(0.5f, 1f, inner, stick),
+                world.Configuration.MaterialCatalog,
+                world.Configuration.FormCatalog));
+    }
 }

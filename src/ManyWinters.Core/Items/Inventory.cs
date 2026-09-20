@@ -18,6 +18,13 @@ public sealed class Inventory
 
     public void AddAssembly(Assembly assembly) => _assemblies.Add(assembly);
 
+    // Takes one thing equal to this one, not this exact object: an assembly is a value, so two
+    // that match in every part and joint are the same thing to everyone who could tell them
+    // apart. That stops holding true the day a worked thing carries a maker or its own wear, and
+    // that is the day it needs an identity of its own (see
+    // docs/materials-and-crafting-architecture.md section 6).
+    public void RemoveAssembly(Assembly assembly) => _assemblies.Remove(assembly);
+
     public int Get(ItemKindId kind) => _counts.GetValueOrDefault(kind);
 
     public void Add(ItemKindId kind, int amount) => _counts[kind] = Get(kind) + amount;

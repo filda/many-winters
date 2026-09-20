@@ -106,22 +106,29 @@ internal static class InspectorText
     }
 
     // No name is authored for a worked thing, so one is made of what it is: the substance and
-    // the shape, "grass cord" (see docs/materials-and-crafting-architecture.md section 8). An
-    // assembly of several parts will want the pattern catalogue that section describes; one
-    // worked piece needs only its own two words.
-    internal static string ForWorkedThing(Assembly assembly, MaterialCatalog materials, FormCatalog forms)
+    // the shape for a single piece ("grass cord"), and what was tied to what for a bound one
+    // ("lashed stone wedge and wood stick"). This is the fallback half of
+    // docs/materials-and-crafting-architecture.md section 8 - the pattern catalogue that would
+    // recognise a configuration as "an axe" is a later thing, and until it exists a made object
+    // still has to be something the player can read off their card.
+    internal static string ForWorkedThing(Assembly assembly, MaterialCatalog materials, FormCatalog forms) => assembly switch
     {
-        if (assembly is not Assembly.Part part)
-        {
-            return "something made";
-        }
+        Assembly.Part part => ForPiece(part, materials, forms),
+        Assembly.Joined joined =>
+            $"lashed {ForWorkedThing(joined.Left, materials, forms)} and {ForWorkedThing(joined.Right, materials, forms)}",
+        _ => Unnameable,
+    };
 
+    private const string Unnameable = "something made";
+
+    private static string ForPiece(Assembly.Part part, MaterialCatalog materials, FormCatalog forms)
+    {
         var material = materials.Find(part.Material)?.DisplayName;
         var form = forms.Find(part.Form)?.DisplayName;
 
         return (material, form) switch
         {
-            (null, null) => "something made",
+            (null, null) => Unnameable,
             (null, not null) => Lowered(form),
             (not null, null) => Lowered(material),
             _ => $"{Lowered(material)} {Lowered(form)}",

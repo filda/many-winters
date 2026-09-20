@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 19;
+    private const int CurrentVersion = 20;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -81,9 +81,7 @@ public static class SaveGameService
         person.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
         person.KnownTechniques.ToList(),
         person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
-        person.Inventory.Assemblies.OfType<Assembly.Part>()
-            .Select(part => new AssemblySaveData(part.Material, part.Form, part.Quality, part.Volume))
-            .ToList(),
+        person.Inventory.Assemblies.Select(ToAssemblySaveData).ToList(),
         person.BirthTick,
         person.DeathTick,
         person.CauseOfDeath,
@@ -91,6 +89,32 @@ public static class SaveGameService
         person.Mother.Id.Value,
         person.Father.Id.Value,
         person.Sex);
+
+    // Recursive both ways, because an assembly is: a bound thing holds two more of them, to any
+    // depth (see Assembly).
+    private static AssemblySaveData ToAssemblySaveData(Assembly assembly) => assembly switch
+    {
+        Assembly.Part part => new AssemblySaveData(new PartSaveData(part.Material, part.Form, part.Quality, part.Volume), null),
+        Assembly.Joined joined => new AssemblySaveData(
+            null,
+            new JointSaveData(
+                joined.JointStrength,
+                joined.JointWeight,
+                ToAssemblySaveData(joined.Left),
+                ToAssemblySaveData(joined.Right))),
+        _ => throw new ArgumentOutOfRangeException(nameof(assembly), assembly, "Unknown kind of worked thing."),
+    };
+
+    private static Assembly FromAssemblySaveData(AssemblySaveData data) => data switch
+    {
+        { Part: { } part } => new Assembly.Part(part.Material, part.Form, part.Quality, part.Volume),
+        { Joint: { } joint } => new Assembly.Joined(
+            joint.Strength,
+            joint.Weight,
+            FromAssemblySaveData(joint.Left),
+            FromAssemblySaveData(joint.Right)),
+        _ => throw new InvalidDataException("A worked thing in the save states neither a part nor a joint."),
+    };
 
     private static WorldState FromSaveData(SaveData data, WorldConfiguration configuration)
     {
@@ -213,7 +237,7 @@ public static class SaveGameService
 
         foreach (var worked in personData.WorkedThings)
         {
-            person.Inventory.AddAssembly(new Assembly.Part(worked.Material, worked.Form, worked.Quality, worked.Volume));
+            person.Inventory.AddAssembly(FromAssemblySaveData(worked));
         }
 
         peopleById[personData.Id] = person;

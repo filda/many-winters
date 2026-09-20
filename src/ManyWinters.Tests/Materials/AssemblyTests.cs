@@ -13,6 +13,10 @@ public class AssemblyTests
     private static readonly FormId Shaft = new("shaft");
     private static readonly FormId Cord = new("cord");
 
+    // These tests are about the parts, so the lashings themselves weigh nothing; what a
+    // binding weighs has its own test below.
+    private const float NoBinding = 0f;
+
     private const float WoodDensity = 0.5f;
     private const float WoodToughness = 0.6f;
     private const float StoneDensity = 2f;
@@ -49,7 +53,7 @@ public class AssemblyTests
         var haft = new Assembly.Part(Wood, Shaft, Volume: 4f);
 
         // 2 * 3 for the head, 0.5 * 4 for the haft.
-        Assert.Equal(8f, new Assembly.Joined(0.9f, head, haft).Weight(Materials));
+        Assert.Equal(8f, new Assembly.Joined(0.9f, NoBinding, head, haft).Weight(Materials));
     }
 
     // The binding is negligible beside what it holds together, so an assembly weighs the same
@@ -60,7 +64,7 @@ public class AssemblyTests
         var head = new Assembly.Part(Stone, Wedge, Volume: 3f);
         var haft = new Assembly.Part(Wood, Shaft, Volume: 4f);
 
-        var axe = new Assembly.Joined(0.9f, head, haft);
+        var axe = new Assembly.Joined(0.9f, NoBinding, head, haft);
 
         Assert.Equal(head.Weight(Materials) + haft.Weight(Materials), axe.Weight(Materials));
     }
@@ -68,10 +72,10 @@ public class AssemblyTests
     [Fact]
     public void WeightAccumulatesThroughEveryLevelOfNesting()
     {
-        var axe = new Assembly.Joined(0.9f, new Assembly.Part(Stone, Wedge, Volume: 3f), new Assembly.Part(Wood, Shaft, Volume: 4f));
+        var axe = new Assembly.Joined(0.9f, NoBinding, new Assembly.Part(Stone, Wedge, Volume: 3f), new Assembly.Part(Wood, Shaft, Volume: 4f));
 
         // A second head lashed onto the finished axe: 6 + 2 and 6 again.
-        var absurd = new Assembly.Joined(0.9f, axe, new Assembly.Part(Stone, Wedge, Volume: 3f));
+        var absurd = new Assembly.Joined(0.9f, NoBinding, axe, new Assembly.Part(Stone, Wedge, Volume: 3f));
 
         Assert.Equal(14f, absurd.Weight(Materials));
     }
@@ -126,7 +130,7 @@ public class AssemblyTests
     {
         var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
 
-        Assert.Equal(0.1f, new Assembly.Joined(0.1f, sound, sound).Durability(Materials), 5);
+        Assert.Equal(0.1f, new Assembly.Joined(0.1f, NoBinding, sound, sound).Durability(Materials), 5);
     }
 
     [Fact]
@@ -135,7 +139,7 @@ public class AssemblyTests
         var weak = new Assembly.Part(Wood, Shaft, Quality: 0.1f, Volume: 1f);
         var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
 
-        Assert.Equal(WoodToughness * 0.1f, new Assembly.Joined(1f, weak, sound).Durability(Materials), 5);
+        Assert.Equal(WoodToughness * 0.1f, new Assembly.Joined(1f, NoBinding, weak, sound).Durability(Materials), 5);
     }
 
     [Fact]
@@ -144,7 +148,7 @@ public class AssemblyTests
         var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
         var weak = new Assembly.Part(Wood, Shaft, Quality: 0.1f, Volume: 1f);
 
-        Assert.Equal(WoodToughness * 0.1f, new Assembly.Joined(1f, sound, weak).Durability(Materials), 5);
+        Assert.Equal(WoodToughness * 0.1f, new Assembly.Joined(1f, NoBinding, sound, weak).Durability(Materials), 5);
     }
 
     // "A rope lashed to a rope lashed to a rope is constructible and useless" - the model refuses
@@ -153,8 +157,8 @@ public class AssemblyTests
     public void TheWeakestLinkAnywhereInTheDepthGovernsTheWholeAssembly()
     {
         var rope = new Assembly.Part(Grass, Cord, Quality: 0.5f, Volume: 1f);
-        var ropeOnRope = new Assembly.Joined(0.8f, rope, rope);
-        var ropeOnRopeOnRope = new Assembly.Joined(0.9f, ropeOnRope, rope);
+        var ropeOnRope = new Assembly.Joined(0.8f, NoBinding, rope, rope);
+        var ropeOnRopeOnRope = new Assembly.Joined(0.9f, NoBinding, ropeOnRope, rope);
 
         // Every part is 0.4 * 0.5 = 0.2, which is under both lashings.
         Assert.Equal(0.2f, ropeOnRopeOnRope.Durability(Materials), 5);
@@ -164,9 +168,9 @@ public class AssemblyTests
     public void ABadJointBuriedDeepStillGovernsTheWholeAssembly()
     {
         var sound = new Assembly.Part(Wood, Shaft, Quality: 1f, Volume: 1f);
-        var buriedBadJoint = new Assembly.Joined(0.05f, sound, sound);
+        var buriedBadJoint = new Assembly.Joined(0.05f, NoBinding, sound, sound);
 
-        Assert.Equal(0.05f, new Assembly.Joined(1f, buriedBadJoint, sound).Durability(Materials), 5);
+        Assert.Equal(0.05f, new Assembly.Joined(1f, NoBinding, buriedBadJoint, sound).Durability(Materials), 5);
     }
 
     // No MaxParts constant: nothing refuses depth, however silly it gets.
@@ -178,10 +182,34 @@ public class AssemblyTests
 
         for (var i = 0; i < 50; i++)
         {
-            grown = new Assembly.Joined(1f, grown, part);
+            grown = new Assembly.Joined(1f, NoBinding, grown, part);
         }
 
         Assert.Equal(51 * WoodDensity, grown.Weight(Materials), 5);
         Assert.Equal(WoodToughness, grown.Durability(Materials), 5);
+    }
+
+    // A lashing is made of something, and that something does not vanish on being tied: what
+    // went into the binding is carried by the object it now holds together.
+    [Fact]
+    public void ABindingWeighsWhateverWentIntoIt()
+    {
+        var head = new Assembly.Part(Stone, Wedge, Volume: 3f);
+        var haft = new Assembly.Part(Wood, Shaft, Volume: 4f);
+
+        var lashed = new Assembly.Joined(0.9f, 1.5f, head, haft);
+
+        Assert.Equal(6f + 2f + 1.5f, lashed.Weight(Materials));
+    }
+
+    [Fact]
+    public void EveryBindingInTheDepthAddsItsOwnWeight()
+    {
+        var part = new Assembly.Part(Wood, Shaft, Volume: 2f);
+        var inner = new Assembly.Joined(1f, 0.5f, part, part);
+        var outer = new Assembly.Joined(1f, 0.5f, inner, part);
+
+        // Three sticks at 1 each, two lashings at 0.5.
+        Assert.Equal(4f, outer.Weight(Materials));
     }
 }

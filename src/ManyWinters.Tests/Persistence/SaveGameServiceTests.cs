@@ -387,4 +387,36 @@ public class SaveGameServiceTests
             File.Delete(path);
         }
     }
+
+    // A bound object is the case a flat save shape would have dropped on the floor: it has to
+    // come back whole, to whatever depth it was built.
+    [Fact]
+    public void RoundTripPreservesABoundObjectDownToItsInnermostPart()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var ava = world.SpawnPerson("Ava", new Position(0f, 0f));
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestCatalogs.Cord, Quality: 0.6f, Volume: 15f);
+        var head = new Assembly.Part(new MaterialId("stone"), TestCatalogs.Wedge, Quality: 1f, Volume: 1f);
+        ava.Inventory.AddAssembly(new Assembly.Joined(0.75f, 3f, new Assembly.Joined(0.4f, 1f, head, cord), head));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var person = Assert.Single(restored.People);
+            var outer = Assert.IsType<Assembly.Joined>(Assert.Single(person.Inventory.Assemblies));
+            Assert.Equal(0.75f, outer.JointStrength, 5);
+            Assert.Equal(3f, outer.JointWeight, 5);
+            var inner = Assert.IsType<Assembly.Joined>(outer.Left);
+            Assert.Equal(0.4f, inner.JointStrength, 5);
+            Assert.Equal(cord, inner.Right);
+            Assert.Equal(head, outer.Right);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

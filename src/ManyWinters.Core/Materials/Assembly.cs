@@ -22,10 +22,9 @@ public abstract record Assembly
     {
     }
 
-    // Density times volume, summed over every part - the same formula a stackable item's weight
-    // uses, so the two tiers weigh on one scale. A joint weighs nothing of its own: a lashing is
-    // negligible beside what it holds together, and giving the binder a bulk would be a number
-    // with no reader.
+    // Density times volume, summed over every part, plus whatever the bindings themselves
+    // weigh - the same formula a stackable item's weight uses, so the two tiers weigh on one
+    // scale and working a thing neither creates nor destroys weight.
     public abstract float Weight(MaterialCatalog materials);
 
     // The weakest link, over both the parts and the joints (section 6) - which is what makes a
@@ -48,10 +47,12 @@ public abstract record Assembly
     }
 
     // JointStrength is 0-1, set by whatever made the joint; it is what turns "every joint is a
-    // weak point" into a number Durability can read.
-    public sealed record Joined(float JointStrength, Assembly Left, Assembly Right) : Assembly
+    // weak point" into a number Durability can read. JointWeight is what the binding itself
+    // weighs - the cordage that went into the lashing does not vanish just because it is no
+    // longer a thing of its own.
+    public sealed record Joined(float JointStrength, float JointWeight, Assembly Left, Assembly Right) : Assembly
     {
-        public override float Weight(MaterialCatalog materials) => Left.Weight(materials) + Right.Weight(materials);
+        public override float Weight(MaterialCatalog materials) => JointWeight + Left.Weight(materials) + Right.Weight(materials);
 
         public override float Durability(MaterialCatalog materials) =>
             Math.Min(JointStrength, Math.Min(Left.Durability(materials), Right.Durability(materials)));
