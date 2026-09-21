@@ -32,6 +32,11 @@ internal partial class SelectionPanel : PanelContainer
     // Between the name and the age beside it - a word's worth, not a column gap.
     private const int HeadingSpacing = 8;
 
+    // The whole line is one button - a Button is no container, so it is told how tall the name's
+    // own face makes a line.
+    private const int HeadingHeight = NameFontSize + 8;
+
+    private Button _heading = null!;
     private Label _name = null!;
     private Label _beside = null!;
     private Label _parents = null!;
@@ -40,7 +45,6 @@ internal partial class SelectionPanel : PanelContainer
     private ActionList _actions = null!;
     private Button _carried = null!;
     private Label _death = null!;
-    private Button _knowledge = null!;
     private VBoxContainer _personBody = null!;
     private Label _graveRecord = null!;
     private VBoxContainer _column = null!;
@@ -54,8 +58,8 @@ internal partial class SelectionPanel : PanelContainer
     // The player asked to see the pack itself. Main opens the workshop over it.
     internal event Action? PackRequested;
 
-    // The player asked to see this person's full page - everything the card knows about them,
-    // laid out with room to breathe instead of squeezed into this fixed-width column. Main opens
+    // The player pressed the name: everything the card knows about this person, laid out with
+    // room to breathe instead of squeezed into this fixed-width column. Main opens
     // PersonDetailPanel over it.
     internal event Action? DetailRequested;
 
@@ -105,20 +109,43 @@ internal partial class SelectionPanel : PanelContainer
         heading.AddThemeConstantOverride("separation", HeadingSpacing);
         _column.AddChild(heading);
 
+        // The whole line is the button, the same way a row of the band's own roster is
+        // (BandPanel) - the highlight the player already reads there says the same thing here:
+        // this name opens something too. Both texts ride on the button's rect rather than being
+        // laid out by it (a Button is no container), so a margin holds them where a button's own
+        // caption would sit.
+        _heading = new Button
+        {
+            Text = string.Empty,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, HeadingHeight),
+        };
+        _heading.Pressed += () => DetailRequested?.Invoke();
+        heading.AddChild(_heading);
+
+        var headingPadding = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        headingPadding.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        headingPadding.AddThemeConstantOverride("margin_left", PanelChrome.FilledPadding);
+        headingPadding.AddThemeConstantOverride("margin_right", PanelChrome.FilledPadding);
+        _heading.AddChild(headingPadding);
+
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", HeadingSpacing);
+        headingPadding.AddChild(row);
+
         // The title face, as on an inscription or a grave: a person's name is the one part of
         // this card that is theirs rather than ours.
         _name = InscriptionFont.TitleLabel(string.Empty, NameFontSize, InscriptionFont.DarkInk);
         _name.AutowrapMode = TextServer.AutowrapMode.Off;
         _name.VerticalAlignment = VerticalAlignment.Bottom;
-        heading.AddChild(_name);
+        _name.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(_name);
 
         _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         _beside.AutowrapMode = TextServer.AutowrapMode.Off;
         _beside.VerticalAlignment = VerticalAlignment.Bottom;
-        // Takes the rest of the line, so the cross ends up against the far edge of the card
-        // rather than trailing the name.
-        _beside.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        heading.AddChild(_beside);
+        _beside.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(_beside);
 
         var cross = PanelChrome.CloseCross(InscriptionFont.DarkInk);
         cross.SizeFlagsVertical = SizeFlags.ShrinkBegin;
@@ -156,16 +183,6 @@ internal partial class SelectionPanel : PanelContainer
         _actions.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _personBody.AddChild(_actions);
 
-        _personBody.AddChild(PanelChrome.Rule());
-
-        // A button, not the list itself: a person's skills grew long enough to push the actions
-        // below them off the card, so the full list moved to its own page (PersonDetailPanel) and
-        // the card keeps only how much of it there is to read.
-        _knowledge = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
-        _knowledge.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
-        _knowledge.Pressed += () => DetailRequested?.Invoke();
-        _personBody.AddChild(_knowledge);
-
         _graveRecord = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _graveRecord.Visible = false;
         _column.AddChild(_graveRecord);
@@ -176,6 +193,7 @@ internal partial class SelectionPanel : PanelContainer
         Visible = true;
         _personBody.Visible = true;
         _graveRecord.Visible = false;
+        _heading.Disabled = false;
 
         _name.Text = card.Name;
         _beside.Text = card.Beside;
@@ -187,8 +205,6 @@ internal partial class SelectionPanel : PanelContainer
         _task.Text = $"Doing: {card.Task}";
         _task.Visible = card.Task.Length > 0;
 
-        SyncKnowledge(card.KnowledgeLabel, card.Knowledge);
-
         _meterRows.Sync(card.Meters);
         _actions.Show(offers);
     }
@@ -198,6 +214,9 @@ internal partial class SelectionPanel : PanelContainer
         Visible = true;
         _personBody.Visible = false;
         _graveRecord.Visible = true;
+        // Nothing behind a grave for the detail page to say - the heading stops answering to a
+        // press rather than opening a page about nobody.
+        _heading.Disabled = true;
 
         _name.Text = "Grave";
         _beside.Text = string.Empty;
@@ -207,11 +226,4 @@ internal partial class SelectionPanel : PanelContainer
     }
 
     internal void ClearSelection() => Visible = false;
-
-    // How much there is to read, not the list itself (PersonDetailPanel has that). "Nothing yet"
-    // for the living, who may still learn; "nothing" for the dead, who will not.
-    private void SyncKnowledge(string label, IReadOnlyList<string> known) =>
-        _knowledge.Text = known.Count > 0
-            ? $"{label}: {known.Count} skill{(known.Count == 1 ? string.Empty : "s")}"
-            : $"{label}: {(label == "Knows" ? "nothing yet" : "nothing")}";
 }
