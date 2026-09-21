@@ -240,6 +240,15 @@ jobs:
           exit 0
 
       - name: Export Windows build
+        # Ten minutes of this step used to be Godot waiting on nothing. It spawns `dotnet publish`
+        # with the output redirected, the Roslyn compiler server that publish starts inherits the
+        # write end of that pipe and lingers for its ten minute idle timeout, and Godot waits for
+        # an EOF that cannot arrive while anyone still holds the pipe. Compiling in-process costs
+        # a few seconds and takes the export from ~625 s to ~21 s; see docs/release-pipeline.md.
+        # MSBuild reads properties from the environment, which is how this reaches the publish
+        # Godot runs for itself.
+        env:
+          UseSharedCompilation: "false"
         run: |
           $ErrorActionPreference = "Stop"
           $root = (Get-Location).Path

@@ -83,9 +83,14 @@ The cache key carries a `-v1` suffix precisely so that changing those trim rules
 invalidates it — otherwise a cache saved under the old rules is reused silently and
 surfaces as a mysterious export failure.
 
-## 3. Export time: an unresolved mystery
+## 3. Export time: ten minutes of waiting on a pipe
 
-The export step takes ~620 s and is very stable (616–629 s across many runs). It is
+Solved on 2026-09-21: the export did its work in 28 s and spent the other ten minutes
+waiting for a pipe nobody was going to close. `release-windows` now sets
+`UseSharedCompilation` to false for the export step and takes ~21 s instead of ~625 s.
+The trail below is kept because the wrong answers cost more than the right one.
+
+The export step took ~620 s and was very stable (616–634 s across many runs). It was
 effectively independent of codebase size: over a period in which `src/` grew by ~3,700
 lines the number did not move. The output explains why — the game's own code and
 content are ~0.4 % of what the step moves:
@@ -109,17 +114,18 @@ Three hypotheses were tested and all three failed:
    back. But the step exited 1, produced zero files, and restored only one project in
    1.17 s, so what it actually did remains unexplained.
 
-Parked deliberately. It costs wall-clock, not money, and it will not grow with the
-game. The export step reports its own duration (`godot exit code: 0 after Ns`) so a
-regression would be visible immediately.
+Parked deliberately at that point: it cost wall-clock, not money, and it would not
+grow with the game. The export step reports its own duration (`godot exit code: 0
+after Ns`), so a regression stays visible.
 
 Picked up again in a manual workflow: `.github/workflows/export-investigation.yml`.
 It exists specifically to answer the open questions without making every push slower
-or less deterministic. One dispatch runs five controls side by side:
+or less deterministic. One dispatch runs six controls side by side:
 
 - `windows-latest` as the current release environment,
 - the same runner with a diagnostic `dotnet publish` warm-up in front of the export,
 - the same runner with `application/modify_resources=false`,
+- the same runner with `UseSharedCompilation=false`,
 - `windows-2022` as a second Windows environment,
 - `ubuntu-latest` as the Linux control — its image is selectable through the
   `linux_runner` input, which is also how the Ubuntu 26.04 migration gets rehearsed.
@@ -146,6 +152,17 @@ writes `export.timeline.log` with an elapsed-time stamp per line. Godot writes t
 file in blocks, so a stamp places a phase boundary rather than timing a single line,
 which is all it takes to say which phase holds the ten minutes.
 
+Two mechanics cost that dispatch its two most interesting cells, and are fixed:
+
+- The warm-up publish is not broken any more. With the SDK pinned by `global.json` it
+  exits 0 in ~15 s, and the step's guard — a `throw` for the publish unexpectedly
+  succeeding — aborted the job before the export it exists to time. Either outcome is
+  now simply recorded.
+- The Linux job failed *after* a green 15 s export, on a diagnostic
+  `find … | sort -nr | head -n 10`: `head` closes the pipe, `sort` dies of SIGPIPE and
+  `pipefail` turns that into exit 2. `ci.yml` never carried that line, so the release
+  was never at risk.
+
 The second dispatch (run 35625196738, 2026-09-21) read that timeline and found the
 export is not slow at all — it is *finished* and waiting:
 
@@ -170,23 +187,20 @@ which is also why a warm-up that *failed* worked and why `dotnet restore`, which
 starts Roslyn, did not. Linux is unaffected because there Godot waits on the child
 process rather than on the pipe.
 
-The `no-shared-compilation` variant tests exactly that by setting `UseSharedCompilation`
-to false in the export step's environment, which MSBuild picks up as a global property
-and therefore applies to the publish Godot runs for itself. If the export drops to
-~20 s, `release-windows` in `ci.yml` gets the same two lines and the ten minutes go
-away; the fallback is to ship the warm-up publish, which is empirically worth 19 s
-against 627 s but treats the symptom.
+The third dispatch (run 35628078891, 2026-09-21) confirmed it. Setting
+`UseSharedCompilation` to false in the export step's environment — MSBuild reads
+properties from there, so it reaches the publish Godot runs for itself — took the
+export to **21 s** against 625 s for the control in the same dispatch, with the warm-up
+variant at 22 s and `no-rcedit` at 619 s. `ci.yml` carries those two lines now. The
+alternative, shipping the warm-up publish, works just as well but treats the symptom
+and adds a step.
 
-Two mechanics cost that dispatch its two most interesting cells, and are fixed:
-
-- The warm-up publish is not broken any more. With the SDK pinned by `global.json` it
-  exits 0 in ~15 s, and the step's guard — a `throw` for the publish unexpectedly
-  succeeding — aborted the job before the export it exists to time. Either outcome is
-  now simply recorded.
-- The Linux job failed *after* a green 15 s export, on a diagnostic
-  `find … | sort -nr | head -n 10`: `head` closes the pipe, `sort` dies of SIGPIPE and
-  `pipefail` turns that into exit 2. `ci.yml` never carried that line, so the release
-  was never at risk.
+What made this expensive to find: every phase Godot names had already finished, the
+exit code was 0, the output was complete and correct, and the ten minutes sat after the
+last line of a log that carries no clock. Nothing was slow — something had already
+ended and nobody noticed. The lesson worth keeping is the instrument rather than the
+answer: stamping a child process's output with arrival times cost a dozen lines and
+turned an unfalsifiable "Windows is slow" into a bounded question.
 
 ## 4. Asset growth is the cost that will actually rise
 
