@@ -6,8 +6,8 @@ namespace ManyWinters.Godot.Ui;
 
 // An inscription across the whole screen - the band's arrival (Prologue), the end of its line
 // (Epitaph). The title, in InscriptionFont's title face with an ink outline so it reads over
-// anything, and under it the inscription's closing words - which are the way on: the line
-// itself is the button, framed in a thin stroke of ink, swelling a hair under the cursor
+// anything, and under it the inscription's closing words - which are the way on: the line sits
+// on a slip of the same paper the panels are cut from, swelling a hair under the cursor
 // (WordButton). The lines under those wait in ChroniclePanel. The world is left undimmed - the
 // survivors, or the graves, are what the words are about - and the camera keeps working, while
 // clicks into it are swallowed: a command issued into a stopped clock would land the moment it
@@ -68,7 +68,7 @@ public partial class InscriptionOverlay : Control
         _title.AutowrapMode = TextServer.AutowrapMode.Off;
         column.AddChild(_title);
 
-        _closing = WordButton(string.Empty, InscriptionFont.Ink, InscriptionFont.Ink);
+        _closing = WordButton(string.Empty, InscriptionFont.DarkInk, InscriptionFont.DarkInk);
         _closing.Pressed += () =>
         {
             Visible = false;
@@ -80,7 +80,7 @@ public partial class InscriptionOverlay : Control
         ways.AddThemeConstantOverride("separation", Spacing / 2);
         column.AddChild(ways);
 
-        _anotherBand = WordButton("Another band comes", new Color(InscriptionFont.Ink, 0.72f), InscriptionFont.Ink);
+        _anotherBand = WordButton("Another band comes", InscriptionFont.FadedDarkInk, InscriptionFont.DarkInk);
         _anotherBand.Pressed += () =>
         {
             Visible = false;
@@ -111,50 +111,45 @@ public partial class InscriptionOverlay : Control
     }
 
     // The two choices on this screen are words, not controls - but bare words do not say they
-    // can be taken, so each sits in a frame the way this page would draw one: a thin stroke of
-    // the same light ink around a transparent middle. A filled slip of parchment was tried
-    // first and read as an application button pasted onto the inscription; the bare line alone
-    // read as prose. In the frame the words rest at their own ink and answer the cursor in
-    // kind: the stroke fills to full, a breath of ink washes the middle, and the words swell a
-    // hair. The closing words are the way on; the offer, when there is one, waits fainter
-    // beside them.
+    // can be taken, so each sits on a slip of the same paper everything the player holds is
+    // drawn on (PanelChrome.Parchment): opaque, so the world does not show through the line the
+    // way it did through an outlined frame, and of a piece with the band and detail panels. On
+    // paper the words are dark ink rather than light, they carry no outline (which would only
+    // fatten them, see InscriptionFont.PaperTitleLabel), and the cursor washes ink into the
+    // paper and swells them a hair. The closing words are the way on; the offer, when there is
+    // one, waits fainter beside them.
     private static Button WordButton(string text, Color resting, Color lit)
     {
         var button = new Button { Text = text };
-        button.AddThemeStyleboxOverride("normal", Frame(new Color(InscriptionFont.Ink, 0.45f), wash: 0f));
-        button.AddThemeStyleboxOverride("hover", Frame(InscriptionFont.Ink, wash: 0.10f));
-        button.AddThemeStyleboxOverride("pressed", Frame(InscriptionFont.Ink, wash: 0.18f));
-        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        button.AddThemeStyleboxOverride("normal", Slip(wash: 0f));
+        button.AddThemeStyleboxOverride("hover", Slip(wash: 0.10f));
+        button.AddThemeStyleboxOverride("pressed", Slip(wash: 0.18f));
+        // Not empty: a focused line is still a line of paper, and the engine's focus ring has no
+        // place on it.
+        button.AddThemeStyleboxOverride("focus", Slip(wash: 0f));
 
         button.AddThemeColorOverride("font_color", resting);
         button.AddThemeColorOverride("font_focus_color", resting);
         button.AddThemeColorOverride("font_hover_color", lit);
         button.AddThemeColorOverride("font_pressed_color", lit);
         button.AddThemeColorOverride("font_hover_pressed_color", lit);
-        button.AddThemeColorOverride("font_outline_color", InscriptionFont.Outline);
-        button.AddThemeConstantOverride("outline_size", ButtonFontSize / 6);
         return button;
     }
 
-    // A hand-drawn box: one thin line of ink, nothing in the middle (the wash is the hover's
-    // arrival, at rest there is none).
-    private static StyleBoxFlat Frame(Color border, float wash) => new()
+    // A torn-off piece of the panels' paper, padded so the words keep the place they had in the
+    // frame this replaced. No grain: it is laid in as a child (PanelChrome.Grain), and a Button
+    // draws its own text before its children, so on a line this small the weathering would fall
+    // across the words instead of under them.
+    private static StyleBoxFlat Slip(float wash)
     {
-        BgColor = new Color(InscriptionFont.Ink, wash),
-        BorderColor = border,
-        BorderWidthLeft = 1,
-        BorderWidthRight = 1,
-        BorderWidthTop = 1,
-        BorderWidthBottom = 1,
-        CornerRadiusTopLeft = 3,
-        CornerRadiusTopRight = 3,
-        CornerRadiusBottomLeft = 3,
-        CornerRadiusBottomRight = 3,
-        ContentMarginLeft = 12,
-        ContentMarginRight = 12,
-        ContentMarginTop = 3,
-        ContentMarginBottom = 3,
-    };
+        var slip = PanelChrome.Parchment();
+        slip.BgColor = slip.BgColor.Lerp(InscriptionFont.DarkInk, wash);
+        slip.ContentMarginLeft = 12;
+        slip.ContentMarginRight = 12;
+        slip.ContentMarginTop = 3;
+        slip.ContentMarginBottom = 3;
+        return slip;
+    }
 
     // The swell is a change of font size rather than of scale, so the letters stay crisp; the
     // line's slot is cut to the grown height plus its own frame up front, so nothing else on
