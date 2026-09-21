@@ -1,7 +1,6 @@
 using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
-using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
@@ -88,15 +87,11 @@ public partial class Main : Node3D
     private Grave? _selectedGrave;
     private double _tickAccumulator;
     private OcclusionFader _occlusionFader = null!;
+    private OrderCoordinator _orderCoordinator = null!;
 
     // Captured in _Ready, the one moment BandArrival.Of really means "just arrived"; TogglePause
     // calls BandArrival.Of again later only for its live population counts.
     private long _bandArrivalTick;
-
-    // Orders given to somebody who first has to walk there; ResolvePendingOrders fires each one
-    // on arrival, so pointing at something across the clearing means "go and do that" instead of
-    // a greyed-out line telling the player to walk them over themselves.
-    private readonly PendingOrders _pendingOrders = new();
 
     // Telling a right-click apart from the right-drag that turns the camera, and what the press
     // landed on until the button comes up (see HandleRightButton). The world's views report the
@@ -170,6 +165,9 @@ public partial class Main : Node3D
         await Building(90, "Setting out the band");
         _presenter = new WorldPresenter(this, _world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
         _occlusionFader = new OcclusionFader(_cameraRig, _presenter, _presentation);
+        _orderCoordinator = new OrderCoordinator(_world, _presenter, _presentation);
+        _orderCoordinator.WorldChanged += OnOrderCoordinatorWorldChanged;
+        _orderCoordinator.OrderFailed += _statusBar.Notify;
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
@@ -254,7 +252,7 @@ public partial class Main : Node3D
         _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
-        ResolvePendingOrders();
+        _orderCoordinator.ResolvePending();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
         RefreshSelection();
         RefreshBuildingsLabel();
@@ -638,7 +636,7 @@ public partial class Main : Node3D
             return;
         }
 
-        Perform(person, offer);
+        _orderCoordinator.Perform(person, offer);
         RefreshWorkshopPack(person);
     }
 
@@ -653,7 +651,7 @@ public partial class Main : Node3D
             return;
         }
 
-        Perform(person, offer);
+        _orderCoordinator.Perform(person, offer);
         RefreshWorkshopPack(person);
     }
 
@@ -664,7 +662,7 @@ public partial class Main : Node3D
             return;
         }
 
-        Perform(person, offer);
+        _orderCoordinator.Perform(person, offer);
         RefreshWorkshopPack(person);
     }
 
@@ -724,7 +722,7 @@ public partial class Main : Node3D
         }
 
         var before = person.Inventory.Assemblies.ToList();
-        Perform(person, offer);
+        _orderCoordinator.Perform(person, offer);
 
         // An attempt costs time whether or not it came off - the clock is held while the bench is
         // open, so this is the only thing that moves it, and it is what stops a player pressing
@@ -1155,65 +1153,16 @@ public partial class Main : Node3D
         }
 
         _contextMenu.Close();
-        Perform(person, offer);
+        _orderCoordinator.Perform(person, offer);
     }
 
-    // Every action the player asks for arrives here - pressed on a card, picked off the menu, or
-    // meant by a left click on something in the world. The offer carries both the command and the
-    // world's own answer about whether it can run (see ActionOffer), so nothing is re-checked
-    // here: the handlers this replaced each re-asked a different subset and worded the refusal
-    // their own way.
-    private void Perform(Person person, ActionOffer offer)
+    // What every caller of OrderCoordinator.Perform used to refresh by hand once it had executed
+    // or queued the offer.
+    private void OnOrderCoordinatorWorldChanged()
     {
-        if (!offer.IsAvailable)
-        {
-            return;
-        }
-
-        // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): being directed is how
-        // a person is shown the way, so an action that teaches grants its base technique first.
-        // Granted when the order is given rather than when it is carried out, so somebody sent off
-        // to a tree already knows what to do with it by the time they get there.
-        if (offer.TeachFirst is { } skill)
-        {
-            TeachBaseTechniqueIfNeeded(person, skill);
-        }
-
-        if (offer.NeedsWalkingTo && offer.Target is { } target)
-        {
-            _pendingOrders.Add(person, offer);
-            // Fully qualified: inside a Node3D, a bare `Position` is the node's own Vector3.
-            _world.Execute(new MoveCommand(person, Core.World.Position.Approach(person.Position, target, _presentation.ApproachDistance)));
-        }
-        else
-        {
-            // A new order replaces whatever they were on their way to do - including a plain walk,
-            // which is the player changing their mind.
-            _pendingOrders.Forget(person);
-            Execute(offer.Command);
-        }
-
         RefreshSelection();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
-    }
-
-    // Two commands take something off the map, and views are pushed to the presenter rather than
-    // reconciled from world state, so both have to say so. The per-tick sweep would catch a felled
-    // node a moment later; a buried person it would never catch at all.
-    private void Execute(ICommand command)
-    {
-        _world.Execute(command);
-
-        switch (command)
-        {
-            case FellCommand fell:
-                _presenter.RemoveResourceNodeView(fell.Node.Id);
-                break;
-            case BuryCommand bury:
-                _presenter.RemovePersonView(bury.Deceased.Id);
-                break;
-        }
     }
 
     private Position FindFreeSpawnPosition()
@@ -1288,7 +1237,7 @@ public partial class Main : Node3D
 
         if (Acting() is { } person)
         {
-            Perform(person, TargetActions.Gather(_world, person, node));
+            _orderCoordinator.Perform(person, TargetActions.Gather(_world, person, node));
         }
     }
 
@@ -1304,7 +1253,7 @@ public partial class Main : Node3D
 
         if (Acting() is { } person)
         {
-            Perform(person, TargetActions.PickUp(_world, person, pile));
+            _orderCoordinator.Perform(person, TargetActions.PickUp(_world, person, pile));
         }
     }
 
@@ -1317,32 +1266,6 @@ public partial class Main : Node3D
         if (button == MouseButton.Left)
         {
             ShowContextMenu(GetViewport().GetMousePosition());
-        }
-    }
-
-    // Fires the order of everyone who has arrived where they were sent (see PendingOrders).
-    private void ResolvePendingOrders()
-    {
-        foreach (var offer in _pendingOrders.Ready(_world))
-        {
-            Execute(offer.Command);
-        }
-
-        foreach (var failed in _pendingOrders.Failed)
-        {
-            _statusBar.Notify($"{failed.Person.Name} arrived too late to {failed.Label.ToLowerInvariant()}.");
-        }
-    }
-
-    // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): the player directing an
-    // action is how the person is shown the way, so every player-driven action grants its base
-    // technique first rather than silently no-oping.
-    private void TeachBaseTechniqueIfNeeded(Person person, SkillTypeId skill)
-    {
-        var baseTechnique = _world.Configuration.SkillCatalog.Get(skill).BaseTechnique;
-        if (!person.KnownTechniques.Contains(baseTechnique))
-        {
-            _world.Execute(new GrantTechniqueCommand(person, baseTechnique));
         }
     }
 
@@ -1397,7 +1320,7 @@ public partial class Main : Node3D
 
         if (button == MouseButton.Left && Acting() is { } person)
         {
-            Perform(person, TargetActions.WalkTo(_world, person, ground));
+            _orderCoordinator.Perform(person, TargetActions.WalkTo(_world, person, ground));
         }
     }
 
