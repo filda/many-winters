@@ -17,6 +17,13 @@ on:
           - ubuntu-latest
           - ubuntu-24.04
           - ubuntu-26.04
+      run_windows:
+        # The Windows export question is answered (docs/release-pipeline.md section 3), so a
+        # dispatch that only rehearses a Linux image should not spend five thirteen-minute jobs
+        # re-confirming it.
+        description: Also run the Windows variants
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -31,6 +38,7 @@ env:
 jobs:
   windows-export-investigation:
     name: windows (${{ matrix.runner_label }}, ${{ matrix.variant_label }})
+    if: ${{ inputs.run_windows }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
