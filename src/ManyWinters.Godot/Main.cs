@@ -51,6 +51,9 @@ public partial class Main : Node3D
 
     // What keeps the rest of the screen out of reach while the workbench is out (SetUpWorkshop).
     private Control _workshopShield = null!;
+
+    // The same, for the detail page (SetUpDetailPanel).
+    private Control _detailShield = null!;
     private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
     private EndingAnnouncements _endingAnnouncements = new();
@@ -657,6 +660,7 @@ public partial class Main : Node3D
         SetUpBandPanel(canvas);
         SetUpChronicle(canvas);
         SetUpWorkshop(canvas);
+        SetUpDetailPanel(canvas);
         SetUpContextMenu(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
@@ -1180,12 +1184,27 @@ public partial class Main : Node3D
         _selectionPanel.DetailRequested += OpenDetail;
         _selectionPanel.CloseRequested += ClearSelection;
         canvas.AddChild(_selectionPanel);
+    }
 
-        // Added after the card it reads from, so it draws on top of it (see FloatingPanel).
+    // The full page, opened from the name on the selected person's card. Like the workbench it
+    // holds the clock while it is up (see _Process) and shields everything under it from the
+    // click that would otherwise land on the world or another window through it - reading or
+    // acting on somebody here is meant to have the player's whole attention, the same as working
+    // something over is.
+    private void SetUpDetailPanel(CanvasLayer canvas)
+    {
+        // Laid in before the page, so it sits under it and over everything added earlier - the
+        // world, the status bar, the roster, the selected person's card, the workbench. Same
+        // shape as WorkshopPanel's own shield, and for the same reason.
+        _detailShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        _detailShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        canvas.AddChild(_detailShield);
+
         _detailPanel = new PersonDetailPanel();
+        _detailPanel.VisibilityChanged += () => _detailShield.Visible = _detailPanel.Visible;
+        _detailPanel.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         _detailPanel.ActionInvoked += OnActionInvoked;
         _detailPanel.PackRequested += OpenWorkshop;
-        _detailPanel.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         canvas.AddChild(_detailPanel);
     }
 
