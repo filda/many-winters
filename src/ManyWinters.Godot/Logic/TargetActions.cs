@@ -120,22 +120,23 @@ internal static class TargetActions
         var items = world.Configuration.ItemCatalog;
         var offers = new List<ActionOffer>();
 
-        // A line per kind actually there to move, in either direction: a store is a list of what
-        // it holds, and "Put in" with nothing to put in is not a choice.
-        foreach (var (item, count) in Sorted(actor.Inventory))
+        // A line per thing actually there to move, in either direction: a store is a list of what
+        // it holds, and "Put in" with nothing to put in is not a choice. Both tiers in one list,
+        // as on the person's own card (see PersonActions.Drops).
+        foreach (var (label, what) in Movable(world, actor.Inventory))
         {
             offers.Add(ActionOffer.For(
-                $"Put in {Named(items, item)}",
-                new DepositCommand(actor, building, item, count),
+                $"Put in {label}",
+                new DepositCommand(actor, building, what),
                 world,
                 target: building.Position));
         }
 
-        foreach (var (item, count) in Sorted(building.Storage!))
+        foreach (var (label, what) in Movable(world, building.Storage!))
         {
             offers.Add(ActionOffer.For(
-                $"Take out {Named(items, item)}",
-                new WithdrawCommand(actor, building, item, count),
+                $"Take out {label}",
+                new WithdrawCommand(actor, building, what),
                 world,
                 target: building.Position));
         }
@@ -215,8 +216,22 @@ internal static class TargetActions
 
     // In item-id order, so a store's lines do not reshuffle between one opening of the menu and
     // the next (an Inventory is a dictionary, whose order is nobody's promise).
-    private static IEnumerable<KeyValuePair<ItemKindId, int>> Sorted(Inventory inventory) =>
-        inventory.Counts.OrderBy(entry => entry.Key.Value, StringComparer.Ordinal);
+    // Everything in an inventory that can be moved somewhere else, named as the player reads it
+    // and ordered together whichever tier it came out of. A stack moves whole; a made thing has
+    // no count to move some of.
+    private static IEnumerable<(string Label, CarriedThing What)> Movable(WorldState world, Inventory inventory)
+    {
+        var items = world.Configuration.ItemCatalog;
+
+        var stock = inventory.Counts
+            .Where(entry => entry.Value > 0)
+            .Select(entry => (Label: Named(items, entry.Key), What: (CarriedThing)new CarriedThing.Stock(entry.Key, entry.Value)));
+
+        var made = inventory.Assemblies
+            .Select(thing => (Label: InspectorText.ForWorkedThing(thing, world), What: (CarriedThing)new CarriedThing.Worked(thing)));
+
+        return stock.Concat(made).OrderBy(entry => entry.Label, StringComparer.Ordinal);
+    }
 
     private static string Named(ItemCatalog items, ItemKindId item) => Lowered(items.Get(item).DisplayName);
 

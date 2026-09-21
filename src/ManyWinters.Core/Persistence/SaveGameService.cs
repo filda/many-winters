@@ -35,7 +35,8 @@ public static class SaveGameService
                 entity.StaticAmount,
                 entity.Condition,
                 entity.Storage?.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
-                entity.Made is { } made ? ToAssemblySaveData(made) : null))
+                entity.Made is { } made ? ToAssemblySaveData(made) : null,
+                entity.Storage?.Assemblies.Select(ToAssemblySaveData).ToList()))
             .ToList();
 
         var graves = world.Graves
@@ -176,6 +177,11 @@ public static class SaveGameService
                 {
                     entity.Storage!.Add(stack.Kind, stack.Count);
                 }
+            }
+
+            foreach (var thing in entityData.StorageWorkedThings ?? [])
+            {
+                entity.Storage!.AddAssembly(FromAssemblySaveData(thing));
             }
 
             world.RestoreEntity(entity);

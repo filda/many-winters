@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.World;
 using ManyWinters.Tests.TestSupport;
 
@@ -16,7 +17,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)));
 
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Empty(building.Storage!.Counts);
@@ -30,7 +31,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 15)));
 
         Assert.Equal(5, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -44,7 +45,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 15)));
 
         Assert.Equal(5, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -59,7 +60,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 15)));
 
         Assert.Equal(20, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -73,7 +74,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 15)));
 
         Assert.Equal(15, person.Inventory.Get(TestCatalogs.WoodItem));
     }
@@ -86,7 +87,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 15)));
 
         Assert.Equal(20, building.Storage!.Get(TestCatalogs.WoodItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.WoodItem));
@@ -101,7 +102,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 20);
 
-        world.Execute(new WithdrawCommand(person, building, TestCatalogs.WoodItem, 15));
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 15)));
 
         Assert.Equal(world.MaxCarryWeightFor(person), person.Inventory.Get(TestCatalogs.WoodItem));
         Assert.Equal(15, building.Storage!.Get(TestCatalogs.WoodItem));
@@ -115,7 +116,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
-        Assert.Equal(ActionBlocker.None, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+        Assert.Equal(ActionBlocker.None, new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
     }
 
     [Fact]
@@ -127,7 +128,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
-        Assert.Equal(ActionBlocker.ActorIsDead, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+        Assert.Equal(ActionBlocker.ActorIsDead, new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
     }
 
     [Fact]
@@ -138,7 +139,7 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(world.Configuration.Rules.MaxInteractionDistance + 1, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 5);
 
-        Assert.Equal(ActionBlocker.TooFar, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+        Assert.Equal(ActionBlocker.TooFar, new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
     }
 
     // The store's shortage, not the person's - a distinction the player standing at an empty hut
@@ -151,6 +152,52 @@ public class WithdrawCommandTests
         var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
         building.Storage!.Add(TestCatalogs.WoodItem, 4);
 
-        Assert.Equal(ActionBlocker.StoreIsEmpty, new WithdrawCommand(person, building, TestCatalogs.WoodItem, 5).Blocker(world));
+        Assert.Equal(ActionBlocker.StoreIsEmpty, new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
+    }
+
+    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
+
+    [Fact]
+    public void SomethingMadeComesBackOffTheShelves()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var cord = Cord();
+        building.Storage!.AddAssembly(cord);
+
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Worked(cord)));
+
+        Assert.Equal(cord, Assert.Single(person.Inventory.Assemblies));
+        Assert.Empty(building.Storage!.Assemblies);
+    }
+
+    // Whole or not at all, as off a body or off the ground - and unlike a stack, of which what
+    // fits comes and the rest stays.
+    [Fact]
+    public void SomethingTooHeavyToCarryStaysOnTheShelf()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+        var millstone = new Assembly.Part(new MaterialId("stone"), TestCatalogs.Wedge, 1f, 1000f);
+        building.Storage!.AddAssembly(millstone);
+
+        world.Execute(new WithdrawCommand(person, building, new CarriedThing.Worked(millstone)));
+
+        Assert.Empty(person.Inventory.Assemblies);
+        Assert.Equal(millstone, Assert.Single(building.Storage!.Assemblies));
+    }
+
+    [Fact]
+    public void FetchingSomethingTheStoreDoesNotHoldIsBlockedAsStoreIsEmpty()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        var building = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(0, 0));
+
+        Assert.Equal(
+            ActionBlocker.StoreIsEmpty,
+            new WithdrawCommand(person, building, new CarriedThing.Worked(Cord())).Blocker(world));
     }
 }

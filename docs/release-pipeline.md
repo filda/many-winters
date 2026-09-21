@@ -146,9 +146,36 @@ writes `export.timeline.log` with an elapsed-time stamp per line. Godot writes t
 file in blocks, so a stamp places a phase boundary rather than timing a single line,
 which is all it takes to say which phase holds the ten minutes.
 
-The only Windows-only work left after the compile is rewriting icon and version
-metadata into the 104 MB `.exe` and the console wrapper with rcedit. That is what the
-`no-rcedit` variant switches off, and it is the next hypothesis in line.
+The second dispatch (run 35625196738, 2026-09-21) read that timeline and found the
+export is not slow at all — it is *finished* and waiting:
+
+| variant              | export | last line Godot printed | silence |
+| -------------------- | ------ | ----------------------- | ------- |
+| `latest`, control    | 627 s  | +28 s                   | 599 s   |
+| `2022`, control      | 634 s  | +28 s                   | ~605 s  |
+| `latest`, no-rcedit  | 628 s  | +29 s                   | ~599 s  |
+| `latest`, warmup     | 19 s   | +18 s                   | 1 s     |
+
+7. **It is rcedit.** No: with `application/modify_resources=false` the export still
+   took 628 s.
+
+So Godot logs `savepack` as done 28 s in and then takes another ten minutes to exit,
+and 599 s is the Roslyn compiler server's idle timeout to the second. The mechanism
+that fits every observation: Godot spawns `dotnet publish` with its output redirected,
+the `VBCSCompiler` that publish starts inherits the write end of that pipe and lingers
+for its idle timeout, and Godot waits for an EOF that cannot arrive until the last
+holder of the pipe exits. It explains hypothesis 3 as well — a warm-up publish starts
+the compiler server under a different parent, so Godot's pipe is never inherited,
+which is also why a warm-up that *failed* worked and why `dotnet restore`, which never
+starts Roslyn, did not. Linux is unaffected because there Godot waits on the child
+process rather than on the pipe.
+
+The `no-shared-compilation` variant tests exactly that by setting `UseSharedCompilation`
+to false in the export step's environment, which MSBuild picks up as a global property
+and therefore applies to the publish Godot runs for itself. If the export drops to
+~20 s, `release-windows` in `ci.yml` gets the same two lines and the ten minutes go
+away; the fallback is to ship the warm-up publish, which is empirically worth 19 s
+against 627 s but treats the symptom.
 
 Two mechanics cost that dispatch its two most interesting cells, and are fixed:
 

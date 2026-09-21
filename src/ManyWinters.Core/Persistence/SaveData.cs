@@ -93,7 +93,11 @@ public sealed record EntitySaveData(
     IReadOnlyList<ItemStackSaveData>? Storage,
     // One worked object lying on the ground (see Entity.Made). Last, and nullable, so a save
     // written before made things could be put down still reads.
-    AssemblySaveData? Made = null);
+    AssemblySaveData? Made = null,
+    // The worked things on a store's shelves, beside the counted stock in Storage. Same reason
+    // a person's inventory needs two lists: a count is no truth at all about two axes of
+    // different quality (see Inventory).
+    IReadOnlyList<AssemblySaveData>? StorageWorkedThings = null);
 
 public sealed record GraveSaveData(
     Guid Id,

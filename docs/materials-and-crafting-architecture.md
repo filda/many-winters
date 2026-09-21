@@ -384,16 +384,26 @@ in its shape (`AssemblyPattern`) and what it is *called* lives in the band's wor
 shape when there is art to choose. Until then one lying on the ground draws as
 `BillboardSprite`'s flat fallback colour - visible and clickable, but a placeholder.
 
+And the last of it (2026-09-21): **a made thing can be stored.** `DepositCommand` and
+`WithdrawCommand` take a `CarriedThing` as putting one down does, so both tiers go on the
+shelves and come back off them; the building menu lists them in one order whichever tier they
+came from. A store has no capacity of its own, so everything offered goes in; coming back out
+is whole or not at all, because the pack that receives it does.
+
+That closes the list. Anything a person carries can now be put down, stored, fetched back and
+inherited, and nothing in the instance tier is reachable only through the pack that made it.
+
+The save grew a second list for it (`EntitySaveData.StorageWorkedThings`) for the same reason a
+person's inventory has two: a count is no truth at all about two cords of different quality.
+Without it a hut would have swallowed everything worked that was put in it, which is the same
+mistake the flat `AssemblySaveData` nearly shipped in 4c-2.
+
 Still open in 4c: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked
 thing carries a maker or its own wear). Three things are knowingly unfinished:
 
-- **A worked thing still cannot be stored.** Inheriting one and putting one down are both done
-  (see above); `DepositCommand` and `WithdrawCommand` still speak in counts, so a made thing
-  cannot go into a storage hut. That one is now small: a building's `Storage` is an `Inventory`
-  and already has both tiers, so only the two commands and their offers are behind.
 - **A joint names neither its verb nor its binder yet.** Section 6 describes both; step 4b
   left them out because nothing reads them until the verbs that set them exist (step 4c),
   the same rule that holds back unread material properties.

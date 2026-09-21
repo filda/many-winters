@@ -342,7 +342,37 @@ public class TargetActionsTests
 
         var deposit = Assert.IsType<DepositCommand>(Labelled(TargetActions.For(world, ava, hut), "Put in wood").Command);
 
-        Assert.Equal(4, deposit.Amount);
+        Assert.Equal(new CarriedThing.Stock(TestWorld.Wood, 4), deposit.What);
+    }
+
+    // Both tiers go on the shelves, and the line is named the way the thing is named everywhere
+    // else (see Vocabulary, InspectorText.ForWorkedThing).
+    [Fact]
+    public void SomethingTheyMadeCanGoOnTheShelvesToo()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        ava.Inventory.AddAssembly(cord);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        var deposit = Assert.IsType<DepositCommand>(Labelled(TargetActions.For(world, ava, hut), "Put in plant fibre cord").Command);
+
+        Assert.Equal(new CarriedThing.Worked(cord), deposit.What);
+    }
+
+    [Fact]
+    public void SomethingMadeOnTheShelvesCanBeTakenBackOut()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        hut.Storage!.AddAssembly(cord);
+
+        var withdraw = Assert.IsType<WithdrawCommand>(Labelled(TargetActions.For(world, ava, hut), "Take out plant fibre cord").Command);
+
+        Assert.Equal(new CarriedThing.Worked(cord), withdraw.What);
     }
 
     [Fact]

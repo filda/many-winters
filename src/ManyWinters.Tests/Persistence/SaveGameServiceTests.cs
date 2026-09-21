@@ -292,6 +292,34 @@ public class SaveGameServiceTests
         }
     }
 
+    // The same for a store's shelves: a count is no truth at all about two cords of different
+    // quality, so a building's worked things need their own list in the save (see Entity.Storage,
+    // EntitySaveData.StorageWorkedThings).
+    [Fact]
+    public void RoundTripPreservesWhatAStoreHoldsOnItsShelves()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var hut = world.SpawnBuilding(TestCatalogs.StorageHut, new Position(1f, 2f));
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
+        hut.Storage!.AddAssembly(cord);
+        hut.Storage!.Add(TestCatalogs.WoodItem, 4);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var restoredHut = Assert.Single(restored.Entities, e => e.Category == EntityCategory.Building);
+            Assert.Equal(cord, Assert.Single(restoredHut.Storage!.Assemblies));
+            Assert.Equal(4, restoredHut.Storage!.Get(TestCatalogs.WoodItem));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // A thing somebody made and put down is one object, joints and all, not a count - so the
     // save has to carry the object (see Entity.Made, AssemblySaveData).
     [Fact]
