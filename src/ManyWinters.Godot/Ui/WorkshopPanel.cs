@@ -25,24 +25,34 @@ public partial class WorkshopPanel : FloatingPanel
     private const int BodyFontSize = 15;
     private const int SectionSpacing = 6;
 
-    // The carried things are one list, so they sit line under line with nothing between them; the
-    // air in this panel belongs between its sections (SectionSpacing), not inside them.
-    private const int RowSpacing = 0;
-
-    // The pack is laid out across the bench rather than down it: two columns of things halve how
-    // far the panel reaches down the screen, and the width is there for them.
-    private const int Columns = 2;
+    // The pack is laid out across the bench rather than down it - things side by side, the way
+    // they would be if they had been tipped out onto it.
+    private const int Columns = 8;
 
     // How far the pack may reach before it scrolls within the bench instead of pushing everything
-    // under it further down. Four lines or so - past that it is a list being read rather than a
-    // handful of things being looked over.
-    private const float MaxPackHeight = 110f;
+    // under it further down. Two rows of things - past that it is a hoard being sorted rather than
+    // a handful of things being looked over.
+    private const float MaxPackHeight = 128f;
+
+    // One thing's square of bench, how far its picture sits from the edges of that square, and how
+    // much bench is left between two of them.
+    private const int TileSize = 56;
+    private const int IconMargin = 6;
+    private const int TileSpacing = 6;
+
+    // The mark in the corner of a picture saying how many of that thing are held. Small: it is a
+    // note on the picture, not a caption under it.
+    private const int CountFontSize = 12;
+
+    // What a thing nobody has drawn yet comes out as - the same tint the world falls back to for
+    // an item with no icon (see ItemPileView).
+    private static readonly Color Undrawn = new(0.55f, 0.45f, 0.3f, 0.55f);
     private const int ScrollbarWidth = 16;
 
     private static readonly Color Ink = InscriptionFont.DarkInk;
     private static readonly Color QuietInk = InscriptionFont.FadedDarkInk;
 
-    private readonly List<PickRow> _rows = [];
+    private readonly List<PickTile> _tiles = [];
     private readonly List<WorkshopEntry> _picked = [];
 
     private GridContainer _entries = null!;
@@ -85,8 +95,8 @@ public partial class WorkshopPanel : FloatingPanel
             Columns = Columns,
             CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth, 0),
         };
-        _entries.AddThemeConstantOverride("v_separation", RowSpacing);
-        _entries.AddThemeConstantOverride("h_separation", RowSpacing);
+        _entries.AddThemeConstantOverride("v_separation", TileSpacing);
+        _entries.AddThemeConstantOverride("h_separation", TileSpacing);
         _pack.AddChild(_entries);
 
         // What the thing in hand is like, never what it is for (see MaterialWords).
@@ -154,14 +164,14 @@ public partial class WorkshopPanel : FloatingPanel
         _carried = carried;
         _picked.RemoveAll(picked => !carried.Contains(picked));
 
-        while (_rows.Count < carried.Count)
+        while (_tiles.Count < carried.Count)
         {
-            _rows.Add(NewRow());
+            _tiles.Add(NewTile());
         }
 
-        for (var i = 0; i < _rows.Count; i++)
+        for (var i = 0; i < _tiles.Count; i++)
         {
-            _rows[i].Apply(i < carried.Count ? carried[i] : null, i < carried.Count && _picked.Contains(carried[i]));
+            _tiles[i].Apply(i < carried.Count ? carried[i] : null, i < carried.Count && _picked.Contains(carried[i]));
         }
 
         _hint.Text = carried.Count > 0 ? "Take one thing, or two." : "Carrying nothing to work with.";
@@ -225,28 +235,82 @@ public partial class WorkshopPanel : FloatingPanel
     // panel itself holds no world.
     internal event Action? Attempted;
 
-    private PickRow NewRow()
+    // One square of bench per thing: its picture, the count in the corner where there is more
+    // than one of it, and its name under the cursor. Not a line of text - a pack is things, and
+    // picking two of them to try together is looking at what you have rather than reading it.
+    private PickTile NewTile()
     {
         var button = new Button
         {
-            Text = string.Empty,
-            Alignment = HorizontalAlignment.Left,
             ToggleMode = true,
-            // Half the bench each, so the two columns line up however long the words in them are.
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(TileSize, TileSize),
+            SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
         };
+
+        // A picked thing is outlined as well as shaded: two of these decide what is being tried,
+        // and which two has to be readable at a glance across the bench.
+        button.AddThemeStyleboxOverride("pressed", PickedBox());
         _entries.AddChild(button);
 
-        var row = new PickRow(button);
+        // A Button draws its own box before its children, which is what lays the picture on the
+        // tile rather than behind it.
+        var undrawn = new ColorRect { Color = Undrawn, MouseFilter = MouseFilterEnum.Ignore };
+        undrawn.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, IconMargin * 2);
+        button.AddChild(undrawn);
+
+        var icon = new TextureRect
+        {
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        icon.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, IconMargin);
+        button.AddChild(icon);
+
+        var count = InscriptionFont.BodyBoldLabel(string.Empty, CountFontSize, Ink);
+        count.HorizontalAlignment = HorizontalAlignment.Right;
+        count.VerticalAlignment = VerticalAlignment.Bottom;
+        count.MouseFilter = MouseFilterEnum.Ignore;
+        count.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, IconMargin / 2);
+        button.AddChild(count);
+
+        var tile = new PickTile(button, icon, undrawn, count);
         button.Pressed += () =>
         {
-            if (row.Entry is { } entry)
+            if (tile.Entry is { } entry)
             {
                 TogglePick(entry);
             }
         };
 
-        return row;
+        return tile;
+    }
+
+    // The same shading every pressed thing on paper takes, with a line of ink round it.
+    private static StyleBoxFlat PickedBox()
+    {
+        var box = PanelChrome.Filled(new Color(InscriptionFont.DarkInk, 0.18f));
+        box.BorderColor = InscriptionFont.DarkInk;
+        box.BorderWidthLeft = 1;
+        box.BorderWidthRight = 1;
+        box.BorderWidthTop = 1;
+        box.BorderWidthBottom = 1;
+        return box;
+    }
+
+    // The picture drawn for a thing, or none where nothing has been drawn for it yet - the tile
+    // then carries the blank tint instead (see ItemIcons).
+    private static Texture2D? IconFor(WorkshopEntry entry)
+    {
+        foreach (var path in ItemIcons.For(entry.Target))
+        {
+            if (ResourceLoader.Exists(path))
+            {
+                return ResourceLoader.Load<Texture2D>(path);
+            }
+        }
+
+        return null;
     }
 
     // Two is all a binding holds, so a third pick pushes the oldest out rather than refusing the
@@ -269,7 +333,7 @@ public partial class WorkshopPanel : FloatingPanel
 
     internal event Action? PickChanged;
 
-    private sealed class PickRow(Button button)
+    private sealed class PickTile(Button button, TextureRect icon, ColorRect undrawn, Label count)
     {
         public WorkshopEntry? Entry { get; private set; }
 
@@ -282,7 +346,19 @@ public partial class WorkshopPanel : FloatingPanel
                 return;
             }
 
-            button.Text = shown.Label;
+            // The name is what the cursor asks for. On the tile it would be a caption under a
+            // picture of the same thing, said twice.
+            button.TooltipText = shown.Label;
+
+            var texture = IconFor(shown);
+            icon.Texture = texture;
+            icon.Visible = texture is not null;
+            undrawn.Visible = texture is null;
+
+            // One of a thing is what a picture of it already says.
+            count.Text = shown.Count > 1 ? $"×{shown.Count}" : string.Empty;
+            count.Visible = shown.Count > 1;
+
             button.SetPressedNoSignal(picked);
         }
     }

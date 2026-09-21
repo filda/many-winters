@@ -39,8 +39,8 @@ internal partial class ItemPileView : SpriteEntityView
     // and a dropped pile of it is the same icon lying on the ground rather than growing.
     private static string TexturePathFor(EntityKindId kind)
     {
-        var itemsPath = $"res://Content/items/{kind.Value}/{kind.Value}.png";
-        return ResourceLoader.Exists(itemsPath) ? itemsPath : $"res://Content/resources/{kind.Value}/{kind.Value}.png";
+        var itemsPath = TexturePaths.ForItem(kind.Value);
+        return ResourceLoader.Exists(itemsPath) ? itemsPath : TexturePaths.ForResource(kind.Value);
     }
 
     // Both buttons answer, as a resource does: left picks it up, right asks what else could be

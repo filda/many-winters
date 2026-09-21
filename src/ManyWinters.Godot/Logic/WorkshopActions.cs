@@ -5,9 +5,13 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
 
-// One thing in the pack the player can point at in the workshop: what to call it, and which of
-// the two tiers it came out of (see Inventory, CarriedThing).
-internal readonly record struct WorkshopEntry(string Label, CarriedThing Target);
+// One thing in the pack the player can point at in the workshop: what to call it, how many of it
+// are held, and which of the two tiers it came out of (see Inventory, CarriedThing).
+//
+// The count is its own field rather than part of the label, because the bench draws the thing
+// rather than naming it (WorkshopPanel) - the name is what the cursor gets, the count is a mark in
+// the corner of the picture. A made thing is always one of itself.
+internal readonly record struct WorkshopEntry(string Label, CarriedThing Target, int Count = 1);
 
 // What the workshop panel offers, worked out apart from the panel that draws it.
 //
@@ -29,8 +33,9 @@ internal static class WorkshopActions
         var stock = person.Inventory.Counts
             .OrderBy(entry => entry.Key.Value, StringComparer.Ordinal)
             .Select(entry => new WorkshopEntry(
-                $"{items.Get(entry.Key).DisplayName} x{entry.Value}",
-                new CarriedThing.Stock(entry.Key)));
+                items.Get(entry.Key).DisplayName,
+                new CarriedThing.Stock(entry.Key),
+                entry.Value));
 
         var worked = person.Inventory.Assemblies
             .Select(held => new WorkshopEntry(

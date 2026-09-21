@@ -23,7 +23,22 @@ public class WorkshopActionsTests
 
         var carried = WorkshopActions.Carried(world, person);
 
-        Assert.Equal(["Wood x3", "plant fibre cord"], carried.Select(entry => entry.Label));
+        Assert.Equal(["Wood", "plant fibre cord"], carried.Select(entry => entry.Label));
+    }
+
+    // The bench draws the thing rather than naming it, so how many are held is a field of its own
+    // to mark the picture with, not something spelled into the name (see WorkshopPanel).
+    [Fact]
+    public void HowManyAreHeldIsCountedApartFromTheName()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 3);
+        person.Inventory.AddAssembly(Cord());
+
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Equal([3, 1], carried.Select(entry => entry.Count));
     }
 
     [Fact]
