@@ -41,11 +41,24 @@ jobs:
             variant_label: control
             diagnostic_warmup: "false"
             modify_resources: "true"
+            shared_compilation: "true"
           - runner: windows-latest
             runner_label: latest
             variant_label: warmup
             diagnostic_warmup: "true"
             modify_resources: "true"
+            shared_compilation: "true"
+          # Godot's export goes quiet 28 s in and the process still takes ~600 s to exit, which is
+          # the Roslyn compiler server's idle timeout to the second. It is started by the
+          # `dotnet publish` Godot spawns with its output redirected, inherits that pipe and holds
+          # it open long after the build, so Godot waits for an EOF that nobody sends. This row
+          # keeps the compilation in-process; if that is the mechanism, the export drops to ~20 s.
+          - runner: windows-latest
+            runner_label: latest
+            variant_label: no-shared-compilation
+            diagnostic_warmup: "false"
+            modify_resources: "true"
+            shared_compilation: "false"
           # The C# is compiled ~25 s into a ~620 s export - the exported assembly's own timestamp
           # says so - and rewriting icon and version metadata into the 104 MB .exe with rcedit is
           # the one thing Windows does after that which Linux does not. This row switches it off.
@@ -54,11 +67,13 @@ jobs:
             variant_label: no-rcedit
             diagnostic_warmup: "false"
             modify_resources: "false"
+            shared_compilation: "true"
           - runner: windows-2022
             runner_label: 2022
             variant_label: control
             diagnostic_warmup: "false"
             modify_resources: "true"
+            shared_compilation: "true"
     env:
       EXPORT_PRESET: Of Folks and Many Winters
     steps:
@@ -213,6 +228,10 @@ jobs:
           exit 0
 
       - name: Export Windows build
+        # MSBuild reads properties from the environment, so this reaches the `dotnet publish`
+        # Godot spawns for itself. "true" is the default and leaves the control rows alone.
+        env:
+          UseSharedCompilation: ${{ matrix.shared_compilation }}
         run: |
           $ErrorActionPreference = "Stop"
           $root = (Get-Location).Path
