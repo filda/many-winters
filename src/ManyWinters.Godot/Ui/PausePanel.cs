@@ -46,6 +46,9 @@ public partial class PausePanel : Control
         }
 
         panel.AddChild(padding);
+        // Last, so it sits over the page rather than in it: the corner of the card, not the line
+        // the band's name is on.
+        panel.AddChild(PanelChrome.CornerCross(() => Resumed?.Invoke()));
 
         var column = new VBoxContainer { CustomMinimumSize = new Vector2(ColumnWidth, 0) };
         column.AddThemeConstantOverride("separation", Spacing);
@@ -56,7 +59,7 @@ public partial class PausePanel : Control
         column.AddChild(notice);
 
         _title = InscriptionFont.PaperTitleLabel(string.Empty, TitleFontSize);
-        column.AddChild(PanelChrome.Head(_title, () => Resumed?.Invoke()));
+        column.AddChild(_title);
 
         _sinceArrival = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _sinceArrival.HorizontalAlignment = HorizontalAlignment.Center;

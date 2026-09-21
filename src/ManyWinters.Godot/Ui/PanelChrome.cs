@@ -151,6 +151,27 @@ public static class PanelChrome
         return head;
     }
 
+    // The way out in the card's own top right corner, for a page whose head is not the first
+    // thing on it (PausePanel, which opens with a line about the clock). Added last to a
+    // PanelContainer, which sizes every child to the whole card: the cross rides in a frame of
+    // that size and hangs itself in the corner of it, clear of whatever the page is saying.
+    public static Control CornerCross(Action closed)
+    {
+        var corner = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        corner.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+        var cross = CloseCross(InscriptionFont.DarkInk);
+        cross.AnchorLeft = 1f;
+        cross.AnchorRight = 1f;
+        cross.OffsetLeft = -(CrossSize + PaperPadding);
+        cross.OffsetRight = -PaperPadding;
+        cross.OffsetTop = PaperPadding;
+        cross.OffsetBottom = PaperPadding + CrossSize;
+        cross.Pressed += () => closed();
+        corner.AddChild(cross);
+        return corner;
+    }
+
     // Tighter than Filled: a cross is one glyph, and a line of text's padding around it would
     // push it off the corner it belongs in.
     private static StyleBoxFlat CrossBox(Color fill) => new()
