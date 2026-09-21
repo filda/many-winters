@@ -1021,8 +1021,7 @@ public partial class Main : Node3D
             // band's arrival would have (OnAnotherBandRequested), not only then.
             if (nobodyIsLeft)
             {
-                _bandPanel.Visible = false;
-                _selectionPanel.ClearSelection();
+                CloseBandWindows();
                 _selectedPerson = null;
             }
 
@@ -1030,13 +1029,23 @@ public partial class Main : Node3D
         }
     }
 
+    // Every window that shows something about whoever is selected or was, closed together so a
+    // future one is not the one somebody forgets to add here - which is exactly how the detail
+    // page got left open through an ending it was never told about.
+    private void CloseBandWindows()
+    {
+        _bandPanel.Visible = false;
+        _selectionPanel.ClearSelection();
+        _detailPanel.Close();
+        _workshop.Close();
+    }
+
     // A successor band arrives into this same world: a fresh crowd is spawned and the prologue
     // takes their place on screen. The old band's dead and graves stay where they are.
     private void OnAnotherBandRequested()
     {
-        // Put away the old band's windows â€” the roster and selection are about dead people.
-        _bandPanel.Visible = false;
-        _selectionPanel.ClearSelection();
+        // Put away the old band's windows - the roster and selection are about dead people.
+        CloseBandWindows();
 
         // The new band has not walked this land yet â€” fog clears around their new camp.
         _world.Exploration.Reset();
