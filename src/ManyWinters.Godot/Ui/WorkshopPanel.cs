@@ -1,4 +1,5 @@
 using Godot;
+using ManyWinters.Core.Commands;
 using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Ui;
@@ -7,9 +8,13 @@ namespace ManyWinters.Godot.Ui;
 // it - take one thing or two, and see what comes of putting them together (see
 // docs/materials-and-crafting-architecture.md section 7).
 //
-// Deliberately not a list of verbs. There is one button and it says "See what comes of it": the
-// player forms the hypothesis and the simulation rules on it, which is the loop worth playing. A
-// menu of Twist/Bind/Knap would hand them the answer before they had the idea.
+// Deliberately not a list of verbs. There is one button and it says "Make": the player forms the
+// hypothesis and the simulation rules on it, which is the loop worth playing. A menu of
+// Twist/Bind/Knap would hand them the answer before they had the idea.
+//
+// A fixed shape rather than a page that grows and shrinks with what is currently laid on it - the
+// naming panel that used to live inside it (moved out to NamingPanel) was what made it lurch
+// every time a thing nobody had a word for came off the bench.
 //
 // Time stands still while this is open, the way it does for the pause page - tinkering is meant
 // to be unhurried, not something to rush before the world moves on. Main holds the clock for
@@ -22,17 +27,20 @@ public partial class WorkshopPanel : FloatingPanel
     // things are laid out on, and a column of carried things reaching down the screen reads as an
     // inventory screen.
     private const float Width = 640f;
+    private const float BodyHeight = 280f;
     private const int BodyFontSize = 15;
     private const int TitleFontSize = 22;
     private const int SectionSpacing = 6;
 
-    // The pack is laid out across the bench rather than down it - things side by side, the way
-    // they would be if they had been tipped out onto it.
-    private const int Columns = 8;
+    // The pack sits to the left of the recipe list rather than spanning the whole bench, which is
+    // what leaves it fewer columns than it once had.
+    private const int Columns = 5;
 
-    // How far the pack may reach before it scrolls within the bench instead of pushing everything
-    // under it further down. Two rows of things - past that it is a hoard being sorted rather than
-    // a handful of things being looked over.
+    // How wide the recipe list's own column is, the rest of the bench going to the pack.
+    private const float RecipeColumnWidth = 220f;
+
+    // How far either half of the bench may reach before it scrolls within its own column instead
+    // of growing the column - which is what keeps the whole bench a fixed shape.
     private const float MaxPackHeight = 128f;
 
     // One thing's square of bench, how far its picture sits from the edges of that square, and how
@@ -48,7 +56,6 @@ public partial class WorkshopPanel : FloatingPanel
     // What a thing nobody has drawn yet comes out as - the same tint the world falls back to for
     // an item with no icon (see ItemPileView).
     private static readonly Color Undrawn = new(0.55f, 0.45f, 0.3f, 0.55f);
-    private const int ScrollbarWidth = 16;
 
     private static readonly Color Ink = InscriptionFont.DarkInk;
     private static readonly Color QuietInk = InscriptionFont.FadedDarkInk;
@@ -64,13 +71,11 @@ public partial class WorkshopPanel : FloatingPanel
     private Button _eat = null!;
     private Button _drop = null!;
     private Label _outcome = null!;
-    private VBoxContainer _naming = null!;
-    private LineEdit _name = null!;
     private ActionList _recipes = null!;
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
     public WorkshopPanel()
-        : base("Workshop", onPaper: true, titleFontSize: TitleFontSize)
+        : base("Workshop", onPaper: true, titleFontSize: TitleFontSize, fixedBodyHeight: BodyHeight)
     {
         CustomMinimumSize = new Vector2(Width, 0);
         // The bench is what the player is doing, not a card beside the world: it holds the middle
@@ -85,57 +90,70 @@ public partial class WorkshopPanel : FloatingPanel
         base._Ready();
         Body.AddThemeConstantOverride("separation", SectionSpacing);
 
+        // Whatever the last attempt (or naming) said, right under the title rather than buried
+        // under the pack - it is the one line about what just happened, and reads as part of the
+        // heading rather than as one more line of body text. Italic for the same reason a diary
+        // entry is: this is the bench speaking about what it just watched happen, not a label.
+        _outcome = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, Ink);
+        _outcome.Visible = false;
+        Body.AddChild(_outcome);
+
         _hint = InscriptionFont.BodyLabel("Take one thing, or two.", BodyFontSize, QuietInk);
         Body.AddChild(_hint);
 
-        // The pack keeps its own scroll, so a big haul stays inside the bench: the window's own
-        // scroll only starts once the whole thing has reached the foot of the screen, which is
-        // exactly the height this panel is meant not to have.
-        _pack = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        Body.AddChild(_pack);
+        var columns = new HBoxContainer();
+        columns.AddThemeConstantOverride("separation", SectionSpacing * 2);
+        Body.AddChild(columns);
+
+        // The pack keeps its own scroll, so a big haul stays inside the bench rather than growing
+        // it - which is what a fixed-size workbench needs, the window's own scroll being for a
+        // page that is allowed to be as tall as what is written on it.
+        var pack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        columns.AddChild(pack);
+
+        _pack = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            CustomMinimumSize = new Vector2(0, MaxPackHeight),
+        };
+        pack.AddChild(_pack);
 
         _entries = new GridContainer
         {
             Columns = Columns,
-            CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth, 0),
+            CustomMinimumSize = new Vector2((Columns * (TileSize + TileSpacing)) - TileSpacing, 0),
         };
         _entries.AddThemeConstantOverride("v_separation", TileSpacing);
         _entries.AddThemeConstantOverride("h_separation", TileSpacing);
         _pack.AddChild(_entries);
 
-        // Recipes are named up front (see WorkshopActions.Recipes) - a plain column of buttons,
-        // the same control the selected person's card uses for the same reason (see ActionList).
+        // Recipes get a section of their own beside the pack rather than a place in the same
+        // column - named up front (see WorkshopActions.Recipes), they are a different kind of
+        // choice from picking things to try, and read as one when they sit under the pack they
+        // are made out of.
+        var recipeColumn = new VBoxContainer { CustomMinimumSize = new Vector2(RecipeColumnWidth, 0) };
+        columns.AddChild(recipeColumn);
+        recipeColumn.AddChild(InscriptionFont.BodyBoldLabel("Recipes", BodyFontSize, Ink));
+
+        var recipeScroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            CustomMinimumSize = new Vector2(0, MaxPackHeight),
+        };
+        recipeColumn.AddChild(recipeScroll);
+
+        // The same control the selected person's card uses, for the same reason ("same control,
+        // same shape") - only ever holding offers the person can actually carry out, since a
+        // recipe with nothing to explain a grey button is not worth a line (see
+        // WorkshopActions.Recipes).
         _recipes = new ActionList();
         _recipes.ActionInvoked += offer => RecipeInvoked?.Invoke(offer);
-        Body.AddChild(_recipes);
+        recipeScroll.AddChild(_recipes);
 
-        // What the thing in hand is like, never what it is for (see MaterialWords). Set in
-        // italics, as a thing said about the pick rather than a label on it - the status line
-        // that follows (ReportOutcome) is the rest of that same voice.
+        // What the thing in hand is like, never what it is for (see MaterialWords).
         _words = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, QuietInk);
         _words.Visible = false;
         Body.AddChild(_words);
-
-        _outcome = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, Ink);
-        _outcome.Visible = false;
-        Body.AddChild(_outcome);
-
-        // Only ever up in the moment a thing nobody has a word for has just been made. Naming
-        // is not a screen the player visits; it is the discovery itself asking to be called
-        // something (see Vocabulary).
-        _naming = new VBoxContainer { Visible = false };
-        _naming.AddThemeConstantOverride("separation", SectionSpacing);
-        Body.AddChild(_naming);
-
-        _naming.AddChild(InscriptionFont.BodyLabel("Nobody has a word for this. What is it called?", BodyFontSize, QuietInk));
-
-        _name = new LineEdit { PlaceholderText = "a name for it" };
-        _name.TextSubmitted += _ => Christen();
-        _naming.AddChild(_name);
-
-        var christen = new Button { Text = "Call it that", Alignment = HorizontalAlignment.Left };
-        christen.Pressed += Christen;
-        _naming.AddChild(christen);
     }
 
     // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
@@ -143,20 +161,22 @@ public partial class WorkshopPanel : FloatingPanel
     // do, not on the pack laid out underneath. Built while the title bar itself is still going
     // up (see FloatingPanel.BuildTitleBarExtras), so their Pressed handlers are wired here too
     // rather than back in _Ready.
-    //
-    // Text buttons for now rather than pictures - nobody has drawn Eat, Drop or "see what comes
-    // of it" as an icon yet.
     protected override void BuildTitleBarExtras(HBoxContainer titleBar)
     {
-        _eat = new Button { Text = "Eat", Visible = false };
+        _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
+        _eat.Visible = false;
         _eat.Pressed += () => EatRequested?.Invoke();
         titleBar.AddChild(_eat);
 
-        _drop = new Button { Text = "Drop", Visible = false };
+        _drop = WorkshopIcons.Button("Drop", WorkshopIcons.Drop());
+        _drop.Visible = false;
         _drop.Pressed += () => DropRequested?.Invoke();
         titleBar.AddChild(_drop);
 
-        _try = new Button { Text = "See what comes of it", Disabled = true };
+        // Shown only while there is something for it to do - a button that reads "Make" while
+        // greyed out is a button promising an answer it does not have (see WorkshopActions).
+        _try = WorkshopIcons.Button("Make", WorkshopIcons.Make());
+        _try.Visible = false;
         _try.Pressed += OnTryPressed;
         titleBar.AddChild(_try);
     }
@@ -166,7 +186,6 @@ public partial class WorkshopPanel : FloatingPanel
     {
         _picked.Clear();
         _outcome.Visible = false;
-        _naming.Visible = false;
         Visible = true;
         Show(carried);
         ShowRecipes(recipes);
@@ -224,19 +243,21 @@ public partial class WorkshopPanel : FloatingPanel
     }
 
     // What the panel is currently able to offer, so the button says what pressing it would do.
+    //
+    // The refusal fully decides the status line rather than only filling it in when there is one
+    // to show: a pick that is undone (or acted on some other way, like Eat or Drop) leaves no
+    // refusal behind, and the line has to be told to go quiet rather than being left holding
+    // whatever it last said.
     internal void Offer(ActionOffer? offer, string? refusal, IReadOnlyList<string> words)
     {
         _words.Text = words.Count > 0 ? $"It is {string.Join(", ", words)}." : string.Empty;
         _words.Visible = words.Count > 0;
 
-        _try.Disabled = offer is not { IsAvailable: true };
-        _try.Text = _picked.Count == 0 ? "See what comes of it" : $"See what comes of it ({_picked.Count})";
+        _try.Visible = offer is { IsAvailable: true };
+        _try.Text = _picked.Count > 1 ? $"Make ({_picked.Count})" : "Make";
 
-        if (refusal is { Length: > 0 })
-        {
-            _outcome.Text = refusal;
-            _outcome.Visible = true;
-        }
+        _outcome.Text = refusal ?? string.Empty;
+        _outcome.Visible = refusal is { Length: > 0 };
     }
 
     // Eat and Drop, for whatever is picked right now - each hidden rather than disabled when
@@ -255,31 +276,6 @@ public partial class WorkshopPanel : FloatingPanel
     {
         _outcome.Text = sentence;
         _outcome.Visible = sentence.Length > 0;
-    }
-
-    // The band has just made something there is no word for. Asked here and now, because this
-    // is the moment of discovery rather than an interruption of it.
-    internal void AskForAName()
-    {
-        _naming.Visible = true;
-        _name.Text = string.Empty;
-        _name.GrabFocus();
-    }
-
-    // What the player called it. Main is what writes it down; this panel knows a word was
-    // typed, not what having a word for a thing means.
-    internal event Action<string>? Named;
-
-    private void Christen()
-    {
-        var word = _name.Text.Trim();
-        if (word.Length == 0)
-        {
-            return;
-        }
-
-        _naming.Visible = false;
-        Named?.Invoke(word);
     }
 
     internal IReadOnlyList<WorkshopEntry> Picked => _picked;
@@ -359,10 +355,12 @@ public partial class WorkshopPanel : FloatingPanel
     }
 
     // The picture drawn for a thing, or none where nothing has been drawn for it yet - the tile
-    // then carries the blank tint instead (see ItemIcons).
-    private static Texture2D? IconFor(WorkshopEntry entry)
+    // then carries the blank tint instead (see ItemIcons). Internal rather than private: the
+    // naming panel wants the same picture, larger, for the thing it is asking a name for
+    // (NamingPanel).
+    internal static Texture2D? IconFor(CarriedThing thing)
     {
-        foreach (var path in ItemIcons.For(entry.Target))
+        foreach (var path in ItemIcons.For(thing))
         {
             if (ResourceLoader.Exists(path))
             {
@@ -386,7 +384,6 @@ public partial class WorkshopPanel : FloatingPanel
             }
         }
 
-        _outcome.Visible = false;
         Show(_carried);
         PickChanged?.Invoke();
     }
@@ -410,7 +407,7 @@ public partial class WorkshopPanel : FloatingPanel
             // picture of the same thing, said twice.
             button.TooltipText = shown.Label;
 
-            var texture = IconFor(shown);
+            var texture = IconFor(shown.Target);
             icon.Texture = texture;
             icon.Visible = texture is not null;
             undrawn.Visible = texture is null;

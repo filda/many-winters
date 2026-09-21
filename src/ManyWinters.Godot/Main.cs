@@ -46,6 +46,7 @@ public partial class Main : Node3D
     private HelpPanel _helpPanel = null!;
     private ChroniclePanel _chronicle = null!;
     private WorkshopPanel _workshop = null!;
+    private NamingPanel _namingPanel = null!;
 
     // What keeps the rest of the screen out of reach while the workbench is out (SetUpWorkshop).
     private Control _workshopShield = null!;
@@ -305,7 +306,19 @@ public partial class Main : Node3D
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
             _contextMenu.Close();
-            _workshop.Close();
+
+            // The naming panel sits over the workshop rather than beside it, so Escape only
+            // reaches the workshop underneath once there is no question sitting on top of it to
+            // answer first.
+            if (_namingPanel.Visible)
+            {
+                _namingPanel.Close();
+            }
+            else
+            {
+                _workshop.Close();
+            }
+
             if (_helpPanel.Visible)
             {
                 _helpPanel.Dismiss();
@@ -669,10 +682,17 @@ public partial class Main : Node3D
         _workshop.Attempted += OnWorkshopAttempt;
         _workshop.EatRequested += OnWorkshopEat;
         _workshop.DropRequested += OnWorkshopDrop;
-        _workshop.Named += OnWorkshopNamed;
         _workshop.PickChanged += RefreshWorkshopOffer;
         _workshop.RecipeInvoked += OnWorkshopRecipe;
         canvas.AddChild(_workshop);
+
+        // Added after the workshop, so it lands on top of it rather than beside it - both are
+        // centred on the same spot (NamingPanel.KeepCentred), which is what makes the one read
+        // as a page laid over the other.
+        _namingPanel = new NamingPanel();
+        _namingPanel.Named += OnWorkshopNamed;
+        _namingPanel.Cancelled += () => _justMade = null;
+        canvas.AddChild(_namingPanel);
     }
 
     private void OpenWorkshop()
@@ -802,6 +822,11 @@ public partial class Main : Node3D
         var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
         _workshop.Show(WorkshopActions.Carried(_world, person));
         _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
+
+        // Before ReportOutcome, not after: refreshing the offer recomputes the status line from
+        // the pick (now empty, the thing just picked having been consumed or come apart), and
+        // would otherwise overwrite the very sentence this method is about to report.
+        RefreshWorkshopOffer();
         _workshop.ReportOutcome(made is null
             ? "It comes apart in your hands."
             : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
@@ -811,10 +836,8 @@ public partial class Main : Node3D
         if (made is not null && !_world.Vocabulary.HasAWordFor(made))
         {
             _justMade = made;
-            _workshop.AskForAName();
+            _namingPanel.Open(InspectorText.ForWorkedThing(made, _world), WorkshopPanel.IconFor(new CarriedThing.Worked(made)));
         }
-
-        RefreshWorkshopOffer();
     }
 
     // What the last attempt turned out, held only long enough for the player to name it.

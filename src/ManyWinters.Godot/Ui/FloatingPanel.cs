@@ -13,7 +13,11 @@ namespace ManyWinters.Godot.Ui;
 // (PanelChrome.Parchment, weathered, dark ink), or the dark card the panels over the world use.
 // The panel applies its own chrome either way, so nobody has to remember to pair the right
 // stylebox with the right ink.
-public partial class FloatingPanel(string title, bool onPaper = false, int? titleFontSize = null) : PanelContainer
+public partial class FloatingPanel(
+    string title,
+    bool onPaper = false,
+    int? titleFontSize = null,
+    float? fixedBodyHeight = null) : PanelContainer
 {
     private const float TitleBarHeight = 28f;
     private const int TitleFontSize = 15;
@@ -133,8 +137,18 @@ public partial class FloatingPanel(string title, bool onPaper = false, int? titl
     // internally. A centred window measures that room against the whole screen less the clearance
     // at both ends: measured from its own top, as a window the player placed is, its height would
     // decide its position and its position its height, and the two would chase each other.
+    //
+    // A panel given a fixed height (WorkshopPanel) skips all of this: it is a workbench with a
+    // fixed shape, not a page that grows and shrinks with what is currently laid on it, so its
+    // scroll area is exactly that height whatever the body inside asks for.
     private void FitBody()
     {
+        if (fixedBodyHeight is { } fixedHeight)
+        {
+            _scroll.CustomMinimumSize = new Vector2(0, fixedHeight);
+            return;
+        }
+
         var screenHeight = GetViewport().GetVisibleRect().Size.Y;
         var available = KeepCentred
             ? screenHeight - TitleBarHeight - (BottomClearance * 2f)

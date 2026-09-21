@@ -66,16 +66,17 @@ public class WorkshopActionsTests
         Assert.IsType<MakeCommand>(craft.Command);
     }
 
-    // Offered from the first unit, not from the whole cost: "Make axe" over two of the five wood
-    // it takes is a goal the player can send them after, and the blocker says how far off it is.
+    // Carrying some of the material but not enough is the same as carrying none of it: the
+    // recipe list is never a column of things greyed out, so a recipe that cannot be made right
+    // now is simply not on it.
     [Fact]
-    public void SomebodyPartWayToTheMaterialIsToldWhatIsMissing()
+    public void MakingSomethingIsNotOfferedWithSomeOfTheMaterialButNotEnough()
     {
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Wood, 1);
 
-        Assert.Equal(ActionBlocker.MissingMaterials, Assert.Single(WorkshopActions.Recipes(world, person)).Blocker);
+        Assert.Empty(WorkshopActions.Recipes(world, person));
     }
 
     // Carrying none of the material at all and the line is absent, the same rule the pack itself
@@ -125,7 +126,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, carried);
 
         Assert.NotNull(offer);
-        Assert.Equal("See what comes of it", offer.Value.Label);
+        Assert.Equal("Make", offer.Value.Label);
         Assert.IsType<TwistCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }
@@ -144,7 +145,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, carried);
 
         Assert.NotNull(offer);
-        Assert.Equal("See what comes of it", offer.Value.Label);
+        Assert.Equal("Make", offer.Value.Label);
         Assert.IsType<KnapCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }
@@ -187,7 +188,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, carried);
 
         Assert.NotNull(offer);
-        Assert.Equal("See what comes of it", offer.Value.Label);
+        Assert.Equal("Make", offer.Value.Label);
         Assert.IsType<SharpenCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }
