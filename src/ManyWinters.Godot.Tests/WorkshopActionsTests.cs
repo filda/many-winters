@@ -50,6 +50,58 @@ public class WorkshopActionsTests
         Assert.Empty(WorkshopActions.Carried(world, person));
     }
 
+    // Making something out of the pack is named up front, unlike a reductive or combinative
+    // verb - the bench does not make the player discover an axe.
+    [Fact]
+    public void MakingSomethingIsOfferedToSomebodyCarryingTheMaterialForIt()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, TestWorld.AxeInputAmount);
+
+        var craft = Assert.Single(WorkshopActions.Recipes(world, person));
+
+        Assert.Equal("Make axe", craft.Label);
+        Assert.True(craft.IsAvailable);
+        Assert.IsType<MakeCommand>(craft.Command);
+    }
+
+    // Offered from the first unit, not from the whole cost: "Make axe" over two of the five wood
+    // it takes is a goal the player can send them after, and the blocker says how far off it is.
+    [Fact]
+    public void SomebodyPartWayToTheMaterialIsToldWhatIsMissing()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 1);
+
+        Assert.Equal(ActionBlocker.MissingMaterials, Assert.Single(WorkshopActions.Recipes(world, person)).Blocker);
+    }
+
+    // Carrying none of the material at all and the line is absent, the same rule the pack itself
+    // follows - otherwise the bench grows a column of things nobody could make.
+    [Fact]
+    public void MakingSomethingIsNotOfferedWithNoneOfTheMaterialAtAll()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Apple, 5);
+
+        Assert.Empty(WorkshopActions.Recipes(world, person));
+    }
+
+    // The other half of the same recipe list (TargetActions): one too heavy for the pack - a
+    // storage hut, unlike the axe the same wood also buys - is not offered here at all.
+    [Fact]
+    public void MakingSomethingThatDoesNotFitInThePackIsNotOffered()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, TestWorld.StorageHutInputAmount);
+
+        Assert.DoesNotContain(WorkshopActions.Recipes(world, person), offer => offer.Label == "Make storage hut");
+    }
+
     [Fact]
     public void PickingNothingOffersNothing()
     {

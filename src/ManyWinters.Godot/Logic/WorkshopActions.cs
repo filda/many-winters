@@ -15,11 +15,13 @@ internal readonly record struct WorkshopEntry(string Label, CarriedThing Target,
 
 // What the workshop panel offers, worked out apart from the panel that draws it.
 //
-// The player is never shown a list of verbs to choose from (see
-// docs/materials-and-crafting-architecture.md section 7): they pick one thing or two and ask
-// what comes of it, and this works out which verb that is. One thing is a reductive verb, two
-// is a combinative one - the count of what was picked is the whole of the question, which is
-// what keeps the panel the same shape however many verbs the game grows.
+// Two different questions live on the same bench. Working the pack itself is never a list of
+// verbs to choose from (see docs/materials-and-crafting-architecture.md section 7): the player
+// picks one thing or two and asks what comes of it, and this works out which verb that is. One
+// thing is a reductive verb, two is a combinative one - the count of what was picked is the
+// whole of the question, which is what keeps that half of the panel the same shape however many
+// verbs the game grows. Making something from a recipe is the other half, and is named up front
+// (Recipes) rather than discovered by trying things.
 //
 // Nothing here says "you could twist that": an attempt that leads nowhere comes back as no
 // offer at all, and the panel says only that nothing comes of it. Finding out what works is the
@@ -74,6 +76,24 @@ internal static class WorkshopActions
 
         return id is { } material ? world.Configuration.MaterialCatalog.Find(material) : null;
     }
+
+    // A recipe is named up front, unlike a reductive or combinative verb: the player already
+    // knows an axe when they see one, and hiding the word "axe" behind "Try it" would only be
+    // coy. Offered from the first unit of the material, not from the whole cost - "Make axe" over
+    // two of the five wood it takes is a goal the player can send them after, with the blocker
+    // saying how far off it is - and only for a recipe whose output actually fits in the pack; one
+    // heavy enough to need placing (a storage hut) is offered from the ground instead, by pointing
+    // at it (see TargetActions).
+    internal static IReadOnlyList<ActionOffer> Recipes(WorldState world, Person person) =>
+        world.Configuration.RecipeCatalog.Definitions
+            .Where(recipe => person.Inventory.Get(recipe.InputItem) > 0)
+            .Where(recipe => PersonActions.FitsInInventory(world, person, recipe.Output))
+            .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal)
+            .Select(recipe => ActionOffer.For(
+                $"Make {world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName.ToLowerInvariant()}",
+                new MakeCommand(person, recipe.Output),
+                world))
+            .ToList();
 
     // What trying the picked things together would be, or null when nothing would come of it -
     // an unworkable pick is not an error to word, it is simply not an offer.

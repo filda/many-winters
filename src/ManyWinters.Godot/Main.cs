@@ -669,6 +669,7 @@ public partial class Main : Node3D
         _workshop.Attempted += OnWorkshopAttempt;
         _workshop.Named += OnWorkshopNamed;
         _workshop.PickChanged += RefreshWorkshopOffer;
+        _workshop.RecipeInvoked += OnWorkshopRecipe;
         canvas.AddChild(_workshop);
     }
 
@@ -689,7 +690,24 @@ public partial class Main : Node3D
         // It puts itself in the middle of the screen and stays there (FloatingPanel.KeepCentred):
         // the world stands still while this is open, so it is the thing being done rather than a
         // card to read beside it.
-        _workshop.Open(WorkshopActions.Carried(_world, person));
+        _workshop.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));
+        RefreshWorkshopOffer();
+    }
+
+    // Pressed a "Make X" line rather than picked something to try - the recipe list has its own
+    // event because a successful one changes the pack the same attempt does, and the panel needs
+    // both redrawn (WorkshopActions.Carried, WorkshopActions.Recipes).
+    private void OnWorkshopRecipe(ActionOffer offer)
+    {
+        if (_selectedPerson is not { } person)
+        {
+            return;
+        }
+
+        Perform(person, offer);
+
+        _workshop.Show(WorkshopActions.Carried(_world, person));
+        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
         RefreshWorkshopOffer();
     }
 
@@ -735,6 +753,7 @@ public partial class Main : Node3D
 
         var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
         _workshop.Show(WorkshopActions.Carried(_world, person));
+        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
         _workshop.ReportOutcome(made is null
             ? "It comes apart in your hands."
             : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
@@ -778,6 +797,7 @@ public partial class Main : Node3D
         if (_selectedPerson is { } person)
         {
             _workshop.Show(WorkshopActions.Carried(_world, person));
+            _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
         }
     }
 

@@ -63,6 +63,7 @@ public partial class WorkshopPanel : FloatingPanel
     private Label _outcome = null!;
     private VBoxContainer _naming = null!;
     private LineEdit _name = null!;
+    private ActionList _recipes = null!;
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
     public WorkshopPanel()
@@ -99,6 +100,12 @@ public partial class WorkshopPanel : FloatingPanel
         _entries.AddThemeConstantOverride("h_separation", TileSpacing);
         _pack.AddChild(_entries);
 
+        // Recipes are named up front (see WorkshopActions.Recipes) - a plain column of buttons,
+        // the same control the selected person's card uses for the same reason (see ActionList).
+        _recipes = new ActionList();
+        _recipes.ActionInvoked += offer => RecipeInvoked?.Invoke(offer);
+        Body.AddChild(_recipes);
+
         // What the thing in hand is like, never what it is for (see MaterialWords).
         _words = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, QuietInk);
         _words.Visible = false;
@@ -131,14 +138,24 @@ public partial class WorkshopPanel : FloatingPanel
     }
 
     // Opened fresh: nothing picked, nothing yet said about the last attempt.
-    internal void Open(IReadOnlyList<WorkshopEntry> carried)
+    internal void Open(IReadOnlyList<WorkshopEntry> carried, IReadOnlyList<ActionOffer> recipes)
     {
         _picked.Clear();
         _outcome.Visible = false;
         _naming.Visible = false;
         Visible = true;
         Show(carried);
+        ShowRecipes(recipes);
     }
+
+    // Redrawn whenever the pack does (see Show) - Main asks for both together after anything
+    // that could have changed what is carried.
+    internal void ShowRecipes(IReadOnlyList<ActionOffer> recipes) => _recipes.Show(recipes);
+
+    // Pressed on a recipe line. Main runs it, the same way it runs a line off the person's own
+    // card (see ActionInvoked there) - this panel knows what an offer is, not what making one
+    // means for the rest of the game.
+    internal event Action<ActionOffer>? RecipeInvoked;
 
     // The clock is held while the bench is out, so the cross cannot simply hide it.
     protected override void OnCloseRequested() => Close();

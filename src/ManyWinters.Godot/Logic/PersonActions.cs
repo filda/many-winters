@@ -29,7 +29,6 @@ internal static class PersonActions
             offers.Add(eat);
         }
 
-        offers.AddRange(Crafts(world, person));
         offers.AddRange(Drops(world, person));
 
         return offers;
@@ -39,7 +38,8 @@ internal static class PersonActions
     // (WorkshopActions, opened from the pack line on the card), where the player picks the things
     // and not the verb - a card that grew a "Twist grass" line would be telling them in advance
     // what works, which is the thing the design is built to avoid (see
-    // docs/materials-and-crafting-architecture.md section 7).
+    // docs/materials-and-crafting-architecture.md section 7). Making from a recipe moved there
+    // too, so everything done with the pack lives behind the same line on the card.
 
     // Offered only to someone actually carrying something edible. An Eat button on an empty pack
     // is an instruction to go and find food, which is not what pressing it would do.
@@ -53,34 +53,14 @@ internal static class PersonActions
         return ActionOffer.For("Eat", new EatCommand(person, item), world, EatCommand.Skill);
     }
 
-    // Making something out of what is in the pack is an act on the person themselves, so it
-    // belongs on their card rather than in a menu aimed at something in the world. Only for a
-    // recipe whose output actually fits in the pack - one heavy enough to need placing (a
-    // storage hut) is offered from the ground instead (see TargetActions), the same "goes where
-    // it is heavy enough to need going" rule MakeCommand itself runs on.
-    //
-    // Offered from the first unit of the material, not from the whole cost: "Make an axe" over
-    // two of the five wood it takes is a goal the player can send them after, with the blocker
-    // saying how far off it is. Carrying none of the material at all and the line is absent -
-    // the same rule Eat follows, and the reason the card never grows a column of things nobody
-    // could make.
-    private static IEnumerable<ActionOffer> Crafts(WorldState world, Person person) =>
-        world.Configuration.RecipeCatalog.Definitions
-            .Where(recipe => person.Inventory.Get(recipe.InputItem) > 0)
-            .Where(recipe => FitsInInventory(world, person, recipe.Output))
-            .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal)
-            .Select(recipe => ActionOffer.For(
-                $"Make {world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName.ToLowerInvariant()}",
-                new MakeCommand(person, recipe.Output),
-                world));
-
-    // Shared with TargetActions, which offers the opposite half of the same recipe list - the
-    // one live check MakeCommand itself runs to decide where an output lands.
+    // Shared with WorkshopActions.Recipes and TargetActions, the two halves of the same recipe
+    // list split on where the output lands - the one live check MakeCommand itself runs to
+    // decide it.
     internal static bool FitsInInventory(WorldState world, Person person, ItemKindId output) =>
         person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
 
-    // A line per thing actually carried, for the same reason Crafts is: a line for material
-    // nobody has would just be an invitation to go find some, which pressing it could not do.
+    // A line per thing actually carried: a line for material nobody has would just be an
+    // invitation to go find some, which pressing it could not do.
     // Both tiers, in one list, because putting something down is one act (see DropCommand) -
     // a stack goes down whole, and a made thing has no count to drop some of.
     private static IEnumerable<ActionOffer> Drops(WorldState world, Person person)

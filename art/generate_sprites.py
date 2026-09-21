@@ -1179,6 +1179,126 @@ def rock_cluster():
     return c
 
 
+# ---------------------------------------------------------------- carried items and worked forms
+# The four of these are drawn at carried-item size (one small thing centred and grounded), not
+# world-decoration size (rock_pile and friends above) - a single subject rather than a scatter.
+
+def stone():
+    """A single hand-held stone, small enough to carry - the same faceted construction as the
+    rock family (_stone), one piece rather than a pile."""
+    seed = seed_for("stone")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    color = rgb(0.5, 0.5, 0.52)
+    _stone(c, 32, 40, 17, 14, color, seed, rng)
+    _ground_shadow_dashes(c, 32, 56, 14, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def wedge():
+    """A knapped stone wedge: struck into flat facets that meet at sharp ridges, angular where
+    the raw stone (see stone) is rounded - flat planes catching the light differently rather
+    than the raw stone's crosshatch curvature and scattered cracks (_stone_facets)."""
+    seed = seed_for("wedge")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    color = rgb(0.46, 0.46, 0.5)
+    tip = (34, 57)
+    body = poly(jagged_poly(
+        [(23, 21), (40, 17), (47, 33), tip, (24, 50), (19, 33)],
+        rng, amp=0.7, segments_per_edge=3, smooth_passes=1,
+    ))
+    c.fill(body, color)
+
+    # Two struck facets fanning down to the same sharpened tip, each its own hatch pass at a
+    # different tone - a distinct plane, the way the log rings (_wood_log) sit apart from their
+    # bark, rather than one curved gradient.
+    ridge = (32, 19)
+    facets = (
+        ([(23, 21), ridge, tip, (24, 50), (19, 33)], lighten(color, 0.16), seed + 11),
+        ([ridge, (40, 17), (47, 33), tip], darken(color, 0.14), seed + 23),
+    )
+    for points, tone, facet_seed in facets:
+        facet_mask = poly(jagged_poly(points, rng, amp=0.3, segments_per_edge=2, smooth_passes=1)) & body
+        out_rgb = hatch_fill(facet_mask, tone, facet_seed)
+        c.rgb[facet_mask] = out_rgb[facet_mask]
+        c.alpha |= facet_mask
+
+    # The ridge line between the facets, and the edge along the tip, are what a struck flake
+    # actually shows - inked rather than hatched, since a hatch line here would just blend in.
+    ridge_img = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(ridge_img).line(
+        [(ridge[0] * SCALE, ridge[1] * SCALE), (tip[0] * SCALE, tip[1] * SCALE)],
+        fill=255, width=max(1, SCALE // 3))
+    c.ink((np.array(ridge_img) > 127) & body)
+
+    glint = poly(jagged_poly([tip, (47, 33), (43, 36), (33, 53)], rng, amp=0.3, segments_per_edge=2)) & body
+    c.flat(glint, lighten(color, 0.3))
+
+    _ground_shadow_dashes(c, 30, 58, 12, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def cord():
+    """A coil of twisted cordage, wound back on itself rather than stretched taut the way
+    _rope_tie binds two things - the same twist ticks along the length, looped."""
+    seed = seed_for("cord")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    color = rgb(0.58, 0.48, 0.28)
+
+    loops = ((32, 38, 20, 13, 0.0), (30, 43, 16, 10, 0.35), (34, 34, 14, 9, -0.3))
+    for cx, cy, rx, ry, twist_phase in loops:
+        ring = ellipse(cx, cy, rx, ry) & ~ellipse(cx, cy, rx - 3, ry - 2.2)
+        out_rgb = hatch_fill(ring, color, seed)
+        c.rgb[ring] = out_rgb[ring]
+        c.alpha |= ring
+
+        n_ticks = max(10, int(2 * math.pi * max(rx, ry) / 2.2))
+        tick_img = Image.new("L", (S, S), 0)
+        tick_draw = ImageDraw.Draw(tick_img)
+        for i in range(n_ticks):
+            a = (i / n_ticks) * 2 * math.pi + twist_phase
+            tick_draw.line([((cx + math.cos(a) * rx * 0.6) * SCALE, (cy + math.sin(a) * ry * 0.6) * SCALE),
+                            ((cx + math.cos(a) * rx) * SCALE, (cy + math.sin(a) * ry) * SCALE)],
+                           fill=255, width=max(1, SCALE // 4))
+        c.flat((np.array(tick_img) > 127) & ring, darken(color, 0.32))
+
+    _ground_shadow_dashes(c, 32, 56, 16, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def bag():
+    """A drawstring pouch of woven plant fibre, cinched at the neck with a tied cord
+    (_rope_tie) - the same material as cord and grass."""
+    seed = seed_for("bag")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    weave = rgb(0.56, 0.46, 0.28)
+
+    body = poly(jagged_poly(
+        [(20, 26), (44, 26), (48, 40), (44, 56), (20, 56), (16, 40)],
+        rng, amp=0.8, segments_per_edge=3, smooth_passes=1,
+    ))
+    c.fill(body, weave)
+
+    # Woven creases where the sack sags.
+    for x in (24, 30, 36, 41):
+        seam_x = x + rng.uniform(-0.6, 0.6)
+        c.flat(rect(seam_x, 30, seam_x + 0.6, 54) & body, darken(weave, 0.22))
+
+    neck = poly(jagged_poly([(24, 20), (40, 20), (42, 27), (22, 27)], rng, amp=0.5, segments_per_edge=2))
+    c.fill(neck, darken(weave, 0.1))
+    _rope_tie(c, (20, 23), (44, 23), rgb(0.62, 0.52, 0.30), seed + 5, width=2.2)
+
+    _ground_shadow_dashes(c, 32, 57, 16, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
 # Three lobe arrangements per fruit-tree canopy (main, left, right, top - each (cx, cy, rx,
 # ry)): the same four-ellipse formula keeps the silhouette readable as one kind of tree, but
 # the proportions genuinely differ per variant, not just the hatch noise.
@@ -1903,6 +2023,10 @@ SPRITES = {
     "rock_pile": rock_pile,
     "rock_boulder": rock_boulder,
     "rock_cluster": rock_cluster,
+    "stone": stone,
+    "wedge": wedge,
+    "cord": cord,
+    "bag": bag,
     "tree_stump": tree_stump,
     "fallen_log": fallen_log,
     "selection_marker": selection_marker,

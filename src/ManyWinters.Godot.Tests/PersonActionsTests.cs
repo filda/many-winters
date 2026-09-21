@@ -83,46 +83,6 @@ public class PersonActionsTests
         Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is EatCommand);
     }
 
-    // Making something out of what is in the pack is an act on the person themselves, so it
-    // belongs here rather than in a menu aimed at something in the world.
-    [Fact]
-    public void MakingSomethingIsOfferedToSomebodyCarryingTheMaterialForIt()
-    {
-        var world = TestWorld.Create();
-        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
-        person.Inventory.Add(TestWorld.Wood, TestWorld.AxeInputAmount);
-
-        var craft = OfType<MakeCommand>(world, person);
-
-        Assert.Equal("Make axe", craft.Label);
-        Assert.True(craft.IsAvailable);
-        Assert.IsType<MakeCommand>(craft.Command);
-    }
-
-    // Offered from the first unit, not from the whole cost: "Make axe" over two of the five wood
-    // it takes is a goal the player can send them after, and the blocker says how far off it is.
-    [Fact]
-    public void SomebodyPartWayToTheMaterialIsToldWhatIsMissing()
-    {
-        var world = TestWorld.Create();
-        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
-        person.Inventory.Add(TestWorld.Wood, 1);
-
-        Assert.Equal(ActionBlocker.MissingMaterials, OfType<MakeCommand>(world, person).Blocker);
-    }
-
-    // Carrying none of the material at all and the line is absent, the same rule Eat follows -
-    // otherwise the card grows a column of things nobody could make.
-    [Fact]
-    public void MakingSomethingIsNotOfferedWithNoneOfTheMaterialAtAll()
-    {
-        var world = TestWorld.Create();
-        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
-        person.Inventory.Add(TestWorld.Apple, 5);
-
-        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is MakeCommand);
-    }
-
     [Fact]
     public void EatingIsAvailableToAHungryPersonCarryingFood()
     {
@@ -212,7 +172,7 @@ public class PersonActionsTests
         Assert.Equal("Drop rope", OfType<DropCommand>(world, person).Label);
     }
 
-    // Carrying none of a kind at all and the line is absent, the same rule Eat and Crafts follow -
+    // Carrying none of a kind at all and the line is absent, the same rule Eat follows -
     // otherwise the card grows a column of things nobody has to put down.
     [Fact]
     public void DroppingIsNotOfferedWithAnEmptyPack()
