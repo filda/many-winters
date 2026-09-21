@@ -237,10 +237,15 @@ jobs:
           $handle = [IO.File]::Open("$root\export.out.log", "Open", "Read", "ReadWrite")
           $reader = New-Object IO.StreamReader($handle)
           $timeline = New-Object IO.StreamWriter("$root\export.timeline.log")
+          # Flush as we go, so a step that dies mid-export still ships a usable timeline.
+          $timeline.AutoFlush = $true
           do {
             $running = -not $p.HasExited
             while ($null -ne ($line = $reader.ReadLine())) {
-              $timeline.WriteLine("+{0,5:N0}s {1}" -f $sw.Elapsed.TotalSeconds, $line)
+              # Formatted first and written second: inside WriteLine(...) the comma would separate
+              # method arguments, leaving -f a single value and {1} with nothing to bind to.
+              $stamp = "+{0,5:N0}s {1}" -f $sw.Elapsed.TotalSeconds, $line
+              $timeline.WriteLine($stamp)
             }
             if ($running) { Start-Sleep -Milliseconds 500 }
           } while ($running)
