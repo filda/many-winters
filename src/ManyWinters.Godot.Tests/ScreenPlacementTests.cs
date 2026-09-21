@@ -57,4 +57,26 @@ public class ScreenPlacementTests
     {
         Assert.Equal(new Vector2(Margin, Margin), ScreenPlacement.KeptOnScreen(new Vector2(-50, -50), Size, Screen, Margin));
     }
+
+    // The workbench opens in the middle of the screen rather than in a corner (see WorkshopPanel).
+    [Fact]
+    public void ACentredPanelSitsInTheMiddleOfTheScreen()
+    {
+        Assert.Equal(new Vector2(400, 250), ScreenPlacement.Centred(Size, Screen));
+    }
+
+    // Text set half a pixel off its grid is text the eye reads as blurred.
+    [Fact]
+    public void ACentredPanelLandsOnAWholePixel()
+    {
+        Assert.Equal(new Vector2(399, 250), ScreenPlacement.Centred(new Vector2(201, 300), Screen));
+    }
+
+    // Too big to centre is still shown from its top-left corner: the title and the first line are
+    // what a panel cannot afford to lose - the same reasoning as KeptOnScreen.
+    [Fact]
+    public void APanelLargerThanTheScreenIsNotPushedOffItsNearEdge()
+    {
+        Assert.Equal(Vector2.Zero, ScreenPlacement.Centred(new Vector2(1400, 1200), Screen));
+    }
 }

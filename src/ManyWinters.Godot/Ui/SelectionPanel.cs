@@ -54,13 +54,17 @@ internal partial class SelectionPanel : PanelContainer
     // The player asked to see the pack itself. Main opens the workshop over it.
     internal event Action? PackRequested;
 
+    // The cross in the corner: nobody is selected any more. Main holds the selection, so it is
+    // Main that lets it go - this card only says the player asked for it.
+    internal event Action? CloseRequested;
+
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
         Visible = false;
         AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
         // Added first, so every label and button that follows sits on top of the grain.
-        AddChild(PanelChrome.Grain());
+        AddChild(PanelChrome.Grain("detail"));
         Theme = PanelChrome.PaperButtons(BodyFontSize);
 
         // Hugs its content. Nothing is recomputed per frame - a height that chases the content
@@ -106,7 +110,15 @@ internal partial class SelectionPanel : PanelContainer
         _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         _beside.AutowrapMode = TextServer.AutowrapMode.Off;
         _beside.VerticalAlignment = VerticalAlignment.Bottom;
+        // Takes the rest of the line, so the cross ends up against the far edge of the card
+        // rather than trailing the name.
+        _beside.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         heading.AddChild(_beside);
+
+        var cross = PanelChrome.CloseCross(InscriptionFont.DarkInk);
+        cross.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        cross.Pressed += () => CloseRequested?.Invoke();
+        heading.AddChild(cross);
 
         _parents = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         _column.AddChild(_parents);

@@ -15,6 +15,15 @@ internal static class ScreenPlacement
             KeptOnAxis(position.X, size.X, screen.X, margin),
             KeptOnAxis(position.Y, size.Y, screen.Y, margin));
 
+    // Where a panel that is the thing the player is doing rather than a card beside it goes:
+    // the middle of the screen (see WorkshopPanel). On whole pixels, so the text on it is not
+    // set half a pixel off its grid, and never off the near edge on a screen too small to hold
+    // the panel - the same reasoning as KeptOnScreen.
+    internal static Vector2 Centred(Vector2 size, Vector2 screen) =>
+        new(CentredOnAxis(size.X, screen.X), CentredOnAxis(size.Y, screen.Y));
+
     private static float KeptOnAxis(float position, float size, float screen, float margin) =>
         Mathf.Max(margin, Mathf.Min(position, screen - size - margin));
+
+    private static float CentredOnAxis(float size, float screen) => Mathf.Max(0f, Mathf.Floor((screen - size) / 2f));
 }

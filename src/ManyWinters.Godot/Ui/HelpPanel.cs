@@ -79,7 +79,7 @@ public partial class HelpPanel : Control
         var panel = new PanelContainer();
         panel.AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
         centre.AddChild(panel);
-        panel.AddChild(PanelChrome.Grain());
+        panel.AddChild(PanelChrome.Grain("help"));
 
         var padding = new MarginContainer();
         foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
@@ -93,7 +93,7 @@ public partial class HelpPanel : Control
         page.AddThemeConstantOverride("separation", Spacing);
         padding.AddChild(page);
 
-        page.AddChild(InscriptionFont.PaperTitleLabel("How this is played", TitleFontSize));
+        page.AddChild(PanelChrome.Head(InscriptionFont.PaperTitleLabel("How this is played", TitleFontSize), Dismiss));
 
         var columns = new HBoxContainer();
         columns.AddThemeConstantOverride("separation", ColumnGap);

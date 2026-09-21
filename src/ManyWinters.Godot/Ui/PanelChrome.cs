@@ -1,4 +1,5 @@
 using Godot;
+using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Ui;
 
@@ -100,41 +101,112 @@ public static class PanelChrome
         return theme;
     }
 
+    // How much room the cross in a panel's corner takes - and how much empty space the other end
+    // of a head needs to keep what is between them centred (see Head).
+    private const int CrossSize = 20;
+
+    private const int CrossFontSize = 16;
+
+    // The way out, in the top right corner where every window keeps it. Carries its own face and
+    // its own box rather than taking the ambient theme's, because the same cross sits on a page
+    // of paper and on the dark card over the world - only the ink changes. Quiet at rest and full
+    // under the cursor, like everything else pressable here; it never takes the focus, so Space
+    // does not close a window the player only pointed at.
+    public static Button CloseCross(Color ink)
+    {
+        var cross = new Button
+        {
+            Text = "×",
+            TooltipText = "Close (Escape)",
+            CustomMinimumSize = new Vector2(CrossSize, CrossSize),
+            FocusMode = Control.FocusModeEnum.None,
+            Theme = InscriptionFont.BodyTheme(CrossFontSize),
+        };
+
+        cross.AddThemeStyleboxOverride("normal", CrossBox(new Color(0f, 0f, 0f, 0f)));
+        cross.AddThemeStyleboxOverride("hover", CrossBox(new Color(ink, 0.12f)));
+        cross.AddThemeStyleboxOverride("pressed", CrossBox(new Color(ink, 0.20f)));
+        cross.AddThemeStyleboxOverride("focus", CrossBox(new Color(0f, 0f, 0f, 0f)));
+        cross.AddThemeColorOverride("font_color", new Color(ink, 0.55f));
+        cross.AddThemeColorOverride("font_hover_color", ink);
+        cross.AddThemeColorOverride("font_pressed_color", ink);
+        return cross;
+    }
+
+    // A page's head: the title it was given, centred, with the way out in the corner beside it -
+    // and the same width of empty space on the other side, or the title would sit a cross off
+    // centre. For the full-screen pages, which have no title bar to hang a cross on.
+    public static HBoxContainer Head(Label title, Action closed)
+    {
+        var head = new HBoxContainer();
+        head.AddChild(new Control { CustomMinimumSize = new Vector2(CrossSize, 0) });
+
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        head.AddChild(title);
+
+        var cross = CloseCross(InscriptionFont.DarkInk);
+        cross.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
+        cross.Pressed += () => closed();
+        head.AddChild(cross);
+        return head;
+    }
+
+    // Tighter than Filled: a cross is one glyph, and a line of text's padding around it would
+    // push it off the corner it belongs in.
+    private static StyleBoxFlat CrossBox(Color fill) => new()
+    {
+        BgColor = fill,
+        ContentMarginLeft = 4,
+        ContentMarginRight = 4,
+        CornerRadiusTopLeft = 3,
+        CornerRadiusTopRight = 3,
+        CornerRadiusBottomLeft = 3,
+        CornerRadiusBottomRight = 3,
+    };
+
     // The age on the page: broad blotches where it was handled, and the printer's hatching under
-    // them, the same diagonal stroke the sprites are drawn with. Both are faint - past a certain
+    // them, the same diagonal stroke the sprites are drawn with. Both faint - past a certain
     // strength this stops being paper and becomes wallpaper, and the ink has to fight it.
+    //
+    // `of` is what the page is called (the window's title, "pause", "menu"): every panel is cut
+    // from the same sheet, and the name is what decides how this one aged, so two pages open side
+    // by side are not the same stain twice (see PaperWeathering).
     //
     // A node rather than part of the StyleBox, because a StyleBoxFlat cannot carry a texture. The
     // caller adds it first so its own content draws on top, and it never takes the mouse.
-    public static Control Grain()
+    public static Control Grain(string of)
     {
+        var paper = PaperWeathering.Of(of);
+
         var grain = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         grain.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        grain.AddChild(Blotches());
-        grain.AddChild(Hatching());
+        grain.AddChild(Blotches(paper));
+        grain.AddChild(Hatching(paper));
         return grain;
     }
 
-    private static TextureRect Blotches()
+    private static TextureRect Blotches(PaperWeathering paper)
     {
         var noise = new FastNoiseLite
         {
             NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth,
+            Seed = paper.Seed,
             // Low enough that the stains are the size of a thumb, not of a grain of sand; the
             // octaves put the sand back on top of them.
-            Frequency = 0.012f,
+            Frequency = paper.BlotchFrequency,
             FractalOctaves = 5,
         };
 
-        return Tiled(new NoiseTexture2D { Noise = noise, Width = 256, Height = 256, Seamless = true }, new Color(0.34f, 0.24f, 0.13f, 0.22f));
+        return Tiled(new NoiseTexture2D { Noise = noise, Width = 256, Height = 256, Seamless = true }, new Color(0.34f, 0.24f, 0.13f, paper.BlotchStrength));
     }
 
-    // Drawn rather than noised: a hatch is regular by nature, and a 16px tile of diagonal strokes
-    // repeats seamlessly because the period divides the tile.
-    private static TextureRect Hatching()
+    // Drawn rather than noised: a hatch is regular by nature, and a tile of diagonal strokes
+    // repeats seamlessly because the period divides the tile - so the tile is cut to a multiple
+    // of whatever spacing this page came out with.
+    private static TextureRect Hatching(PaperWeathering paper)
     {
-        const int tile = 16;
-        const int spacing = 4;
+        var spacing = paper.HatchSpacing;
+        var tile = spacing * 4;
 
         var image = Image.CreateEmpty(tile, tile, false, Image.Format.Rgba8);
         image.Fill(new Color(1f, 1f, 1f, 0f));
@@ -142,7 +214,9 @@ public static class PanelChrome
         {
             for (var x = 0; x < tile; x++)
             {
-                if ((x + y) % spacing == 0)
+                // Which way the stroke leans. Written so both directions stay positive, because
+                // the remainder of a negative number is not the stroke we want.
+                if ((paper.HatchRising ? x + y : x - y + tile) % spacing == 0)
                 {
                     image.SetPixel(x, y, Colors.White);
                 }

@@ -16,9 +16,27 @@ namespace ManyWinters.Godot.Ui;
 // whichever of those is visible.
 public partial class WorkshopPanel : FloatingPanel
 {
-    private const float Width = 320f;
+    // Wider than the cards that sit beside the world: this one is the workbench itself, in the
+    // middle of the screen (CentreOnScreen), and what a thing is made of runs long enough that a
+    // narrow column broke half the lines. Wide and low rather than tall - a bench is a surface
+    // things are laid out on, and a column of carried things reaching down the screen reads as an
+    // inventory screen.
+    private const float Width = 640f;
     private const int BodyFontSize = 15;
-    private const int SectionSpacing = 10;
+    private const int SectionSpacing = 6;
+
+    // The carried things are one list, so they sit line under line with nothing between them; the
+    // air in this panel belongs between its sections (SectionSpacing), not inside them.
+    private const int RowSpacing = 0;
+
+    // The pack is laid out across the bench rather than down it: two columns of things halve how
+    // far the panel reaches down the screen, and the width is there for them.
+    private const int Columns = 2;
+
+    // How far the pack may reach before it scrolls within the bench instead of pushing everything
+    // under it further down. Four lines or so - past that it is a list being read rather than a
+    // handful of things being looked over.
+    private const float MaxPackHeight = 110f;
     private const int ScrollbarWidth = 16;
 
     private static readonly Color Ink = InscriptionFont.DarkInk;
@@ -27,7 +45,8 @@ public partial class WorkshopPanel : FloatingPanel
     private readonly List<PickRow> _rows = [];
     private readonly List<WorkshopEntry> _picked = [];
 
-    private VBoxContainer _entries = null!;
+    private GridContainer _entries = null!;
+    private ScrollContainer _pack = null!;
     private Label _hint = null!;
     private Label _words = null!;
     private Button _try = null!;
@@ -40,6 +59,9 @@ public partial class WorkshopPanel : FloatingPanel
         : base("Workshop", onPaper: true)
     {
         CustomMinimumSize = new Vector2(Width, 0);
+        // The bench is what the player is doing, not a card beside the world: it holds the middle
+        // of the screen, and keeps it when the window goes fullscreen and back.
+        KeepCentred = true;
         Visible = false;
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }
@@ -52,8 +74,20 @@ public partial class WorkshopPanel : FloatingPanel
         _hint = InscriptionFont.BodyLabel("Take one thing, or two.", BodyFontSize, QuietInk);
         Body.AddChild(_hint);
 
-        _entries = new VBoxContainer { CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth, 0) };
-        Body.AddChild(_entries);
+        // The pack keeps its own scroll, so a big haul stays inside the bench: the window's own
+        // scroll only starts once the whole thing has reached the foot of the screen, which is
+        // exactly the height this panel is meant not to have.
+        _pack = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        Body.AddChild(_pack);
+
+        _entries = new GridContainer
+        {
+            Columns = Columns,
+            CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth, 0),
+        };
+        _entries.AddThemeConstantOverride("v_separation", RowSpacing);
+        _entries.AddThemeConstantOverride("h_separation", RowSpacing);
+        _pack.AddChild(_entries);
 
         // What the thing in hand is like, never what it is for (see MaterialWords).
         _words = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, QuietInk);
@@ -96,6 +130,9 @@ public partial class WorkshopPanel : FloatingPanel
         Show(carried);
     }
 
+    // The clock is held while the bench is out, so the cross cannot simply hide it.
+    protected override void OnCloseRequested() => Close();
+
     internal void Close()
     {
         if (!Visible)
@@ -128,6 +165,8 @@ public partial class WorkshopPanel : FloatingPanel
         }
 
         _hint.Text = carried.Count > 0 ? "Take one thing, or two." : "Carrying nothing to work with.";
+        // As tall as the pack needs, up to where it starts scrolling instead.
+        _pack.CustomMinimumSize = new Vector2(0, Mathf.Min(_entries.GetCombinedMinimumSize().Y, MaxPackHeight));
     }
 
     // What the panel is currently able to offer, so the button says what pressing it would do.
@@ -188,7 +227,14 @@ public partial class WorkshopPanel : FloatingPanel
 
     private PickRow NewRow()
     {
-        var button = new Button { Text = string.Empty, Alignment = HorizontalAlignment.Left, ToggleMode = true };
+        var button = new Button
+        {
+            Text = string.Empty,
+            Alignment = HorizontalAlignment.Left,
+            ToggleMode = true,
+            // Half the bench each, so the two columns line up however long the words in them are.
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
         _entries.AddChild(button);
 
         var row = new PickRow(button);

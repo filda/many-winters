@@ -14,6 +14,10 @@ public partial class PausePanel : Control
     private const float ColumnWidth = 640f;
     private const int Spacing = 20;
 
+    // The cross in the corner: the same as pressing Space again. Main holds the clock, so it is
+    // Main that starts it.
+    public event Action? Resumed;
+
     private Label _title = null!;
     private Label _sinceArrival = null!;
     private Label _population = null!;
@@ -33,7 +37,7 @@ public partial class PausePanel : Control
         var panel = new PanelContainer();
         panel.AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
         centre.AddChild(panel);
-        panel.AddChild(PanelChrome.Grain());
+        panel.AddChild(PanelChrome.Grain("pause"));
 
         var padding = new MarginContainer();
         foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
@@ -52,7 +56,7 @@ public partial class PausePanel : Control
         column.AddChild(notice);
 
         _title = InscriptionFont.PaperTitleLabel(string.Empty, TitleFontSize);
-        column.AddChild(_title);
+        column.AddChild(PanelChrome.Head(_title, () => Resumed?.Invoke()));
 
         _sinceArrival = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _sinceArrival.HorizontalAlignment = HorizontalAlignment.Center;

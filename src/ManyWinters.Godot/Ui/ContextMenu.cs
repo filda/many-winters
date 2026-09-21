@@ -44,7 +44,7 @@ internal partial class ContextMenu : PanelContainer
         Visible = false;
         AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
         // Added first, so every label and button that follows sits on top of the grain.
-        AddChild(PanelChrome.Grain());
+        AddChild(PanelChrome.Grain("menu"));
         Theme = PanelChrome.PaperButtons(BodyFontSize);
 
         // The padding lives here rather than in the StyleBox, so the grain above reaches the

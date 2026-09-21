@@ -46,6 +46,9 @@ public partial class Main : Node3D
     private HelpPanel _helpPanel = null!;
     private ChroniclePanel _chronicle = null!;
     private WorkshopPanel _workshop = null!;
+
+    // What keeps the rest of the screen out of reach while the workbench is out (SetUpWorkshop).
+    private Control _workshopShield = null!;
     private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
     private EndingAnnouncements _endingAnnouncements = new();
@@ -273,7 +276,12 @@ public partial class Main : Node3D
             return;
         }
 
-        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.T })
+        // A name for a new thing is being typed (see TextEntry): every letter belongs to the
+        // field, so the keys the game answers to on its own are left alone. Escape and F11 are
+        // not letters and still work - one puts the workbench away, the other is the window's.
+        var typing = TextEntry.HasTheKeyboard(GetViewport());
+
+        if (!typing && @event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.T })
         {
             _cameraRig.ToggleProjection();
         }
@@ -283,7 +291,7 @@ public partial class Main : Node3D
             ToggleFullscreen();
         }
 
-        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space })
+        if (!typing && @event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space })
         {
             // Space is Godot's default ui_accept: unless eaten here it also activates whichever
             // Control last took focus (Chronicle, the "?" button) on top of toggling the pause.
@@ -641,7 +649,20 @@ public partial class Main : Node3D
     // unhurried.
     private void SetUpWorkshop(CanvasLayer canvas)
     {
+        // Laid in before the workbench, so it sits under it and over everything added earlier -
+        // the roster, the selected person's card, the status bar, the world itself. The clock is
+        // stopped while the bench is out, and an order given into a stopped clock lands the
+        // moment it starts again (the same reasoning as InscriptionOverlay). It draws nothing:
+        // the world is what the player is working in the middle of, and the camera keeps turning
+        // over it.
+        _workshopShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        _workshopShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        canvas.AddChild(_workshopShield);
+
         _workshop = new WorkshopPanel();
+        // Tied to the panel itself rather than to the places that open and close it, of which
+        // there are several (the pack line, Escape, the way out of the panel).
+        _workshop.VisibilityChanged += () => _workshopShield.Visible = _workshop.Visible;
         // Letting it go primes the tick accumulator, so the world starts again on the next frame
         // rather than a full interval later - as dismissing the controls page does.
         _workshop.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
@@ -665,7 +686,9 @@ public partial class Main : Node3D
             return;
         }
 
-        _workshop.Position = new Vector2(SelectionPanel.Margin, SelectionPanel.Margin);
+        // It puts itself in the middle of the screen and stays there (FloatingPanel.KeepCentred):
+        // the world stands still while this is open, so it is the thing being done rather than a
+        // card to read beside it.
         _workshop.Open(WorkshopActions.Carried(_world, person));
         RefreshWorkshopOffer();
     }
@@ -841,6 +864,8 @@ public partial class Main : Node3D
     private void SetUpPausePanel(CanvasLayer canvas)
     {
         _pausePanel = new PausePanel();
+        // The cross on the page is the other half of Space: both let the world go again.
+        _pausePanel.Resumed += TogglePause;
         canvas.AddChild(_pausePanel);
     }
 
@@ -1046,6 +1071,7 @@ public partial class Main : Node3D
         _selectionPanel = new SelectionPanel();
         _selectionPanel.ActionInvoked += OnActionInvoked;
         _selectionPanel.PackRequested += OpenWorkshop;
+        _selectionPanel.CloseRequested += ClearSelection;
         canvas.AddChild(_selectionPanel);
     }
 
@@ -1185,6 +1211,15 @@ public partial class Main : Node3D
         }
 
         _selectedPerson = person;
+        _selectedGrave = null;
+        RefreshSelection();
+    }
+
+    // The player put their own card away with the cross in its corner: nobody is selected any
+    // more, so the card comes down with the selection rather than on its own.
+    private void ClearSelection()
+    {
+        _selectedPerson = null;
         _selectedGrave = null;
         RefreshSelection();
     }

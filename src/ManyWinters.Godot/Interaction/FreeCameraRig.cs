@@ -119,23 +119,29 @@ public sealed class FreeCameraRig
 
     public void HandleInput(float delta)
     {
+        // Only the keys are given up while the player is typing (see TextEntry): the rig still
+        // follows the ground under it, and a pan already gliding still eases to a stop rather
+        // than freezing mid-glide the moment a name is asked for.
+        var typing = TextEntry.HasTheKeyboard(_camera.GetViewport());
+        bool Held(Key key) => !typing && Input.IsKeyPressed(key);
+
         var panDirection = Vector2.Zero;
-        if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up))
+        if (Held(Key.W) || Held(Key.Up))
         {
             panDirection.Y -= 1;
         }
 
-        if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down))
+        if (Held(Key.S) || Held(Key.Down))
         {
             panDirection.Y += 1;
         }
 
-        if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left))
+        if (Held(Key.A) || Held(Key.Left))
         {
             panDirection.X -= 1;
         }
 
-        if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right))
+        if (Held(Key.D) || Held(Key.Right))
         {
             panDirection.X += 1;
         }
@@ -152,12 +158,12 @@ public sealed class FreeCameraRig
         _rig.Position = rigPosition;
 
         var rotateDirection = 0f;
-        if (Input.IsKeyPressed(Key.Q))
+        if (Held(Key.Q))
         {
             rotateDirection -= 1;
         }
 
-        if (Input.IsKeyPressed(Key.E))
+        if (Held(Key.E))
         {
             rotateDirection += 1;
         }
@@ -168,12 +174,12 @@ public sealed class FreeCameraRig
         }
 
         var zoomDirection = 0f;
-        if (Input.IsKeyPressed(Key.R))
+        if (Held(Key.R))
         {
             zoomDirection -= 1;
         }
 
-        if (Input.IsKeyPressed(Key.F))
+        if (Held(Key.F))
         {
             zoomDirection += 1;
         }
@@ -184,12 +190,12 @@ public sealed class FreeCameraRig
         }
 
         var tiltDirection = 0f;
-        if (Input.IsKeyPressed(Key.Pageup))
+        if (Held(Key.Pageup))
         {
             tiltDirection += 1;
         }
 
-        if (Input.IsKeyPressed(Key.Pagedown))
+        if (Held(Key.Pagedown))
         {
             tiltDirection -= 1;
         }
