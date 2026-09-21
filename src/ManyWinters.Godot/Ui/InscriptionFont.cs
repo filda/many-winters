@@ -34,6 +34,8 @@ public static class InscriptionFont
 
     private static FontFile BodyBold { get; } = ResourceLoader.Load<FontFile>($"{FontDirectory}/vollkorn/Vollkorn-Bold.ttf");
 
+    private static FontFile BodyItalic { get; } = ResourceLoader.Load<FontFile>($"{FontDirectory}/vollkorn/Vollkorn-Italic.ttf");
+
     // For a whole control tree (an overlay, the chronicle panel): every Label and Button under
     // it takes the body face without being styled one by one, buttons in bold.
     public static Theme BodyTheme(int fontSize)
@@ -50,6 +52,10 @@ public static class InscriptionFont
     // The face BodyTheme gives buttons, for a caption that has to sit inside one as a label of its
     // own (BandPanel's rows, where the whole row is the button).
     public static Label BodyBoldLabel(string text, int size, Color ink) => Styled(text, BodyBold, size, ink);
+
+    // For a line spoken about a thing rather than stated as fact - the workbench's read of what
+    // is in hand (WorkshopPanel).
+    public static Label BodyItalicLabel(string text, int size, Color ink) => Styled(text, BodyItalic, size, ink);
 
     // A centred title in the shared ink-and-outline look InscriptionOverlay and PausePanel use.
     public static Label OutlinedTitleLabel(string text, int size)

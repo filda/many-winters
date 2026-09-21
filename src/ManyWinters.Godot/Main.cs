@@ -667,6 +667,8 @@ public partial class Main : Node3D
         // rather than a full interval later - as dismissing the controls page does.
         _workshop.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         _workshop.Attempted += OnWorkshopAttempt;
+        _workshop.EatRequested += OnWorkshopEat;
+        _workshop.DropRequested += OnWorkshopDrop;
         _workshop.Named += OnWorkshopNamed;
         _workshop.PickChanged += RefreshWorkshopOffer;
         _workshop.RecipeInvoked += OnWorkshopRecipe;
@@ -705,7 +707,39 @@ public partial class Main : Node3D
         }
 
         Perform(person, offer);
+        RefreshWorkshopPack(person);
+    }
 
+    // Eat or Drop, pressed on whatever is picked. Neither is an attempt (WorkshopActions.Attempt)
+    // - there is no dice roll and no cost to the clock, the same as pressing either off the
+    // person's own card - so this only carries the command out and redraws the pack underneath
+    // it, the way a recipe does (OnWorkshopRecipe).
+    private void OnWorkshopEat()
+    {
+        if (_selectedPerson is not { } person || WorkshopActions.Eat(_world, person, _workshop.Picked) is not { } offer)
+        {
+            return;
+        }
+
+        Perform(person, offer);
+        RefreshWorkshopPack(person);
+    }
+
+    private void OnWorkshopDrop()
+    {
+        if (_selectedPerson is not { } person || WorkshopActions.Drop(_world, person, _workshop.Picked) is not { } offer)
+        {
+            return;
+        }
+
+        Perform(person, offer);
+        RefreshWorkshopPack(person);
+    }
+
+    // Redrawn after anything that could have changed what is carried - the pack, the recipes it
+    // makes room for, and what the current pick can now do.
+    private void RefreshWorkshopPack(Person person)
+    {
         _workshop.Show(WorkshopActions.Carried(_world, person));
         _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
         RefreshWorkshopOffer();
@@ -722,7 +756,21 @@ public partial class Main : Node3D
 
         var offer = WorkshopActions.Attempt(_world, person, _workshop.Picked);
         _workshop.Offer(offer, RefusalFor(offer), WorkshopActions.WordsFor(_world, person, _workshop.Picked));
+        _workshop.OfferItemActions(
+            WorkshopActions.Eat(_world, person, _workshop.Picked),
+            WorkshopActions.Drop(_world, person, _workshop.Picked));
     }
+
+    // Said whenever a pick turns out to lead nowhere - several ways to say the same nothing, so
+    // trying a few unworkable pairs in a row does not read as the game reciting one stock line
+    // back at the player.
+    private static readonly string[] NothingComesOfIt =
+    [
+        "Nothing comes of it.",
+        "Nothing comes of that.",
+        "No good comes of it.",
+        "It comes to nothing.",
+    ];
 
     // Nothing is said about a pick that leads nowhere until the player has picked something: an
     // empty workbench that already says "nothing comes of it" is answering a question nobody
@@ -730,7 +778,7 @@ public partial class Main : Node3D
     private string? RefusalFor(ActionOffer? offer) => (offer, _workshop.Picked.Count) switch
     {
         (null, 0) => null,
-        (null, _) => "Nothing comes of it.",
+        (null, _) => NothingComesOfIt[Random.Shared.Next(NothingComesOfIt.Length)],
         ({ IsAvailable: false }, _) => ActionBlockerText.For(offer.Value),
         _ => null,
     };

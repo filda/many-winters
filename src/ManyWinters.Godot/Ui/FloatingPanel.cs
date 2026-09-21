@@ -13,7 +13,7 @@ namespace ManyWinters.Godot.Ui;
 // (PanelChrome.Parchment, weathered, dark ink), or the dark card the panels over the world use.
 // The panel applies its own chrome either way, so nobody has to remember to pair the right
 // stylebox with the right ink.
-public partial class FloatingPanel(string title, bool onPaper = false) : PanelContainer
+public partial class FloatingPanel(string title, bool onPaper = false, int? titleFontSize = null) : PanelContainer
 {
     private const float TitleBarHeight = 28f;
     private const int TitleFontSize = 15;
@@ -69,10 +69,19 @@ public partial class FloatingPanel(string title, bool onPaper = false) : PanelCo
         outer.AddChild(titleBar);
 
         _titleLabel = onPaper
-            ? InscriptionFont.BodyLabel(title, TitleFontSize, InscriptionFont.DarkInk)
+            ? InscriptionFont.BodyLabel(title, titleFontSize ?? TitleFontSize, InscriptionFont.DarkInk)
             : new Label { Text = title };
+        if (!onPaper && titleFontSize is { } size)
+        {
+            _titleLabel.AddThemeFontSizeOverride("font_size", size);
+        }
+
         _titleLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         titleBar.AddChild(_titleLabel);
+
+        // Room for a panel to put something of its own beside its title - actions that read on
+        // the current selection rather than on the window as a whole (WorkshopPanel).
+        BuildTitleBarExtras(titleBar);
 
         var cross = PanelChrome.CloseCross(onPaper ? InscriptionFont.DarkInk : InscriptionFont.Ink);
         cross.SizeFlagsVertical = SizeFlags.ShrinkCenter;
@@ -89,6 +98,13 @@ public partial class FloatingPanel(string title, bool onPaper = false) : PanelCo
     // What the cross in the corner does. Putting the window away is all most of them need; one
     // with something to settle on the way out overrides this (WorkshopPanel starts the clock).
     protected virtual void OnCloseRequested() => Visible = false;
+
+    // Nothing, unless a panel overrides it. Called while the title bar is still being built, so
+    // it has to stand on its own rather than reach for fields the rest of _Ready has not created
+    // yet.
+    protected virtual void BuildTitleBarExtras(HBoxContainer titleBar)
+    {
+    }
 
     // What the window is called. A title that is a fact about the world - whose band this is -
     // changes with the world, so it is not fixed at construction.

@@ -125,7 +125,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, carried);
 
         Assert.NotNull(offer);
-        Assert.Equal("Try it", offer.Value.Label);
+        Assert.Equal("See what comes of it", offer.Value.Label);
         Assert.IsType<TwistCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }
@@ -144,7 +144,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, carried);
 
         Assert.NotNull(offer);
-        Assert.Equal("Try it", offer.Value.Label);
+        Assert.Equal("See what comes of it", offer.Value.Label);
         Assert.IsType<KnapCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }
@@ -187,7 +187,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, carried);
 
         Assert.NotNull(offer);
-        Assert.Equal("Try it", offer.Value.Label);
+        Assert.Equal("See what comes of it", offer.Value.Label);
         Assert.IsType<SharpenCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }
@@ -320,5 +320,110 @@ public class WorkshopActionsTests
         var carried = WorkshopActions.Carried(world, person);
 
         Assert.Empty(WorkshopActions.WordsFor(world, person, carried));
+    }
+
+    // Eating out of the pack is offered right on the bench, so the player never has to close it
+    // to reach the same action off the card.
+    [Fact]
+    public void PickingOneFoodItemOffersToEatIt()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Needs.Hunger = 50f;
+        person.Inventory.Add(TestWorld.Apple, 5);
+        var carried = WorkshopActions.Carried(world, person);
+
+        var offer = WorkshopActions.Eat(world, person, carried);
+
+        Assert.NotNull(offer);
+        Assert.Equal("Eat", offer.Value.Label);
+        Assert.IsType<EatCommand>(offer.Value.Command);
+        Assert.True(offer.Value.IsAvailable);
+    }
+
+    // Wood is not food, and picking it is still nothing to eat - the same rule the card follows.
+    [Fact]
+    public void PickingSomethingInedibleOffersNoEat()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Needs.Hunger = 50f;
+        person.Inventory.Add(TestWorld.Wood, 5);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Null(WorkshopActions.Eat(world, person, carried));
+    }
+
+    // A made thing is never eaten, whatever it is made of.
+    [Fact]
+    public void PickingAWorkedThingOffersNoEat()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Needs.Hunger = 50f;
+        person.Inventory.AddAssembly(Cord());
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Null(WorkshopActions.Eat(world, person, carried));
+    }
+
+    [Fact]
+    public void PickingTwoThingsOffersNoEat()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Needs.Hunger = 50f;
+        person.Inventory.Add(TestWorld.Apple, 1);
+        person.Inventory.Add(TestWorld.Wood, 1);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Null(WorkshopActions.Eat(world, person, carried));
+    }
+
+    // Dropping a stack puts down the whole of it, not the single unit a pick stands for
+    // elsewhere on this bench (see WorkshopEntry, Carried).
+    [Fact]
+    public void DroppingAStackPutsDownAllOfIt()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 3);
+        var carried = WorkshopActions.Carried(world, person);
+
+        var offer = WorkshopActions.Drop(world, person, carried);
+
+        Assert.NotNull(offer);
+        Assert.Equal("Drop", offer.Value.Label);
+        var drop = Assert.IsType<DropCommand>(offer.Value.Command);
+        Assert.Equal(new CarriedThing.Stock(TestWorld.Wood, 3), drop.What);
+        Assert.True(offer.Value.IsAvailable);
+    }
+
+    [Fact]
+    public void DroppingAWorkedThingPutsItDown()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.AddAssembly(Cord());
+        var carried = WorkshopActions.Carried(world, person);
+
+        var offer = WorkshopActions.Drop(world, person, carried);
+
+        Assert.NotNull(offer);
+        var drop = Assert.IsType<DropCommand>(offer.Value.Command);
+        Assert.Equal(new CarriedThing.Worked(Cord()), drop.What);
+    }
+
+    [Fact]
+    public void PickingNothingOrMoreThanOneThingOffersNoDrop()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 1);
+        person.Inventory.Add(TestWorld.Apple, 1);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Null(WorkshopActions.Drop(world, person, []));
+        Assert.Null(WorkshopActions.Drop(world, person, carried));
     }
 }

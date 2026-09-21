@@ -7,9 +7,9 @@ namespace ManyWinters.Godot.Ui;
 // it - take one thing or two, and see what comes of putting them together (see
 // docs/materials-and-crafting-architecture.md section 7).
 //
-// Deliberately not a list of verbs. There is one button and it says "Try it": the player forms
-// the hypothesis and the simulation rules on it, which is the loop worth playing. A menu of
-// Twist/Bind/Knap would hand them the answer before they had the idea.
+// Deliberately not a list of verbs. There is one button and it says "See what comes of it": the
+// player forms the hypothesis and the simulation rules on it, which is the loop worth playing. A
+// menu of Twist/Bind/Knap would hand them the answer before they had the idea.
 //
 // Time stands still while this is open, the way it does for the pause page - tinkering is meant
 // to be unhurried, not something to rush before the world moves on. Main holds the clock for
@@ -23,6 +23,7 @@ public partial class WorkshopPanel : FloatingPanel
     // inventory screen.
     private const float Width = 640f;
     private const int BodyFontSize = 15;
+    private const int TitleFontSize = 22;
     private const int SectionSpacing = 6;
 
     // The pack is laid out across the bench rather than down it - things side by side, the way
@@ -60,6 +61,8 @@ public partial class WorkshopPanel : FloatingPanel
     private Label _hint = null!;
     private Label _words = null!;
     private Button _try = null!;
+    private Button _eat = null!;
+    private Button _drop = null!;
     private Label _outcome = null!;
     private VBoxContainer _naming = null!;
     private LineEdit _name = null!;
@@ -67,7 +70,7 @@ public partial class WorkshopPanel : FloatingPanel
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
     public WorkshopPanel()
-        : base("Workshop", onPaper: true)
+        : base("Workshop", onPaper: true, titleFontSize: TitleFontSize)
     {
         CustomMinimumSize = new Vector2(Width, 0);
         // The bench is what the player is doing, not a card beside the world: it holds the middle
@@ -106,14 +109,12 @@ public partial class WorkshopPanel : FloatingPanel
         _recipes.ActionInvoked += offer => RecipeInvoked?.Invoke(offer);
         Body.AddChild(_recipes);
 
-        // What the thing in hand is like, never what it is for (see MaterialWords).
-        _words = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, QuietInk);
+        // What the thing in hand is like, never what it is for (see MaterialWords). Set in
+        // italics, as a thing said about the pick rather than a label on it - the status line
+        // that follows (ReportOutcome) is the rest of that same voice.
+        _words = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, QuietInk);
         _words.Visible = false;
         Body.AddChild(_words);
-
-        _try = new Button { Text = "Try it", Alignment = HorizontalAlignment.Left, Disabled = true };
-        _try.Pressed += OnTryPressed;
-        Body.AddChild(_try);
 
         _outcome = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, Ink);
         _outcome.Visible = false;
@@ -135,6 +136,29 @@ public partial class WorkshopPanel : FloatingPanel
         var christen = new Button { Text = "Call it that", Alignment = HorizontalAlignment.Left };
         christen.Pressed += Christen;
         _naming.AddChild(christen);
+    }
+
+    // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
+    // rather than down in the body - they read on the selection the way the icons on a toolbar
+    // do, not on the pack laid out underneath. Built while the title bar itself is still going
+    // up (see FloatingPanel.BuildTitleBarExtras), so their Pressed handlers are wired here too
+    // rather than back in _Ready.
+    //
+    // Text buttons for now rather than pictures - nobody has drawn Eat, Drop or "see what comes
+    // of it" as an icon yet.
+    protected override void BuildTitleBarExtras(HBoxContainer titleBar)
+    {
+        _eat = new Button { Text = "Eat", Visible = false };
+        _eat.Pressed += () => EatRequested?.Invoke();
+        titleBar.AddChild(_eat);
+
+        _drop = new Button { Text = "Drop", Visible = false };
+        _drop.Pressed += () => DropRequested?.Invoke();
+        titleBar.AddChild(_drop);
+
+        _try = new Button { Text = "See what comes of it", Disabled = true };
+        _try.Pressed += OnTryPressed;
+        titleBar.AddChild(_try);
     }
 
     // Opened fresh: nothing picked, nothing yet said about the last attempt.
@@ -191,7 +215,10 @@ public partial class WorkshopPanel : FloatingPanel
             _tiles[i].Apply(i < carried.Count ? carried[i] : null, i < carried.Count && _picked.Contains(carried[i]));
         }
 
+        // Said only once something has actually been picked - stated up front, before the player
+        // has touched the pack, it is an instruction nobody asked for yet.
         _hint.Text = carried.Count > 0 ? "Take one thing, or two." : "Carrying nothing to work with.";
+        _hint.Visible = carried.Count == 0 || _picked.Count > 0;
         // As tall as the pack needs, up to where it starts scrolling instead.
         _pack.CustomMinimumSize = new Vector2(0, Mathf.Min(_entries.GetCombinedMinimumSize().Y, MaxPackHeight));
     }
@@ -203,13 +230,24 @@ public partial class WorkshopPanel : FloatingPanel
         _words.Visible = words.Count > 0;
 
         _try.Disabled = offer is not { IsAvailable: true };
-        _try.Text = _picked.Count == 0 ? "Try it" : $"Try it ({_picked.Count})";
+        _try.Text = _picked.Count == 0 ? "See what comes of it" : $"See what comes of it ({_picked.Count})";
 
         if (refusal is { Length: > 0 })
         {
             _outcome.Text = refusal;
             _outcome.Visible = true;
         }
+    }
+
+    // Eat and Drop, for whatever is picked right now - each hidden rather than disabled when
+    // there is nothing for it to do (see WorkshopActions.Eat, WorkshopActions.Drop).
+    internal void OfferItemActions(ActionOffer? eat, ActionOffer? drop)
+    {
+        _eat.Visible = eat is not null;
+        _eat.Disabled = eat is not { IsAvailable: true };
+
+        _drop.Visible = drop is not null;
+        _drop.Disabled = drop is not { IsAvailable: true };
     }
 
     // What came of the last attempt, in the player's own words rather than a number (section 9).
@@ -251,6 +289,11 @@ public partial class WorkshopPanel : FloatingPanel
     // Raised for Main to ask the world what the current pick would do and to carry it out; the
     // panel itself holds no world.
     internal event Action? Attempted;
+
+    // Pressed Eat or Drop on whatever is picked. Main carries it out the same way it does an
+    // attempt or a recipe - this panel only says which button was pressed.
+    internal event Action? EatRequested;
+    internal event Action? DropRequested;
 
     // One square of bench per thing: its picture, the count in the corner where there is more
     // than one of it, and its name under the cursor. Not a line of text - a pack is things, and

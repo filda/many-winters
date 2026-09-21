@@ -78,8 +78,9 @@ internal static class WorkshopActions
     }
 
     // A recipe is named up front, unlike a reductive or combinative verb: the player already
-    // knows an axe when they see one, and hiding the word "axe" behind "Try it" would only be
-    // coy. Offered from the first unit of the material, not from the whole cost - "Make axe" over
+    // knows an axe when they see one, and hiding the word "axe" behind "See what comes of it"
+    // would only be coy. Offered from the first unit of the material, not from the whole cost -
+    // "Make axe" over
     // two of the five wood it takes is a goal the player can send them after, with the blocker
     // saying how far off it is - and only for a recipe whose output actually fits in the pack; one
     // heavy enough to need placing (a storage hut) is offered from the ground instead, by pointing
@@ -95,12 +96,41 @@ internal static class WorkshopActions
                 world))
             .ToList();
 
+    // Eating out of the pack without leaving the bench for the card - offered only for a single
+    // pick that is actually food, the same restriction Eat carries there (see PersonActions.Eat).
+    // Not offered for a made thing at all: nothing worked ever eats.
+    internal static ActionOffer? Eat(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked) =>
+        picked.Count == 1 && picked[0].Target is CarriedThing.Stock stock
+            && world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(stock.Kind) > 0f
+            ? ActionOffer.For("Eat", new EatCommand(person, stock.Kind), world, EatCommand.Skill)
+            : null;
+
+    // Putting the one thing picked straight back down, the same act as the card's own Drop line
+    // (PersonActions.Drops) - a whole stack goes down at once, so the amount asked for is what is
+    // actually carried rather than the single unit a pick stands for elsewhere on this bench.
+    internal static ActionOffer? Drop(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked)
+    {
+        if (picked.Count != 1)
+        {
+            return null;
+        }
+
+        CarriedThing whole = picked[0].Target switch
+        {
+            CarriedThing.Stock stock => new CarriedThing.Stock(stock.Kind, person.Inventory.Get(stock.Kind)),
+            CarriedThing.Worked worked => worked,
+            _ => throw new ArgumentOutOfRangeException(nameof(picked), picked[0].Target, "Unknown kind of thing to put down."),
+        };
+
+        return ActionOffer.For("Drop", new DropCommand(person, whole), world);
+    }
+
     // What trying the picked things together would be, or null when nothing would come of it -
     // an unworkable pick is not an error to word, it is simply not an offer.
     internal static ActionOffer? Attempt(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked) => picked.Count switch
     {
         1 => Reductive(world, person, picked[0]),
-        2 => ActionOffer.For("Try it", new BindCommand(person, picked[0].Target, picked[1].Target), world, BindCommand.Skill),
+        2 => ActionOffer.For("See what comes of it", new BindCommand(person, picked[0].Target, picked[1].Target), world, BindCommand.Skill),
         _ => null,
     };
 
@@ -111,13 +141,13 @@ internal static class WorkshopActions
     private static ActionOffer? Reductive(WorldState world, Person person, WorkshopEntry picked) => picked.Target switch
     {
         CarriedThing.Stock stock => ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is { } work
-            ? ActionOffer.For("Try it", work.Command, world, work.Skill)
+            ? ActionOffer.For("See what comes of it", work.Command, world, work.Skill)
             : null,
 
         // Asked of the object rather than of the command, because a thing with no edge is not a
         // refusal to word - it is simply not an offer.
         CarriedThing.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, world) =>
-            ActionOffer.For("Try it", new SharpenCommand(person, worked.Thing), world, SharpenCommand.Skill),
+            ActionOffer.For("See what comes of it", new SharpenCommand(person, worked.Thing), world, SharpenCommand.Skill),
 
         _ => null,
     };
