@@ -6,9 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# Ubuntu runners are pinned rather than `ubuntu-latest`: that label starts moving to Ubuntu
+# 26.04 on 2026-10-19 and warns on every job until it does. 26.04 was rehearsed first - the
+# Godot export, the .NET publish and the exported game's headless boot all pass on it. The
+# cost of pinning is that this line ages silently and has to be bumped by hand.
+
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -32,7 +37,7 @@ jobs:
           retention-days: 7
 
   codeql:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       security-events: write
       actions: read
@@ -63,7 +68,7 @@ jobs:
   # tools, art scripts or docs still run the full CI above, they just don't cut a release.
   check-game-changes:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       changed: ${{ steps.filter.outputs.changed }}
     steps:
@@ -90,7 +95,7 @@ jobs:
   version:
     needs: check-game-changes
     if: needs.check-game-changes.outputs.changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
@@ -329,7 +334,7 @@ jobs:
 
   release-linux:
     needs: [build-and-test, version]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     env:
       GODOT_RELEASE: 4.7.1-stable
       GODOT_TEMPLATE_DIR: 4.7.1.stable.mono
@@ -495,7 +500,7 @@ jobs:
 
   publish:
     needs: [version, release-windows, release-linux]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     concurrency:

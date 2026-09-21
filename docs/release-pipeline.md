@@ -47,6 +47,14 @@ what is wanted.
 **Last ten releases are kept.** Roughly 68 MB each, one per game commit, so they need
 pruning.
 
+**Runner images are pinned, not `latest`.** `ubuntu-latest` starts moving to Ubuntu
+26.04 on 2026-10-19 and warns on every job until it does, so the Ubuntu jobs name
+`ubuntu-26.04` outright. It was rehearsed before the pin: on 26.04 the Godot export,
+the incremental publish and the exported game's headless boot all pass, and the Godot
+editor cached under 24.04 runs there unchanged. The price is a line that ages in
+silence, so it has to be bumped by hand; `windows-latest` is still `latest` because
+Windows has no equivalent move announced.
+
 ## 2. Things that cost a day to find out
 
 Recorded because none of them are guessable, and all of them will look like arbitrary
@@ -118,21 +126,22 @@ Parked deliberately at that point: it cost wall-clock, not money, and it would n
 grow with the game. The export step reports its own duration (`godot exit code: 0
 after Ns`), so a regression stays visible.
 
-Picked up again in a manual workflow: `.github/workflows/export-investigation.yml`.
-It exists specifically to answer the open questions without making every push slower
-or less deterministic. One dispatch runs six controls side by side:
+Picked up again in a throwaway manual workflow, `export-investigation.yml`, deleted
+once it had done its job (`git log` has it). It answered the open questions without
+making every push slower or less deterministic. One dispatch ran six controls side by
+side:
 
 - `windows-latest` as the current release environment,
 - the same runner with a diagnostic `dotnet publish` warm-up in front of the export,
 - the same runner with `application/modify_resources=false`,
 - the same runner with `UseSharedCompilation=false`,
 - `windows-2022` as a second Windows environment,
-- `ubuntu-latest` as the Linux control — its image is selectable through the
-  `linux_runner` input, which is also how the Ubuntu 26.04 migration gets rehearsed.
+- `ubuntu-latest` as the Linux control, with its image selectable through an input,
+  which is how the Ubuntu 26.04 pin above was rehearsed.
 
-It also adds a direct incremental `dotnet publish` probe after the Godot export on
-both platforms. Because it runs after Godot has already published the same
-project/configuration/RID, it is only a warm comparison point rather than a cold
+It also ran a direct incremental `dotnet publish` probe after the Godot export on
+both platforms. Because that came after Godot had already published the same
+project/configuration/RID, it was only a warm comparison point rather than a cold
 measure of raw .NET publish throughput on the runner.
 
 The first dispatch (run 35538619833, 2026-09-20) killed three more hypotheses:
@@ -147,12 +156,12 @@ It also placed the time *inside* the export. The smoke test prints a build tag t
 from the exported assembly's last-write time, and it read 21:26:23 for an export that
 started at 21:25:58 and ended at 21:36:21 — our C# was compiled 25 s in and the other
 ~598 s happened after it. Godot's log names two phases (`dotnet_publish_project`,
-`savepack`) and carries no clock, so the export step now tails the redirected log and
-writes `export.timeline.log` with an elapsed-time stamp per line. Godot writes that
-file in blocks, so a stamp places a phase boundary rather than timing a single line,
-which is all it takes to say which phase holds the ten minutes.
+`savepack`) and carries no clock, so the export step was made to tail the redirected
+log and write `export.timeline.log` with an elapsed-time stamp per line. Godot writes
+that file in blocks, so a stamp places a phase boundary rather than timing a single
+line, which was all it took to say which phase held the ten minutes.
 
-Two mechanics cost that dispatch its two most interesting cells, and are fixed:
+Two mechanics cost that dispatch its two most interesting cells:
 
 - The warm-up publish is not broken any more. With the SDK pinned by `global.json` it
   exits 0 in ~15 s, and the step's guard — a `throw` for the publish unexpectedly

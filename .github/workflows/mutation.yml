@@ -5,9 +5,14 @@ on:
     - cron: "0 3 * * *"
   workflow_dispatch:
 
+# Ubuntu runners are pinned rather than `ubuntu-latest`: that label starts moving to Ubuntu
+# 26.04 on 2026-10-19 and warns on every job until it does. 26.04 was rehearsed first - the
+# Godot export, the .NET publish and the exported game's headless boot all pass on it. The
+# cost of pinning is that this line ages silently and has to be bumped by hand.
+
 jobs:
   check-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
@@ -29,7 +34,7 @@ jobs:
   stryker:
     needs: check-changes
     if: needs.check-changes.outputs.changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       # One job per suite instead of five sequential runs in one job, so a stuck or
       # cancelled suite doesn't take the others down with it and each gets its own
