@@ -5,7 +5,7 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-// A small heap of one kind of item, dropped on the ground (DropItemCommand). Same shape as
+// A small heap of one kind of item, dropped on the ground (DropCommand). Same shape as
 // ResourceNodeView's ground icon - one billboard, a shadow - but never a standing tree: a pile
 // has no growth to draw. A kind with no dedicated icon yet falls back to a flat tint, the same
 // way a resource without art does.

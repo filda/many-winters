@@ -13,7 +13,9 @@ public sealed record PickUpItemCommand(Person Person, Entity Pile) : ICommand
             return ActionBlocker.ActorIsDead;
         }
 
-        if (Pile.StaticAmount is null or <= 0)
+        // Either tier will do - a count of something, or one thing somebody made. Neither means
+        // there is nothing there to pick up.
+        if (Pile.Made is null && Pile.StaticAmount is null or <= 0)
         {
             return ActionBlocker.TargetIsGone;
         }
@@ -27,6 +29,18 @@ public sealed record PickUpItemCommand(Person Person, Entity Pile) : ICommand
     {
         if (Blocker(world) is not ActionBlocker.None)
         {
+            return;
+        }
+
+        if (Pile.Made is { } made)
+        {
+            // Whole or not at all, as off a body (see LootCommand): what will not fit stays
+            // where it lies rather than being half-taken.
+            if (Person.Inventory.AddAssemblyIfItFits(made, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person)))
+            {
+                world.RemoveEntity(Pile);
+            }
+
             return;
         }
 

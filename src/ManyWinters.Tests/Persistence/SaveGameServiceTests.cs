@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Persistence;
 using ManyWinters.Core.Population;
@@ -284,6 +285,36 @@ public class SaveGameServiceTests
             Assert.Equal(pile.Kind, restoredPile.Kind);
             Assert.Equal(pile.Position, restoredPile.Position);
             Assert.Equal(pile.StaticAmount, restoredPile.StaticAmount);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    // A thing somebody made and put down is one object, joints and all, not a count - so the
+    // save has to carry the object (see Entity.Made, AssemblySaveData).
+    [Fact]
+    public void RoundTripPreservesSomethingMadeAndPutDown()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var axe = new Assembly.Joined(
+            0.8f,
+            0.5f,
+            new Assembly.Part(new MaterialId("stone"), TestCatalogs.Wedge, 0.7f, 1f),
+            new Assembly.Part(new MaterialId("wood"), new FormId("stick"), 1f, 2f));
+        var person = world.SpawnPerson("Ava", new Position(5f, 6f), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.Inventory.AddAssembly(axe);
+        world.Execute(new DropCommand(person, new CarriedThing.Worked(axe)));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var dropped = Assert.Single(restored.Entities, e => e.Category == EntityCategory.Pile);
+            Assert.Equal(axe, dropped.Made);
         }
         finally
         {

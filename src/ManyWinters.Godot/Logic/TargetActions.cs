@@ -99,10 +99,16 @@ internal static class TargetActions
         return new TargetMenu(target.Name, offers);
     }
 
-    // A pile is always one kind (see Entity.StaticAmount), so the heading already names it and
-    // the one offer under it is a bare verb - the same shape as a resource's "Gather".
+    // A pile is one kind of stock or one made thing (see Entity.Made), so the heading already
+    // names it and the one offer under it is a bare verb - the same shape as a resource's
+    // "Gather". A made thing is named the way it is named everywhere else: the band's own word
+    // for it if they have coined one, and what it is made of if they have not.
     private static TargetMenu ForPile(WorldState world, Person actor, Entity pile) =>
-        new(world.Configuration.ItemCatalog.Get(new ItemKindId(pile.Kind.Value)).DisplayName, [PickUp(world, actor, pile)]);
+        new(
+            pile.Made is { } made
+                ? InspectorText.ForWorkedThing(made, world)
+                : world.Configuration.ItemCatalog.Get(new ItemKindId(pile.Kind.Value)).DisplayName,
+            [PickUp(world, actor, pile)]);
 
     // Split out for the same reason as Gather and WalkTo: a left click on a pile means this and
     // nothing else.

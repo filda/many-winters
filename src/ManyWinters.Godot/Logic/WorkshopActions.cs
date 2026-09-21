@@ -6,8 +6,8 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Logic;
 
 // One thing in the pack the player can point at in the workshop: what to call it, and which of
-// the two tiers it came out of (see Inventory, BindTarget).
-internal readonly record struct WorkshopEntry(string Label, BindTarget Target);
+// the two tiers it came out of (see Inventory, CarriedThing).
+internal readonly record struct WorkshopEntry(string Label, CarriedThing Target);
 
 // What the workshop panel offers, worked out apart from the panel that draws it.
 //
@@ -30,12 +30,12 @@ internal static class WorkshopActions
             .OrderBy(entry => entry.Key.Value, StringComparer.Ordinal)
             .Select(entry => new WorkshopEntry(
                 $"{items.Get(entry.Key).DisplayName} x{entry.Value}",
-                new BindTarget.Stock(entry.Key)));
+                new CarriedThing.Stock(entry.Key)));
 
         var worked = person.Inventory.Assemblies
             .Select(held => new WorkshopEntry(
                 InspectorText.ForWorkedThing(held, world),
-                new BindTarget.Worked(held)))
+                new CarriedThing.Worked(held)))
             .OrderBy(entry => entry.Label, StringComparer.Ordinal);
 
         return stock.Concat(worked).ToList();
@@ -62,8 +62,8 @@ internal static class WorkshopActions
     {
         var id = entry.Target switch
         {
-            BindTarget.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
-            BindTarget.Worked { Thing: Assembly.Part part } => part.Material,
+            CarriedThing.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
+            CarriedThing.Worked { Thing: Assembly.Part part } => part.Material,
             _ => (MaterialId?)null,
         };
 
@@ -85,13 +85,13 @@ internal static class WorkshopActions
     // does, and neither names a verb to the player.
     private static ActionOffer? Reductive(WorldState world, Person person, WorkshopEntry picked) => picked.Target switch
     {
-        BindTarget.Stock stock => ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is { } work
+        CarriedThing.Stock stock => ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is { } work
             ? ActionOffer.For("Try it", work.Command, world, work.Skill)
             : null,
 
         // Asked of the object rather than of the command, because a thing with no edge is not a
         // refusal to word - it is simply not an offer.
-        BindTarget.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, world) =>
+        CarriedThing.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, world) =>
             ActionOffer.For("Try it", new SharpenCommand(person, worked.Thing), world, SharpenCommand.Skill),
 
         _ => null,

@@ -79,18 +79,25 @@ internal static class PersonActions
     internal static bool FitsInInventory(WorldState world, Person person, ItemKindId output) =>
         person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
 
-    // Dropping is offered per item kind actually carried, for the same reason Crafts is: a line
-    // for material nobody has would just be an invitation to go find some, which pressing it
-    // could not do. Drops the whole stack, matching the "one pile at a time" shape DropItemCommand
-    // already has.
-    private static IEnumerable<ActionOffer> Drops(WorldState world, Person person) =>
-        person.Inventory.Counts
+    // A line per thing actually carried, for the same reason Crafts is: a line for material
+    // nobody has would just be an invitation to go find some, which pressing it could not do.
+    // Both tiers, in one list, because putting something down is one act (see DropCommand) -
+    // a stack goes down whole, and a made thing has no count to drop some of.
+    private static IEnumerable<ActionOffer> Drops(WorldState world, Person person)
+    {
+        var stock = person.Inventory.Counts
             .Where(carried => carried.Value > 0)
-            .OrderBy(carried => carried.Key.Value, StringComparer.Ordinal)
-            .Select(carried => ActionOffer.For(
-                $"Drop {world.Configuration.ItemCatalog.Get(carried.Key).DisplayName.ToLowerInvariant()}",
-                new DropItemCommand(person, carried.Key, carried.Value),
-                world));
+            .Select(carried => (
+                Label: world.Configuration.ItemCatalog.Get(carried.Key).DisplayName.ToLowerInvariant(),
+                What: (CarriedThing)new CarriedThing.Stock(carried.Key, carried.Value)));
+
+        var made = person.Inventory.Assemblies
+            .Select(thing => (Label: InspectorText.ForWorkedThing(thing, world), What: (CarriedThing)new CarriedThing.Worked(thing)));
+
+        return stock.Concat(made)
+            .OrderBy(entry => entry.Label, StringComparer.Ordinal)
+            .Select(entry => ActionOffer.For($"Drop {entry.Label}", new DropCommand(person, entry.What), world));
+    }
 
     private static ItemKindId? CarriedFood(WorldState world, Person person) =>
         person.Inventory.Counts.Keys

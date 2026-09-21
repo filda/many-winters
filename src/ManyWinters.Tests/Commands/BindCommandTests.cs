@@ -8,8 +8,8 @@ namespace ManyWinters.Tests.Commands;
 
 public class BindCommandTests
 {
-    private static readonly BindTarget Wood = new BindTarget.Stock(TestCatalogs.WoodItem);
-    private static readonly BindTarget Stone = new BindTarget.Stock(TestCatalogs.StoneItem);
+    private static readonly CarriedThing Wood = new CarriedThing.Stock(TestCatalogs.WoodItem);
+    private static readonly CarriedThing Stone = new CarriedThing.Stock(TestCatalogs.StoneItem);
 
     // Somebody who knows how to bind, carrying a stick, a stone and one cord to lash them with.
     // Practised enough that the hands never fail, so a test about what binding produces is not
@@ -164,7 +164,7 @@ public class BindCommandTests
         world.Execute(new BindCommand(person, Wood, Stone));
         var firstBound = Assert.Single(person.Inventory.Assemblies, held => held is Assembly.Joined);
 
-        world.Execute(new BindCommand(person, new BindTarget.Worked(firstBound), Wood));
+        world.Execute(new BindCommand(person, new CarriedThing.Worked(firstBound), Wood));
 
         var outer = Assert.IsType<Assembly.Joined>(Assert.Single(person.Inventory.Assemblies));
         Assert.IsType<Assembly.Joined>(outer.Left);
@@ -211,7 +211,7 @@ public class BindCommandTests
         var onlyCord = Cord();
         person.Inventory.AddAssembly(onlyCord);
 
-        var command = new BindCommand(person, new BindTarget.Worked(onlyCord), Wood);
+        var command = new BindCommand(person, new CarriedThing.Worked(onlyCord), Wood);
 
         Assert.Equal(ActionBlocker.MissingMaterials, command.Blocker(world));
     }
@@ -221,7 +221,7 @@ public class BindCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = Binder(world);
-        var command = new BindCommand(person, Wood, new BindTarget.Stock(TestCatalogs.AppleItem));
+        var command = new BindCommand(person, Wood, new CarriedThing.Stock(TestCatalogs.AppleItem));
 
         Assert.Equal(ActionBlocker.MissingMaterials, command.Blocker(world));
         world.Execute(command);

@@ -1,4 +1,5 @@
 using ManyWinters.Core.Commands;
+using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
@@ -173,11 +174,42 @@ public class PersonActionsTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         person.Inventory.Add(TestWorld.Apple, 5);
 
-        var drop = OfType<DropItemCommand>(world, person);
+        var drop = OfType<DropCommand>(world, person);
 
         Assert.Equal("Drop apple", drop.Label);
         Assert.True(drop.IsAvailable);
-        Assert.Equal(new DropItemCommand(person, TestWorld.Apple, 5), drop.Command);
+        Assert.Equal(new DropCommand(person, new CarriedThing.Stock(TestWorld.Apple, 5)), drop.Command);
+    }
+
+    // Anything a person carries can be put down, which means both tiers: a made thing has no
+    // count to drop some of, so it is one line and the whole object.
+    [Fact]
+    public void PuttingDownSomethingTheyMadeIsOfferedToo()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        person.Inventory.AddAssembly(cord);
+
+        var drop = OfType<DropCommand>(world, person);
+
+        Assert.Equal("Drop plant fibre cord", drop.Label);
+        Assert.True(drop.IsAvailable);
+        Assert.Equal(new DropCommand(person, new CarriedThing.Worked(cord)), drop.Command);
+    }
+
+    // Named the way it is named everywhere else: once the band has a word for that shape, the
+    // line on the card uses it (see Vocabulary).
+    [Fact]
+    public void PuttingDownSomethingTheBandHasNamedUsesTheirWordForIt()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        person.Inventory.AddAssembly(cord);
+        world.Vocabulary.Name(cord, "rope");
+
+        Assert.Equal("Drop rope", OfType<DropCommand>(world, person).Label);
     }
 
     // Carrying none of a kind at all and the line is absent, the same rule Eat and Crafts follow -
@@ -188,7 +220,7 @@ public class PersonActionsTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
 
-        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is DropItemCommand);
+        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is DropCommand);
     }
 
     [Fact]
@@ -200,7 +232,7 @@ public class PersonActionsTests
         person.Inventory.Add(TestWorld.Apple, 2);
 
         var labels = PersonActions.For(world, person)
-            .Where(offer => offer.Command is DropItemCommand)
+            .Where(offer => offer.Command is DropCommand)
             .Select(offer => offer.Label);
 
         Assert.Equal(["Drop apple", "Drop wood"], labels);

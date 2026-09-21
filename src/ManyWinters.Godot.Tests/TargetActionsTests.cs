@@ -222,6 +222,24 @@ public class TargetActionsTests
         Assert.Equal(["Bury", "Take what they carried"], Labels(TargetActions.For(world, ava, bran)));
     }
 
+    // A made thing on the ground is headed by what the band calls it, not by an item name it
+    // does not have (see Entity.Made, Vocabulary).
+    [Fact]
+    public void SomethingMadeLyingOnTheGroundIsHeadedByWhatItIs()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        ava.Inventory.AddAssembly(cord);
+        world.Execute(new DropCommand(ava, new CarriedThing.Worked(cord)));
+        var dropped = Assert.Single(world.Entities, entity => entity.Category == EntityCategory.Pile);
+
+        var menu = TargetActions.For(world, ava, dropped);
+
+        Assert.Equal("plant fibre cord", menu.Heading);
+        Assert.Equal(["Pick up"], Labels(menu));
+    }
+
     // Somebody who died holding nothing but the thing they made is carrying what is most worth
     // taking, and the line has to be there to take it.
     [Fact]

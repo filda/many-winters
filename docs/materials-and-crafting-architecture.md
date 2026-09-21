@@ -87,7 +87,8 @@ Step 4c-2 (2026-09-20): `Bind`, and the workshop panel that `Bind` forced - a ca
 flat buttons cannot express "this one with that one" without a line per pair, which
 would also hand the player the list of pairs that work.
 
-`BindCommand` takes two `BindTarget`s, either of which may be a unit of raw stock or a
+`BindCommand` takes two `CarriedThing`s (called `BindTarget` when this step wrote it, until
+putting things down wanted the same type), either of which may be a unit of raw stock or a
 worked thing already carried, which is what makes depth need no special case: a bound
 thing is a thing, so it binds again. The cordage is not asked of the player - the
 simulation reaches for the soundest binding in the pack - and it is consumed, its
@@ -357,17 +358,42 @@ axe is nothing - which is the difference between the two tiers showing up in one
 Burying changes none of this: a buried body stays in the world and stays lootable, so a grave is
 not a way to lose a tool.
 
+Also 2026-09-21: **anything a person carries can be put down.** A made thing lands as itself
+rather than as a pile of one - `Entity` gained a `Made` component beside `StaticAmount`, so the
+inventory's two tiers show up on the ground exactly as they do in a pack, and a `Pile` holds
+one or the other. Following the entity merge rather than adding a class for it: they differ in
+which optional component they carry, not in what they are.
+
+**One command, not two.** This first shipped as a second command beside `DropItemCommand`, on
+the argument that the tiers are asked for differently. That was wrong: putting something down is
+one act, and what differs is only what lands. `DropCommand` takes a `CarriedThing` - the union
+that already existed as `BindTarget`, renamed once a second caller wanted it, which is when a
+shared type earns a general name. `CarriedThing.Stock` gained an amount (defaulting to one), so
+the field means the same thing wherever the union appears rather than being read by some callers
+and ignored by others. The card offers one list of "Drop ..." lines across both tiers, ordered
+together.
+
+The design question this was waiting on answered itself once put that way. "A pile on the ground
+is one kind and one count" was the obstacle; the answer is that a made thing is not a pile, it is
+one object lying there, and a count would be the wrong shape for it. Picking it up is whole or
+not at all, as taking one off a body is.
+
+Its entity kind is a single `made_thing` for all of them, deliberately: what a thing *is* lives
+in its shape (`AssemblyPattern`) and what it is *called* lives in the band's words
+(`Vocabulary`), and an entity kind is the right place for neither. Art will be chosen from the
+shape when there is art to choose. Until then one lying on the ground draws as
+`BillboardSprite`'s flat fallback colour - visible and clickable, but a placeholder.
+
 Still open in 4c: per-assembly
 identity (section 6 - deferred a third time, and now for a stated reason: an assembly
 is a value, so two that match in every part and joint are indistinguishable to anyone
 who could tell them apart, and identity only starts earning its keep the day a worked
 thing carries a maker or its own wear). Three things are knowingly unfinished:
 
-- **A worked thing still cannot be put down or stored.** Inheriting one is done (see above);
-  dropping, depositing and withdrawing all still speak in counts, so a made thing moves between
-  a pack and a body and nowhere else. The remaining three share one design question that looting
-  did not have to answer: a pile on the ground is one kind and one count today, so a made thing
-  put down has no shape to be.
+- **A worked thing still cannot be stored.** Inheriting one and putting one down are both done
+  (see above); `DepositCommand` and `WithdrawCommand` still speak in counts, so a made thing
+  cannot go into a storage hut. That one is now small: a building's `Storage` is an `Inventory`
+  and already has both tiers, so only the two commands and their offers are behind.
 - **A joint names neither its verb nor its binder yet.** Section 6 describes both; step 4b
   left them out because nothing reads them until the verbs that set them exist (step 4c),
   the same rule that holds back unread material properties.

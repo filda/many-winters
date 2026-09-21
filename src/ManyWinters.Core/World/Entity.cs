@@ -1,4 +1,5 @@
 using ManyWinters.Core.Items;
+using ManyWinters.Core.Materials;
 
 namespace ManyWinters.Core.World;
 
@@ -30,10 +31,15 @@ public sealed class Entity
     // doesn't (a pile, a building).
     public GrowthState? Growth { get; init; }
 
-    // A static, non-regenerating stock - a pile dropped by DropItemCommand. Null for anything
+    // A static, non-regenerating stock - a pile dropped by DropCommand. Null for anything
     // else. Floor-gated like GrowthState.RemainingAmount, but never regenerates and deletes the
     // entity once it reaches zero (see PickUpItemCommand).
     public int? StaticAmount { get; set; }
+
+    // One worked object lying where somebody put it down - a cord, an axe. Null for a pile of
+    // raw stock, which is a count and not a thing: the inventory's two tiers show up on the
+    // ground as they do in a pack (see Inventory), and a Pile holds exactly one of them.
+    public Assembly? Made { get; init; }
 
     // Durability - a building's Condition. Ceiling-gated (repair caps at max) rather than
     // floor-gated: unlike RemainingAmount/StaticAmount, nothing today treats zero as "gone".

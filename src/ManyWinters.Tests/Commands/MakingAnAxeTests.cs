@@ -48,7 +48,7 @@ public class MakingAnAxeTests
         world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
 
         // The cordage is never asked for: binding reaches for the soundest one in the pack.
-        world.Execute(new BindCommand(person, new BindTarget.Worked(head), new BindTarget.Stock(TestCatalogs.WoodItem)));
+        world.Execute(new BindCommand(person, new CarriedThing.Worked(head), new CarriedThing.Stock(TestCatalogs.WoodItem)));
 
         return Assert.Single(person.Inventory.Assemblies);
     }
@@ -112,7 +112,7 @@ public class MakingAnAxeTests
 
         var head = Assert.Single(person.Inventory.Assemblies);
         world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
-        world.Execute(new BindCommand(person, new BindTarget.Worked(head), new BindTarget.Stock(TestCatalogs.WoodItem)));
+        world.Execute(new BindCommand(person, new CarriedThing.Worked(head), new CarriedThing.Stock(TestCatalogs.WoodItem)));
 
         Assert.True(person.Inventory.BestChoppingScore(items) > bare);
     }

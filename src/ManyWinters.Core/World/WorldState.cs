@@ -653,20 +653,20 @@ public sealed class WorldState(WorldConfiguration configuration)
         return WorkingOverOneThing(person, TargetAt(stock, worked, rng.Next(things)));
     }
 
-    private (SkillTypeId Skill, ICommand Command)? WorkingOverOneThing(Person person, BindTarget picked) => picked switch
+    private (SkillTypeId Skill, ICommand Command)? WorkingOverOneThing(Person person, CarriedThing picked) => picked switch
     {
-        BindTarget.Stock stock => ReductiveVerbs.For(person, stock.Kind, Configuration.ItemCatalog),
-        BindTarget.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, this) =>
+        CarriedThing.Stock stock => ReductiveVerbs.For(person, stock.Kind, Configuration.ItemCatalog),
+        CarriedThing.Worked worked when SharpenCommand.HasAnEdge(worked.Thing, this) =>
             (SharpenCommand.Skill, new SharpenCommand(person, worked.Thing)),
         _ => null,
     };
 
     // Concrete List rather than the interface: the caller has one, and indexing through
     // IReadOnlyList costs an interface dispatch per pick (CA1859).
-    private static BindTarget TargetAt(List<ItemKindId> stock, IReadOnlyList<Assembly> worked, int index) =>
+    private static CarriedThing TargetAt(List<ItemKindId> stock, IReadOnlyList<Assembly> worked, int index) =>
         index < stock.Count
-            ? new BindTarget.Stock(stock[index])
-            : new BindTarget.Worked(worked[index - stock.Count]);
+            ? new CarriedThing.Stock(stock[index])
+            : new CarriedThing.Worked(worked[index - stock.Count]);
 
     // Deterministic from the person, the verb and the tick, as every other roll is. A person's
     // own Curiosity scales it, which is the knob an NPC band turns down (see Person.Curiosity).

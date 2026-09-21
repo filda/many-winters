@@ -1,26 +1,9 @@
-using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
-
-// One of the two things a binding holds together. A person's pack has two tiers (see
-// Inventory), so a thing to be bound is either a unit out of the raw stock or one of the worked
-// objects they are carrying - and because the second case is what lets a bound thing be bound
-// again, depth needs no special case anywhere (see
-// docs/materials-and-crafting-architecture.md section 6).
-public abstract record BindTarget
-{
-    private BindTarget()
-    {
-    }
-
-    public sealed record Stock(ItemKindId Kind) : BindTarget;
-
-    public sealed record Worked(Assembly Thing) : BindTarget;
-}
 
 // The first of the combinative verbs (section 3): two objects in, one object out, held together
 // by a lashing that is itself consumed. Binary in its operands even though three things go in,
@@ -30,7 +13,7 @@ public abstract record BindTarget
 // Which cordage is not asked of the player: the simulation reaches for the best binding they
 // carry, the same way the workshop panel described in section 7 asks for one or two things and
 // nothing else.
-public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Right) : ICommand
+public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing Right) : ICommand
 {
     // Directing somebody to bind is how they learn to bind (see ActionOffer.TeachFirst).
     public static readonly SkillTypeId Skill = new("binding");
@@ -112,10 +95,10 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
             .OfType<MaterialId>()
             .Concat(binding is Assembly.Part part ? [part.Material] : Array.Empty<MaterialId>());
 
-    private static MaterialId? MaterialOf(WorldState world, BindTarget target) => target switch
+    private static MaterialId? MaterialOf(WorldState world, CarriedThing target) => target switch
     {
-        BindTarget.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
-        BindTarget.Worked { Thing: Assembly.Part part } => part.Material,
+        CarriedThing.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
+        CarriedThing.Worked { Thing: Assembly.Part part } => part.Material,
         _ => null,
     };
 
@@ -130,35 +113,35 @@ public sealed record BindCommand(Person Person, BindTarget Left, BindTarget Righ
 
     // A cord the player picked out to be bound is not also the thing doing the binding.
     private bool IsChosenAsTarget(Assembly held) =>
-        (Left is BindTarget.Worked left && left.Thing == held) || (Right is BindTarget.Worked right && right.Thing == held);
+        (Left is CarriedThing.Worked left && left.Thing == held) || (Right is CarriedThing.Worked right && right.Thing == held);
 
-    private bool Holds(BindTarget left, BindTarget right) =>
+    private bool Holds(CarriedThing left, CarriedThing right) =>
         (left, right) switch
         {
-            // The same stock entry twice - two sticks lashed together - needs two of it.
-            (BindTarget.Stock a, BindTarget.Stock b) when a.Kind == b.Kind => Person.Inventory.Get(a.Kind) >= 2,
+            // The same stock entry twice - two sticks lashed together - needs enough for both.
+            (CarriedThing.Stock a, CarriedThing.Stock b) when a.Kind == b.Kind => Person.Inventory.Get(a.Kind) >= a.Amount + b.Amount,
             _ => Holds(left) && Holds(right),
         };
 
-    private bool Holds(BindTarget target) => target switch
+    private bool Holds(CarriedThing target) => target switch
     {
-        BindTarget.Stock stock => Person.Inventory.Get(stock.Kind) > 0,
-        BindTarget.Worked worked => Person.Inventory.Assemblies.Contains(worked.Thing),
+        CarriedThing.Stock stock => Person.Inventory.Get(stock.Kind) >= stock.Amount,
+        CarriedThing.Worked worked => Person.Inventory.Assemblies.Contains(worked.Thing),
         _ => false,
     };
 
     // Raw stock becomes a part of the new object as it is taken: unworked, so its soundness is
     // its substance's and nothing more (Assembly.Durability multiplies quality in).
-    private Assembly TakeFromPack(BindTarget target, WorldState world)
+    private Assembly TakeFromPack(CarriedThing target, WorldState world)
     {
         switch (target)
         {
-            case BindTarget.Stock stock:
+            case CarriedThing.Stock stock:
                 var definition = world.Configuration.ItemCatalog.Get(stock.Kind);
-                Person.Inventory.Remove(stock.Kind, 1);
-                return new Assembly.Part(definition.Material, definition.Form, UnworkedQuality, definition.Volume);
+                Person.Inventory.Remove(stock.Kind, stock.Amount);
+                return new Assembly.Part(definition.Material, definition.Form, UnworkedQuality, definition.Volume * stock.Amount);
 
-            case BindTarget.Worked worked:
+            case CarriedThing.Worked worked:
                 Person.Inventory.RemoveAssembly(worked.Thing);
                 return worked.Thing;
 

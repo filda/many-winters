@@ -90,7 +90,10 @@ public sealed record EntitySaveData(
     GrowthSaveData? Growth,
     int? StaticAmount,
     float? Condition,
-    IReadOnlyList<ItemStackSaveData>? Storage);
+    IReadOnlyList<ItemStackSaveData>? Storage,
+    // One worked object lying on the ground (see Entity.Made). Last, and nullable, so a save
+    // written before made things could be put down still reads.
+    AssemblySaveData? Made = null);
 
 public sealed record GraveSaveData(
     Guid Id,

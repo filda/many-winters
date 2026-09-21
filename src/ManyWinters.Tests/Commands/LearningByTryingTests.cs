@@ -105,8 +105,8 @@ public class LearningByTryingTests
 
         world.Execute(new BindCommand(
             person,
-            new BindTarget.Stock(TestCatalogs.WoodItem),
-            new BindTarget.Stock(TestCatalogs.StoneItem)));
+            new CarriedThing.Stock(TestCatalogs.WoodItem),
+            new CarriedThing.Stock(TestCatalogs.StoneItem)));
 
         Assert.True(person.Beliefs.IsFirm(WoodMaterial, MaterialProperty.Toughness));
         Assert.True(person.Beliefs.IsFirm(StoneMaterial, MaterialProperty.Hardness));
