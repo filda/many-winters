@@ -2,10 +2,10 @@ using Godot;
 
 namespace ManyWinters.Godot.Logic;
 
-// What a standing person does instead of freezing: the walk cycle's bob (WalkCycle.BobAt) at a
-// slower rate and smaller amplitude, on the frame clock rather than the simulation's, so a band
-// under a stopped clock still moves. The bob itself is too fast to ease - a low-pass over it is
-// mostly damping - so PersonView scales it by a weight, and that weight is what eases here.
+// What a standing person does instead of freezing: the walk cycle's bob at a slower rate and
+// smaller amplitude, on the frame clock rather than the simulation's, so a band under a stopped
+// clock still moves. The bob itself is too fast to ease - a low-pass over it is mostly damping -
+// so the caller scales it by a weight, and that weight is what eases here.
 internal static class IdleSway
 {
     // Exponential rather than linear, so the approach never overshoots or visibly "arrives";

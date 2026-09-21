@@ -11,11 +11,11 @@ namespace ManyWinters.Core.Commands;
 // count and rounding it into one is what the two tiers exist to avoid (see Entity.Made).
 public sealed record DropCommand(Person Person, CarriedThing What) : ICommand
 {
-    // What a made thing on the ground is called as far as the map is concerned. Every one of
-    // them shares it, because what a thing *is* lives in its shape (AssemblyPattern) and what it
-    // is *called* lives in the band's own words (Vocabulary) - neither of which an entity kind
-    // is the right place for. Art will be chosen from the shape when there is art to choose
-    // (docs/sprite-pipeline-architecture.md), not from this.
+    // What a made thing on the ground is called, as far as the map is concerned - every one of
+    // them shares it, because what a thing *is* lives in its shape (AssemblyPattern) and what
+    // it's *called* lives in the band's own words (Vocabulary), neither of which an entity kind
+    // is the right place for. Art will be chosen from the shape, not from this, once there is
+    // art to choose (docs/sprite-pipeline-architecture.md).
     public static readonly EntityKindId MadeThingKind = new("made_thing");
 
     public ActionBlocker Blocker(WorldState world)

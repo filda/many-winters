@@ -18,7 +18,7 @@ public class WorldStateNursingTests
         world.SpawnPerson("Bran", position, initialAgeTicks: ageTicks, mother: mother);
 
     // Age is read off the clock, which Advance moves before its loop runs, so a multi-tick call
-    // would age everyone to its end on the first tick. The game steps one at a time (Main.cs).
+    // would age everyone to its end on the first tick. The game itself steps one tick at a time.
     private static void AdvanceTickByTick(WorldState world, int ticks)
     {
         for (var i = 0; i < ticks; i++)
@@ -74,7 +74,7 @@ public class WorldStateNursingTests
         var infant = SpawnInfant(world, mother, new Position(0, 0));
         mother.IsAlive = false;
 
-        // This infant dies at its own MaxHunger, not the rules' one (see Person.MaxHunger).
+        // This infant dies at its own drawn MaxHunger, not the rules' base value.
         AdvanceTickByTick(world, (int)infant.MaxHunger + 1);
 
         Assert.False(infant.IsAlive);
@@ -201,8 +201,7 @@ public class WorldStateNursingTests
     [Fact]
     public void AWeanedChildStopsFollowingItsMotherAround()
     {
-        // FollowTask never completes, so this only works because Advance reconsiders it - see
-        // ShouldReconsiderIdleTask.
+        // FollowTask never completes, so this only works because Advance reconsiders it each tick.
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
         var mother = SpawnMother(world, new Position(0, 0));
@@ -232,8 +231,8 @@ public class WorldStateNursingTests
     public void AnInfantStaysWithinReachOfAMotherWhoWandersOffOnHerOwn()
     {
         // The mother's idle wander is what would strand the child, so the infant must out-walk
-        // her. Her id is pinned because IdleTask seeds the wander from it (IdleTask.SeedFor);
-        // fifty ticks covers several times the reach without a nursing mother starving first.
+        // her. Her id is pinned because the wander is seeded from it; fifty ticks covers several
+        // times the reach without a nursing mother starving first.
         var world = TestCatalogs.CreateWorld();
         var mother = world.SpawnPerson(TestIds.Person(1), "Sela", new Position(0, 0), initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
         var infant = SpawnInfant(world, mother, new Position(0, 0));

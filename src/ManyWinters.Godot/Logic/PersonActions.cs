@@ -13,7 +13,7 @@ namespace ManyWinters.Godot.Logic;
 //
 // Nothing is offered without something to act on, so no entry here can ever read "nothing
 // nearby". Every one arrives with the world's own answer about whether it can run, and the panel
-// only has to draw what comes back (see ActionOffer, ActionBlocker).
+// only has to draw what comes back.
 //
 // Engine-free, so the list is an ordinary function of world state and can be tested without a
 // running Godot. What a thing is called in English is decided here too, the way InspectorText
@@ -60,9 +60,9 @@ internal static class PersonActions
         person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
 
     // A line per thing actually carried: a line for material nobody has would just be an
-    // invitation to go find some, which pressing it could not do.
-    // Both tiers, in one list, because putting something down is one act (see DropCommand) -
-    // a stack goes down whole, and a made thing has no count to drop some of.
+    // invitation to go find some, which pressing it could not do. Both tiers, in one list,
+    // because putting something down is one act - a stack goes down whole, and a made thing
+    // has no count to drop some of.
     private static IEnumerable<ActionOffer> Drops(WorldState world, Person person)
     {
         var stock = person.Inventory.Counts

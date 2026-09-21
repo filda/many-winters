@@ -12,10 +12,10 @@ internal interface IHoverable
 
 // One cursor, so at most one thing is hovered - and this owns that invariant instead of each
 // view tracking its own flag. Godot's mouse_exited only reaches the collider its picking chose,
-// so it never arrives for a view lit through HoverRescue, and picking runs on mouse movement,
+// so it never arrives for a view lit through a rescue path, and picking runs on mouse movement,
 // so a person walking out from under a resting cursor is never told either. Revalidate, called
-// once a frame from Main._Process, asks the lit view whether the cursor is still on it and
-// depends on no engine event.
+// once a frame, asks the lit view whether the cursor is still on it and depends on no engine
+// event.
 internal sealed class HoverArbiter
 {
     private IHoverable? _hovered;

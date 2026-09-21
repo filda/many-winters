@@ -93,8 +93,8 @@ public class MakeCommandTests
         Assert.Equal(ActionBlocker.ActorIsDead, new MakeCommand(person, TestCatalogs.Axe).Blocker(world));
     }
 
-    // Heavy output: never fits in the pack (see TestCatalogs.StorageHutVolume), so it lands in
-    // the world instead - at the given position, or at the maker's own feet if none was given.
+    // Heavy output: never fits in the pack, so it lands in the world instead - at the given
+    // position, or at the maker's own feet if none was given.
     [Fact]
     public void MakingSomethingHeavyPlacesItInTheWorldAtTheGivenPosition()
     {

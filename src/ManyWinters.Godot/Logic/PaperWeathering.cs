@@ -2,9 +2,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
 
-// How one page of the game's paper aged. Every panel is cut from the same sheet
-// (PanelChrome.Parchment); this is what makes each of them dirty in its own way, so several open
-// at once read as pages out of one chronicle rather than as one texture stamped three times.
+// How one page of the game's paper aged. Every panel is cut from the same sheet; this is what
+// makes each of them dirty in its own way, so several open at once read as pages out of one
+// chronicle rather than as one texture stamped three times.
 //
 // All of it follows from the panel's name, so a page looks the same in every session: weathering
 // that reshuffled on reload would read as a bug rather than as paper.
@@ -30,8 +30,7 @@ internal readonly record struct PaperWeathering
         return new PaperWeathering
         {
             Seed = seed,
-            // Stains the size of a thumb either way; the octaves put the sand back on top of them
-            // (see PanelChrome.Blotches).
+            // Stains the size of a thumb either way; the octaves put the sand back on top of them.
             BlotchFrequency = 0.009f + (Fraction(seed, salt: 1) * 0.006f),
             // Faint on every page: past a certain strength this stops being paper and becomes
             // wallpaper, and the ink has to fight it.
@@ -57,7 +56,7 @@ internal readonly record struct PaperWeathering
     }
 
     // Each aspect is drawn off its own salt rather than off successive bits of one number, so two
-    // names that came out close still differ in every way (see EntityVisualVariation.RangeFor).
+    // names that came out close still differ in every way.
     private static float Fraction(int seed, int salt) => (uint)Mixed(seed, salt) / (float)uint.MaxValue;
 
     private static int Pick(int seed, int salt, int count) => (int)((uint)Mixed(seed, salt) % (uint)count);

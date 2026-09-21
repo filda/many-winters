@@ -87,7 +87,6 @@ public partial class LoadingScreen : Control
         column.AddChild(_status);
     }
 
-    // What is being built, and how far along it is out of a hundred.
     public void Show(float progress, string step)
     {
         _bar.Value = Mathf.Clamp(progress, 0f, 100f);

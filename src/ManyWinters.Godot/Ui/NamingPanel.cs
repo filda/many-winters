@@ -3,8 +3,8 @@ using Godot;
 namespace ManyWinters.Godot.Ui;
 
 // The moment a thing nobody in the band has a word for gets one - its own small page, laid over
-// the workshop rather than folded into it (see WorkshopPanel), so a discovery does not make the
-// workbench itself grow and shrink around it.
+// the workshop rather than folded into it, so a discovery does not make the workbench itself
+// grow and shrink around it.
 //
 // Time already stands still for this, the same clock the workshop underneath is holding: nothing
 // here starts or stops it, it only asks a question of the player while the world waits.
@@ -22,9 +22,9 @@ public partial class NamingPanel : FloatingPanel
         : base("Nobody has a word for this", onPaper: true)
     {
         CustomMinimumSize = new Vector2(Width, 0);
-        // Centred the same way the workshop is, and added after it (see Main) - the two land on
-        // the same spot, which is what reads as one page laid on top of the other rather than a
-        // second window somewhere else on the screen.
+        // Centred the same way the workshop is, and added after it - the two land on the same
+        // spot, which is what reads as one page laid on top of the other rather than a second
+        // window somewhere else on the screen.
         KeepCentred = true;
         Visible = false;
         Theme = PanelChrome.PaperButtons(BodyFontSize);
@@ -68,8 +68,8 @@ public partial class NamingPanel : FloatingPanel
     }
 
     // Asked here and now rather than as an interruption of something else - the description and
-    // picture are what the player is looking at already (ReportOutcome, WorkshopPanel.IconFor),
-    // repeated here so the question is not left to memory.
+    // picture are what the player is looking at already, repeated here so the question is not
+    // left to memory.
     internal void Open(string description, Texture2D? image)
     {
         _description.Text = description;
@@ -80,8 +80,8 @@ public partial class NamingPanel : FloatingPanel
         _name.GrabFocus();
     }
 
-    // What the player called it, or that they would rather not say right now - Main decides what
-    // either means for the thing that was made (see Vocabulary).
+    // What the player called it, or that they would rather not say right now - the owner decides
+    // what either means for the thing that was made.
     internal event Action<string>? Named;
     internal event Action? Cancelled;
 

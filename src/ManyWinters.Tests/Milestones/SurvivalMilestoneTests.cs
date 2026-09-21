@@ -22,8 +22,8 @@ public class SurvivalMilestoneTests
         for (var i = 0; i < populationSize; i++)
         {
             var person = world.SpawnPerson($"Person {i + 1}", new Position(0, 0));
-            // Gathering and eating have to be learned (SkillDefinition.BaseTechnique); granted
-            // directly because this test is about the gather/eat/hunger loop itself.
+            // Gathering and eating have to be learned; granted directly because this test is
+            // about the gather/eat/hunger loop itself.
             person.KnownTechniques.Add(TestCatalogs.BasicForaging);
             person.KnownTechniques.Add(TestCatalogs.BasicEating);
             people.Add(person);
@@ -38,12 +38,11 @@ public class SurvivalMilestoneTests
             {
                 foreach (var person in people)
                 {
-                    // IdleTask can wander a person off between manual actions; put them back
-                    // rather than simulate the walk.
+                    // A person can wander off between manual actions; put them back rather than
+                    // simulate the walk.
                     person.Position = node.Position;
 
-                    // Gathering only fills the inventory (GatherCommand); eating is a separate
-                    // step.
+                    // Gathering only fills the inventory; eating is a separate step.
                     world.Execute(new GatherCommand(person, node));
                     world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
                 }

@@ -8,7 +8,7 @@ namespace ManyWinters.Tests.Continuity;
 
 public class BandArrivalTests
 {
-    // SimulationRules.Default: 300 ticks to a year, adulthood at LifeStages.AdultAgeYears (4).
+    // Default rules: 300 ticks to a year, adulthood at age 4.
     private const long Year = 300;
 
     private static WorldState World => TestCatalogs.CreateWorld();
@@ -37,7 +37,7 @@ public class BandArrivalTests
         Assert.False(arrival.KnowsAnything);
     }
 
-    // Someone exactly at the adult age is grown: the boundary belongs to LifeStages, and this
+    // Someone exactly at the adult age is grown: the boundary is defined elsewhere, and this
     // only has to agree with it.
     [Fact]
     public void SomeoneJustGrownCountsAsAnAdult()

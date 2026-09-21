@@ -7,8 +7,7 @@ namespace ManyWinters.Tests.Continuity;
 
 public class BandEndingTests
 {
-    // SimulationRules.Default: 75-tick seasons, Winter the fourth, so winters begin at 225, 525,
-    // 825, ...
+    // Default rules: 75-tick seasons, Winter the fourth, so winters begin at 225, 525, 825, ...
     private const long WinterBegins = 225;
 
     private static Person NewPerson(string name, Sex sex, long birthTick, int idSeed = 1) =>
@@ -299,7 +298,6 @@ public class BandEndingTests
         Assert.Equal("Ava", ending.LastToDie?.Name);
     }
 
-    // An undated death counts as the most recent one, and the ending is dated to now.
     [Fact]
     public void AnUndatedDeathIsTakenAsTheLatestAndDatedToNow()
     {

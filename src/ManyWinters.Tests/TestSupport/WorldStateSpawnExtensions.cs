@@ -21,7 +21,7 @@ public static class WorldStateSpawnExtensions
         float curiosity = 1f) =>
         world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father, sex, curiosity);
 
-    // With a chosen id - for tests pinning an outcome that runs on the id's seed (see TestIds).
+    // With a chosen id - for tests pinning an outcome that runs on the id's seed.
     public static Person SpawnPerson(
         this WorldState world,
         PersonId id,
@@ -30,11 +30,10 @@ public static class WorldStateSpawnExtensions
         long initialAgeTicks = 0,
         Person? mother = null,
         Person? father = null,
-        // Unset when the test has no stake in it, in which case the id decides (Person.Sex). Tests
-        // about who can have a child with whom pin it, or they assert against a coin flip.
+        // Unset when the test has no stake in it, in which case the id decides. Tests about who
+        // can have a child with whom pin it, or they assert against a coin flip.
         Sex? sex = null,
-        // One is the rate the shipped band works things out at (see Person.Curiosity); tests
-        // about idle discovery turn it.
+        // One is the rate the shipped band works things out at; tests about idle discovery turn it.
         float curiosity = 1f)
     {
         var person = new Person
@@ -54,7 +53,7 @@ public static class WorldStateSpawnExtensions
         return person;
     }
 
-    // A dead-before-the-story parent (see WorldState.Forebears): born and dead before tick 0.
+    // A dead-before-the-story parent: born and dead before tick 0.
     public static Person SpawnForebear(this WorldState world, string name)
     {
         var forebear = new Person

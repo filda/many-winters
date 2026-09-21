@@ -15,7 +15,7 @@ public static class TestCatalogs
     public static readonly EntityKindId Wood = new("wood");
     public static readonly EntityKindId Grass = new("grass");
 
-    // Placed by MapLoader.ScatterDecorations.
+    // Scattered across the map as decoration rather than placed individually.
     public static readonly EntityKindId ConiferTree = new("conifer_tree");
     public static readonly EntityKindId DeciduousTree = new("deciduous_tree");
     public static readonly EntityKindId Bush = new("bush");

@@ -102,7 +102,7 @@ public static class SaveGameService
         person.Curiosity);
 
     // Recursive both ways, because an assembly is: a bound thing holds two more of them, to any
-    // depth (see Assembly).
+    // depth.
     private static AssemblySaveData ToAssemblySaveData(Assembly assembly) => assembly switch
     {
         Assembly.Part part => new AssemblySaveData(new PartSaveData(part.Material, part.Form, part.Quality, part.Volume), null),
@@ -132,9 +132,8 @@ public static class SaveGameService
         var world = new WorldState(configuration);
         world.Clock.Advance(data.Tick);
 
-        // Parents have to exist before their children (see Person.Mother): forebears first
-        // (children of Unknown only), then people in save order, a parent always having been
-        // added before its child.
+        // Parents have to exist before their children: forebears first (children of Unknown
+        // only), then people in save order, a parent always having been added before its child.
         var peopleById = new Dictionary<Guid, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
         foreach (var forebearData in data.Forebears)
         {
@@ -238,7 +237,7 @@ public static class SaveGameService
             Sex = personData.Sex,
             Curiosity = personData.Curiosity,
 
-            // Not saved: it is redrawn from the id (see Person.MaxHunger).
+            // Not saved: it is redrawn from the id.
             MaxHunger = rules.MaxHungerFor(id),
         };
         person.Needs.Hunger = personData.Hunger;

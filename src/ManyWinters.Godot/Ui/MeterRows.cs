@@ -4,9 +4,9 @@ using ManyWinters.Godot.Logic;
 namespace ManyWinters.Godot.Ui;
 
 // The bars a MeterReading draws into, shared between the summary card and the full detail page
-// (SelectionPanel, PersonDetailPanel) so the two keep exactly the same look without either
-// copying the other's plumbing. Updated in place, never freed and rebuilt: both refresh on every
-// tick, and tearing the bars down and putting them back is what made the card blink.
+// so the two keep exactly the same look without either copying the other's plumbing. Updated in
+// place, never freed and rebuilt: both refresh on every tick, and tearing the bars down and
+// putting them back is what made the card blink.
 internal sealed class MeterRows(VBoxContainer host, int barHeight, int fontSize)
 {
     private readonly List<Row> _rows = [];
@@ -38,8 +38,7 @@ internal sealed class MeterRows(VBoxContainer host, int barHeight, int fontSize)
         return new Row(container, caption, bar);
     }
 
-    // One measure's caption and bar. Same shape as an action's row (ActionList): kept between
-    // refreshes, and given new numbers.
+    // One measure's caption and bar, kept between refreshes and given new numbers.
     private sealed class Row(VBoxContainer container, Label caption, ProgressBar bar)
     {
         public void Apply(MeterReading? reading)

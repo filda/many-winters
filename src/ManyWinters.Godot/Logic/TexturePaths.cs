@@ -17,7 +17,7 @@ internal static class TexturePaths
     internal static string ForResource(string kind) => $"res://Content/resources/{kind}/{kind}.png";
 
     // A worked thing is its shape before it is its substance: a stick is stick-shaped whatever
-    // wood it was cut from (see Assembly.Part).
+    // wood it was cut from.
     internal static string ForForm(string form) => $"res://Content/forms/{form}/{form}.png";
 
     // Splits at the last dot, so a directory containing one is not mistaken for the extension.

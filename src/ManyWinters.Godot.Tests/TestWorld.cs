@@ -7,10 +7,10 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Tests;
 
-// A small world with catalogs, for the presentation logic that reads one (PersonActions,
-// SelectionCard). ManyWinters.Tests has a fuller mirror of Content in its own TestCatalogs;
-// this is a deliberate copy rather than a shared one, because the two test projects answer to
-// different rules (see README.md) and only this side may not touch the engine.
+// A small world with catalogs, for the presentation logic that reads one. ManyWinters.Tests has
+// a fuller mirror of Content in its own test catalogs; this is a deliberate copy rather than a
+// shared one, because the two test projects answer to different rules (see README.md) and only
+// this side may not touch the engine.
 internal static class TestWorld
 {
     internal static readonly ItemKindId Wood = new("wood");
@@ -42,8 +42,8 @@ internal static class TestWorld
 
     internal const int AxeInputAmount = 5;
     internal const int StorageHutInputAmount = 20;
-    // Deliberately far beyond any realistic carry capacity (see MakeCommand): what routes it
-    // into the world instead of the maker's pack.
+    // Deliberately far beyond any realistic carry capacity, so it routes into the world instead
+    // of the maker's pack.
     private const float StorageHutVolume = 200f;
 
     internal static WorldState Create()
@@ -137,8 +137,8 @@ internal static class TestWorld
         return building;
     }
 
-    // Long enough with what they are carrying to have come to know it (see Beliefs): what the
-    // bench says about a substance is what this person believes of it, not what is true.
+    // Long enough with what they are carrying to have come to know it: what the bench says
+    // about a substance is what this person believes of it, not what is true.
     internal static void LetThemComeToKnow(WorldState world, Person person)
     {
         var perTick = world.Configuration.Rules.MaterialUnderstandingPerTick;

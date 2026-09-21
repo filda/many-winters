@@ -3,8 +3,7 @@ using Godot;
 namespace ManyWinters.Godot.Logic;
 
 // Where a pick ray lands on a FixedY billboard, from world metres through texture UV to the
-// pixel sampled - the geometry half of SpritePixelHit, with nothing of the engine in it. See
-// that class for why the plane is reconstructed rather than read off the node's transform.
+// pixel sampled - the geometry half of picking, with nothing of the engine in it.
 internal static class BillboardUv
 {
     // Below this, a direction is too short to normalize or a ray too parallel to the plane for
@@ -64,9 +63,8 @@ internal static class BillboardUv
             return null;
         }
 
-        // FlipH mirrors the rendered texture without touching the node's transform
-        // (ResourceNodeView's per-instance mirroring), so U has to be mirrored here too or an
-        // asymmetric silhouette samples the wrong side.
+        // FlipH mirrors the rendered texture without touching the node's transform, so U has to
+        // be mirrored here too or an asymmetric silhouette samples the wrong side.
         return new Vector2(flipH ? 1f - u : u, v);
     }
 

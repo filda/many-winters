@@ -5,8 +5,8 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Logic;
 
 // One line of the roster: who somebody is, what they are doing, and how full their belly is. The
-// Person comes along so the panel can hand them straight back when the line is pressed, the way
-// PersonView does on a click - nothing is looked up between "pressed" and "selected".
+// Person comes along so the panel can hand them straight back when the line is pressed - nothing
+// is looked up between "pressed" and "selected".
 //
 // The heading carries the age in brackets after the name, because a roster is read to tell people
 // apart and a name alone does not - a bare count of winters, not DurationText's prose, so a name
@@ -25,8 +25,8 @@ internal readonly record struct RosterEntry(Person Person, string Heading, strin
 // can be scanned for the name they are hunting for. A band is a handful of people today, so there
 // is no search and no paging; both belong to the day the map holds several bands.
 //
-// Engine-free like PersonActions and SelectionCard: what the panel shows is a plain function of
-// world state, testable without a running Godot.
+// Engine-free like other panel logic: what the panel shows is a plain function of world state,
+// testable without a running Godot.
 internal sealed record BandRoster(string Title, string Summary, IReadOnlyList<RosterEntry> People)
 {
     internal static BandRoster Of(WorldState world)
@@ -54,13 +54,13 @@ internal sealed record BandRoster(string Title, string Summary, IReadOnlyList<Ro
                 SelectionCard.FedFor(person, seekFoodThreshold)))
             .ToList();
 
-        // Named after its eldest, the way the band is named everywhere else (BandName, and the
-        // pause panel's title through it) - but "Liska's band", because this is the band as the
-        // player commands it, not as a later band reading its graves will know it.
+        // Named after its eldest, the way the band is named everywhere else - but "Liska's band",
+        // because this is the band as the player commands it, not as a later band reading its
+        // graves will know it.
         return new BandRoster(
             $"{band.Eldest.Name}'s band",
-            // The same count, broken down the same three ways, as the pause panel's line
-            // (PopulationSummary) - the band is one band however the player comes to look at it.
+            // The same count, broken down the same three ways, as the pause panel's line - the
+            // band is one band however the player comes to look at it.
             PopulationSummary.Of(band.People, band.Men, band.Women, band.Children),
             entries);
     }

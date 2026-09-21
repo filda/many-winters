@@ -221,7 +221,7 @@ public class SimulationScriptTests
 
         var output = script.Run(["print prologue"]);
 
-        // A title, four lines and the closing words (see Prologue.Write).
+        // A title, four lines and the closing words.
         Assert.Equal(6, output.Count);
         Assert.Contains("Sela's people", output[0]);
         Assert.Contains(output, line => line.Contains("one man and one woman"));
@@ -260,9 +260,8 @@ public class SimulationScriptTests
 
         var output = script.Run(["print epitaph"]);
 
-        // A title and the lines under it (see Epitaph.Write); nobody ate, so both starved on the
-        // same tick and neither side closed first - and a band nobody is left of carries no
-        // closing words, so there is no dash line here.
+        // A title plus the lines under it: nobody ate, so both starved on the same tick and
+        // neither closed first, and a band nobody is left of carries no closing words.
         Assert.Equal(7, output.Count);
         Assert.Contains("Sela's people", output[0]);
         Assert.Contains(output, line => line.Contains("the last of them") || line.Contains("The last of them"));
@@ -336,8 +335,8 @@ public class SimulationScriptTests
     [Fact]
     public void SplitIntoCommandsStartsANewCommandAtAVerbEvenPartWayThroughTheArguments()
     {
-        // A leading "generate" would begin a command whether or not it were recognized, so it is
-        // tested following another one; otherwise nothing proves the verb list knows it.
+        // A leading "generate" would start a command either way, so it's tested mid-sequence to
+        // prove the verb list actually recognizes it.
         var commands = SimulationScript.SplitIntoCommands(["create", "2", "generate", "simulate", "5"]);
 
         Assert.Equal(["create 2", "generate", "simulate 5"], commands);

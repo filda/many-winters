@@ -73,7 +73,7 @@ public class BuryCommandTests
     public void BuryingWithTheTechniqueNamesUnrememberedParentsAsUnknown()
     {
         // No null to check: a person nobody remembers the parents of has Person.Unknown for
-        // both (see Person.Mother), and that is what the grave records.
+        // both, and that is what the grave records.
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
@@ -204,7 +204,7 @@ public class BuryCommandTests
         fifthDeceased.IsAlive = false;
         world.Execute(new BuryCommand(buryingPerson, fifthDeceased));
 
-        // Practice has diminishing returns (Skills.Increase); the threshold is five burials' worth.
+        // Practice has diminishing returns; the threshold is five burials' worth.
         Assert.Equal(2.553f, buryingPerson.Skills.Get(TestCatalogs.Burial), 3);
         Assert.Contains(TestCatalogs.EfficientBurial, buryingPerson.KnownTechniques);
     }

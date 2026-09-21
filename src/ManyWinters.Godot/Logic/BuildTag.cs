@@ -2,9 +2,9 @@ using System.Globalization;
 
 namespace ManyWinters.Godot.Logic;
 
-// The one line printed at startup saying which build is running (see Main._Ready). Derived
-// from the running assembly's file time, never hand-written: a stale tag actively asserts the
-// wrong build. Only the rendering lives here, including the case where there is no file to ask.
+// The one line printed at startup saying which build is running. Derived from the running
+// assembly's file time, never hand-written: a stale tag actively asserts the wrong build. Only
+// the rendering lives here, including the case where there is no file to ask.
 internal static class BuildTag
 {
     // Said out loud rather than left blank or filled with "now": a tag that looks like a real

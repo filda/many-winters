@@ -8,10 +8,10 @@ namespace ManyWinters.Godot.Ui;
 // of headed lines instead: they fit on the smallest window the game opens in without a scrollbar,
 // and the eye finds a key without reading a wall of prose.
 //
-// Like the pause panel it holds the clock while it is up (see Main), so nobody starves behind it,
-// and it swallows clicks into the world for the same reason - an order given to a stopped world
-// would land the moment it starts again. The camera keeps working: the point of a controls page
-// is to try them.
+// Like the pause panel it holds the clock while it is up, so nobody starves behind it, and it
+// swallows clicks into the world for the same reason - an order given to a stopped world would
+// land the moment it starts again. The camera keeps working: the point of a controls page is to
+// try them.
 public partial class HelpPanel : Control
 {
     private const int TitleFontSize = 44;

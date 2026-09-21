@@ -21,9 +21,9 @@ public sealed class FogOfWarRenderer
     private static readonly Color UnknownColor = new(0.70f, 0.73f, 0.78f);
     private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
 
-    // One texel per ExplorationState cell (TexelGrid.Covering). A coarser texel straddled two
-    // cells, so the shader fogged part of an already-instantiated tree's canopy (WorldPresenter
-    // only creates a ResourceNodeView once its own cell is Explored).
+    // One texel per ExplorationState cell. A coarser texel straddled two cells, so the shader
+    // fogged part of an already-instantiated tree's canopy (a resource node view is only
+    // created once its own cell is Explored).
     //
     // The blur is applied to a separate copy and gated by the sharp mask in the shader
     // (`unexploredSharp * unexploredBlurred`): a genuinely Explored position multiplies its blur
@@ -67,9 +67,9 @@ public sealed class FogOfWarRenderer
         var initialDistance = Image.CreateEmpty(_grid.Size, _grid.Size, false, Image.Format.Rf);
         _distanceTexture = ImageTexture.CreateFromImage(initialDistance);
 
-        // A real render of just the cloud sprites (see CloudFogMask): "is this pixel a cloud" is a
-        // direct lookup, never inferred from the depth-reconstructed position, which is unreliable
-        // along the grazing view rays any play zoom produces.
+        // A real render of just the cloud sprites: "is this pixel a cloud" is a direct lookup,
+        // never inferred from the depth-reconstructed position, which is unreliable along the
+        // grazing view rays any play zoom produces.
         var cloudMaskTexture = cloudFogMask.Texture;
 
         // An alpha blend mode puts a material in the transparent pass, distance-sorted against the
@@ -81,8 +81,8 @@ public sealed class FogOfWarRenderer
         unknownMaterial.SetShaderParameter("fog_albedo", UnknownColor);
         unknownMaterial.SetShaderParameter("distance_texture", _distanceTexture);
         // The sheet dissolves into the skyline instead of stopping at a seam, so it tracks the
-        // painted sky minus most of its blue (SkyPalette.FogFar - a sheet as blue as the air stops
-        // reading as ground).
+        // painted sky minus most of its blue - a sheet as blue as the air stops reading as
+        // ground.
         unknownMaterial.SetShaderParameter("far_color", SkyPalette.FogFar);
         unknownMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         unknownMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
@@ -95,12 +95,12 @@ public sealed class FogOfWarRenderer
 
         // Parented to the camera, just in front of it: the vertex shaders ignore this transform
         // (always full-screen), but frustum culling runs on the mesh's real bounding box before the
-        // vertex override, so it needs a transform inside the frustum - beyond Near (FreeCameraRig,
-        // 0.5) or it is culled as behind the near plane.
+        // vertex override, so it needs a transform inside the frustum - beyond Near (0.5) or it
+        // is culled as behind the near plane.
         const float overlayLocalZ = -1f;
         var quadMesh = new QuadMesh { Size = new Vector2(OverlayQuadSize, OverlayQuadSize) };
-        // Not the default layer: the mask camera must not render these quads (see
-        // CloudFogMask.FogOverlayLayerBit). The main camera's cull mask includes this layer.
+        // Not the default layer: the mask camera must not render these quads. The main camera's
+        // cull mask includes this layer.
         camera.AddChild(new MeshInstance3D
         {
             Mesh = quadMesh,

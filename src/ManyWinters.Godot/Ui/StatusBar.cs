@@ -4,9 +4,9 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Ui;
 
 // Bottom-of-screen bar: transient notifications (left, auto-clearing), the buttons that open the
-// game's windows, performance and tick/season (right), and the "?" that opens the controls page
-// (HelpPanel). Every window is opened and closed from here, the debug inspector included - none
-// of them is on screen until the player asks for it.
+// game's windows, performance and tick/season (right), and the "?" that opens the controls page.
+// Every window is opened and closed from here, the debug inspector included - none of them is on
+// screen until the player asks for it.
 public partial class StatusBar : PanelContainer
 {
     // Room for the "?" button (which drives its own theme minimum height) and a centred line
@@ -50,20 +50,20 @@ public partial class StatusBar : PanelContainer
         };
         row.AddChild(_notificationLabel);
 
-        // Opens BandPanel. Always there, unlike the chronicle button: the player can lose track
-        // of where their people went from the first minute, and there is always a band.
+        // Always there, unlike the chronicle button: the player can lose track of where their
+        // people went from the first minute, and there is always a band.
         _bandButton = new Button { Text = "Band" };
         _bandButton.Pressed += () => BandRequested?.Invoke();
         row.AddChild(_bandButton);
 
-        // Opens ChroniclePanel, where each inscription can be read whole - the overlay only
-        // carries the title. Hidden until there is one.
+        // Where each inscription can be read whole - the overlay only carries the title. Hidden
+        // until there is one.
         _chronicleButton = new Button { Text = "Chronicle", Visible = false };
         _chronicleButton.Pressed += () => ChronicleRequested?.Invoke();
         row.AddChild(_chronicleButton);
 
-        // The world's raw numbers and the levers that move them - a tool, not part of the game
-        // (see Main.SetUpInspectorWindow), so it sits at the end of the row and starts shut.
+        // The world's raw numbers and the levers that move them - a tool, not part of the game,
+        // so it sits at the end of the row and starts shut.
         _inspectorButton = new Button { Text = "Inspector" };
         _inspectorButton.Pressed += () => InspectorRequested?.Invoke();
         row.AddChild(_inspectorButton);

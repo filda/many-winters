@@ -3,15 +3,15 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Ui;
 
-// Everything the summary card (SelectionPanel) knows about the selected person, laid out with
-// room to breathe rather than squeezed into the strip down the right edge - the page its "Knows"
-// line opens once there is more to a person than a fixed-width column can hold at once. Not a
-// different set of facts: the same SelectionCard and the same actions, just given the whole of
-// the window instead of one column of it.
+// Everything the summary card knows about the selected person, laid out with room to breathe
+// rather than squeezed into the strip down the right edge - the page its "Knows" line opens once
+// there is more to a person than a fixed-width column can hold at once. Not a different set of
+// facts: the same card data and the same actions, just given the whole of the window instead of
+// one column of it.
 //
-// Holds the clock while it is up, the same way the workbench does (see WorkshopPanel): the player
-// asked for the whole screen to read this, not to keep half an eye on a world still moving behind
-// it. Main holds the clock for whichever of the two is visible.
+// Holds the clock while it is up, the same way the workbench does: the player asked for the
+// whole screen to read this, not to keep half an eye on a world still moving behind it. The owner
+// holds the clock for whichever of the two is visible.
 public partial class PersonDetailPanel : FloatingPanel
 {
     private const float Width = 360f;
@@ -37,8 +37,8 @@ public partial class PersonDetailPanel : FloatingPanel
     // the summary card.
     internal event Action? PackRequested;
 
-    // Which action the player pressed. Main runs it the same way it does one pressed on the
-    // summary card (see SelectionPanel.ActionInvoked).
+    // Which action the player pressed. The owner runs it the same way it does one pressed on the
+    // summary card.
     internal event Action<ActionOffer>? ActionInvoked;
 
     public PersonDetailPanel()
@@ -56,10 +56,9 @@ public partial class PersonDetailPanel : FloatingPanel
         Body.AddThemeConstantOverride("separation", SectionSpacing);
 
         // The scroll area under a floating panel's title bar sizes itself to its content rather
-        // than stretching it (see FloatingPanel), which left every left-aligned line hugging the
-        // left edge with the rest of the panel's width sitting empty beside it. Asking for the
-        // width the panel itself was given, less the page's own padding, is what SelectionPanel's
-        // column does for the same reason.
+        // than stretching it, which left every left-aligned line hugging the left edge with the
+        // rest of the panel's width sitting empty beside it. Asking for the width the panel itself
+        // was given, less the page's own padding, fixes that.
         Body.CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0);
 
         _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
@@ -77,7 +76,7 @@ public partial class PersonDetailPanel : FloatingPanel
         _meterRows = new MeterRows(_meters, MeterHeight, BodyFontSize);
 
         // A button, not a line of text: the pack is the way into the workshop, where what is in
-        // it can be worked (see WorkshopPanel).
+        // it can be worked.
         _carried = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
         _carried.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
         _carried.Pressed += () => PackRequested?.Invoke();
@@ -101,16 +100,15 @@ public partial class PersonDetailPanel : FloatingPanel
         _knowledge.AddChild(_knowledgeHeading);
     }
 
-    // Opened fresh for whoever the card belongs to: their name in the title bar, then everything
-    // else the card carries.
+    // Opened fresh for whoever the card belongs to.
     internal void Open(SelectionCard card, IReadOnlyList<ActionOffer> offers)
     {
         Show(card, offers);
         Visible = true;
     }
 
-    // Redrawn whenever the card behind it is (see Main.RefreshSelection), so the page stays true
-    // while it is left open on a person who is still living their life behind it.
+    // Redrawn whenever the card behind it is, so the page stays true while it is left open on a
+    // person who is still living their life behind it.
     internal void Show(SelectionCard card, IReadOnlyList<ActionOffer> offers)
     {
         SetTitle(card.Name);
@@ -129,7 +127,7 @@ public partial class PersonDetailPanel : FloatingPanel
     }
 
     // The clock is held while the page is out, the same as the workbench's, so the cross cannot
-    // simply hide it (see WorkshopPanel.Close).
+    // simply hide it - the clock has to be let go too.
     protected override void OnCloseRequested() => Close();
 
     internal void Close()
@@ -143,15 +141,15 @@ public partial class PersonDetailPanel : FloatingPanel
         Closed?.Invoke();
     }
 
-    // Put away, so the world can start moving again (see Main).
+    // Put away, so the world can start moving again.
     internal event Action? Closed;
 
     // A line per skill under its own heading, rather than one comma-spliced sentence - the list
     // the summary card's "Knows" line used to draw itself, before it grew long enough to need a
-    // page of its own (see SelectionPanel). Lines are kept and updated in place, not thrown away
-    // and rebuilt, for the same reason the actions beside them are (see ActionList): this is
-    // redrawn on every tick the page is left open, and freeing a label mid-frame only to add its
-    // replacement back is what made the page blink.
+    // page of its own. Lines are kept and updated in place, not thrown away and rebuilt, for the
+    // same reason the actions beside them are: this is redrawn on every tick the page is left
+    // open, and freeing a label mid-frame only to add its replacement back is what made the page
+    // blink.
     private void SyncKnowledge(string label, IReadOnlyList<string> known)
     {
         _knowledgeHeading.Text = known.Count > 0 ? $"{label}:" : $"{label}: {(label == "Knows" ? "nothing yet" : "nothing")}";

@@ -5,9 +5,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// What people standing together say to each other about the stuff of the world (see Beliefs).
-// Talk rather than instruction: understanding spreads through a band before anybody has learned
-// to teach.
+// What people standing together say to each other about the stuff of the world. Talk rather
+// than instruction: understanding spreads through a band before anybody has learned to teach.
 public class BeliefSharingTests
 {
     private static readonly MaterialId PlantFibre = new("plant_fibre");
@@ -22,9 +21,8 @@ public class BeliefSharingTests
                 BeliefSharingChancePerTick = 1f,
                 MaterialUnderstandingPerTick = 0f,
                 IdleDiscoveryChancePerTick = 0f,
-                // These tests are about whether a thing is passed on at all and how firmly it
-                // lands; what a retelling does to the value has its own tests
-                // (BeliefDistortionTests).
+                // These tests cover whether a thing is passed on at all and how firmly it lands;
+                // what a retelling does to the value is tested separately.
                 HearsayDistortion = 0f,
             },
         });
@@ -107,8 +105,8 @@ public class BeliefSharingTests
 
         world.Advance(1);
 
-        // The teller's own account, not the world's: what passes between people is what they
-        // take to be so, which is what makes a distorted one able to travel later.
+        // The teller's own account, not the world's: what passes is what they take to be so,
+        // which is what lets a distorted belief travel.
         var heard = Assert.Single(listener.Beliefs.Held);
         Assert.Equal(0.42f, heard.Value.Value, 5);
         Assert.NotEqual(0.42f, world.Configuration.MaterialCatalog.Find(PlantFibre)!.Fibrousness);
@@ -155,7 +153,6 @@ public class BeliefSharingTests
         Assert.Empty(listener.Beliefs.Held);
     }
 
-    // Nothing to say and nothing said: a band that understands nothing passes nothing about.
     [Fact]
     public void ABandThatKnowsNothingSaysNothing()
     {
@@ -169,8 +166,7 @@ public class BeliefSharingTests
         Assert.Empty(bran.Beliefs.Held);
     }
 
-    // Understanding spreads through a band standing together, which is the point of the whole
-    // pass: knowledge lives in people, and a crowd is how it gets about.
+    // Knowledge lives in people; a crowd is how it gets about a band all at once.
     [Fact]
     public void UnderstandingSpreadsThroughACrowdStandingTogether()
     {

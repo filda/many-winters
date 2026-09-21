@@ -20,25 +20,21 @@ public static class InscriptionAssertions
         }
     }
 
-    // The title is the one piece of an inscription that is not a sentence: it names what the
-    // lines are about and is carved without a full stop.
+    // The title names what the lines are about, rather than being a sentence itself.
     private static void AssertReadsAsATitle(string title)
     {
         AssertReadsCleanly(title);
         Assert.False(title.EndsWith('.'), $"A title takes no full stop: '{title}'");
     }
 
-    // Every carved line has to read as a sentence.
     private static void AssertReadsAsASentence(string line)
     {
         AssertReadsCleanly(line);
         Assert.EndsWith(".", line);
     }
 
-    // The title and the lines under it, for what has to hold of both.
-    // Everything an inscription says, in the order it is said: the closing words too when
-    // there are any, since they are spoken over the band like the rest (see
-    // AWomanIsSpokenOfAsShe).
+    // Everything an inscription says, in the order it is said: closing words too, since they
+    // are spoken over the band like the rest.
     public static IEnumerable<string> AllText(Inscription inscription)
     {
         foreach (var text in inscription.Lines.Prepend(inscription.Title))

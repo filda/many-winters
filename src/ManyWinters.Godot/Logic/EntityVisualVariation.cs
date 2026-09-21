@@ -3,9 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
 
-// Deterministic per-instance variety: the same seed (an entity's id via EntityId.SeedOf) always
-// gives the same tint/scale, so reloads do not reshuffle looks, yet instances of one kind are
-// not identical clones.
+// Deterministic per-instance variety: the same seed, derived from an entity's id, always gives
+// the same tint/scale, so reloads do not reshuffle looks, yet instances of one kind are not
+// identical clones.
 internal static class EntityVisualVariation
 {
     public static Color Tint(Color baseColor, int seed)
@@ -27,8 +27,7 @@ internal static class EntityVisualVariation
 
     // Like Scale, but for several independent attributes off one seed (a person's walk rate
     // and bob amplitude): a salt per attribute keeps them from being the same draw rescaled.
-    // seed+salt is avalanched first because System.Random correlates badly on nearby seeds
-    // (see SeedHash).
+    // seed+salt is avalanched first because System.Random correlates badly on nearby seeds.
     public static float RangeFor(int seed, int salt, float min, float max)
     {
         var random = new Random(Avalanche(seed, salt));

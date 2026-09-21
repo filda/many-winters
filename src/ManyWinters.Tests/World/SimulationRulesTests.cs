@@ -57,7 +57,7 @@ public class SimulationRulesTests
     [Fact]
     public void TheSameIdAlwaysDrawsTheSameMaxHunger()
     {
-        // Nothing saves this, so a person restored by id must draw the same - see Person.MaxHunger.
+        // Nothing saves this, so a person restored by id must draw the same value again.
         Assert.Equal(HungerRules.MaxHungerFor(TestIds.Person(7)), HungerRules.MaxHungerFor(TestIds.Person(7)));
     }
 

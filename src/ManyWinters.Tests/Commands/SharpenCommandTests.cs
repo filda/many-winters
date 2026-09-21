@@ -154,9 +154,9 @@ public class SharpenCommandTests
     }
 
     // An edge of something that gives rather than fractures cannot be struck back into shape -
-    // the same question knapping one in the first place asks (MaterialAffordances.CanKnap). Wood
-    // is hard enough to hold a point, so the thing does present an edge; it is too tough to renew
-    // one that way, which is a different refusal from having no edge at all.
+    // the same question knapping one in the first place asks. Wood is hard enough to hold a
+    // point, so the thing does present an edge; it is too tough to renew one that way, which is
+    // a different refusal from having no edge at all.
     [Fact]
     public void AnEdgeOfSomethingTooToughToFractureIsBlockedAsNotKnappable()
     {

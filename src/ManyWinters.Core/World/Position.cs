@@ -4,8 +4,8 @@ public readonly record struct Position(double X, double Y)
 {
     // A destination `standoffDistance` short of `to`, on the line back toward `from`, so the
     // walker stands next to the thing rather than on top of it. Shared by the player-directed
-    // gather walk (Main) and the autonomous one (GatherTask). Already within the standoff
-    // (including exactly on `to`, where there is no direction) returns `from`.
+    // gather walk and the autonomous one. Already within the standoff (including exactly on
+    // `to`, where there is no direction) returns `from`.
     public static Position Approach(Position from, Position to, double standoffDistance)
     {
         var dx = from.X - to.X;

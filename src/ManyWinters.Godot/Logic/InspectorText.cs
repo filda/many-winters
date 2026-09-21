@@ -34,8 +34,8 @@ internal static class InspectorText
     };
 
     // How a person is introduced: age first, then sex, both in lower case so the phrase reads as
-    // a description rather than a heading. Beside the name on the selection card, under it on the
-    // band's roster (SelectionCard, BandRoster).
+    // a description rather than a heading. Beside the name on the selection card, under it on
+    // the band's roster.
     internal static string ForAgeAndSex(string age, Sex sex) => $"{age}, {sex}".ToLowerInvariant();
 
     // The three lists the selection panel and the debug inspector both show. Each reads "none"
@@ -59,9 +59,9 @@ internal static class InspectorText
             : "empty";
 
     // What a person knows, named the way the player met it rather than by technique id: a skill's
-    // own name, and "(practised)" for the one they worked out for themselves (see
-    // SkillDefinition.EfficientTechnique). The raw ids stay in the debug inspector (ForTechniques).
-    // A line per skill, not one long comma-spliced sentence: the player is reading a list of what
+    // own name, and "(practised)" for the one they worked out for themselves. The raw ids stay in
+    // the debug inspector. A line per skill, not one long comma-spliced sentence: the player is
+    // reading a list of what
     // somebody can do, and a list reads as a list. Empty when they know nothing at all, which the
     // caller words for itself - "nothing yet" and "nothing" are different things to say.
     internal static IReadOnlyList<string> ForKnowledge(IReadOnlyCollection<TechniqueId> techniques, SkillCatalog skills) =>
@@ -90,8 +90,8 @@ internal static class InspectorText
     // under a weight the player has just read, not beside a container.
     //
     // Raw stock first and counted, then the worked things one by one - which is what the two
-    // tiers are (see Inventory): a count is the whole truth about twelve grass, and no truth at
-    // all about two cords of different quality.
+    // tiers are: a count is the whole truth about twelve grass, and no truth at all about two
+    // cords of different quality.
     internal static string ForCarried(Inventory inventory, WorldState world)
     {
         var carried = inventory.Counts
@@ -105,9 +105,9 @@ internal static class InspectorText
         return carried.Count > 0 ? string.Join(", ", carried) : "nothing";
     }
 
-    // The band's own word for this kind of thing, if they have coined one (see Vocabulary). A
-    // word earned at the moment of discovery outranks anything generated here - which is the
-    // point of letting people name what they make rather than recognising it for them.
+    // The band's own word for this kind of thing, if they have coined one. A word earned at the
+    // moment of discovery outranks anything generated here - which is the point of letting
+    // people name what they make rather than recognising it for them.
     internal static string ForWorkedThing(Assembly assembly, WorldState world) =>
         world.Vocabulary.WordFor(assembly)
         ?? ForWorkedThing(assembly, world.Configuration.MaterialCatalog, world.Configuration.FormCatalog);

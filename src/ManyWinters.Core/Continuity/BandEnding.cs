@@ -66,7 +66,6 @@ public sealed record BandEnding
         return menLive ? BandFate.SpindleSideEnded : BandFate.Ended;
     }
 
-    // Null while the band is Living - there is nothing to write yet.
     public static BandEnding? Of(WorldState world)
     {
         var people = world.People;

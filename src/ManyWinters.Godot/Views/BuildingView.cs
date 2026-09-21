@@ -7,8 +7,8 @@ namespace ManyWinters.Godot.Views;
 
 // A hut in the camp: a store to put wood into and take it back out of, and something to mend
 // when the weather has had at it. It lights up under the cursor and answers to both buttons like
-// the rest of the world does, because there are orders to give here (see TargetActions) - it had
-// neither for as long as there was no menu to give them from.
+// the rest of the world does, because there are orders to give here - it had neither for as long
+// as there was no menu to give them from.
 internal partial class BuildingView : SpriteEntityView
 {
     // A one-room hut should clear a person's head (PersonView.Height) with some roof to spare;
@@ -41,7 +41,7 @@ internal partial class BuildingView : SpriteEntityView
     }
 
     // Both buttons: a store has no single obvious thing to do with it, so either one opens the
-    // list of what it can do (see Main).
+    // list of what it can do.
     protected override bool WantsClick(MouseButton button) => true;
 
     protected override bool OnClicked(MouseButton button)
@@ -50,9 +50,8 @@ internal partial class BuildingView : SpriteEntityView
         return true;
     }
 
-    // Cached per kind for the same reason (and the same C#-bridge crash under repeated
-    // ResourceLoader.Load) as ResourceNodeView.VisualDefinitionCache; a camp is a handful of
-    // huts, so this is about the two halves of one concern behaving alike.
+    // Cached per kind: repeated ResourceLoader.Load of the same resource crashes the C# bridge.
+    // A camp is a handful of huts, so this exists for correctness, not for the cache's own sake.
     private static readonly Dictionary<EntityKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
 
     private static Color ColorFor(EntityKindId kind)

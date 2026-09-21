@@ -6,18 +6,17 @@ namespace ManyWinters.Godot.Ui;
 // What may be done with the thing the player pointed at: its name, and the actions under it.
 // This is where every order aimed at something in the world is given - fell that tree, bury him,
 // put the wood in there, build here - so that a person's own card is left with only what they do
-// to themselves (SelectionPanel, PersonActions).
+// to themselves.
 //
-// A page like the rest of what the player holds (PanelChrome.Parchment), not the engine's grey
-// PopupMenu: the game reads as a chronicle, and a menu is no less part of it than the card it
-// was opened from. The column of actions is the very control that card draws (ActionList), so
-// the two cannot drift apart.
+// A page like the rest of what the player holds, not the engine's grey PopupMenu: the game reads
+// as a chronicle, and a menu is no less part of it than the card it was opened from. It draws its
+// actions with the same control the card does, so the two cannot drift apart.
 //
 // Opened at the cursor and closed the moment something is pressed or the player looks elsewhere.
 // It keeps the offers it was opened with rather than refreshing them: the world moves on while
 // it is up, and a menu that reshuffles under the cursor is unusable. A line gone stale by the
 // time it is pressed is caught where every action is - the command asks its own preconditions
-// again before doing anything (see ICommand.Blocker).
+// again before doing anything.
 internal partial class ContextMenu : PanelContainer
 {
     // Narrower than the selection card: these lines are short verbs, and a menu as wide as a
@@ -34,7 +33,7 @@ internal partial class ContextMenu : PanelContainer
     private Label _heading = null!;
     private ActionList _actions = null!;
 
-    // Which action the player pressed. Main runs it: the menu knows what an offer is, not what
+    // The owner runs the pressed action; the menu only knows what an offer is, not what
     // executing one means for the rest of the game.
     internal event Action<ActionOffer>? ActionInvoked;
 
@@ -48,7 +47,7 @@ internal partial class ContextMenu : PanelContainer
         Theme = PanelChrome.PaperButtons(BodyFontSize);
 
         // The padding lives here rather than in the StyleBox, so the grain above reaches the
-        // paper's own edge instead of stopping at a clean frame (see PanelChrome.Parchment).
+        // paper's own edge instead of stopping at a clean frame.
         var padding = new MarginContainer();
         foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
         {

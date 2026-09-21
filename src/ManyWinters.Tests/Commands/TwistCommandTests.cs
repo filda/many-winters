@@ -9,9 +9,8 @@ namespace ManyWinters.Tests.Commands;
 
 public class TwistCommandTests
 {
-    // Practised enough that the hands never fail (WorkAttempt.ChanceFor reaches 1 at mastery),
-    // so a test about what twisting produces is not also a test of the dice. The rolling itself
-    // has its own tests below.
+    // Practised enough that the hands never fail (skill reaches full mastery at this point), so a
+    // test about what twisting produces is not also a test of the dice; the roll itself is tested below.
     private static Person Twister(WorldState world, int grass = TestCatalogs.GrassPerCord)
     {
         var person = Novice(world, grass);
@@ -37,8 +36,7 @@ public class TwistCommandTests
         }
     }
 
-    // Walks the clock to a tick this person's roll falls the wanted way - the real roll, not a
-    // stubbed one, so the test bends time rather than the simulation.
+    // Walks the clock to a tick where the real roll falls the wanted way, rather than stubbing it.
     private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
     {
         while (WorkAttempt.Succeeds(person, TwistCommand.Skill, TwistCommand.Verb, world.Clock.CurrentTick) != succeed)
@@ -112,7 +110,7 @@ public class TwistCommandTests
     }
 
     // A beginner's cord is poor but real - worth something, or the first one anybody ever makes
-    // would be worthless (Assembly.Durability multiplies by quality).
+    // would be worthless (quality multiplies into durability elsewhere).
     [Fact]
     public void ABeginnersWorkIsPoorButNotWorthless()
     {
@@ -153,8 +151,7 @@ public class TwistCommandTests
         Assert.Equal(1f, WorkAttempt.QualityFor(person, TwistCommand.Skill), 5);
     }
 
-    // The dice, and what a spoiled handful costs: the grass is gone either way, and the hands
-    // learned from it either way.
+    // A spoiled attempt still costs the material and still teaches - both happen regardless of the roll.
     [Fact]
     public void ASpoiledAttemptCostsTheMaterialAndLeavesNothingBehind()
     {
@@ -233,7 +230,7 @@ public class TwistCommandTests
     }
 
     // The transition says what it would become; the material says whether it can become it at
-    // all. Stiff, unfibrous stuff will not hold a twist however the content is authored.
+    // all - stiff, unfibrous stuff will not hold a twist however the content is authored.
     [Fact]
     public void SomethingTheMaterialItselfWillNotTakeIsBlockedAsNotTwistable()
     {

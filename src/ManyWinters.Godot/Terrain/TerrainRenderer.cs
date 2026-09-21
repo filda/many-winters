@@ -33,7 +33,7 @@ public sealed class TerrainRenderer
         WaterwayPolyline[] Polylines);
 
     // The JSON carries name/waterway-type per polyline too; only the geometry is read here.
-    // Instantiated by JsonSerializer via WaterwaysData.Polylines, which InspectCode doesn't see.
+    // Instantiated by JsonSerializer, which InspectCode doesn't see as usage.
     // ReSharper disable once ClassNeverInstantiated.Local
     private sealed record WaterwayPolyline(float WidthMeters, float[][] Points);
 
@@ -76,8 +76,8 @@ public sealed class TerrainRenderer
 
     private float FineCellSize => _heightmap.FineCellSize;
 
-    // The ground height anything standing on the terrain should use - see Heightmap.HeightAt
-    // for why it interpolates the mesh's own vertices rather than the formula behind them.
+    // The ground height anything standing on the terrain should use: interpolates the mesh's
+    // own vertices rather than recomputing from the height formula.
     public float SampleHeight(float x, float z) => _heightmap.HeightAt(x, z);
 
     // Bump whenever the vertex/colour/UV formula in BuildMeshAndCollision changes shape: the hash
@@ -101,8 +101,7 @@ public sealed class TerrainRenderer
         return Convert.ToHexString(hash);
     }
 
-    // Returns the collision body so callers can hook click handling onto it ("click ground to
-    // walk there").
+    // Returns the collision body so callers can hook click-to-walk handling onto it.
     public StaticBody3D BuildTerrainMesh(Node3D parent)
     {
         var cacheKey = ComputeMeshCacheKey();
@@ -132,8 +131,8 @@ public sealed class TerrainRenderer
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoTexture = groundTexture,
-                // LinearWithMipmaps to match BillboardSprite's filter; Nearest made the ground's
-                // tiling read as blocky next to everything standing on it.
+                // LinearWithMipmaps to match how sprites are filtered; Nearest made the ground's
+                // tiling read as blocky next to them.
                 TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
                 VertexColorUseAsAlbedo = true,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
@@ -296,8 +295,8 @@ public sealed class TerrainRenderer
     }
 
     // Cutout/billboard scatter for the TerrainSandbox prototype; the game's decorations are
-    // ResourceNodes (MapLoader.ScatterDecorations). Per-node sprites, never a MultiMesh batch:
-    // decorations keep individual identity so they can become clickable (AGENTS.md).
+    // ResourceNodes instead. Per-node sprites, never a MultiMesh batch: decorations keep
+    // individual identity so they can become clickable (AGENTS.md).
     //
     // Scattered within radius of (centerX, centerZ), not over the whole ~1 km patch - a forest
     // dense enough there would still leave the small playable area bare. Each instance picks
@@ -319,9 +318,8 @@ public sealed class TerrainRenderer
         {
             // Uniform over the disk, not a square: sqrt(u) compensates for outer rings covering
             // more area, so points do not bunch toward the centre. Retried up to
-            // MaxPlacementAttempts when within MinDecorationSpacing of a placed decoration; falls
-            // back to the last attempt rather than skipping (the same "don't loop forever"
-            // trade-off as MapLoader's crowd placement).
+            // MaxPlacementAttempts when too close to an existing decoration, then falls back to
+            // the last attempt rather than skipping (don't loop forever).
             var position = new Vector2(centerX, centerZ);
             for (var attempt = 0; attempt < MaxPlacementAttempts; attempt++)
             {

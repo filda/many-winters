@@ -3,9 +3,9 @@ using Godot;
 namespace ManyWinters.Godot.Ui;
 
 // Small pictures for what a person can do with whatever is picked in the workshop - Eat, Drop
-// and Make - drawn in code rather than loaded off disk. Nobody has painted these yet (see
-// art/), and a plain shape set in the same dark ink as the rest of the page is a better
-// placeholder than a word rendered small enough to look like a toolbar.
+// and Make - drawn in code rather than loaded off disk. Nobody has painted these yet, and a
+// plain shape set in the same dark ink as the rest of the page is a better placeholder than a
+// word rendered small enough to look like a toolbar.
 internal static class WorkshopIcons
 {
     private const int Size = 20;

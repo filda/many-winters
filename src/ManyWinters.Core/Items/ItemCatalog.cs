@@ -90,7 +90,7 @@ public sealed class ItemCatalog
     public float WeightOf(Assembly assembly) => assembly.Weight(_materials);
 
     // What this kind turns into when worked with the given verb, or null if it answers to no
-    // such verb (see FormTransition).
+    // such verb.
     public FormTransition? TransitionFor(ItemKindId id, TechniqueId verb) =>
         _definitions.TryGetValue(id, out var definition)
             ? definition.Transitions?.FirstOrDefault(transition => transition.Verb == verb)

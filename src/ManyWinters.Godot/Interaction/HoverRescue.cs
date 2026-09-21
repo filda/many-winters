@@ -5,8 +5,8 @@ namespace ManyWinters.Godot.Interaction;
 
 // Godot's picking delivers an input event only to the nearest collider on the ray - whichever
 // broad-phase box is closest, not necessarily the sprite the cursor is visually over (boxes of
-// densely packed ResourceNodes overlap constantly, see MapLoader.ScatterDecorations). When that
-// collider's pixel check fails, the cursor may still be over another entity's opaque pixels, so
+// densely packed resource nodes overlap constantly). When that collider's pixel check fails,
+// the cursor may still be over another entity's opaque pixels, so
 // this re-casts the same ray, excluding what has been ruled out, until something opaque is found
 // or nothing is left. Shared by hover (TryHoverElsewhere) and clicks (TryClickElsewhere) so both
 // agree on what is at a given point.
@@ -28,7 +28,7 @@ public static class HoverRescue
 
     // True if something beyond the original miss is really there (its click handler has already
     // run); the caller falls back to a ground-click order only on false. Which buttons a view
-    // answers is its own business (SpriteEntityView.WantsClick).
+    // answers is its own business.
     public static bool TryClickElsewhere(CollisionObject3D missedCollider, Camera3D camera, Vector3 missedPosition, MouseButton button) =>
         TryElsewhere(missedCollider, camera, missedPosition, (view, cam, pos) =>
             view is SpriteEntityView entity && entity.TryClickAt(cam, pos, button));
@@ -37,7 +37,7 @@ public static class HoverRescue
     {
         var spaceState = missedCollider.GetWorld3D().DirectSpaceState;
         // Re-projected through the miss's screen point, not cast from the camera position toward
-        // the miss: that only describes a perspective pick ray (FreeCameraRig.ToggleProjection).
+        // the miss: that only describes a perspective pick ray, not an orthographic one.
         var screenPosition = camera.UnprojectPosition(missedPosition);
         var origin = camera.ProjectRayOrigin(screenPosition);
         var direction = camera.ProjectRayNormal(screenPosition);

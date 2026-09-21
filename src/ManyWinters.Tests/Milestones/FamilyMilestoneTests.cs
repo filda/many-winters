@@ -17,7 +17,7 @@ public class FamilyMilestoneTests
 {
     private const int TicksInAYear = 300;
 
-    // Spring through autumn: SimulationRules.TicksPerSeason is 75, and winter is the fourth.
+    // Spring through autumn: seasons are 75 ticks, and winter is the fourth.
     private const int TicksBeforeTheFirstWinter = 225;
 
     private static Person SpawnAdult(WorldState world, string name, Sex sex, Position position)
@@ -28,8 +28,8 @@ public class FamilyMilestoneTests
             initialAgeTicks: world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears,
             sex: sex);
 
-        // Foraging and eating have to be learned (SkillDefinition.BaseTechnique); granted
-        // directly because this test is about the band's year, not how the founders learned.
+        // Foraging and eating have to be learned; granted directly because this test is about
+        // the band's year, not how the founders learned.
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         return person;
@@ -58,9 +58,8 @@ public class FamilyMilestoneTests
                 continue;
             }
 
-            // Founders are put back at the food and fed (as in SurvivalMilestoneTests): the test
-            // is about the family loop, not walking to a tree. Nursing mothers need it most
-            // (SimulationRules.NursingHungerMultiplier).
+            // Founders are put back at the food and fed: the test is about the family loop, not
+            // walking to a tree. Nursing mothers need it most.
             foreach (var person in founders)
             {
                 person.Position = node.Position;
@@ -80,9 +79,8 @@ public class FamilyMilestoneTests
     // The shipped world on its own: does the starting camp keep people close enough, for long
     // enough, while they forage, for the affection numbers to come to anything? Shrink the
     // affection radius to arm's reach and this is the test that goes red. Eating and foraging
-    // are granted because nobody is born knowing them (SkillDefinition.BaseTechnique); the run
-    // stops before the first winter, which kills a band without warm clothing
-    // (WinterSurvivalMilestoneTests).
+    // are granted because nobody is born knowing them; the run stops before the first winter,
+    // which would otherwise kill a band without warm clothing.
     [Fact]
     public void TheShippedStartingBandHasChildrenOfItsOwn()
     {
@@ -116,7 +114,7 @@ public class FamilyMilestoneTests
         var mother = SpawnAdult(world, "Sela", Sex.Female, camp);
         var father = SpawnAdult(world, "Doran", Sex.Male, camp);
 
-        // Somebody has to know how to teach, or nothing spreads (WorldState.AutoTeachNearbyPeople).
+        // Somebody has to know how to teach, or nothing spreads.
         mother.KnownTechniques.Add(TestCatalogs.BasicTeaching);
 
         world.Execute(new BirthCommand("Ava", mother, father));

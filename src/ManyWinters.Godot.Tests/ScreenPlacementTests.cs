@@ -58,7 +58,7 @@ public class ScreenPlacementTests
         Assert.Equal(new Vector2(Margin, Margin), ScreenPlacement.KeptOnScreen(new Vector2(-50, -50), Size, Screen, Margin));
     }
 
-    // The workbench opens in the middle of the screen rather than in a corner (see WorkshopPanel).
+    // The workbench opens in the middle of the screen rather than in a corner.
     [Fact]
     public void ACentredPanelSitsInTheMiddleOfTheScreen()
     {

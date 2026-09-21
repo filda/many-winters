@@ -20,8 +20,7 @@ public class InventoryTests
     private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
         new(id, displayName, Stuff, Lump, weight);
 
-    // A made object goes in whole or not at all, unlike a stack (see AddUpToCapacity): half an
-    // axe is nothing.
+    // A made object goes in whole or not at all, unlike a stack: half an axe is nothing.
     [Fact]
     public void AnAssemblyIsTakenWholeOrNotAtAll()
     {
@@ -48,8 +47,7 @@ public class InventoryTests
     }
 
     // What is worth chopping with is asked of the whole pack, not of one tier: a hafted edge
-    // somebody made is a worked object, and a found flint would be a count (see
-    // ItemCatalog.ChoppingScoreOf).
+    // somebody made is a worked object, and a found flint would be a count.
     [Fact]
     public void BestChoppingScoreWeighsWorkedThingsAlongsideRawStock()
     {
@@ -213,8 +211,8 @@ public class InventoryTests
     [Fact]
     public void AddUpToCapacityLeavesNoEmptyEntryBehindWhenNothingFits()
     {
-        // A zero-count entry would read as "carrying stone" to anything walking Counts (the UI,
-        // HasEdibleFood), so a refused add has to leave no trace.
+        // A zero-count entry would read as "carrying stone" to anything checking what's held, so
+        // a refused add has to leave no trace.
         var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
 
@@ -237,8 +235,8 @@ public class InventoryTests
     [Fact]
     public void HasRoomForIsFalseOnceNotEvenOneUnitFits()
     {
-        // 49 of 50 kilos used and a unit weighs 2: the last kilo is not room, the same rounding
-        // down AddUpToCapacity does.
+        // 49 of 50 kilos used and a unit weighs 2: the last kilo is not room, matching the same
+        // rounding-down done elsewhere.
         var catalog = CatalogOf(Weighing(Stone, "Stone", 2f));
         var inventory = new Inventory();
         inventory.Add(Stone, 24);
@@ -266,7 +264,7 @@ public class InventoryTests
         Assert.True(inventory.HasRoomFor(Feather, catalog, maxWeight: 0f));
     }
 
-    // The instance tier: a worked thing is held as itself, not as a count (see Inventory).
+    // The instance tier: a worked thing is held as itself, not as a count.
     [Fact]
     public void AWorkedThingIsHeldAsItselfRatherThanCounted()
     {

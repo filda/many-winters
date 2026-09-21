@@ -3,7 +3,7 @@ using ManyWinters.Godot.Logic;
 namespace ManyWinters.Godot.Tests;
 
 // How large a title can be set and still fit on one line. A band is named after its oldest
-// member, so the same epitaph is a different width every game (see InscriptionOverlay).
+// member, so the same epitaph is a different width every game.
 public class TextFitTests
 {
     // Ten pixels a point, so the arithmetic in each case is obvious.

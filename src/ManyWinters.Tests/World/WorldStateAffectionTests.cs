@@ -206,7 +206,7 @@ public class WorldStateAffectionTests
         Assert.Equal(2, world.People.Count);
     }
 
-    // The nursing gate (see BirthCommand): a second child waits until the first is weaned.
+    // The nursing gate: a second child waits until the first is weaned.
     [Fact]
     public void ADevotedCoupleHaveOneChildAtATimeRatherThanOnePerTick()
     {

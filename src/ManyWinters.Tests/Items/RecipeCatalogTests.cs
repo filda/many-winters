@@ -18,7 +18,7 @@ public class RecipeCatalogTests
         Assert.Equal(5, recipe.InputAmount);
     }
 
-    // What the list of what a person could make is built from (see PersonActions).
+    // What a person's list of things they could make is built from.
     [Fact]
     public void DefinitionsListsEveryRecipe()
     {

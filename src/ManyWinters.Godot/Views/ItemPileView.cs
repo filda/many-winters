@@ -35,8 +35,8 @@ internal partial class ItemPileView : SpriteEntityView
 
     // A dedicated item icon (axe, warm_clothing) lives under Content/items; a gathered material
     // (wood, apple, pear...) never got one of its own - it already has a ground icon under
-    // Content/resources, drawn for the ResourceNode it comes off (ResourceNodeView.TexturePathFor),
-    // and a dropped pile of it is the same icon lying on the ground rather than growing.
+    // Content/resources, drawn for the resource it comes off, and a dropped pile of it is the
+    // same icon lying on the ground rather than growing.
     private static string TexturePathFor(EntityKindId kind)
     {
         var itemsPath = TexturePaths.ForItem(kind.Value);

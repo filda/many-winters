@@ -2,11 +2,11 @@ using Godot;
 
 namespace ManyWinters.Godot.Ui;
 
-// Shown while Main holds the clock at the player's request rather than for a narrative beat
-// (InscriptionOverlay): the world stands still, the camera keeps working, and it shows what to
-// come back to - the band's name in the title face, and who is left. On a page of the same
-// paper as the chronicle (PanelChrome.Parchment) rather than bare over the world: a status
-// screen opened at will, not a moment the world is having.
+// Shown while Main holds the clock at the player's request rather than for a narrative beat:
+// the world stands still, the camera keeps working, and it shows what to come back to - the
+// band's name in the title face, and who is left. On a page of the same paper as the chronicle
+// rather than bare over the world: a status screen opened at will, not a moment the world is
+// having.
 public partial class PausePanel : Control
 {
     private const int TitleFontSize = 60;
@@ -25,8 +25,8 @@ public partial class PausePanel : Control
     public override void _Ready()
     {
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        // Swallows clicks anywhere on screen, not just over the card - same reasoning as
-        // InscriptionOverlay.
+        // Swallows clicks anywhere on screen, not just over the card - a command issued into a
+        // stopped clock would land the moment it resumes.
         MouseFilter = MouseFilterEnum.Stop;
         Visible = false;
 

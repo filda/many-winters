@@ -4,7 +4,7 @@ namespace ManyWinters.Tests.Maps;
 
 public class Noise2DTests
 {
-    // MapLoader's biome-field seed, so the golden values pin the field the default map uses.
+    // The default map's biome-field seed, so the golden values pin the field it actually uses.
     private const int Seed = 7;
 
     // Several lattice cells, negative ones included (the origin sits mid-terrain), and a pair
@@ -49,7 +49,7 @@ public class Noise2DTests
     {
         var noise = new Noise2D(Seed);
 
-        // Three octaves at MapLoader's own biome frequency - the call it actually makes.
+        // Three octaves at the default map's own biome frequency - the call it actually makes.
         var expected = new[]
         {
             0.5041346322766164, 0.5027549569280356, 0.45207486096549915, 0.6367791933572347,
@@ -74,8 +74,8 @@ public class Noise2DTests
     [Fact]
     public void DifferentSeedsProduceDifferentFields()
     {
-        // MapLoader runs two fields (density and biome) side by side; one field used twice would
-        // tie "does anything grow here" to "what grows here".
+        // Two fields (density and biome) run side by side; one field used twice would tie "does
+        // anything grow here" to "what grows here".
         var first = new Noise2D(Seed);
         var second = new Noise2D(Seed + 1);
 

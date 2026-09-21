@@ -70,8 +70,8 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
 
         var edge = EdgeOf(Thing, world)!;
 
-        // Working a thing is how somebody comes to know what it is made of, whether or not the
-        // working came off (see WorkAttempt.TeachesWhatItIs).
+        // Teaches what it's made of whether or not the working comes off (see
+        // WorkAttempt.TeachesWhatItIs).
         WorkAttempt.TeachesWhatItIs(world, Person, edge.Material);
 
         // Material comes off the edge either way: a botched strike takes as much of it as a good
@@ -93,9 +93,9 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
     public static bool HasAnEdge(Assembly thing, WorldState world) => EdgeOf(thing, world) is not null;
 
     // The piece this object cuts with, wherever it sits inside it: the one whose shape presents
-    // an edge and whose substance is hard enough to hold it. Mass and workmanship are left out
-    // on purpose - they decide how well the thing chops (ItemCatalog.ChoppingScoreOf), not which
-    // part of it is the blade.
+    // an edge and whose substance is hard enough to hold it. Mass and workmanship are left out -
+    // they decide how well the thing chops (ItemCatalog.ChoppingScoreOf), not which part is the
+    // blade.
     private static Assembly.Part? EdgeOf(Assembly assembly, WorldState world) => assembly switch
     {
         Assembly.Part part => Keenness(part, world) > 0f ? part : null,

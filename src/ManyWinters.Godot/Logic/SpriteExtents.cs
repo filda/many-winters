@@ -13,8 +13,8 @@ internal static class SpriteExtents
     // caller placing a shape off "the sprite's centre" needs these, not just the size.
     internal readonly record struct Extent(float Width, float Height, float CenterXOffset, float CenterYOffset);
 
-    // `worldHeight` is what the sprite was created at (BillboardSprite.Create): the whole
-    // canvas height maps to it and everything else scales from there.
+    // `worldHeight` is what the sprite was created at: the whole canvas height maps to it and
+    // everything else scales from there.
     internal static Extent From(Vector2 usedPosition, Vector2 usedSize, Vector2 canvasSize, float worldHeight)
     {
         var metresPerPixel = worldHeight / canvasSize.Y;
@@ -32,8 +32,8 @@ internal static class SpriteExtents
 
     // The extent as rendered right now. From() answers for the creation height, which is what
     // SpriteVisibleExtent caches per texture, so it is blind to any scale applied since - and
-    // every person and tree is scaled from its seed (EntityVisualVariation). Unscaled, an
-    // anchor floats above a short person and sinks into a tall one.
+    // every person and tree is scaled from its seed. Unscaled, an anchor floats above a short
+    // person and sinks into a tall one.
     //
     // Same arithmetic as BillboardUv.RenderedSize by construction: BillboardSprite.Apply sets
     // PixelSize = worldHeight / canvasHeight. SpriteExtentsTests pins that they agree.
@@ -44,7 +44,7 @@ internal static class SpriteExtents
         extent.CenterYOffset * scaleY);
 
     // The silhouette of a split tree is the union of its trunk's and canopy's extents - the
-    // same as a single combined image's, since the two partition it (see split_trunk_canopy).
+    // same as a single combined image's, since the two partition it.
     internal static Extent Combine(Extent a, Extent b)
     {
         var minX = Math.Min(a.CenterXOffset - (a.Width / 2f), b.CenterXOffset - (b.Width / 2f));

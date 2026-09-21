@@ -16,36 +16,36 @@ public sealed record SimulationRules
 
     public float HungerPerTick { get; init; } = 1f;
 
-    // What one directed attempt at the workbench costs in time (see WorkAttempt). Working a
-    // thing over is not free: somebody doing it is somebody not gathering, and a second try at
-    // something that just failed is a second stretch of the same afternoon.
+    // What one directed attempt at the workbench costs in time. Working a thing over is not
+    // free: somebody doing it is somebody not gathering, and a second try at something that
+    // just failed is a second stretch of the same afternoon.
     public long TicksPerWorkAttempt { get; } = 3;
 
-    // How much of a piece is ground away each time its edge is renewed (see SharpenCommand). An
-    // edge is made by taking material off, so sharpening trades mass for keenness - and both sit
-    // in the same score (ItemCatalog.ChoppingScoreOf), which is what stops a player sharpening a
-    // good edge over and over without any rule forbidding it.
+    // How much of a piece is ground away each time its edge is renewed. An edge is made by
+    // taking material off, so sharpening trades mass for keenness - and both sit in the same
+    // score, which is what stops a player sharpening a good edge over and over without any rule
+    // forbidding it.
     public float VolumeLostPerSharpening { get; } = 0.1f;
 
-    // The chance per tick that somebody idling with something in their hands works out how to
-    // do a thing nobody showed them (see WorldState.DiscoverByFiddling), before their own
-    // Curiosity multiplies it. Deliberately small: idle discovery is what keeps knowledge living
-    // in people rather than in the player's head, so it must be non-zero, but a band left alone
-    // should take winters to arrive at cord rather than an afternoon.
+    // The chance per tick that somebody idling with something in their hands works out how to do
+    // a thing nobody showed them, before their own Curiosity multiplies it. Deliberately small:
+    // idle discovery is what keeps knowledge living in people rather than in the player's head,
+    // so it must be non-zero, but a band left alone should take winters to arrive at cord rather
+    // than an afternoon.
     public float IdleDiscoveryChancePerTick { get; init; } = 0.002f;
 
-    // What the player's own band works things out at (see Person.Curiosity), as a multiplier on
-    // the rate above. Below one on purpose: a band that discovered things briskly by itself
-    // would leave the player watching rather than playing, and teaching them is the game (see
+    // What the player's own band works things out at, as a multiplier on the rate above. Below
+    // one on purpose: a band that discovered things briskly by itself would leave the player
+    // watching rather than playing, and teaching them is the game (see
     // docs/materials-and-crafting-architecture.md section 7). What they manage alone is a slow
     // floor under a player who has missed something, not a substitute for leading them. An NPC
     // band is spawned with its own number instead of this one.
     public float StartingBandCuriosity { get; } = 0.25f;
 
-    // How much of a substance's nature somebody takes in per tick of carrying it about (see
-    // Beliefs.Learn). Roughly a season's handling for a full understanding - deliberately a
-    // little faster than exactly a season, because a rate that reached certainty on the last
-    // tick of one would turn a hair of floating-point drift into "they never quite learned it".
+    // How much of a substance's nature somebody takes in per tick of carrying it about. Roughly
+    // a season's handling for a full understanding - deliberately a little faster than exactly a
+    // season, because a rate that reached certainty on the last tick of one would turn a hair of
+    // floating-point drift into "they never quite learned it".
     public float MaterialUnderstandingPerTick { get; init; } = 1f / 70f;
 
     // What working a thing teaches about it, against the slow understanding that merely carrying
@@ -57,17 +57,15 @@ public sealed record SimulationRules
     public float UnderstandingFromWorkingIt { get; } = 1f;
 
     // The chance per tick that one person standing by another mentions what some substance is
-    // like (see WorldState.ShareWhatTheyKnow). Talk is cheap and constant, so this is far higher
-    // than a discovery roll: the slow part of knowing things is finding them out, not telling
-    // somebody.
+    // like. Talk is cheap and constant, so this is far higher than a discovery roll: the slow
+    // part of knowing things is finding them out, not telling somebody.
     public float BeliefSharingChancePerTick { get; init; } = 0.02f;
 
     // How far a retelling may stray from what the teller actually believes, before their skill
-    // at teaching narrows it (see WorldState.MentionSomething and
-    // docs/knowledge-transmission-architecture.md section 4). Talk is the lossy channel: a
-    // belief that only ever gets passed along by word drifts, while one people keep checking
-    // against the stuff itself stays true. That is knowledge decaying exactly when a settlement
-    // stops doing the thing, which is the point.
+    // at teaching narrows it (see docs/knowledge-transmission-architecture.md section 4). Talk is
+    // the lossy channel: a belief that only ever gets passed along by word drifts, while one
+    // people keep checking against the stuff itself stays true. That is knowledge decaying
+    // exactly when a settlement stops doing the thing, which is the point.
     public float HearsayDistortion { get; init; } = 0.15f;
 
     // How firmly a person holds what they were merely told, against the certainty that handling
@@ -76,8 +74,8 @@ public sealed record SimulationRules
     // the seam distortion will run along, when an account can arrive wrong.
     public float HearsayConfidence { get; } = 0.5f;
 
-    // Hunger an average person dies at. Each person gets their own value around it (see
-    // MaxHungerFor), so this is the middle of a range, not a ceiling on Needs.Hunger.
+    // Hunger an average person dies at. Each person gets their own value around it, so this is
+    // the middle of a range, not a ceiling on Needs.Hunger.
     public float MaxHunger { get; init; } = 100f;
 
     // Fraction of MaxHunger a person's own value may sit above or below it, so a famine thins a
@@ -86,8 +84,7 @@ public sealed record SimulationRules
     public float MaxHungerVariation { get; init; } = 0.2f;
 
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
-    // draw (see Person.MaxHunger): the same on every reload without being saved, and independent
-    // of creation order.
+    // draw: the same on every reload without being saved, and independent of creation order.
     public float MaxHungerFor(PersonId id)
     {
         // Bit 0 of the spread is what Person.SexOf reads; skipping it keeps hunger tolerance
@@ -105,35 +102,35 @@ public sealed record SimulationRules
     // HungerSeekFoodThreshold: someone carrying food eats long before anyone goes looking for it.
     public float HungerEatThreshold { get; init; } = 25f;
 
-    // Where "hungry" starts for the idle AI (WorldState.DecideIdleTask): a hungry, empty-handed
-    // person seeks food before putting a known skill to use.
+    // Where "hungry" starts for the idle AI: a hungry, empty-handed person seeks food before
+    // putting a known skill to use.
     public float HungerSeekFoodThreshold { get; } = 50f;
 
     // A nursing mother gets hungry this much faster; the infant beside her does not get hungry
-    // at all (see WorldState.Advance). A cost on her rather than a transfer, so the result does
-    // not depend on which of the pair Advance reaches first.
+    // at all. A cost on her rather than a transfer, so the result does not depend on which of
+    // the pair is processed first.
     public float NursingHungerMultiplier { get; } = 1.5f;
 
     // Metres per tick an infant follows its mother at (FollowTask): faster than her idle wander,
     // slower than a purposeful walk, so it trails behind but never loses her.
     public float InfantFollowSpeedPerTick { get; } = 0.25f;
 
-    // Ceiling on what two people are worth to each other (see Affections); without one a bond is
-    // just a count of ticks spent in the same clearing.
+    // Ceiling on what two people are worth to each other; without one a bond is just a count of
+    // ticks spent in the same clearing.
     public float MaxAffection { get; } = 100f;
 
-    // A bond grows while two people are together and fades apart, on one number (see
-    // Affections). An order of magnitude apart on purpose: a friendship is made faster than it
-    // is lost, so someone back from a long errand still knows the band, while a person who
-    // leaves for good drifts out of it.
+    // A bond grows while two people are together and fades apart, on one number. An order of
+    // magnitude apart on purpose: a friendship is made faster than it is lost, so someone back
+    // from a long errand still knows the band, while a person who leaves for good drifts out
+    // of it.
     public float AffectionGainedPerTickTogether { get; } = 0.5f;
 
     public float AffectionLostPerTickApart { get; } = 0.05f;
 
     // Metres within which the two above count as "together". Wider than MaxInteractionDistance
     // (spending a day near somebody needs no reach) and wide enough to cover the starting camp
-    // (MapLoader.CrowdRadius is 4m). Set too tight, no child is ever born in the shipped game -
-    // FamilyMilestoneTests.TheShippedStartingBandHasChildrenOfItsOwn guards that.
+    // (the starting camp's crowd radius is 4m). Set too tight, no child is ever born in the
+    // shipped game - a family-milestone test guards that.
     public float TogetherDistance { get; } = 5f;
 
     // A newborn's bond with each parent, on the same scale as every other bond. Below
@@ -142,8 +139,8 @@ public sealed record SimulationRules
     // why Kinship is a structural check on the family tree.
     public float StartingAffectionWithParents { get; } = 50f;
 
-    // Bond past which a child follows without the player asking (see WorldState.Advance).
-    // Reachable from nothing in a couple of hundred ticks of company.
+    // Bond past which a child follows without the player asking. Reachable from nothing in a
+    // couple of hundred ticks of company.
     public float AffectionNeededToHaveAChild { get; } = 60f;
 
     public float ConditionDecayPerTick { get; init; } = 0.05f;
@@ -154,14 +151,13 @@ public sealed record SimulationRules
     public float IdleSearchRadius { get; } = 60f;
 
     // Per-tick chance that someone nearby picks up a technique just from being around a teacher,
-    // as opposed to a deliberate lesson (TeachFromSelectedPersonTo). Only ever the base
-    // technique, never the efficient one. Rolled fresh each tick rather than once per pair, so
-    // the spread stays gradual and partial.
+    // as opposed to a deliberate lesson. Only ever the base technique, never the efficient one.
+    // Rolled fresh each tick rather than once per pair, so the spread stays gradual and partial.
     public float CasualTeachingChancePerTick { get; } = 0.05f;
 
-    // Higher chance for eating and teaching itself (see WorldState.AutoTeachNearbyPeople): both
-    // come naturally by watching, and no casual teaching can start until somebody knows how to
-    // teach at all, so that bootstrap must not be the bottleneck.
+    // Higher chance for eating and teaching itself: both come naturally by watching, and no
+    // casual teaching can start until somebody knows how to teach at all, so that bootstrap must
+    // not be the bottleneck.
     public float CasualTeachingChancePerTickForCriticalSkills { get; } = 0.3f;
 
     // Metres within which a person can act on a thing (a node, a building, another person);

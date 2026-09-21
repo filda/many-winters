@@ -2,9 +2,8 @@ using Godot;
 
 namespace ManyWinters.Godot.Terrain;
 
-// Builds the terrain mesh and waterways - presentation only, no gameplay rule lives here
-// (MapLoader defines the starting WorldState). Scattered decorations are ResourceNodes spawned
-// by MapLoader.ScatterDecorations and rendered through WorldPresenter, not built here.
+// Builds the terrain mesh and waterways - presentation only, no gameplay rule lives here.
+// Scattered decorations are ResourceNodes spawned and rendered elsewhere, not built here.
 public static class TerrainSetup
 {
     private const string HeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";

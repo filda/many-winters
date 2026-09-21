@@ -15,17 +15,16 @@ internal partial class PersonView : SpriteEntityView
     private const float MaxScale = 1.08f;
     private const float ShadowDiameter = 0.9f;
 
-    // A cardboard-cutout-on-a-stick bounce while walking (see WalkCycle). Each person draws
-    // their own rate and amplitude from these ranges in Build; a shared exact rate reads as a
-    // synchronized gait.
+    // A cardboard-cutout-on-a-stick bounce while walking. Each person draws their own rate and
+    // amplitude from these ranges in Build; a shared exact rate reads as a synchronized gait.
     private const float MinWalkCyclesPerSecond = 8f;
     private const float MaxWalkCyclesPerSecond = 12f;
     private const float MinBobAmplitude = 0.06f;
     private const float MaxBobAmplitude = 0.10f;
 
-    // Standing still is not standing frozen (see IdleSway): the walk's own bob, a fifth slower
-    // and about half as high, so rest and walk hand over without a change of rhythm. Each person
-    // bobs at their own rate from their own phase, so a crowd at rest does not bounce in unison.
+    // Standing still is not standing frozen: the walk's own bob, a fifth slower and about half as
+    // high, so rest and walk hand over without a change of rhythm. Each person bobs at their own
+    // rate from their own phase, so a crowd at rest does not bounce in unison.
     private const float IdleCyclesPerWalkCycle = 0.8f;
     private const float MinIdleBobAmplitude = 0.03f;
     private const float MaxIdleBobAmplitude = 0.05f;
@@ -38,7 +37,7 @@ internal partial class PersonView : SpriteEntityView
 
     // How quickly the idle bob fades in once standing and, faster, out once walking. The bob's
     // weight eases, not the bob itself - eased directly, an eight-hertz signal is mostly damped
-    // away (see IdleSway).
+    // away.
     private const float IdleFadeInSeconds = 0.35f;
     private const float IdleFadeOutSeconds = 0.15f;
 
@@ -138,7 +137,7 @@ internal partial class PersonView : SpriteEntityView
     private bool _isAlive = true;
 
     // Internal, like the HoverArbiter it takes: only WorldPresenter builds views, and the hover
-    // invariant is the presentation layer's own business (see AssemblyInfo).
+    // invariant is the presentation layer's own business.
     internal PersonView(Person person, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(Height, hover, onMissedClick)
     {
@@ -170,8 +169,7 @@ internal partial class PersonView : SpriteEntityView
 
         // AlphaCutMode.Disabled, not the default OpaquePrepass: an overlay at the body's exact
         // position and depth needs ordinary alpha blending to composite cleanly, since
-        // OpaquePrepass has no defined order between two billboards at one depth (as for
-        // ResourceNodeView's fruit overlay).
+        // OpaquePrepass has no defined order between two billboards at one depth.
         var clothingIndex = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 5, ClothingTexturePaths.Length);
         _clothingAliveTexturePath = ClothingTexturePaths[clothingIndex];
         _clothingDeadTexturePath = ClothingDeadTexturePaths[clothingIndex];
@@ -233,10 +231,9 @@ internal partial class PersonView : SpriteEntityView
             return;
         }
 
-        // The last step's pose is held, not snapped to neutral, through the tick-boundary gap
-        // (see StandingAfterSeconds); snapping reads as a synchronized hiccup across the crowd.
-        // The walk phase stays where it stopped for the same reason, so phases drift apart
-        // instead of rewinding together.
+        // The last step's pose is held, not snapped to neutral, through the tick-boundary gap;
+        // snapping reads as a synchronized hiccup across the crowd. The walk phase stays where
+        // it stopped for the same reason, so phases drift apart instead of rewinding together.
         _standingSeconds += seconds;
         if (_standingSeconds < StandingAfterSeconds)
         {
@@ -260,7 +257,7 @@ internal partial class PersonView : SpriteEntityView
     }
 
     // `target` is where WorldSpace.ToRender puts an unscaled person; this view stands a little
-    // higher than that (see SpriteEntityView.GroundContactCorrection), and so must its target.
+    // higher than that, and so must its target.
     public void SetTargetPosition(Vector3 target, float overSeconds)
     {
         var corrected = target + GroundContactCorrection;

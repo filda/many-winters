@@ -18,8 +18,7 @@ public sealed class WorldPresenter
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
     private readonly RevealableExploration _exploration;
-    // One cursor, one highlighted thing - the invariant lives here, not in each view (see
-    // HoverArbiter).
+    // One cursor, one highlighted thing - the invariant lives here, not in each view.
     private readonly HoverArbiter _hover = new();
     private readonly Dictionary<PersonId, PersonView> _personViews = new();
     private readonly Dictionary<EntityId, ResourceNodeView> _resourceNodeViews = new();
@@ -34,20 +33,20 @@ public sealed class WorldPresenter
     private readonly IReadOnlyList<Entity> _entities;
 
     // Fog of war: a node outside the ever-explored area gets no view at all, not a hidden one -
-    // creating thousands of decoration views (MapLoader.ScatterDecorations) up front was the
-    // biggest chunk of startup time. Kept here until its cell is explored (RefreshExploration).
-    // Only Growable entities ever pile up at decoration scale, so only those go through pending.
+    // creating thousands of decoration views up front was the biggest chunk of startup time.
+    // Kept here until its cell is explored. Only Growable entities ever pile up at decoration
+    // scale, so only those go through pending.
     //
-    // "Explored" never reverts (RevealableExploration), so once "Reveal Map" or normal play has
-    // explored the whole map, that gate alone would build a node for every decoration on it in
-    // one pass - see IsWithinViewOfCamera for the second, camera-distance gate that actually
-    // bounds how many resource nodes exist at once.
+    // "Explored" never reverts, so once "Reveal Map" or normal play has explored the whole map,
+    // that gate alone would build a node for every decoration on it in one pass - see
+    // IsWithinViewOfCamera for the second, camera-distance gate that actually bounds how many
+    // resource nodes exist at once.
     private readonly Dictionary<EntityId, Entity> _pendingResourceNodes = new();
 
-    // Updated each RefreshExploration call (see Main._Process/OnRevealMapToggled). Simulation
-    // space (X, Y on the ground plane), not render space, so comparing against Entity.Position
-    // needs no per-node WorldSpace conversion. Radius starts at 0 so nothing is in view before
-    // the first update - the constructor passes the camera's actual starting values instead.
+    // Updated each RefreshExploration call. Simulation space (X, Y on the ground plane), not
+    // render space, so comparing against Entity.Position needs no per-node WorldSpace
+    // conversion. Radius starts at 0 so nothing is in view before the first update - the
+    // constructor passes the camera's actual starting values instead.
     private Position _viewCenter;
     private double _viewRadiusSquared;
 
@@ -89,9 +88,8 @@ public sealed class WorldPresenter
         world.PersonAdded += CreatePersonView;
         world.EntityAdded += CreateEntityView;
         world.GraveAdded += CreateGraveView;
-        // Only a pile-category entity ever fires this (see WorldState.RemoveEntity): a felled or
-        // withered resource stays in Entities with Growth.IsAlive false instead, and a building is
-        // never removed.
+        // Only a pile-category entity ever fires this: a felled or withered resource stays in
+        // Entities with Growth.IsAlive false instead, and a building is never removed.
         world.EntityRemoved += entity => RemoveItemPileView(entity.Id);
 
         foreach (var person in world.People)
@@ -110,8 +108,8 @@ public sealed class WorldPresenter
         }
     }
 
-    // Every rendered frame (Main._Process), not once per tick: camera and people keep moving
-    // between ticks, so whether the cursor is still on the lit thing changes continuously.
+    // Every rendered frame, not once per tick: camera and people keep moving between ticks, so
+    // whether the cursor is still on the lit thing changes continuously.
     public void RevalidateHover() => _hover.Revalidate();
 
     public void SetPersonAlive(PersonId id, bool isAlive)
@@ -134,8 +132,8 @@ public sealed class WorldPresenter
         _personViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
 
     // For Main's screen-space selection marker: how far above the person's position the top of
-    // the drawn silhouette sits (SpriteEntityView.TopHeightOffset) - a nominal half-height
-    // would float or sink depending on the texture's own margins.
+    // the drawn silhouette sits - a nominal half-height would float or sink depending on the
+    // texture's own margins.
     public float? GetPersonHeadHeightOffset(PersonId id) =>
         _personViews.TryGetValue(id, out var view) ? view.TopHeightOffset : null;
 
@@ -184,7 +182,7 @@ public sealed class WorldPresenter
     }
 
     // Picks which kind of view an Entity gets from its Category, since the model no longer
-    // carries that in its static type (see Entity).
+    // carries that in its static type.
     private void CreateEntityView(Entity entity)
     {
         switch (entity.Category)
@@ -215,7 +213,7 @@ public sealed class WorldPresenter
     }
 
     // Explored (fog of war, never reverts) and close enough to the camera to be worth a node
-    // right now (see the _viewCenter/_viewRadiusSquared fields).
+    // right now.
     private bool IsWithinViewOfCamera(Position position, double radiusSquared)
     {
         if (!_exploration.IsExplored(ExplorationState.CellFor(position)))
@@ -238,15 +236,14 @@ public sealed class WorldPresenter
         _resourceNodeViews[node.Id] = view;
     }
 
-    // Once per simulation tick (Main._Process) and when the "Reveal Map" toggle flips - a
-    // HashSet lookup per view at that cadence is cheap even at decoration scale, and each view's
-    // early-out (RememberedFade.Retarget) ends most calls at once. Every family of view goes
-    // through here, so a grave, hut or corpse the group walked away from dims with the trees;
-    // what the view does with it is its own business.
+    // Once per simulation tick and when the "Reveal Map" toggle flips - a HashSet lookup per
+    // view at that cadence is cheap even at decoration scale, and each view's early-out ends
+    // most calls at once. Every family of view goes through here, so a grave, hut or corpse the
+    // group walked away from dims with the trees; what the view does with it is its own
+    // business.
     //
     // cameraPosition/viewRadius refresh the view-distance gate resource nodes check themselves
-    // against (IsWithinViewOfCamera) - other view families are few enough in practice to skip
-    // the same treatment.
+    // against - other view families are few enough in practice to skip the same treatment.
     public void RefreshExploration(Vector3 cameraPosition, float viewRadius)
     {
         _viewCenter = WorldSpace.ToSimulation(cameraPosition);
@@ -292,12 +289,12 @@ public sealed class WorldPresenter
 
     // Resource nodes' two extra jobs: promote a pending node now explored and in view to a real
     // view, and send a view that fell out of either back to pending. The latter happens both
-    // when "Reveal Map" is switched off again (ExplorationState never un-explores a cell: the
-    // fog shaders assume nothing is instantiated under unexplored ground, so a view left there
-    // shows through as a fogged silhouette) and continuously as the camera moves away from an
-    // already-explored decoration - see IsWithinViewOfCamera. Graves and buildings need neither:
-    // built by the group's own hands, their cell is explored before they exist and stays so, and
-    // there are never enough of them to threaten node count the way decorations can.
+    // when "Reveal Map" is switched off again (a cell never un-explores: the fog shaders assume
+    // nothing is instantiated under unexplored ground, so a view left there shows through as a
+    // fogged silhouette) and continuously as the camera moves away from an already-explored
+    // decoration. Graves and buildings need neither: built by the group's own hands, their cell
+    // is explored before they exist and stays so, and there are never enough of them to threaten
+    // node count the way decorations can.
     private void RefreshResourceNodeExploration()
     {
         if (_pendingResourceNodes.Count > 0)
@@ -322,8 +319,8 @@ public sealed class WorldPresenter
             }
         }
 
-        // Wider than the create radius (ViewReleaseRadiusMultiplier), so a decoration right at
-        // the create boundary does not tear its view down again next tick.
+        // Wider than the create radius, so a decoration right at the create boundary does not
+        // tear its view down again next tick.
         var releaseRadiusSquared = _viewRadiusSquared * ViewReleaseRadiusMultiplier * ViewReleaseRadiusMultiplier;
 
         List<EntityId>? backToPending = null;
@@ -383,8 +380,8 @@ public sealed class WorldPresenter
     }
 
     // Driven by WorldState.EntityRemoved, unlike a felled resource or a buried person - a pile
-    // shrinks and vanishes from an ordinary command (PickUpItemCommand), not a special one Main
-    // has to recognise, so the event is enough.
+    // shrinks and vanishes from an ordinary command, not a special one Main has to recognise, so
+    // the event is enough.
     private void RemoveItemPileView(EntityId id)
     {
         if (_itemPileViews.TryGetValue(id, out var view))

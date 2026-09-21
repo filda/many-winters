@@ -56,8 +56,7 @@ public sealed class Inventory
         _counts.Sum(kv => catalog.WeightFor(kv.Key) * kv.Value) + _assemblies.Sum(catalog.WeightOf);
 
     // The best chopping-scored object carried, or 0 for empty-handed - what GatherCommand and
-    // FellCommand ask instead of checking for one authored "tool" item kind (see
-    // ItemCatalog.ChoppingScoreFor).
+    // FellCommand ask instead of checking for one authored "tool" item kind.
     //
     // Both tiers answer, because a hafted axe is a worked object and a raw lump is a count, and
     // the question "what is the best thing in this pack to chop with" does not care which.
@@ -98,8 +97,7 @@ public sealed class Inventory
         return toAdd;
     }
 
-    // Whether a single unit of `kind` would still fit - asked before walking to a source of it
-    // (see GatherCommand.CanTakeAnythingFrom).
+    // Whether a single unit of `kind` would still fit - asked before walking to a source of it.
     public bool HasRoomFor(ItemKindId kind, ItemCatalog catalog, float maxWeight) => UnitsThatFit(kind, catalog, maxWeight) > 0;
 
     private int UnitsThatFit(ItemKindId kind, ItemCatalog catalog, float maxWeight)

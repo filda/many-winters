@@ -8,6 +8,6 @@ namespace ManyWinters.Godot.Logic;
 internal static class OrderButtons
 {
     // Left points at a thing and means the one obvious thing to do with it; right asks what else
-    // there is (see Main, ContextMenu). Nothing else gives an order.
+    // there is. Nothing else gives an order.
     internal static bool Includes(MouseButton button) => button is MouseButton.Left or MouseButton.Right;
 }

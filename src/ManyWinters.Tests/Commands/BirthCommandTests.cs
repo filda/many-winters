@@ -61,7 +61,7 @@ public class BirthCommandTests
         Assert.Equal(mother.Position, world.People[^1].Position);
     }
 
-    // Knowledge in this game is taught, never inherited - see the command's own doc comment.
+    // Knowledge in this game is taught, never inherited.
     [Fact]
     public void TheChildInheritsNoTechniquesSkillsOrBelongings()
     {
@@ -158,7 +158,7 @@ public class BirthCommandTests
         Assert.Equal(2, world.People.Count);
     }
 
-    // A floor on childhood, not a fertility model - see WorldState.IsOldEnoughForChildren.
+    // A floor on childhood, not a fertility model.
     [Fact]
     public void EldersCanStillHaveChildren()
     {

@@ -14,11 +14,9 @@ namespace ManyWinters.Tests.World;
 public class IdleDiscoveryTests
 {
     // Certain rather than rare, so a test about *what* gets discovered is not also a test of how
-    // long it takes. The rate itself has its own tests below.
-    //
-    // Understanding comes at once too: idle hands only turn over what they already know (see
-    // Beliefs, LearningByHandlingTests), and how long coming to know something takes is that
-    // pass's business rather than this one's.
+    // long it takes (the rate has its own tests below). Understanding comes at once too: idle
+    // hands only turn over what they already know, and how long coming to know something takes
+    // is a separate pass's business.
     private static WorldState WorldWhereIdlingAlwaysTeaches() => WorldWhere(discoveryChance: 1f);
 
     private static WorldState WorldWhere(float discoveryChance) =>
@@ -120,8 +118,8 @@ public class IdleDiscoveryTests
         Assert.Empty(person.KnownTechniques);
     }
 
-    // The knob an NPC band turns down (see Person.Curiosity): the same world, the same rules,
-    // and a tribe that works things out more slowly than the player's own.
+    // The knob an NPC band turns down: the same world, the same rules, and a tribe that works
+    // things out more slowly than the player's own.
     [Fact]
     public void ALessCuriousBandWorksThingsOutMoreSlowlyInTheSameWorld()
     {
@@ -168,7 +166,7 @@ public class IdleDiscoveryTests
 
     // The player's own band is deliberately slow at this: what they work out alone is a floor
     // under somebody who has missed something, not a substitute for teaching them, which is the
-    // game (see SimulationRules.StartingBandCuriosity).
+    // game.
     [Fact]
     public void TheShippedBandIsSlowerThanFullCuriosity()
     {

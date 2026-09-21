@@ -199,8 +199,8 @@ public class GatherCommandTests
 
         GatherAndUnload(world, person, node);
 
-        // Practice has diminishing returns (Skills.Increase): five gathers leave the skill just
-        // over 2.5, where the discovery threshold sits.
+        // Practice has diminishing returns: five gathers leave the skill just over 2.5, where
+        // the discovery threshold sits.
         Assert.Equal(2.553f, person.Skills.Get(TestCatalogs.Foraging), 3);
         Assert.Contains(TestCatalogs.EfficientForaging, person.KnownTechniques);
     }
@@ -273,8 +273,8 @@ public class GatherCommandTests
     [Fact]
     public void ABarelyHungryPickerPocketsTheWholeHarvestRatherThanNibblingAtIt()
     {
-        // Below SimulationRules.HungerEatThreshold the harvest goes into the backpack untouched,
-        // so standing at a food source is not a way to eat (and practice eating) every tick.
+        // Below the hunger-eat threshold the harvest goes into the backpack untouched, so
+        // standing at a food source is not a way to eat (and practice eating) every tick.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);

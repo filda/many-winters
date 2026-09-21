@@ -819,9 +819,8 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        // Pinned ids, because the casual teaching roll runs on them (see
-        // WorldState.PassesCasualTeachingRoll). With random ones this asserts a probabilistic
-        // outcome against a fresh draw every run.
+        // Pinned ids, because the casual teaching roll runs on them; random ones would assert a
+        // probabilistic outcome against a fresh draw every run.
         var teacher = world.SpawnPerson(TestIds.Person(1), "Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicEating);
@@ -845,9 +844,9 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        // Pinned ids, because the casual teaching roll runs on them (see
-        // WorldState.PassesCasualTeachingRoll). With random ones this asserts a probabilistic
-        // outcome against a fresh draw every run, and it did occasionally fail on one.
+        // Pinned ids, because the casual teaching roll runs on them; random ones would assert a
+        // probabilistic outcome against a fresh draw every run, and it did occasionally fail on
+        // one.
         var teacher = world.SpawnPerson(TestIds.Person(1), "Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -889,9 +888,8 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        // Pinned ids, because the casual teaching roll runs on them (see
-        // WorldState.PassesCasualTeachingRoll). With random ones this asserts a probabilistic
-        // outcome against a fresh draw every run.
+        // Pinned ids, because the casual teaching roll runs on them; random ones would assert a
+        // probabilistic outcome against a fresh draw every run.
         var teacher = world.SpawnPerson(TestIds.Person(1), "Teacher", new Position(0, 0));
         teacher.KnownTechniques.Add(TestCatalogs.BasicTeaching);
         teacher.KnownTechniques.Add(TestCatalogs.BasicForaging);
@@ -998,7 +996,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
-        // Their own MaxHunger, not the rules' one - see Person.MaxHunger.
+        // Their own drawn MaxHunger, not the rules' base value.
         world.Advance((long)person.MaxHunger + 1);
 
         Assert.Equal(DeathCause.Hunger, person.CauseOfDeath);
@@ -1687,7 +1685,7 @@ public class WorldStateTests
     [Fact]
     public void UrgentHungerSendsAPersonForFoodEvenWhileTheirIdleGraceIsStillRunning()
     {
-        // The grace is renewed every tick while a person is selected (Main), so if it held
+        // The grace is renewed every tick while a person is selected in the UI, so if it held
         // against hunger a selected person would starve standing still.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
@@ -1747,8 +1745,7 @@ public class WorldStateTests
     [Fact]
     public void AResourceThatYieldsNoItemIsAlwaysWorthWalkingTo()
     {
-        // Grazed on the spot, not pocketed (GatherCommand), so a full backpack is no reason to
-        // pass it by.
+        // Grazed on the spot, not pocketed, so a full backpack is no reason to pass it by.
         var grazing = new EntityKindId("grazing");
         var configuration = TestCatalogs.CreateConfiguration() with
         {

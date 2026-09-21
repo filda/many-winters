@@ -7,7 +7,7 @@ namespace ManyWinters.Godot.Tests;
 
 // The workbench, worked out apart from the panel that draws it: what of a person's pack can be
 // picked up, and what trying the picked things together would be. The player picks things, never
-// a verb - the count of what they picked is the whole question (see WorkshopActions).
+// a verb - the count of what they picked is the whole question.
 public class WorkshopActionsTests
 {
     private static Assembly.Part Cord(float quality = 0.5f) =>
@@ -27,7 +27,7 @@ public class WorkshopActionsTests
     }
 
     // The bench draws the thing rather than naming it, so how many are held is a field of its own
-    // to mark the picture with, not something spelled into the name (see WorkshopPanel).
+    // to mark the picture with, not something spelled into the name.
     [Fact]
     public void HowManyAreHeldIsCountedApartFromTheName()
     {
@@ -79,8 +79,8 @@ public class WorkshopActionsTests
         Assert.Empty(WorkshopActions.Recipes(world, person));
     }
 
-    // Carrying none of the material at all and the line is absent, the same rule the pack itself
-    // follows - otherwise the bench grows a column of things nobody could make.
+    // The same rule as carrying too little: the line is absent, so the bench never grows a
+    // column of things nobody could make.
     [Fact]
     public void MakingSomethingIsNotOfferedWithNoneOfTheMaterialAtAll()
     {
@@ -91,8 +91,8 @@ public class WorkshopActionsTests
         Assert.Empty(WorkshopActions.Recipes(world, person));
     }
 
-    // The other half of the same recipe list (TargetActions): one too heavy for the pack - a
-    // storage hut, unlike the axe the same wood also buys - is not offered here at all.
+    // The other half of the same recipe list: one too heavy for the pack - a storage hut, unlike
+    // the axe the same wood also buys - is not offered here at all.
     [Fact]
     public void MakingSomethingThatDoesNotFitInThePackIsNotOffered()
     {
@@ -132,7 +132,7 @@ public class WorkshopActionsTests
     }
 
     // The bench does not grow a second button for a second verb: the same one pick, and the item
-    // says which verb it is (see ReductiveVerbs).
+    // says which verb it is.
     [Fact]
     public void PickingAStoneOffersTheSameOneAttemptAndItIsKnapping()
     {
@@ -214,7 +214,7 @@ public class WorkshopActionsTests
     }
 
     // The offer still comes back when it cannot run, carrying the world's own reason - that is
-    // what lets the bench say why rather than going quiet (see ActionBlockerText).
+    // what lets the bench say why rather than going quiet.
     [Fact]
     public void BindingWithNoCordComesBackRefusedRatherThanAbsent()
     {
@@ -232,7 +232,7 @@ public class WorkshopActionsTests
     }
 
     // Asking at the bench is the player showing them how, as everywhere else a directed action
-    // teaches (see ActionOffer.TeachFirst).
+    // teaches.
     [Fact]
     public void AnAttemptTeachesTheVerbItNeeds()
     {
@@ -382,7 +382,7 @@ public class WorkshopActionsTests
     }
 
     // Dropping a stack puts down the whole of it, not the single unit a pick stands for
-    // elsewhere on this bench (see WorkshopEntry, Carried).
+    // elsewhere on this bench.
     [Fact]
     public void DroppingAStackPutsDownAllOfIt()
     {

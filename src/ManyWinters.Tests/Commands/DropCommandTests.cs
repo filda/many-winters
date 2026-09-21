@@ -7,8 +7,7 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Commands;
 
 // Putting down anything a person carries - a stack of stock or one thing they made. One command
-// covers both, because putting something down is one act; what differs is only what lands (see
-// DropCommand, CarriedThing).
+// covers both, because putting something down is one act; what differs is only what lands.
 public class DropCommandTests
 {
     [Fact]
@@ -118,7 +117,7 @@ public class DropCommandTests
     }
 
     // It lands as itself, not as a pile of one: a made thing has no count, and rounding it into
-    // a number is what the two tiers exist to avoid (see Entity.Made).
+    // a number is what the two tiers exist to avoid.
     [Fact]
     public void WhatLandsIsTheThingItselfRatherThanACountOfIt()
     {

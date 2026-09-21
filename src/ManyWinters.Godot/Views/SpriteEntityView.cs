@@ -42,7 +42,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     private readonly RememberedFade _remembered = new();
 
     // Null for a view that never lights up (a grave, a building). Null _onMissedClick too means
-    // nothing can be clicked, and the view gets no collision shape or ray picking - see IsPickable.
+    // nothing can be clicked, and the view gets no collision shape or ray picking.
     private readonly HoverArbiter? _hover;
     private readonly InputEventEventHandler? _onMissedClick;
 
@@ -74,8 +74,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
             InputRayPickable = true;
             RefreshCollisionShape();
             // No MouseExited subscription: Godot only sends it to the collider its own picking
-            // chose, which leaves sprites lit forever (see HoverArbiter). Losing hover is settled
-            // once a frame by IsStillUnderCursor.
+            // chose, which leaves sprites lit forever. Losing hover is settled once a frame by
+            // IsStillUnderCursor.
             InputEvent += OnInputEvent;
         }
         else
@@ -89,9 +89,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         ApplyTints();
     }
 
-    // Where a view creates its layers (Register), ground shadow (SetUpGroundShadow) and seeded
-    // scale (ScaleAndKeepGroundContact). Called from _Ready, so the node is in the tree and
-    // WorldPresenter has already set its Position.
+    // Where a view creates its layers, ground shadow and seeded scale. Called from _Ready, so
+    // the node is in the tree and WorldPresenter has already set its Position.
     protected abstract void Build();
 
     // For a view with an animation of its own (PersonView's walk cycle), whose processing
@@ -122,8 +121,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     public sealed override void _ExitTree() => _hover?.Forget(this);
 
     // Takes over a sprite the view created. Creation stays with the view, where alpha cut,
-    // render priority and occlusion-fade exclusion are decided (BillboardSprite.Create); from
-    // here on this class tints, scales, measures and picks against it.
+    // render priority and occlusion-fade exclusion are decided; from here on this class tints,
+    // scales, measures and picks against it.
     protected SpriteLayer Register(Sprite3D sprite, string texturePath, bool picks = true, bool outlines = true)
     {
         var layer = new SpriteLayer(sprite, texturePath, picks, outlines);
@@ -246,9 +245,9 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         ShowOutline(hovered);
     }
 
-    // One rim around the whole entity rather than one per layer (see HoverOutline), traced from
-    // the layers marked Outlines only. It hangs on the last of them, the one drawn on top, so it
-    // composites over the others.
+    // One rim around the whole entity rather than one per layer, traced from the layers marked
+    // Outlines only. It hangs on the last of them, the one drawn on top, so it composites over
+    // the others.
     private void ShowOutline(bool hovered)
     {
         Sprite3D? host = null;
@@ -294,8 +293,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         return opaque;
     }
 
-    // Asked once a frame while this view holds the highlight (HoverArbiter.Revalidate): the
-    // same test from the cursor's current position rather than from a picking event, since a
+    // Asked once a frame while this view holds the highlight: the same test from the cursor's
+    // current position rather than from a picking event, since a
     // stuck highlight is always a missing event. A cursor over any UI panel counts as off -
     // physics picking never fires under a Control, so the sprite behind one would stay lit.
     public bool IsStillUnderCursor()
@@ -309,9 +308,9 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     public bool TryClickAt(Camera3D camera, Vector3 worldPosition, MouseButton button) =>
         WantsClick(button) && IsOpaqueAt(camera, worldPosition) && OnClicked(button);
 
-    // Which of the two order buttons (see OrderButtons) this view answers to. An unwanted one is
-    // left entirely alone - not even the missed-click fallback runs - so a click a view declines
-    // outright cannot become a ground order behind it.
+    // Which of the two order buttons this view answers to. An unwanted one is left entirely
+    // alone - not even the missed-click fallback runs - so a click a view declines outright
+    // cannot become a ground order behind it.
     protected virtual bool WantsClick(MouseButton button) => button == MouseButton.Left;
 
     // What a click on this entity means. False means "not mine after all" and sends the click
@@ -362,7 +361,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
             // The collision box is bigger than the silhouette inside it, and Godot delivers a
             // click only to the nearest pickable collider, so a click inside the box but off the
             // pixels (on the shadow at a person's feet) would be swallowed here. Try whatever
-            // else is at this point first (HoverRescue), then fall back to a ground-click order.
+            // else is at this point first, then fall back to a ground-click order.
             //
             // OrderButtons first, and for every view: the wheel arrives here as a pressed mouse
             // button too, and a scroll over a tree is a zoom rather than an order to fell it.
@@ -378,9 +377,9 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         }
     }
 
-    // Fog of war's "remembered" tier (WorldPresenter.RefreshExploration): explored, but nobody
-    // has it in sight. Only aims the fade; the tint moves in _Process. Called once a tick for
-    // every live view, so the no-change case must cost nothing (RememberedFade.Retarget).
+    // Fog of war's "remembered" tier: explored, but nobody has it in sight. Only aims the fade;
+    // the tint moves in _Process. Called once a tick for every live view, so the no-change case
+    // must cost nothing.
     public void SetRemembered(bool remembered)
     {
         if (!_remembered.Retarget(remembered))
@@ -397,8 +396,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
 
     // The single place any layer's colour is written, always re-derived from its base modulate
     // so repeated calls cannot compound a tint. Alpha is left as it is on the sprite: that
-    // channel belongs to Main's occlusion fade (BillboardSprite.OcclusionFadedSprites), and
-    // writing full alpha back would blink a ghosted sprite solid once a frame.
+    // channel belongs to the occlusion fade, and writing full alpha back would blink a ghosted
+    // sprite solid once a frame.
     protected void ApplyTints()
     {
         foreach (var layer in _layers)

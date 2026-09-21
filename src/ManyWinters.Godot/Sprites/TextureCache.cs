@@ -3,10 +3,10 @@ using Godot;
 namespace ManyWinters.Godot.Sprites;
 
 // Calling ResourceLoader.Load<T> thousands of times back-to-back for one path (thousands of
-// ResourceNodeViews sharing a few textures, see MapLoader.ScatterDecorations) crashes the C#
-// bridge with a GCHandle race in ScriptManagerBridge.SwapGCHandleForType: the engine cache
-// skips the disk read, but each call still wraps the native resource in a fresh C# object.
-// Caching per path wraps each texture exactly once.
+// decoration views sharing a few textures) crashes the C# bridge with a GCHandle race in
+// ScriptManagerBridge.SwapGCHandleForType: the engine cache skips the disk read, but each call
+// still wraps the native resource in a fresh C# object. Caching per path wraps each texture
+// exactly once.
 public static class TextureCache
 {
     private static readonly Dictionary<string, Texture2D?> Cache = new();

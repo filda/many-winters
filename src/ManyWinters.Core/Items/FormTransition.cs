@@ -11,5 +11,5 @@ namespace ManyWinters.Core.Items;
 //
 // Only the resulting Form is stated: the material carries over unchanged, and the worked piece's
 // bulk is what went into it, so weight is conserved without a second number to author and keep
-// in step (see TwistCommand).
+// in step.
 public sealed record FormTransition(TechniqueId Verb, FormId Form, int InputAmount);

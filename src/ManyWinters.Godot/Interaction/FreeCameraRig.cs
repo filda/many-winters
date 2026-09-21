@@ -26,8 +26,8 @@ public sealed class FreeCameraRig
 
     // Degrees of elevation above the rig's plane; height = zoom * sin, distance = zoom * cos.
     // The clamp keeps the view from going fully overhead or edge-on, both of which break the
-    // cutout illusion. The upper bound matters most: FixedY billboards (see BillboardSprite) only
-    // yaw toward the camera's horizontal direction, so at 90 deg every sprite renders edge-on.
+    // cutout illusion. The upper bound matters most: FixedY billboards only yaw toward the
+    // camera's horizontal direction, so at 90 deg every sprite renders edge-on.
     private const float DefaultTiltDegrees = 20f;
     private const float MinTiltDegrees = 12f;
     private const float MaxTiltDegrees = 70f;
@@ -65,15 +65,14 @@ public sealed class FreeCameraRig
     // IsPositionBehind are not exposed any other way.
     public Camera3D Camera => _camera;
 
-    // How far from RigGlobalPosition a decoration is still worth building a node for (see
-    // WorldPresenter's view-distance culling). Tracks the current zoom, not a fixed world
-    // distance, so zooming out to see the whole map keeps everything in it, not just a fixed
-    // radius around the rig.
+    // How far from RigGlobalPosition a decoration is still worth building a node for. Tracks the
+    // current zoom, not a fixed world distance, so zooming out to see the whole map keeps
+    // everything in it, not just a fixed radius around the rig.
     public float ViewRadius => (_isOrthographic ? _orthographicSize : _zoomDistance) * ViewRadiusMultiplier;
 
-    // sampleHeight: the same ground-height function everything else on the ground uses
-    // (TerrainRenderer.SampleHeight). Panning only moves the rig in XZ, so without it the rig's Y
-    // stays frozen where it started and the camera ends up under a nearby bump after panning.
+    // sampleHeight: the same ground-height function everything else on the ground uses. Panning
+    // only moves the rig in XZ, so without it the rig's Y stays frozen where it started and the
+    // camera ends up under a nearby bump after panning.
     public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom, Func<float, float, float> sampleHeight)
     {
         _minZoom = minZoom;
@@ -100,9 +99,9 @@ public sealed class FreeCameraRig
     // Puts the orbit point on a spot in the world, keeping the zoom, rotation and tilt the player
     // has set: taking the view to somebody (Main's band roster) is a pan, not a new camera.
     //
-    // Only X and Z are taken from the target - the rig rides the ground under it (see
-    // HandleInput), and a person's own Y is their feet on a slope. Any pan still gliding is
-    // dropped, or the eased velocity would carry the view straight off the person just arrived at.
+    // Only X and Z are taken from the target - the rig rides the ground under it, and a
+    // person's own Y is their feet on a slope. Any pan still gliding is dropped, or the eased
+    // velocity would carry the view straight off the person just arrived at.
     public void FocusOn(Vector3 target)
     {
         _panVelocity = Vector3.Zero;
@@ -119,9 +118,9 @@ public sealed class FreeCameraRig
 
     public void HandleInput(float delta)
     {
-        // Only the keys are given up while the player is typing (see TextEntry): the rig still
-        // follows the ground under it, and a pan already gliding still eases to a stop rather
-        // than freezing mid-glide the moment a name is asked for.
+        // Only the keys are given up while the player is typing: the rig still follows the
+        // ground under it, and a pan already gliding still eases to a stop rather than freezing
+        // mid-glide the moment a name is asked for.
         var typing = TextEntry.HasTheKeyboard(_camera.GetViewport());
         bool Held(Key key) => !typing && Input.IsKeyPressed(key);
 

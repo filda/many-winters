@@ -69,7 +69,7 @@ public class PendingOrdersTests
     }
 
     // The answer the offer was made with is the one from where the person stood when the order
-    // was given, so it has to be asked again on arrival (see ActionOffer.Refreshed).
+    // was given, so it has to be asked again on arrival.
     [Fact]
     public void TheOrderHandedBackIsAskedOfTheWorldAsItIsNow()
     {

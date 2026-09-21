@@ -3,8 +3,8 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Logic;
 
 // The exact, unblurred record of the fog boundary, one value per texel of the grid the shaders
-// sample. Kept apart from the textures (FogOfWarRenderer) because what goes in each channel is
-// a decision about the two fog tiers, not about filling an Image:
+// sample. Kept apart from the textures because what goes in each channel is a decision about
+// the two fog tiers, not about filling an Image:
 //
 //   Unexplored - 1 where the cell has never been seen, else 0.
 //   Remembered - 1 where it has been seen but nobody has it in sight now, else 0.

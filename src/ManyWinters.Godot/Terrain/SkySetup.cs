@@ -4,10 +4,9 @@ using GodotEnvironment = Godot.Environment;
 
 namespace ManyWinters.Godot.Terrain;
 
-// The sky behind everything - the other half of the world's backdrop, with the terrain this
-// folder builds. Painted, not simulated: Content/effects/sky.gdshader explains why it is a
-// hand-written shader rather than ProceduralSkyMaterial. Colours come from SkyPalette,
-// shared with the fog-of-war sheet that meets this along the skyline.
+// The sky backdrop, painted via a hand-written shader (Content/effects/sky.gdshader) rather
+// than ProceduralSkyMaterial. Colours come from SkyPalette, shared with the fog-of-war sheet
+// that meets this along the skyline.
 public static class SkySetup
 {
     private const string SkyShaderPath = "res://Content/effects/sky.gdshader";
@@ -25,13 +24,10 @@ public static class SkySetup
             Environment = new GodotEnvironment
             {
                 BackgroundMode = GodotEnvironment.BGMode.Sky,
-                // Small: with ambient and reflections off (below) nothing samples the radiance
-                // cubemap.
+                // Small: with ambient and reflections off (below) nothing samples the radiance cubemap.
                 Sky = new Sky { SkyMaterial = material, RadianceSize = Sky.RadianceSizeEnum.Size32 },
-                // A sky that also lit the scene would re-light the lit terrain mesh while the
-                // unshaded sprites stayed as they were. Lighting stays the one DirectionalLight;
-                // sky lighting is a deliberate art change, not a side effect of painting the
-                // background.
+                // Ambient/reflected sky lighting would re-light the terrain mesh while unshaded
+                // sprites stayed as they were, so lighting stays the one DirectionalLight.
                 AmbientLightSource = GodotEnvironment.AmbientSource.Disabled,
                 ReflectedLightSource = GodotEnvironment.ReflectionSource.Disabled,
             },

@@ -3,8 +3,8 @@ namespace ManyWinters.Godot.Logic;
 // The largest size at which a line of text still fits the room it has.
 //
 // For a title that has to stay on one line however long the name inside it turns out to be: a
-// band is named after its oldest member (see BandArrival.BandName), so the same sentence is a
-// different width every game and no phrasing can be short enough for all of them.
+// band is named after its oldest member, so the same sentence is a different width every game
+// and no phrasing can be short enough for all of them.
 internal static class TextFit
 {
     // Walks down from the largest size rather than solving for one. The measurer is a real font,

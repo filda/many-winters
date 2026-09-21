@@ -3,10 +3,9 @@ using Godot;
 namespace ManyWinters.Godot.Logic;
 
 // How a thing looks while the group can no longer see where it stands - fog of war's
-// "remembered" tier, explored but out of sight (see ExplorationState) - and how long the
-// transition takes each way. One instance per view (ResourceNodeView, PersonView, GraveView,
-// BuildingView) so all four dim by the same numbers on the same curve. It only says what to
-// multiply a layer's own base modulate by; the layer's colour stays the view's business.
+// "remembered" tier, explored but out of sight - and how long the transition takes each way.
+// One instance per view so all of them dim by the same numbers on the same curve. It only says
+// what to multiply a layer's own base modulate by; the layer's colour stays the view's business.
 //
 // Losing sight is memory gradually taking over, so it eases out over about a second; regaining
 // it is an event, so it snaps back in a fraction of that. Equal durations read as the world
@@ -67,7 +66,7 @@ internal sealed class RememberedFade
     }
 
     // The colour a layer shows now, given its full-sight colour. Alpha is left to Main's
-    // occlusion fade (see BillboardSprite.OcclusionFadedSprites): whoever writes this back to a
-    // sprite must keep the sprite's live alpha, not the base's.
+    // occlusion fade: whoever writes this back to a sprite must keep the sprite's live alpha,
+    // not the base's.
     public Color Applied(Color baseModulate) => baseModulate * Colors.White.Lerp(Tint, _progress);
 }

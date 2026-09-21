@@ -41,8 +41,8 @@ internal sealed class OcclusionFader(
         // Re-applied every frame, not only on entering the set: the hover highlight rewrites the
         // same sprite's Modulate on every hover-state change and would undo the fade whenever the
         // cursor sits on an occluding canopy. Cheap - the set is a handful of sprites.
-        // The faded set lives in BillboardSprite because picking consults it too (see
-        // BillboardSprite.OcclusionFadedSprites); this is still the only place deciding membership.
+        // The faded set lives in BillboardSprite, not here, because picking consults it too; this
+        // is still the only place deciding membership.
         foreach (var sprite in occluding)
         {
             BillboardSprite.SetOcclusionFaded(sprite, true);
@@ -105,8 +105,8 @@ internal sealed class OcclusionFader(
                 continue;
             }
 
-            // Rendered width, scale included - the same answer pixel-accurate picking uses
-            // (BillboardUv.RenderedSize), not the authored canvas size.
+            // Rendered width, scale included - the same answer pixel-accurate picking uses, not
+            // the authored canvas size.
             var texture = sprite.Texture!;
             var scale = sprite.GlobalTransform.Basis.Scale;
             var renderedWidth = BillboardUv.RenderedSize(sprite.PixelSize, texture.GetWidth(), texture.GetHeight(), scale.X, scale.Y).X;

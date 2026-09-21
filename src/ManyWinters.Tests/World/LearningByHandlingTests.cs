@@ -6,8 +6,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// Nobody is told that grass is fibrous; they carry it about and come to know (see Beliefs). A
-// person's understanding of the world is the sum of what they have had in their hands.
+// Nobody is told that grass is fibrous; they carry it about and come to know. A person's
+// understanding of the world is the sum of what they have had in their hands.
 public class LearningByHandlingTests
 {
     private static readonly MaterialId PlantFibre = new("plant_fibre");

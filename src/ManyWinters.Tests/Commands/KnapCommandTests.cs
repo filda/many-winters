@@ -8,14 +8,13 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Commands;
 
 // The second reductive verb. What it shares with the first - the dice, the cost of a spoiled
-// attempt, the practice earned either way - is one piece of work with its own tests
-// (ReductiveWork, WorkAttempt, TwistCommandTests); what is tested here is what makes knapping
-// knapping: it asks a substance to be hard and brittle, and what comes out is the first edge in
-// the game.
+// attempt, the practice earned either way - is one piece of work with its own tests; what is
+// tested here is what makes knapping knapping: it asks a substance to be hard and brittle, and
+// what comes out is the first edge in the game.
 public class KnapCommandTests
 {
-    // Practised enough that the hands never fail (WorkAttempt.ChanceFor reaches 1 at mastery),
-    // so a test about what knapping produces is not also a test of the dice.
+    // Practised enough that the hands never fail (chance of success reaches 1 at mastery), so a
+    // test about what knapping produces is not also a test of the dice.
     private static Person Knapper(WorldState world, int stone = TestCatalogs.StonePerWedge)
     {
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
@@ -43,7 +42,7 @@ public class KnapCommandTests
     }
 
     // The point of the whole arc: a wedge is a thing that can cut, and a lump of the very same
-    // stone is not (see ItemCatalog.ChoppingScoreOf).
+    // stone is not.
     [Fact]
     public void WhatComesOutOfItChopsWhereTheLumpItWasMadeFromDidNot()
     {
@@ -131,8 +130,7 @@ public class KnapCommandTests
         Assert.Empty(person.Inventory.Assemblies);
     }
 
-    // Striking a stone is how somebody comes to know stone, whatever the strike leaves behind
-    // (see WorkAttempt.TeachesWhatItIs).
+    // Striking a stone is how somebody comes to know stone, whatever the strike leaves behind.
     [Fact]
     public void KnappingTeachesWhatStoneIsLike()
     {

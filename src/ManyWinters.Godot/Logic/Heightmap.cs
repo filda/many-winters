@@ -5,8 +5,8 @@ namespace ManyWinters.Godot.Logic;
 
 // The shape of the ground: the real elevation grid, a light procedural bump on top, and the
 // finer grid the mesh is built on. Pure arithmetic over the numbers handed in at construction;
-// loading them and building vertices is TerrainRenderer's half. The subdivision and bump
-// tuning live here because they decide the terrain's shape, not how it looks once built.
+// loading them and building vertices happens elsewhere. The subdivision and bump tuning live
+// here because they decide the terrain's shape, not how it looks once built.
 internal sealed class Heightmap
 {
     // The DEM is a 41x41 grid at 25m spacing (docs/terrain-and-world-scale-architecture.md);

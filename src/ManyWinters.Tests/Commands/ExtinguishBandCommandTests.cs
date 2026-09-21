@@ -33,8 +33,8 @@ public class ExtinguishBandCommandTests
         Assert.All(world.People, person => Assert.Equal(500, person.DeathTick));
     }
 
-    // Hunger, because that is what the epitaph reads for any death that was not of old age
-    // (Epitaph.Died) - the extinction tells the same story a starved band would.
+    // Hunger, because that is what the epitaph reads for any death that was not of old age -
+    // the extinction tells the same story a starved band would.
     [Fact]
     public void ExecuteRecordsHungerAsTheCauseOfDeath()
     {
@@ -46,8 +46,8 @@ public class ExtinguishBandCommandTests
         Assert.Equal(DeathCause.Hunger, ava.CauseOfDeath);
     }
 
-    // The point of writing the deaths directly rather than maxing out hunger: TryAutoEat would
-    // feed a carrier back below the threshold every tick, and the band would never die out.
+    // The point of writing the deaths directly rather than maxing out hunger: automatic feeding
+    // would bring a carrier back below the threshold every tick, and the band would never die out.
     [Fact]
     public void ExecuteKillsEvenSomeoneWhoCouldFeedThemselves()
     {
@@ -59,7 +59,7 @@ public class ExtinguishBandCommandTests
         world.Execute(new ExtinguishBandCommand());
 
         // The tick that would have auto-fed a merely starving person back below the threshold
-        // (WorldState.TryAutoEat) changes nothing here.
+        // changes nothing here.
         world.Advance(1);
 
         Assert.False(carrier.IsAlive);

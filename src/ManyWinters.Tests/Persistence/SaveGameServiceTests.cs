@@ -173,7 +173,7 @@ public class SaveGameServiceTests
             Assert.All(band, person =>
                 Assert.Equal(person.MaxHunger, restored.People.Single(p => p.Id == person.Id).MaxHunger));
 
-            // And nobody drops dead the moment the world starts running again.
+            // Nobody drops dead the moment the world starts running again.
             restored.Advance(1);
             Assert.All(restored.People, person => Assert.True(person.IsAlive));
         }
@@ -293,8 +293,7 @@ public class SaveGameServiceTests
     }
 
     // The same for a store's shelves: a count is no truth at all about two cords of different
-    // quality, so a building's worked things need their own list in the save (see Entity.Storage,
-    // EntitySaveData.StorageWorkedThings).
+    // quality, so a building's worked things need their own list in the save.
     [Fact]
     public void RoundTripPreservesWhatAStoreHoldsOnItsShelves()
     {
@@ -321,7 +320,7 @@ public class SaveGameServiceTests
     }
 
     // A thing somebody made and put down is one object, joints and all, not a count - so the
-    // save has to carry the object (see Entity.Made, AssemblySaveData).
+    // save has to carry the object.
     [Fact]
     public void RoundTripPreservesSomethingMadeAndPutDown()
     {

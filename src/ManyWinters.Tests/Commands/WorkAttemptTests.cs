@@ -78,7 +78,7 @@ public class WorkAttemptTests
     }
 
     // Which is why an attempt has to cost time: a second try is only a second roll because the
-    // clock moved (see SimulationRules.TicksPerWorkAttempt).
+    // clock moved.
     [Fact]
     public void TheRollChangesFromOneMomentToTheNext()
     {

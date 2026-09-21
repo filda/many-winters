@@ -5,14 +5,13 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Maps;
 
-// The terrain patch is 1000 m across (MapLoader.TerrainHalfMeters); beyond it there is no
-// ground for a person, a stock pile or an apple tree to stand on. The old camp comes from
-// LoadDefault or from earlier arrivals and can sit anywhere the game has put one, including
+// The terrain patch is 1000 m across; beyond it there is no ground for a person, a stock pile
+// or an apple tree to stand on. The old camp can sit anywhere the game has put one, including
 // close to the patch's edge.
 public class SpawnNewBandTests
 {
-    // Mirrors MapLoader.TerrainHalfMeters, which Core keeps private because it is hardcoded
-    // rather than read from the Godot content.
+    // Mirrors the terrain half-extent, which Core keeps private because it is hardcoded rather
+    // than read from the Godot content.
     private const double TerrainHalfMeters = 500;
 
     private const int SeedCount = 5;
@@ -125,7 +124,7 @@ public class SpawnNewBandTests
             Assert.Equal(2, nodes.Count(n => n.Kind == kind));
         }
 
-        // The stock sits where SpawnBand puts it, 5 m north and 10 m east of the camp centre.
+        // The stock sits where band-spawning puts it, 5 m north and 10 m east of the camp centre.
         var positions = nodes.Select(n => n.Position).ToList();
         Assert.Contains(new Position(camp.X, camp.Y + 5f), positions);
         Assert.Contains(new Position(camp.X + 10f, camp.Y), positions);
@@ -147,8 +146,8 @@ public class SpawnNewBandTests
     }
 
     // With the old camp in the open no clamp is in play, so the new camp is exactly the drawn
-    // walk from it. The draws mirror NextCampPosition's order (angle, then distance); a
-    // mirrored or divided walk lands somewhere else entirely.
+    // walk from it. The draws mirror the actual order (angle, then distance); a mirrored or
+    // divided walk lands somewhere else entirely.
     [Fact]
     public void SpawnNewBandPlacesTheCampAtTheDrawnWalkFromTheOldCamp()
     {

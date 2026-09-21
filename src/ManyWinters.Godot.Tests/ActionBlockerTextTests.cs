@@ -75,8 +75,8 @@ public class ActionBlockerTextTests
         Assert.NotEmpty(ActionBlockerText.For(gather));
     }
 
-    // An act on the person themselves has nowhere to walk to (see ActionOffer.Target), so its
-    // refusals are worded as refusals.
+    // An act on the person themselves has nowhere to walk to, so its refusals are worded as
+    // refusals.
     [Fact]
     public void AnOfferWithNowhereToGoIsWordedByItsBlocker()
     {

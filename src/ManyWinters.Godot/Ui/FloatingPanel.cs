@@ -9,10 +9,9 @@ namespace ManyWinters.Godot.Ui;
 // this class owns only the frame. There is no fold button - a panel that can also be half-shut is
 // a second state nobody asked for.
 //
-// `onPaper` picks which of the two the frame is made of: a page like the player's own card
-// (PanelChrome.Parchment, weathered, dark ink), or the dark card the panels over the world use.
-// The panel applies its own chrome either way, so nobody has to remember to pair the right
-// stylebox with the right ink.
+// `onPaper` picks which of the two the frame is made of: a weathered page with dark ink like the
+// player's own card, or the dark card the panels over the world use. The panel applies its own
+// chrome either way, so nobody has to remember to pair the right stylebox with the right ink.
 public partial class FloatingPanel(
     string title,
     bool onPaper = false,
@@ -45,11 +44,11 @@ public partial class FloatingPanel(
         AddThemeStyleboxOverride("panel", onPaper ? PanelChrome.Parchment() : PanelChrome.Background());
 
         // On paper the grain goes down first and the padding moves inside it, or the weathering
-        // would stop short of the edge and leave a clean frame (see PanelChrome.Parchment).
+        // would stop short of the edge and leave a clean frame.
         if (onPaper)
         {
             // The window's own title is what decides how its page aged, so no two windows
-            // are stained alike (see PanelChrome.Grain).
+            // are stained alike.
             AddChild(PanelChrome.Grain(title));
         }
 

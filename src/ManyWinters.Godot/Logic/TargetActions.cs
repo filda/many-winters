@@ -19,7 +19,7 @@ internal sealed record TargetMenu(string Heading, IReadOnlyList<ActionOffer> Off
 // ever read "nothing here": what a kind of thing simply cannot do (felling a mushroom) is left
 // out, and only what the moment forbids (too far, empty-handed) is shown greyed with the reason.
 // Every offer carries where it happens, so a refusal for distance alone becomes a walk rather
-// than an instruction to the player (see ActionOffer.Target).
+// than an instruction to the player.
 //
 // Engine-free, so the menu is an ordinary function of world state and can be tested without a
 // running Godot. What a thing is called in English is decided here too, the way InspectorText
@@ -72,8 +72,8 @@ internal static class TargetActions
 
         if (ReferenceEquals(actor, target))
         {
-            // Everything a person does to themselves is already on their own card (PersonActions),
-            // which is on screen the whole time they are selected.
+            // Everything a person does to themselves is already on their own card, which is on
+            // screen the whole time they are selected.
             return new TargetMenu(target.Name, offers);
         }
 
@@ -85,7 +85,7 @@ internal static class TargetActions
         }
 
         // No skill to grant by pointing at it, unlike gathering or eating: burying needs nothing
-        // taught (BuryCommand has no knowledge gate), and marking the grave is earned by doing it.
+        // taught, and marking the grave is earned by doing it.
         offers.Add(ActionOffer.For("Bury", new BuryCommand(actor, target), world, target: target.Position));
 
         // Nothing on the body, nothing to take: an enabled "Take what they carried" that empties
@@ -99,7 +99,7 @@ internal static class TargetActions
         return new TargetMenu(target.Name, offers);
     }
 
-    // A pile is one kind of stock or one made thing (see Entity.Made), so the heading already
+    // A pile is one kind of stock or one made thing, so the heading already
     // names it and the one offer under it is a bare verb - the same shape as a resource's
     // "Gather". A made thing is named the way it is named everywhere else: the band's own word
     // for it if they have coined one, and what it is made of if they have not.
@@ -122,7 +122,7 @@ internal static class TargetActions
 
         // A line per thing actually there to move, in either direction: a store is a list of what
         // it holds, and "Put in" with nothing to put in is not a choice. Both tiers in one list,
-        // as on the person's own card (see PersonActions.Drops).
+        // as on the person's own card.
         foreach (var (label, what) in Movable(world, actor.Inventory))
         {
             offers.Add(ActionOffer.For(
@@ -152,7 +152,7 @@ internal static class TargetActions
     {
         var offers = new List<ActionOffer> { WalkTo(world, actor, ground) };
 
-        // The other half of the recipe list PersonActions.Crafts offers: only for a recipe whose
+        // The other half of the recipe list a person's own card offers: only for a recipe whose
         // output does not fit in the pack, which is what makes it worth choosing a spot for at
         // all. Same rule as the crafting lines on a person's own card: offered from the first
         // unit of the material, so "Build a store here" is a goal to work towards with the
@@ -181,14 +181,14 @@ internal static class TargetActions
 
     // A line per thing the teacher could pass on, not one "teach them the lot": a lesson is a
     // single technique, the way the band's own casual teaching hands over at most one per tick
-    // between two people standing together (WorldState.AutoTeachNearbyPeople). Which one is the
-    // player's choice, and the point of directing it at all - it is how somebody gets taught the
-    // thing that will keep them alive before the dice get round to it.
+    // between two people standing together. Which one is the player's choice, and the point of
+    // directing it at all - it is how somebody gets taught the thing that will keep them alive
+    // before the dice get round to it.
     //
     // Base techniques only, again as the casual pass does: an efficient technique is worked out
-    // by doing the thing over and over (SkillDefinition.EfficientTechnique), and handing it over
-    // would skip the practice it stands for. Named by the skill rather than by the technique's
-    // id, which is the debug inspector's business (see InspectorText.ForKnowledge).
+    // by doing the thing over and over, and handing it over would skip the practice it stands
+    // for. Named by the skill rather than by the technique's id, which is the debug inspector's
+    // business.
     private static IEnumerable<ActionOffer> Lessons(WorldState world, Person actor, Person student) =>
         world.Configuration.SkillCatalog.Definitions
             .Where(skill => actor.KnownTechniques.Contains(skill.BaseTechnique))
@@ -202,9 +202,8 @@ internal static class TargetActions
                 student.Position));
 
     // Whose child it would be follows from who they are, not from who was pointed at first; two
-    // of the same sex leave the command to refuse it (ActionBlocker.WrongSex). The name is drawn
-    // the way the band draws its own children's names, so a child the player asks for is named
-    // like any other (see WorldState.NameForNewborn).
+    // of the same sex leave the command to refuse it. The name is drawn the way the band draws
+    // its own children's names, so a child the player asks for is named like any other.
     private static ActionOffer HaveAChild(WorldState world, Person actor, Person target)
     {
         var mother = actor.Sex == Sex.Female ? actor : target;
@@ -236,6 +235,6 @@ internal static class TargetActions
     private static string Named(ItemCatalog items, ItemKindId item) => Lowered(items.Get(item).DisplayName);
 
     // Lower case inside a sentence the UI wrote: "Put in wood", not "Put in Wood" - the same way
-    // the rest of the player's prose sets a thing's name mid-phrase (see InspectorText.ForWork).
+    // the rest of the player's prose sets a thing's name mid-phrase.
     private static string Lowered(string displayName) => displayName.ToLowerInvariant();
 }

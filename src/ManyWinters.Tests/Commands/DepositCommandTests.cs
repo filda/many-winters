@@ -130,8 +130,8 @@ public class DepositCommandTests
         Assert.Equal(ActionBlocker.MissingMaterials, new DepositCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
     }
 
-    // Both tiers go on the shelves. A store holds an Inventory as a pack does, so nothing about
-    // putting a made thing away is a special case (see CarriedThing).
+    // Both tiers go on the shelves. A store holds an inventory as a pack does, so nothing about
+    // putting a made thing away is a special case.
     private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
 
     [Fact]

@@ -107,7 +107,7 @@ internal partial class ResourceNodeView : SpriteEntityView
 
         // A kind with split art (art/generate_sprites.py's split_trunk_canopy) renders trunk and
         // canopy as separate layers, so the occlusion fade can ghost the canopy while the trunk
-        // never fades (OcclusionFader.ComputeOccludingSprites). A kind without gets one combined sprite.
+        // never fades. A kind without gets one combined sprite.
         //
         // Registered trunk first, then branches, then canopy: all three share a render priority
         // and roughly a depth, so tree order settles which draws over which.

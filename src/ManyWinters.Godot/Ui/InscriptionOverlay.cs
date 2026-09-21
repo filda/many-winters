@@ -4,14 +4,13 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Ui;
 
-// An inscription across the whole screen - the band's arrival (Prologue), the end of its line
-// (Epitaph). The title, in InscriptionFont's title face with an ink outline so it reads over
-// anything, and under it the inscription's closing words - which are the way on: the line sits
-// on a slip of the same paper the panels are cut from, swelling a hair under the cursor
-// (WordButton). The lines under those wait in ChroniclePanel. The world is left undimmed - the
-// survivors, or the graves, are what the words are about - and the camera keeps working, while
-// clicks into it are swallowed: a command issued into a stopped clock would land the moment it
-// restarts. Never a modal dialog.
+// An inscription across the whole screen - the band's arrival, or the end of its line. The
+// title, in an outlined title face so it reads over anything, and under it the inscription's
+// closing words - which are the way on: the line sits on a slip of the same paper the panels are
+// cut from, swelling a hair under the cursor. The full inscription waits in the chronicle. The
+// world is left undimmed - the survivors, or the graves, are what the words are about - and the
+// camera keeps working, while clicks into it are swallowed: a command issued into a stopped
+// clock would land the moment it restarts. Never a modal dialog.
 //
 // "Another band comes" is offered only once nobody is left - and it is then the only thing
 // this screen offers: an epitaph with nobody left to go on for carries no closing words, so
@@ -63,8 +62,8 @@ public partial class InscriptionOverlay : Control
         centre.AddChild(column);
 
         _title = InscriptionFont.OutlinedTitleLabel(string.Empty, TitleFontSize);
-        // One line, always (see FittedTitleSize). Wrapped, an epitaph reads as two sentences and
-        // its second half lands on the words under it.
+        // One line, always - its size is fitted to the screen below. Wrapped, an epitaph reads
+        // as two sentences and its second half lands on the words under it.
         _title.AutowrapMode = TextServer.AutowrapMode.Off;
         column.AddChild(_title);
 
@@ -112,12 +111,11 @@ public partial class InscriptionOverlay : Control
 
     // The two choices on this screen are words, not controls - but bare words do not say they
     // can be taken, so each sits on a slip of the same paper everything the player holds is
-    // drawn on (PanelChrome.Parchment): opaque, so the world does not show through the line the
-    // way it did through an outlined frame, and of a piece with the band and detail panels. On
-    // paper the words are dark ink rather than light, they carry no outline (which would only
-    // fatten them, see InscriptionFont.PaperTitleLabel), and the cursor washes ink into the
-    // paper and swells them a hair. The closing words are the way on; the offer, when there is
-    // one, waits fainter beside them.
+    // drawn on: opaque, so the world does not show through the line the way it did through an
+    // outlined frame, and of a piece with the band and detail panels. On paper the words are
+    // dark ink rather than light, they carry no outline (which would only fatten them), and the
+    // cursor washes ink into the paper and swells them a hair. The closing words are the way on;
+    // the offer, when there is one, waits fainter beside them.
     private static Button WordButton(string text, Color resting, Color lit)
     {
         var button = new Button { Text = text };
@@ -137,9 +135,8 @@ public partial class InscriptionOverlay : Control
     }
 
     // A torn-off piece of the panels' paper, padded so the words keep the place they had in the
-    // frame this replaced. No grain: it is laid in as a child (PanelChrome.Grain), and a Button
-    // draws its own text before its children, so on a line this small the weathering would fall
-    // across the words instead of under them.
+    // frame this replaced. No grain: a Button draws its own text before its children, so on a
+    // line this small the weathering would fall across the words instead of under them.
     private static StyleBoxFlat Slip(float wash)
     {
         var slip = PanelChrome.Parchment();
@@ -165,10 +162,10 @@ public partial class InscriptionOverlay : Control
     }
 
     // Set smaller until the whole sentence fits across the screen, rather than wrapped or cut.
-    // Measured rather than guessed at from the length: a band is named after its oldest member
-    // (BandArrival.BandName), so the same epitaph is a different width every game and no phrasing
-    // is short enough for all of them (see Epitaph). Against the screen, not ColumnWidth, which
-    // is the measure of the paragraph the chronicle keeps rather than of the title.
+    // Measured rather than guessed at from the length: a band is named after its oldest member,
+    // so the same epitaph is a different width every game and no phrasing is short enough for
+    // all of them. Against the screen, not ColumnWidth, which is the measure of the paragraph
+    // the chronicle keeps rather than of the title.
     private int FittedTitleSize(string title)
     {
         var font = _title.GetThemeFont("font");

@@ -5,29 +5,27 @@ namespace ManyWinters.Godot.Ui;
 
 // A column of actions the player may press: a button per offer, with a quieter line under it
 // saying why it is greyed out - or, for the one refusal that is not the player's to fix, that
-// walking over is part of the order (see ActionBlockerText.For).
+// walking over is part of the order.
 //
 // Shared rather than copied because the two lists that draw actions - the selected person's card
 // and the contextual menu for whatever they are pointed at - have to look and behave identically
 // ("same control, same shape", docs/conventions.md), and one control is easier to keep that way
 // than two in step.
 //
-// It holds no opinions of its own: what an action is called, whether it can run and why not all
-// arrive as ActionOffer (see PersonActions, TargetActions). This class draws them and reports
-// which one was pressed.
+// It holds no opinions of its own: what an action is called, and whether and why it can run
+// arrive as ActionOffer. This class draws them and reports which one was pressed.
 internal partial class ActionList : VBoxContainer
 {
     private const int ReasonFontSize = 13;
 
     private readonly List<ActionRow> _rows = [];
 
-    // Which action the player pressed. The owner runs it: the list knows what an offer is, not
-    // what executing one means for the rest of the game.
+    // The owner runs the pressed action; the list only knows what an offer is, not what
+    // executing one means for the rest of the game.
     internal event Action<ActionOffer>? ActionInvoked;
 
-    // Buttons are kept and updated in place, not thrown away and rebuilt: the selection panel
-    // refreshes on every tick, and a button freed between the press and the release swallows the
-    // click. The list only ever grows.
+    // Buttons are kept and updated in place, not thrown away and rebuilt: this refreshes every
+    // tick, and a button freed between press and release swallows the click. The list only grows.
     internal void Show(IReadOnlyList<ActionOffer> offers)
     {
         while (_rows.Count < offers.Count)
@@ -67,8 +65,7 @@ internal partial class ActionList : VBoxContainer
         return row;
     }
 
-    // One action's button and the line under it. Holds the offer it is currently showing, so the
-    // press reports the offer the player actually saw.
+    // Holds the offer currently shown, so a press reports the offer the player actually saw.
     private sealed class ActionRow(VBoxContainer container, Button button, Label reason)
     {
         public ActionOffer? Offer { get; private set; }

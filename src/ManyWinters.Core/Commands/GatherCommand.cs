@@ -75,10 +75,10 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
         if (resource.YieldsItem is { } item)
         {
             var availableUnits = PotentialHarvestUnits(world, Person, resource, growth.RemainingAmount);
-            // A hungry picker eats as they go before pocketing anything - how someone with a full
-            // pack still gets fed. Only what was eaten or fits comes off the node; the rest stays
-            // for later. Same hunger test as the autonomous pass (WorldState.IsHungryEnoughToEat),
-            // or a picker at a food source would eat one unit every tick and practice forever.
+            // A hungry picker eats as they go before pocketing anything, so a full pack still
+            // gets fed; only what's eaten or fits comes off the node. Same hunger test as the
+            // autonomous pass (WorldState.IsHungryEnoughToEat), or a picker at a food source
+            // would eat one unit every tick and practice forever.
             var eaten = world.IsHungryEnoughToEat(Person) ? EatCommand.Eat(world, Person, item, availableUnits) : 0;
             var added = Person.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
             var taken = eaten + added;

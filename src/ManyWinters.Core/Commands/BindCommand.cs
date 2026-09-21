@@ -50,9 +50,9 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
             return;
         }
 
-        // The cordage is spent whichever way it goes - a lashing that slipped is not cord any
-        // more. What it was tied around is not: two things that came apart are still two things,
-        // so a failed try costs the binding and the time, not the work that went before it.
+        // The cordage is spent whether or not the lashing holds - a slipped lashing is not cord
+        // any more. What it joined is not: two things that came apart are still two things, so a
+        // failed try costs the binding and the time, not the work already done.
         var binding = BestBinding(world)!;
         Person.Inventory.RemoveAssembly(binding);
 
@@ -77,8 +77,7 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
         Person.Skills.Increase(Skill, SkillGainPerBind);
     }
 
-    // How well this lashing holds: the shape's own fitness for binding, what the cordage itself
-    // is worth, and the hand that tied it. A joint is never better than the cord it is made of.
+    // A joint is never better than the cord it is made of.
     private float StrengthOf(Assembly binding, WorldState world)
     {
         var lashing = binding is Assembly.Part part
@@ -88,7 +87,6 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
         return lashing * binding.Durability(world.Configuration.MaterialCatalog) * WorkAttempt.QualityFor(Person, Skill);
     }
 
-    // Both things being joined and the cordage doing the joining.
     private IEnumerable<MaterialId> MaterialsWorked(WorldState world, Assembly binding) =>
         new[] { Left, Right }
             .Select(target => MaterialOf(world, target))

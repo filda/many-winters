@@ -6,10 +6,10 @@ namespace ManyWinters.Core.World;
 // "unknown".
 public sealed class ExplorationState
 {
-    // Far coarser than a Position: fog only tracks roughly where the group has been, and every
-    // cell costs rendering on the Godot side. Fine enough that a SightRadiusMeters circle spans
-    // a 6-cell radius and reads as a circle rather than an octagon, while rebuilding the fog
-    // mesh (cost scales with cell count squared) on a newly explored cell stays a rare event.
+    // Far coarser than a Position: every cell costs rendering on the Godot side. Fine enough
+    // that a SightRadiusMeters circle spans a 6-cell radius and reads as a circle rather than an
+    // octagon, while rebuilding the fog mesh (cost scales with cell count squared) on a newly
+    // explored cell stays rare.
     public const float CellSizeMeters = 2.5f;
 
     // How far a person sees. Smaller than IdleSearchRadius: sight is what the player knows
@@ -28,9 +28,9 @@ public sealed class ExplorationState
 
     public bool IsVisible(ExplorationCell cell) => _visible.Contains(cell);
 
-    // Recomputes Visible from the sight sources (every living person, each tick - see
-    // WorldState.Advance), then folds it into Explored. A cell counts as visible only if its own
-    // centre is within SightRadiusMeters, so sight reads as a circle, not a diamond of squares.
+    // Recomputes Visible from the sight sources (every living person, each tick), then folds it
+    // into Explored. A cell counts as visible only if its own centre is within
+    // SightRadiusMeters, so sight reads as a circle, not a diamond of squares.
     public void Update(IEnumerable<Position> sightSources)
     {
         var visible = new HashSet<ExplorationCell>();

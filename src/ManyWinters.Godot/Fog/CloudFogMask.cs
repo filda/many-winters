@@ -12,11 +12,11 @@ namespace ManyWinters.Godot.Fog;
 // geometry (default layer), so a hill in front of a cloud occludes its proxy by normal depth
 // testing, as it does in the main view - a proxy-only render left the hill unfogged where a
 // distant cloud met the horizon. Telling a proxy pixel from a terrain pixel is the flag
-// colour's job: CloudScatter.MaskFlagModulate, tested in fog_of_war_screen.gdshader.
+// colour's job, tested in fog_of_war_screen.gdshader.
 public sealed class CloudFogMask
 {
-    // CloudScatter's mask-only proxies: excluded from the main camera's CullMask
-    // (FreeCameraRig), rendered only by the mask camera.
+    // CloudScatter's mask-only proxies: excluded from the main camera's CullMask, rendered only
+    // by the mask camera.
     public const uint CloudLayerBit = 1u << 1;
 
     // The visible cloud sprite, on its own bit rather than the default layer: the mask camera
@@ -61,8 +61,8 @@ public sealed class CloudFogMask
 
     public Texture2D Texture => _maskViewport.GetTexture();
 
-    // Called every frame (Main._Process): the mask camera must track the main camera's
-    // transform and projection exactly, or the mask will not line up with the main view.
+    // Called every frame: the mask camera must track the main camera's transform and projection
+    // exactly, or the mask will not line up with the main view.
     public void Update()
     {
         SyncViewportSize();

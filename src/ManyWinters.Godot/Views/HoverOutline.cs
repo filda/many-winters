@@ -3,15 +3,14 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Views;
 
-// Puts the hover rim (Content/effects/sprite_highlight.gdshader) on whatever the cursor is on,
-// and takes it off again.
+// Puts the hover rim on whatever the cursor is on, and takes it off again.
 //
 // One rim for the whole entity, hung on the topmost layer's sprite: all layers share one quad
 // and UV mapping, so the shader traces the union of up to MaxLayers silhouettes in one pass
-// (per-layer rims fill a person in solid - see the shader's header).
+// (per-layer rims would fill a person in solid).
 //
-// Materials are pooled: thousands of sprites, at most one hovered (HoverArbiter), so one
-// material in hand is normally enough.
+// Materials are pooled: thousands of sprites, but at most one is ever hovered, so one material
+// in hand is normally enough.
 internal static class HoverOutline
 {
     private const string ShaderPath = "res://Content/effects/sprite_highlight.gdshader";
@@ -75,9 +74,9 @@ internal static class HoverOutline
     private static ShaderMaterial NewMaterial()
     {
         _shader ??= ResourceLoader.Load<Shader>(ShaderPath);
-        // The highest priority there is, one above the fog-of-war sheets
-        // (FogOfWarRenderer.OverlayRenderPriority): drawn under the fog, the rim lost contrast
-        // where the fog boundary crossed it, which looks like the line changing thickness.
+        // The highest priority there is, one above the fog-of-war sheets: drawn under the fog,
+        // the rim lost contrast where the fog boundary crossed it, which looks like the line
+        // changing thickness.
         var material = new ShaderMaterial { Shader = _shader, RenderPriority = 127 };
         material.SetShaderParameter("rim_color", RimColor);
         material.SetShaderParameter("rim_pixels", RimScreenPixels);

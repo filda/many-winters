@@ -5,7 +5,7 @@ namespace ManyWinters.Core.World;
 
 // Replaces the old per-domain ResourceKindId/BuildingKindId: a growable resource and a building
 // both name their kind this way now. ItemKindId stays separate - it names a thing once it is
-// carried/stored/required, not a thing on the map (see Items/ItemKindId).
+// carried/stored/required, not a thing on the map.
 [JsonConverter(typeof(EntityKindIdJsonConverter))]
 public readonly record struct EntityKindId(string Value)
 {

@@ -27,7 +27,7 @@ public sealed record WorldConfiguration(
     }
 
     // The shipped content folder off the filesystem (the headless SimulationRunner). The Godot
-    // build cannot (see JsonDefinitions) and goes through LoadFromJson with its own reader.
+    // build cannot read the filesystem this way and goes through LoadFromJson with its own reader.
     public static WorldConfiguration LoadFromDirectory(string contentRoot) =>
         LoadFromJson(catalog => JsonDefinitions.ReadDirectory(Path.Combine(contentRoot, catalog)));
 

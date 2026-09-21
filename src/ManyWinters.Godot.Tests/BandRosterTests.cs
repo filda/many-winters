@@ -100,8 +100,8 @@ public class BandRosterTests
         Assert.Equal(["Ava", "Mira", "Zora"], Names(world));
     }
 
-    // Named after its eldest, as the band is named everywhere else (BandName) - but as the band
-    // the player commands, not as a later band reading its graves will know it.
+    // Named after its eldest, as the band is named everywhere else - but as the band the player
+    // commands, not as a later band reading its graves will know it.
     [Fact]
     public void TheTitleNamesTheBandAfterItsEldest()
     {
@@ -127,8 +127,8 @@ public class BandRosterTests
         Assert.Equal("3 people: 1 man, 1 woman and 1 child.", BandRoster.Of(world).Summary);
     }
 
-    // Opened over a band that has just died out. BandArrival.Of refuses to describe one, so the
-    // roster answers for itself rather than throwing in the player's face.
+    // Opened over a band that has just died out. The arrival text refuses to describe one, so
+    // the roster answers for itself rather than throwing in the player's face.
     [Fact]
     public void ABandNobodySurvivedSaysSo()
     {

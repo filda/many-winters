@@ -28,8 +28,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     // world, so it has no Add* and announces nothing - the inspector reads it when it draws.
     public Affections Affections { get; } = new();
 
-    // The words this band has for the things it makes (see Vocabulary). Empty at the start:
-    // nobody has made anything, so there is nothing to have a word for.
+    // The words this band has for the things it makes. Empty at the start: nobody has made
+    // anything, so there is nothing to have a word for.
     public Vocabulary Vocabulary { get; } = new();
 
     // Catalogs, calendar and tuning numbers - fixed for the world's lifetime and not part of a
@@ -38,9 +38,9 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public IReadOnlyList<Person> People => _people;
 
-    // People who died before the story began and exist only to be somebody's parent (see
-    // Person.Mother): full Person objects a grave or a save file can refer to, but never in
-    // People - nothing simulates, draws, counts or clicks them.
+    // People who died before the story began and exist only to be somebody's parent: full
+    // Person objects a grave or a save file can refer to, but never in People - nothing
+    // simulates, draws, counts or clicks them.
     public IReadOnlyList<Person> Forebears => _forebears;
 
     public IReadOnlyList<Entity> Entities => _entities;
@@ -55,13 +55,12 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public event Action<Grave>? GraveAdded;
 
-    // Only a pile-category entity fires this today (see RemoveEntity): a growable entity that
-    // dies stays in Entities with Growth.IsAlive false, and a building is never removed.
+    // Only a pile-category entity fires this today.
     public event Action<Entity>? EntityRemoved;
 
     // Add* take a finished object: what it is made of is the caller's business
     // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
-    // presentation layer. Ids are drawn by the entity itself (see EntityId).
+    // presentation layer. Ids are drawn by the entity itself.
     public void AddPerson(Person person)
     {
         _people.Add(person);
@@ -69,8 +68,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         RefreshExploration();
     }
 
-    // No PersonAdded and no exploration refresh: a forebear is not on the map (see Forebears).
-    // A living one would be a person hidden from the simulation, hence the guard.
+    // No PersonAdded and no exploration refresh: a forebear is not on the map. A living one
+    // would be a person hidden from the simulation, hence the guard.
     public void AddForebear(Person forebear)
     {
         if (forebear.IsAlive)
@@ -93,9 +92,9 @@ public sealed class WorldState(WorldConfiguration configuration)
         GraveAdded?.Invoke(grave);
     }
 
-    // Called once a pile's StaticAmount reaches zero (see PickUpItemCommand): an empty pile has
-    // nothing left for anyone to point at. A growable entity that dies is never removed this way
-    // (see Advance) - it stays in Entities with Growth.IsAlive false.
+    // Called once a pile's StaticAmount reaches zero: an empty pile has nothing left for anyone
+    // to point at. A growable entity that dies is never removed this way - it stays in Entities
+    // with Growth.IsAlive false.
     public void RemoveEntity(Entity entity)
     {
         _entities.Remove(entity);
@@ -123,15 +122,15 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public long AgeInYears(Person person) => AgeInYearsAt(person, Clock.CurrentTick);
 
-    // Age as of some other moment than now - a death tick, say (see BuryCommand).
+    // Age as of some other moment than now - a death tick, say.
     public long AgeInYearsAt(Person person, long tick) => (tick - person.BirthTick) / Configuration.Rules.TicksPerYear;
 
     public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / Configuration.Rules.TicksPerSeason;
 
     public LifeStage LifeStageOf(Person person) => LifeStages.For(AgeInYears(person));
 
-    // Grown enough to have children (BirthCommand). Elders count: this is a floor on childhood,
-    // not a fertility model - a world whose last two people are old is a story worth telling.
+    // Grown enough to have children. Elders count: this is a floor on childhood, not a fertility
+    // model - a world whose last two people are old is a story worth telling.
     public bool IsOldEnoughForChildren(Person person) => AgeInYears(person) >= LifeStages.AdultAgeYears;
 
     // The infant this person is nursing, if any: her own living child, under weaning age and
@@ -153,8 +152,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     // which of the pair Advance reaches first within a tick cannot change what either gets.
     public bool IsBeingNursed(Person person) => IsNursedBy(person, person.Mother);
 
-    // Age-based base (see CarryCapacity) plus gear bonuses. Presence, not count, as with
-    // InsulationFor: five baskets are not five times the bonus of one.
+    // Age-based base plus gear bonuses. Presence, not count, as with InsulationFor: five baskets
+    // are not five times the bonus of one.
     public float MaxCarryWeightFor(Person person)
     {
         var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), Configuration.Rules.MaxLifespanYears);
@@ -188,11 +187,10 @@ public sealed class WorldState(WorldConfiguration configuration)
 
                 person.Tasks.Advance(person);
                 // An empty queue means "use a known skill, or seek food if hungry and
-                // empty-handed", falling back to wandering (see DecideIdleTask). Only the
-                // autonomous choices are ever revisited, never a player-issued task.
-                // IdleGraceUntilTick (GrantIdleGraceCommand) buys a few ticks of standing still,
-                // but never past urgent hunger: the grace is renewed every tick while a person
-                // is selected, so a hungry one would otherwise never set off for food.
+                // empty-handed", falling back to wandering. IdleGraceUntilTick buys a few ticks
+                // of standing still, but never past urgent hunger: the grace is renewed every
+                // tick while a person is selected, so a hungry one would otherwise never set
+                // off for food.
                 var idleGraceHolds = currentTick < person.IdleGraceUntilTick && !NeedsToSeekFoodUrgently(person);
                 if (!idleGraceHolds && ShouldReconsiderIdleTask(person))
                 {
@@ -232,7 +230,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                 TryAutoEat(person);
 
                 var diedOfOldAge = AgeInYearsAt(person, currentTick) >= rules.MaxLifespanYears;
-                // Their own MaxHunger, not the rules' - see Person.MaxHunger.
+                // Their own MaxHunger, not the rules'.
                 if (person.Needs.Hunger >= person.MaxHunger || diedOfOldAge)
                 {
                     person.IsAlive = false;
@@ -291,9 +289,8 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Only autonomous tasks are revisited; a player-issued one (MoveTask from MoveCommand) is
     // left alone. IdleTask always gets a second look. GatherTask only once its target stops
-    // being worth working (see IsWorthGathering) - re-planning every tick would re-approach the
-    // same resource forever - or when hunger becomes urgent (see NeedsToSeekFoodUrgently), so a
-    // wood run far from camp can be abandoned for food.
+    // being worth working - re-planning every tick would re-approach the same resource forever -
+    // or when hunger becomes urgent, so a wood run far from camp can be abandoned for food.
     private bool ShouldReconsiderIdleTask(Person person) => person.Tasks.Current switch
     {
         null => true,
@@ -328,21 +325,20 @@ public sealed class WorldState(WorldConfiguration configuration)
         && GatherCommand.CanTakeAnythingFrom(this, person, Configuration.ResourceCatalog.Get(entity.Kind), growth.RemainingAmount);
 
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
-    // (IdleTask) is the fallback. Hunger wins over a known skill (see
-    // SimulationRules.HungerSeekFoodThreshold).
+    // (IdleTask) is the fallback. Hunger wins over a known skill.
     private PersonTask DecideIdleTask(Person person)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
 
         // An infant has no skill and nothing to gather, so it keeps up with its mother instead -
-        // that is what feeds it (see Advance) and what keeps it within teaching reach. An orphan
-        // falls through and wanders like anybody else; nothing here saves it, and nothing should.
+        // that is what feeds it and what keeps it within teaching reach. An orphan falls through
+        // and wanders like anybody else; nothing here saves it, and nothing should.
         if (LifeStageOf(person) == LifeStage.Infant && person.Mother.IsAlive)
         {
             return new FollowTask(person.Mother, reachDistance, Configuration.Rules.InfantFollowSpeedPerTick);
         }
-        // Without knowing how to eat, gathering food would not help (see EatCommand), so this
-        // falls through to the general search below.
+        // Without knowing how to eat, gathering food would not help, so this falls through to
+        // the general search below.
         if (NeedsToSeekFoodUrgently(person))
         {
             // A food resource this person never learned to gather is as unreachable as none.
@@ -384,8 +380,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         person.Inventory.Counts.Any(kv => kv.Value > 0 && Configuration.ItemCatalog.HungerRestoredPerUnitFor(kv.Key) > 0f);
 
     // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
-    // the same kind is normally nearby - and so is anything this person could not take from
-    // (see GatherCommand.CanTakeAnythingFrom): nobody walks to a source to gather nothing.
+    // the same kind is normally nearby - and so is anything this person could not take from:
+    // nobody walks to a source to gather nothing.
     private Entity? FindNearestGatherableEntity(Person person, Func<ResourceDefinition, bool> matches)
     {
         Entity? nearest = null;
@@ -408,16 +404,16 @@ public sealed class WorldState(WorldConfiguration configuration)
         return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
     }
 
-    // What people standing together say to each other about the stuff of the world (see
-    // Beliefs). Talk, not instruction: nobody needs to know how to teach to mention that a
-    // stone shatters, which is why this does not go through TeachCommand and why understanding
-    // can spread through a band before anyone has learned to teach at all.
+    // What people standing together say to each other about the stuff of the world. Talk, not
+    // instruction: nobody needs to know how to teach to mention that a stone shatters, which is
+    // why this does not go through TeachCommand and why understanding can spread before anyone
+    // has learned to teach at all.
     //
     // What is passed on is only what the teller would act on themselves, and it lands as
     // hearsay - held less firmly than what the listener could have found out by handling it.
     // So one mention is talk and two are conviction, and somebody who then handles the stuff
-    // settles the matter for themselves. That is the seam distortion will run along: today the
-    // account is always true, and the listener's only doubt is how often they have heard it.
+    // settles the matter for themselves. Today the account passed on is always true; the
+    // listener's only doubt is how often they have heard it.
     private void ShareWhatTheyKnow(long currentTick)
     {
         var rules = Configuration.Rules;
@@ -448,7 +444,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     private static void MentionSomething(Person teller, Person listener, SimulationRules rules, long currentTick)
     {
         // Ordered, because a dictionary's own order is nobody's promise and this has to replay
-        // the same way twice (see AutoTeachNearbyPeople).
+        // the same way twice.
         foreach (var held in teller.Beliefs.Held.OrderBy(entry => entry.Key.Material.Value, StringComparer.Ordinal).ThenBy(entry => entry.Key.Property))
         {
             var (material, property) = held.Key;
@@ -521,10 +517,10 @@ public sealed class WorldState(WorldConfiguration configuration)
         return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
     }
 
-    // Handling a thing teaches what it is like (see Beliefs). Nobody is told that grass is
-    // fibrous; they carry it about and come to know. A person's understanding of the world is
-    // therefore the sum of what they have actually had in their hands, which is why a band that
-    // never picks anything up learns nothing about anything.
+    // Handling a thing teaches what it is like. Nobody is told that grass is fibrous; they
+    // carry it about and come to know. A person's understanding of the world is therefore the
+    // sum of what they have actually had in their hands, which is why a band that never picks
+    // anything up learns nothing about anything.
     private void LearnWhatIsInHand()
     {
         var gained = Configuration.Rules.MaterialUnderstandingPerTick;
@@ -544,7 +540,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                 }
 
                 // Learned true: nothing distorts a belief yet, and what is noticed first-hand
-                // would be the last thing to (see Beliefs).
+                // would be the last thing to.
                 person.Beliefs.LearnAll(actual, gained);
             }
         }
@@ -619,9 +615,9 @@ public sealed class WorldState(WorldConfiguration configuration)
     // Drawn from the same seeded stream as every other autonomous roll, so a replay fiddles with
     // the same things in the same order.
     // Only what they understand. Idle hands turn over the familiar, so a substance nobody has
-    // yet come to know (see Beliefs) is not one they will idly think to work - the player can
-    // direct an attempt on anything, and that difference in *reach* is what directing buys
-    // beyond speed (docs/materials-and-crafting-architecture.md section 7).
+    // yet come to know is not one they will idly think to work - the player can direct an
+    // attempt on anything, and that difference in *reach* is what directing buys beyond speed
+    // (docs/materials-and-crafting-architecture.md section 7).
     private (SkillTypeId Skill, ICommand Command)? TrialOf(Person person, long currentTick)
     {
         var stock = person.Inventory.Counts.Keys
@@ -669,7 +665,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             : new CarriedThing.Worked(worked[index - stock.Count]);
 
     // Deterministic from the person, the verb and the tick, as every other roll is. A person's
-    // own Curiosity scales it, which is the knob an NPC band turns down (see Person.Curiosity).
+    // own Curiosity scales it, which is the knob an NPC band turns down.
     private bool PassesIdleDiscoveryRoll(Person person, SkillTypeId skill, long currentTick)
     {
         var chance = Configuration.Rules.IdleDiscoveryChancePerTick * person.Curiosity;
@@ -680,9 +676,9 @@ public sealed class WorldState(WorldConfiguration configuration)
         return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
     }
 
-    // Once somebody knows a technique and how to teach (see TeachCommand), anyone nearby may
-    // pick it up without a player action; SimulationRules.CasualTeachingChancePerTick says why
-    // it is a per-tick roll. Every living pair every tick: O(n^2) is negligible at tens of people.
+    // Once somebody knows a technique and how to teach, anyone nearby may pick it up without a
+    // player action; SimulationRules.CasualTeachingChancePerTick says why it is a per-tick roll.
+    // Every living pair every tick: O(n^2) is negligible at tens of people.
     private void AutoTeachNearbyPeople(long currentTick)
     {
         var skillCatalog = Configuration.SkillCatalog;
@@ -770,8 +766,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     }
 
     // Where children come from when nobody asks. Whether a birth is possible is BirthCommand's
-    // business; this pass adds only the bond threshold
-    // (SimulationRules.AffectionNeededToHaveAChild). Iterates a snapshot because BirthCommand
+    // business; this pass adds only the bond threshold. Iterates a snapshot because BirthCommand
     // adds to _people: a child must not become a candidate parent on the tick it is born.
     private void StartFamilies(long currentTick)
     {
@@ -812,11 +807,11 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Deterministic from the parents and the tick, so a replayed world names the same children
     // (SeedHash.Avalanche, as CasualTeachingSeed below). The culture it draws from is rebuilt
-    // from People/Forebears rather than saved separately - see NamingProfiles.
+    // from People/Forebears rather than saved separately.
     //
     // Public because a child the player asks for is named the same way as one the band has of
-    // its own accord (see TargetActions): BirthCommand takes the name, so somebody has to draw
-    // it, and there is only one right way to draw it.
+    // its own accord: BirthCommand takes the name, so somebody has to draw it, and there is only
+    // one right way to draw it.
     public string NameForNewborn(Person mother, Person father, long tick)
     {
         var (culture, trend, existingNames) = NamingProfiles();
@@ -832,8 +827,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     }
 
     // A name for someone with no parents to inherit from, drawn from the current naming culture
-    // rather than a curated pool - what the player's manual "Spawn Person" button uses
-    // (Main.OnSpawnButtonPressed).
+    // rather than a curated pool - what the player's manual "Spawn Person" button uses.
     public string GenerateUnrelatedName(Random rng)
     {
         var (culture, trend, existingNames) = NamingProfiles();
@@ -889,9 +883,9 @@ public sealed class WorldState(WorldConfiguration configuration)
         return hash;
     }
 
-    // Same behaviour as Main's Eat button (OnEatButtonPressed): eats through whatever food is on
-    // hand until no longer hungry. Runs every tick whatever task is active, even a player-issued
-    // one - a starving person should not wait for a free moment to eat from their own pack.
+    // Same behaviour as the player's Eat button: eats through whatever food is on hand until no
+    // longer hungry. Runs every tick whatever task is active, even a player-issued one - a
+    // starving person should not wait for a free moment to eat from their own pack.
     private void TryAutoEat(Person person)
     {
         // A meal, not a nibble: nothing until hunger has built up, then EatCommand eats to zero.

@@ -75,8 +75,8 @@ public class InspectorTextTests
     [Fact]
     public void AnUnmarkedGraveRecordsNothingAboutWhoLiesThere()
     {
-        // An unmarked grave preserves no identity (see Grave); the text must not leak the name
-        // it still carries.
+        // An unmarked grave preserves no identity; the text must not leak the name it still
+        // carries internally.
         var text = InspectorText.ForGrave(NewGrave(isMarked: false));
 
         Assert.Contains("Unmarked grave - no record survives.", text, StringComparison.Ordinal);
@@ -221,7 +221,7 @@ public class InspectorTextTests
     }
 
     // The player's card says what someone is doing, never where: a destination in raw
-    // coordinates is for the debug inspector (ForTask), not for a card about a person.
+    // coordinates is for the debug inspector, not for a card about a person.
     [Fact]
     public void AWalkerIsJustWalkingWithNoCoordinates()
     {

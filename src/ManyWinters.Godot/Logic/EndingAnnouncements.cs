@@ -3,9 +3,9 @@ using ManyWinters.Core.Continuity;
 namespace ManyWinters.Godot.Logic;
 
 // When the inscription over a band's end goes up: once per change of fate, never for a band
-// whose line still goes on. The fate is read off the world every tick (BandEnding.FateOf) and
-// says nothing about whether the player has seen it; that one bit of state lives here, apart
-// from the overlay, so it can be tested without one.
+// whose line still goes on. The fate is read off the world every tick and says nothing about
+// whether the player has seen it; that one bit of state lives here, apart from the overlay, so
+// it can be tested without one.
 internal sealed class EndingAnnouncements
 {
     private BandFate _announced = BandFate.Living;

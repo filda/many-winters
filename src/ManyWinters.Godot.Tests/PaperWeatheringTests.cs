@@ -3,7 +3,7 @@ using ManyWinters.Godot.Logic;
 namespace ManyWinters.Godot.Tests;
 
 // How each page of the game's paper aged. Every panel is cut from the same sheet, and its name is
-// what decides how dirty it came out (see PanelChrome.Grain).
+// what decides how dirty it came out.
 public class PaperWeatheringTests
 {
     // The names the game actually rules its pages with.
@@ -57,7 +57,7 @@ public class PaperWeatheringTests
     }
 
     // The tile the hatching is drawn into is cut to a multiple of the spacing, so whatever spacing
-    // a page came out with, the strokes still repeat seamlessly (see PanelChrome.Hatching).
+    // a page came out with, the strokes still repeat seamlessly.
     [Theory]
     [MemberData(nameof(ManyNames))]
     public void TheHatchingAlwaysDividesItsTile(string name)

@@ -12,9 +12,9 @@ public class BindCommandTests
     private static readonly CarriedThing Stone = new CarriedThing.Stock(TestCatalogs.StoneItem);
 
     // Somebody who knows how to bind, carrying a stick, a stone and one cord to lash them with.
-    // Practised enough that the hands never fail, so a test about what binding produces is not
-    // also a test of the dice (WorkAttempt.ChanceFor reaches 1 at mastery). The rolling has its
-    // own tests below.
+    // Practised enough that the hands never fail (chance of success reaches 1 at mastery), so a
+    // test about what binding produces is not also a test of the dice. The rolling has its own
+    // tests below.
     private static Person Binder(WorldState world, float cordQuality = 0.5f)
     {
         var person = Novice(world, cordQuality);
@@ -131,7 +131,6 @@ public class BindCommandTests
 
         world.Execute(new BindCommand(person, Wood, Stone));
 
-        // The poor one is the one left over.
         var leftover = Assert.IsType<Assembly.Part>(Assert.Single(person.Inventory.Assemblies, held => held is Assembly.Part));
         Assert.Equal(0.2f, leftover.Quality, 5);
     }

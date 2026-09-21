@@ -24,9 +24,9 @@ public static class PanelChrome
     // as a chronicle, so what the player holds is a page rather than a smoked-glass overlay. Text
     // on it wants InscriptionFont.DarkInk, not the light Ink the panels over the world use.
     //
-    // No content margin: the grain (see Grain) is laid in as a child, and a container insets its
-    // children by exactly this, which left a clean unweathered frame around the dirty middle. The
-    // padding is the caller's to add inside the grain instead.
+    // No content margin: the grain is laid in as a child, and a container insets its children by
+    // exactly this, which left a clean unweathered frame around the dirty middle. The padding is
+    // the caller's to add inside the grain instead.
     public static StyleBoxFlat Parchment() => new()
     {
         BgColor = new Color(0.87f, 0.82f, 0.71f, 0.96f),
@@ -46,7 +46,7 @@ public static class PanelChrome
     public const int PaperPadding = 14;
 
     // How far a filled box holds text off its own left and right edge. Public, because anything
-    // laying its own labels over such a box (BandPanel's rows) has to line up with it.
+    // laying its own labels over such a box has to line up with it.
     public const int FilledPadding = 8;
 
     // A box filled with one colour, padded the way a line of text on paper wants: what the panels
@@ -65,7 +65,7 @@ public static class PanelChrome
     };
 
     // A meter's bar: a hollow trough rather than the engine's blue, because the fill's own colour
-    // arrives with each reading (see MeterReading.Fill) - hunger changes colour as it worsens.
+    // arrives with each reading - hunger changes colour as it worsens.
     public static ProgressBar MeterBar(int height)
     {
         var bar = new ProgressBar
@@ -102,7 +102,7 @@ public static class PanelChrome
     }
 
     // How much room the cross in a panel's corner takes - and how much empty space the other end
-    // of a head needs to keep what is between them centred (see Head).
+    // of a head needs to keep what is between them centred.
     private const int CrossSize = 20;
 
     private const int CrossFontSize = 16;
@@ -152,9 +152,9 @@ public static class PanelChrome
     }
 
     // The way out in the card's own top right corner, for a page whose head is not the first
-    // thing on it (PausePanel, which opens with a line about the clock). Added last to a
-    // PanelContainer, which sizes every child to the whole card: the cross rides in a frame of
-    // that size and hangs itself in the corner of it, clear of whatever the page is saying.
+    // thing on it. Added last to a PanelContainer, which sizes every child to the whole card: the
+    // cross rides in a frame of that size and hangs itself in the corner of it, clear of whatever
+    // the page is saying.
     public static Control CornerCross(Action closed)
     {
         var corner = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -200,7 +200,7 @@ public static class PanelChrome
     //
     // `of` is what the page is called (the window's title, "pause", "menu"): every panel is cut
     // from the same sheet, and the name is what decides how this one aged, so two pages open side
-    // by side are not the same stain twice (see PaperWeathering).
+    // by side are not the same stain twice.
     //
     // A node rather than part of the StyleBox, because a StyleBoxFlat cannot carry a texture. The
     // caller adds it first so its own content draws on top, and it never takes the mouse.

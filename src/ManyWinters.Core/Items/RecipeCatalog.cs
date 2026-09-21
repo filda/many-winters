@@ -14,7 +14,7 @@ public sealed class RecipeCatalog
     public RecipeDefinition Get(ItemKindId output) => _definitions[output];
 
     // Every recipe there is - for the menu of what a person could make, which has to list the
-    // possibilities before it can offer one (see SkillCatalog.Definitions).
+    // possibilities before it can offer one.
     public IEnumerable<RecipeDefinition> Definitions => _definitions.Values;
 
     public static RecipeCatalog LoadFromDirectory(string rootPath)

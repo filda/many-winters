@@ -6,9 +6,9 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// What the player is offered for the thing they pointed at. Same rules as PersonActions: nothing
-// is offered without something to act on, and every offer carries where it happens so a refusal
-// for distance alone turns into a walk.
+// What the player is offered for the thing they pointed at. Same rule as a person's own action
+// card: nothing is offered without something to act on, and every offer carries where it happens
+// so a refusal for distance alone turns into a walk.
 public class TargetActionsTests
 {
     private static readonly Position Camp = new(0, 0);
@@ -70,8 +70,8 @@ public class TargetActionsTests
         Assert.Equal(["Gather"], Labels(TargetActions.For(world, person, AddNode(world, TestWorld.Stump, Camp))));
     }
 
-    // Pointing at the tree is how the person is shown what to do with it (see
-    // SkillDefinition.BaseTechnique), so never having learned cannot be what stops the offer.
+    // Pointing at the tree is itself how the person is shown what to do with it, so never
+    // having learned cannot be what stops the offer.
     [Fact]
     public void GatheringAndFellingTeachTheirOwnSkill()
     {
@@ -127,8 +127,7 @@ public class TargetActionsTests
     }
 
     // A lesson is one technique, the way the band's own casual teaching hands over at most one
-    // per tick (WorldState.AutoTeachNearbyPeople) - so a teacher who knows two things offers two
-    // lessons, and the player picks which.
+    // per tick, so a teacher who knows two things offers two lessons, and the player picks which.
     [Fact]
     public void ALivingPersonIsOfferedALessonPerThingTheTeacherCouldPassOn()
     {
@@ -181,9 +180,8 @@ public class TargetActionsTests
         Assert.Equal(["Have a child"], Labels(TargetActions.For(world, ava, bran)));
     }
 
-    // An efficient technique is worked out by doing the thing over and over
-    // (SkillDefinition.EfficientTechnique), so it cannot be handed over - the band's own casual
-    // teaching refuses to pass one on for the same reason.
+    // An efficient technique is worked out by doing the thing over and over, so it cannot be
+    // handed over - the band's own casual teaching refuses to pass one on for the same reason.
     [Fact]
     public void WhatWasWorkedOutByPractiseCannotBeHandedOver()
     {
@@ -223,7 +221,7 @@ public class TargetActionsTests
     }
 
     // A made thing on the ground is headed by what the band calls it, not by an item name it
-    // does not have (see Entity.Made, Vocabulary).
+    // does not have.
     [Fact]
     public void SomethingMadeLyingOnTheGroundIsHeadedByWhatItIs()
     {
@@ -278,8 +276,8 @@ public class TargetActionsTests
         Assert.Equal(ActionBlocker.WrongSex, Labelled(TargetActions.For(world, ava, sela), "Have a child").Blocker);
     }
 
-    // Everything a person does to themselves is on their own card already (PersonActions), which
-    // is on screen the whole time they are selected.
+    // Everything a person does to themselves is already on their own card, which is on screen
+    // the whole time they are selected.
     [Fact]
     public void PointingAtTheSelectedPersonThemselvesOffersNothing()
     {
@@ -289,8 +287,8 @@ public class TargetActionsTests
         Assert.Empty(TargetActions.For(world, ava, ava).Offers);
     }
 
-    // Being told to teach is itself the player showing them how to teach (see
-    // SkillDefinition.BaseTechnique), so never having learned that cannot be what stops a lesson.
+    // Being told to teach is itself how a person learns to teach, so never having learned that
+    // cannot be what stops a lesson.
     [Fact]
     public void ALessonIsNotBlockedForTheTeacherNeverHavingBeenTaughtToTeach()
     {
@@ -346,7 +344,7 @@ public class TargetActionsTests
     }
 
     // Both tiers go on the shelves, and the line is named the way the thing is named everywhere
-    // else (see Vocabulary, InspectorText.ForWorkedThing).
+    // else.
     [Fact]
     public void SomethingTheyMadeCanGoOnTheShelvesToo()
     {
@@ -386,8 +384,8 @@ public class TargetActionsTests
         Assert.Equal(ActionBlocker.NothingToRepair, mend.Blocker);
     }
 
-    // A pile is always one kind (ItemPile), so the heading already names it and the offer under
-    // it is a bare verb - the same shape as a resource's "Gather".
+    // A pile is always one kind, so the heading already names it and the offer under it is a
+    // bare verb - the same shape as a resource's "Gather".
     [Fact]
     public void APileIsHeadedByItsOwnKindAndOffersPickingItUp()
     {
@@ -477,7 +475,7 @@ public class TargetActionsTests
     }
 
     // Every offer aimed at something carries where it happens, or the walk that would carry the
-    // order has nowhere to go (see ActionOffer.Target, PendingOrders).
+    // order has nowhere to go.
     [Fact]
     public void EveryOfferKnowsWhereItHappens()
     {

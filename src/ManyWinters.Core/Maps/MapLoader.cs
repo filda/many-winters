@@ -34,12 +34,11 @@ public static class MapLoader
     // entity drawn from those would shift every position that follows.
     private const int EntityIdSeed = 3;
 
-    // Separate from EntityIdSeed and CrowdPlacementSeed for the same reason those are separate
-    // from each other: drawing names from either of those generators would shift every id or
-    // position that follows. AlternativeNamingSeed keeps a successor band's founding names from
-    // being identical to the first band's despite drawing from the same flat global generator
-    // (PhoneticNameGenerator.GenerateFounding) - it is not a descendant culture, so it does not
-    // inherit the extinct band's CultureProfile either.
+    // Separate from EntityIdSeed and CrowdPlacementSeed for the same reason: drawing names from
+    // either would shift every id or position that follows. AlternativeNamingSeed keeps a
+    // successor band's founding names distinct from the first band's despite sharing the same
+    // name generator - it is not a descendant culture, so it doesn't inherit the extinct band's
+    // CultureProfile either.
     private const int NamingSeed = 4;
     private const int AlternativeNamingSeed = 5;
     private const float CrowdRadius = 4f;
@@ -142,9 +141,8 @@ public static class MapLoader
         return new LoadedMap(world, CampCenter);
     }
 
-    // Spawns a successor band into an existing world. Picks a new camp 80..250 m from the old one,
-    // spawns the crowd with starting stock and food, and returns the camp center for the caller
-    // to move the camera.
+    // Spawns a successor band into an existing world, picking a new camp 80..250 m from the old
+    // one, and returns the camp center for the caller to move the camera.
     public static Position SpawnNewBand(WorldState world, Random idRng, Position oldCampCenter)
     {
         var campCenter = NextCampPosition(idRng, oldCampCenter);
@@ -233,8 +231,7 @@ public static class MapLoader
     }
 
     // Spawns a band of 15 people with family ties and forebears, plus starting stock (wood and
-    // grass). Camp food (fruit, roots, mushrooms) is scattered separately: ScatterDecorations
-    // for a fresh world, SpawnCampFood for a successor band into an existing one.
+    // grass); camp food is scattered separately by the caller.
     private static void SpawnBand(WorldState world, Random idRng, Random namingRng, Position campCenter, long forebearDeathTick)
     {
         var rules = world.Configuration.Rules;
@@ -425,9 +422,9 @@ public static class MapLoader
         ScatterOpenWorldBiomes(world, rng, idRng, occupied);
     }
 
-    // Approach described at OpenWorldBiomeNoiseSeed. Each candidate is one independent (x, y)
-    // sample, not a cluster center: the noise fields alone decide whether it survives and what
-    // grows there, so any clustering is the noise's own spatial coherence.
+    // Same two coherent-noise-field approach as above (density and biome). Each candidate is one
+    // independent (x, y) sample, not a cluster center: the noise fields alone decide whether it
+    // survives and what grows there, so any clustering is the noise's own spatial coherence.
     private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Random idRng, SpatialSpacingIndex<Position> occupied)
     {
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);

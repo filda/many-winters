@@ -3,10 +3,9 @@ using ManyWinters.Core.Continuity;
 
 namespace ManyWinters.Godot.Ui;
 
-// Where inscriptions go once shown, in order and whole - the overlay carries only the title
-// (InscriptionOverlay). The session-only first form of the chronicle in
-// docs/chronicles-and-memory-architecture.md; the real one will be a view over graves and
-// written records.
+// Where inscriptions go once shown, in order and whole - the overlay carries only the title.
+// The session-only first form of the chronicle in docs/chronicles-and-memory-architecture.md;
+// the real one will be a view over graves and written records.
 public partial class ChroniclePanel : FloatingPanel
 {
     private const float Width = 460f;
@@ -20,9 +19,9 @@ public partial class ChroniclePanel : FloatingPanel
     private const int ScrollbarWidth = 16;
 
     // What an entry may actually use. Without it every label wraps to its own minimum, which for
-    // wrapped text is one character - the column of single letters this panel used to print
-    // (docs/todo/todo.md). Nothing up the chain hands a width down: the ScrollContainer sizes its
-    // content to the content's own minimum.
+    // wrapped text is one character - the column of single letters this panel used to print.
+    // Nothing up the chain hands a width down: the ScrollContainer sizes its content to the
+    // content's own minimum.
     private const float TextWidth = Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth;
 
     public ChroniclePanel()

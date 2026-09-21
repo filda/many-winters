@@ -205,7 +205,7 @@ public class EpitaphTests
         Assert.Contains("One man is left; he will father no child.", men.Lines);
     }
 
-    // A line nobody was ever on (see BandEnding.LastToDie) has no death to tell of.
+    // A line nobody was ever on has no death to tell of.
     [Fact]
     public void ALineWithNoLastDeathSkipsTheDeath()
     {

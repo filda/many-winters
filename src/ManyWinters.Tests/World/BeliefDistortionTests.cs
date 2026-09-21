@@ -27,8 +27,8 @@ public class BeliefDistortionTests
             },
         });
 
-    // Pinned ids, because every roll here runs on them (see WorldState.Distorted): with random
-    // ones these would re-roll the dice on every run and pass or fail by luck.
+    // Pinned ids, because every roll in distortion runs on them: random ones would re-roll the
+    // dice on every run and pass or fail by luck.
     private static Person Somebody(WorldState world, int seed, Position? position = null) =>
         world.SpawnPerson(TestIds.Person(seed), $"Person{seed}", position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 
@@ -66,13 +66,8 @@ public class BeliefDistortionTests
         Assert.NotEqual(0.9f, Heard(listener));
     }
 
-    // Nobody tells it better than they know it, so error is laid on error and a chain drifts
-    // further than a single telling.
-    //
-    // Measured across many chains rather than one, because a hop is a step of a random walk:
-    // any given second telling may happen to land back nearer the truth, and asserting on one
-    // chain would be asserting on a coin toss. What the mechanic promises is that error
-    // accumulates, and that is a statement about the average.
+    // Error compounds hop over hop, but a single chain is a random walk and any one hop could
+    // land back nearer the truth by chance, so this asserts on the average over many chains.
     [Fact]
     public void ErrorAccumulatesAlongAChainOfTellings()
     {
@@ -141,7 +136,6 @@ public class BeliefDistortionTests
         Assert.Equal(actual.Fibrousness, Heard(person), 5);
     }
 
-    // A retelling never says a substance is less than not fibrous at all.
     [Fact]
     public void NoTaleMakesASubstanceLessThanNothing()
     {
@@ -159,7 +153,7 @@ public class BeliefDistortionTests
         Assert.All(listeners, person => Assert.True(Heard(person) >= 0f));
     }
 
-    // Distortion is a rule, not a fact of life: turned off, word of mouth is exact.
+    // Distortion is a rule, not a fact of life: turn it off and word of mouth is exact.
     [Fact]
     public void WithNothingToDistortItWordPassesExactly()
     {
@@ -173,8 +167,8 @@ public class BeliefDistortionTests
         Assert.Equal(0.9f, Heard(listener), 5);
     }
 
-    // Two people who heard it from different places disagree, and nothing anywhere says which of
-    // them is wrong. Noticing the discrepancy is the play (section 6).
+    // Two people who heard it from different places disagree, and nothing says which is wrong;
+    // noticing the discrepancy is the play.
     [Fact]
     public void TwoPeopleCanEndUpDisagreeingAboutTheSameSubstance()
     {

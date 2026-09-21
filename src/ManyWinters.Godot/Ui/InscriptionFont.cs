@@ -18,13 +18,13 @@ public static class InscriptionFont
     // colour.
     public static readonly Color Ink = new(0.93f, 0.88f, 0.78f);
     // The other way round: dark ink on a pale ground, for anything set on paper rather than over
-    // the world (see PanelChrome.Parchment). Brown rather than black - nobody wrote in black.
+    // the world. Brown rather than black - nobody wrote in black.
     public static readonly Color DarkInk = new(0.20f, 0.14f, 0.09f);
 
     // The same ink stepped back, for text on paper that labels rather than speaks.
     public static readonly Color FadedDarkInk = new(0.20f, 0.14f, 0.09f, 0.62f);
 
-    // What a full-screen title is outlined with so it reads over anything (OutlinedTitleLabel).
+    // What a full-screen title is outlined with so it reads over anything.
     private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
     private const int OutlineSize = 10;
 
@@ -50,14 +50,13 @@ public static class InscriptionFont
     public static Label BodyLabel(string text, int size, Color ink) => Styled(text, Body, size, ink);
 
     // The face BodyTheme gives buttons, for a caption that has to sit inside one as a label of its
-    // own (BandPanel's rows, where the whole row is the button).
+    // own, when the whole row is the button.
     public static Label BodyBoldLabel(string text, int size, Color ink) => Styled(text, BodyBold, size, ink);
 
-    // For a line spoken about a thing rather than stated as fact - the workbench's read of what
-    // is in hand (WorkshopPanel).
+    // For a line spoken about a thing rather than stated as fact.
     public static Label BodyItalicLabel(string text, int size, Color ink) => Styled(text, BodyItalic, size, ink);
 
-    // A centred title in the shared ink-and-outline look InscriptionOverlay and PausePanel use.
+    // A centred title in the shared ink-and-outline look used over the world.
     public static Label OutlinedTitleLabel(string text, int size)
     {
         var label = TitleLabel(text, size, Ink);
@@ -67,8 +66,8 @@ public static class InscriptionFont
         return label;
     }
 
-    // A centred title in dark ink, for a title set on paper (PanelChrome.Parchment) rather than
-    // over the world - an outline there would only fatten the letters.
+    // A centred title in dark ink, for a title set on paper rather than over the world - an
+    // outline there would only fatten the letters.
     public static Label PaperTitleLabel(string text, int size)
     {
         var label = TitleLabel(text, size, DarkInk);

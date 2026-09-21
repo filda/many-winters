@@ -10,9 +10,9 @@ public static class BillboardSprite
 
     private static ImageTexture? _placeholder;
 
-    // Every live billboard, so OcclusionFader.ComputeOccludingSprites iterates a flat list each frame
-    // instead of scanning the whole scene tree. Self-cleaning via TreeExited: a sprite only
-    // leaves the tree when its owning view is freed.
+    // Every live billboard, so the occlusion fade scan iterates a flat list each frame instead of
+    // scanning the whole scene tree. Self-cleaning via TreeExited: a sprite only leaves the tree
+    // when its owning view is freed.
     private static readonly HashSet<Sprite3D> _liveSprites = new();
 
     // Tree trunk and branch layers (ResourceNodeView) never fade under occlusion yet remain in

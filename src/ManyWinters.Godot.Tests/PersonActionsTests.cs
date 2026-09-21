@@ -8,8 +8,8 @@ namespace ManyWinters.Godot.Tests;
 
 // What the player is offered for the person they have selected. Only acts on that person - out
 // of their own pack, with their own hands - since what is aimed at something else in the world
-// is asked for by pointing at it (TargetActions). Nothing here can ever be offered with nothing
-// to act on.
+// is asked for by pointing at it instead. Nothing here can ever be offered with nothing to act
+// on.
 public class PersonActionsTests
 {
     private static ActionOffer OfType<TCommand>(WorldState world, Person person) =>
@@ -107,9 +107,8 @@ public class PersonActionsTests
         Assert.Equal(ActionBlocker.NotHungry, OfType<EatCommand>(world, person).Blocker);
     }
 
-    // Pointing at the food is how the person is shown how to eat (see
-    // SkillDefinition.BaseTechnique), so never having learned cannot be what stops the offer -
-    // that would leave them no way to ever learn.
+    // Pointing at the food is how the person is shown how to eat, so never having learned cannot
+    // be what stops the offer - that would leave them no way to ever learn.
     [Fact]
     public void EatingIsNotBlockedForNotHavingBeenTaughtIt()
     {
@@ -159,7 +158,7 @@ public class PersonActionsTests
     }
 
     // Named the way it is named everywhere else: once the band has a word for that shape, the
-    // line on the card uses it (see Vocabulary).
+    // line on the card uses it.
     [Fact]
     public void PuttingDownSomethingTheBandHasNamedUsesTheirWordForIt()
     {

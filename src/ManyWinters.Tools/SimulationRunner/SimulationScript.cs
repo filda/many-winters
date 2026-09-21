@@ -115,8 +115,8 @@ public sealed class SimulationScript
 
                 break;
 
-            // The inscriptions over a band's beginning and end (see Prologue, Epitaph), so their
-            // wording can be read over many bands without playing each out.
+            // The inscriptions over a band's beginning and end, so their wording can be read over
+            // many bands without playing each out.
             case "print" when parts.Length > 1 && parts[1].Equals("prologue", StringComparison.OrdinalIgnoreCase):
                 if (World.People.All(person => !person.IsAlive))
                 {
@@ -128,7 +128,7 @@ public sealed class SimulationScript
                 output.Add(prologue.Title);
                 output.AddRange(prologue.Lines);
                 // The dash marks the closing words off from the lines: they speak to the reader,
-                // not about the band (see Inscription).
+                // not about the band.
                 output.Add($"— {prologue.Dismissal}");
                 break;
 
@@ -149,7 +149,7 @@ public sealed class SimulationScript
                 output.Add(inscription.Title);
                 output.AddRange(inscription.Lines);
                 // The dash marks the closing words off from the lines: they speak to the reader,
-                // not about the band. A band nobody is left of carries none (see Inscription).
+                // not about the band. A band nobody is left of carries none.
                 if (inscription.Dismissal is { } dismissal)
                 {
                     output.Add($"— {dismissal}");

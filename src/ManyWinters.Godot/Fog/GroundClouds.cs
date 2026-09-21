@@ -4,14 +4,14 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Fog;
 
 // Low cloud lying on never-explored ground: it rings the explored area and thickens with
-// distance from it (GroundCloudCoverage), so the unknown reads as something under cloud
-// rather than a bare sheet. Reuses CloudScatter's sprite-plus-mask-proxy pair so fog-of-war
-// leaves it unpainted the same way; the sky clouds are untouched.
+// distance from it, so the unknown reads as something under cloud rather than a bare sheet.
+// Reuses CloudScatter's sprite-plus-mask-proxy pair so fog-of-war leaves it unpainted the same
+// way; the sky clouds are untouched.
 //
-// Candidate spots are scattered once (CloudSpotScatter - Poisson-disc, spacing from the
-// clouds' own sizes so they never stack), each with a fixed size, texture and roll; each fog
-// refresh only decides which currently show. Sprites are created lazily and then hidden, not
-// freed: a spot far out toggles as the coverage band moves past it.
+// Candidate spots are scattered once with Poisson-disc spacing, from the clouds' own sizes so
+// they never stack, each with a fixed size, texture and roll; each fog refresh only decides
+// which currently show. Sprites are created lazily and then hidden, not freed: a spot far out
+// toggles as the coverage band moves past it.
 public sealed class GroundClouds
 {
     // Smaller than the sky clouds but big enough to read as a bank of cloud, not a row of
@@ -20,8 +20,8 @@ public sealed class GroundClouds
     private const float MaxWorldSize = 20f;
 
     // Where the sprite's centre sits relative to the terrain, as a fraction of its height, picked
-    // per cloud by CloudSpot.Lift. The cloud art occupies roughly the middle 27%-72% of its
-    // canvas (see art/generate_sprites.py), so a centre at ground level shows the upper half of
+    // per cloud. The cloud art occupies roughly the middle 27%-72% of its canvas (see
+    // art/generate_sprites.py), so a centre at ground level shows the upper half of
     // the puff rising out of the terrain; the top of the range lifts it clear. Standing the canvas
     // bottom on the ground (+0.5) floated the puff like a shrub, and one shared height read as a
     // row of puffs stuck into the terrain.

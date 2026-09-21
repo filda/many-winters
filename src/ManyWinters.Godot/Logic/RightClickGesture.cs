@@ -3,8 +3,8 @@ using Godot;
 namespace ManyWinters.Godot.Logic;
 
 // Telling a right-click apart from a right-drag. The right button does two jobs: held and
-// dragged it turns the camera (FreeCameraRig), pressed and released in one spot it asks what can
-// be done with whatever is under the cursor. So the menu waits for the button to come up and
+// dragged it turns the camera, pressed and released in one spot it asks what can be done with
+// whatever is under the cursor. So the menu waits for the button to come up and
 // opens only if the cursor stayed where it went down - otherwise every look around the camp
 // would end in a menu.
 //

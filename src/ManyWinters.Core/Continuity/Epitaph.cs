@@ -26,7 +26,6 @@ public static class Epitaph
         };
     }
 
-    // The survivors live on; no child will be born to them.
     private static Inscription WriteLineEnding(BandEnding ending, PhraseDraw draw, Sex sexThatEnded)
     {
         var band = ending.BandName;
@@ -99,8 +98,7 @@ public static class Epitaph
         lines.Add(UnburiedLine(ending, last));
         lines.Add(ClosingLine(ending, draw));
 
-        // No closing words for this one: nobody is left to wander or be walked among. The
-        // screen carries only the offer of a successor, and the world waits under it.
+        // No closing words for this one: nobody is left to wander or be walked among.
         return new Inscription(title, lines, null);
     }
 

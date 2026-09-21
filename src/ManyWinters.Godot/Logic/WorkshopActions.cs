@@ -6,11 +6,11 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Godot.Logic;
 
 // One thing in the pack the player can point at in the workshop: what to call it, how many of it
-// are held, and which of the two tiers it came out of (see Inventory, CarriedThing).
+// are held, and which of the two tiers it came out of.
 //
 // The count is its own field rather than part of the label, because the bench draws the thing
-// rather than naming it (WorkshopPanel) - the name is what the cursor gets, the count is a mark in
-// the corner of the picture. A made thing is always one of itself.
+// rather than naming it - the name is what the cursor gets, the count is a mark in the corner of
+// the picture. A made thing is always one of itself.
 internal readonly record struct WorkshopEntry(string Label, CarriedThing Target, int Count = 1);
 
 // What the workshop panel offers, worked out apart from the panel that draws it.
@@ -21,7 +21,7 @@ internal readonly record struct WorkshopEntry(string Label, CarriedThing Target,
 // thing is a reductive verb, two is a combinative one - the count of what was picked is the
 // whole of the question, which is what keeps that half of the panel the same shape however many
 // verbs the game grows. Making something from a recipe is the other half, and is named up front
-// (Recipes) rather than discovered by trying things.
+// rather than discovered by trying things.
 //
 // Nothing here says "you could twist that": an attempt that leads nowhere comes back as no
 // offer at all, and the panel says only that nothing comes of it. Finding out what works is the
@@ -49,8 +49,8 @@ internal static class WorkshopActions
     }
 
     // What the one thing in hand is like, in plain words - what the player has to go on when
-    // forming a hypothesis, since the numbers behind it are never shown (see MaterialWords,
-    // section 9). Only for a single pick: two things at once is a question about the pair, and
+    // forming a hypothesis, since the numbers behind it are never shown. Only for a single pick:
+    // two things at once is a question about the pair, and
     // a wall of adjectives is not an answer to it. Empty when nothing is known of the
     // substance, and the panel then says nothing rather than saying "unknown".
     internal static IReadOnlyList<string> WordsFor(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked)
@@ -82,7 +82,7 @@ internal static class WorkshopActions
     // Only for a recipe the person can actually carry out right now - how far short they are of
     // the material is not this bench's business to explain - and only for a recipe whose output
     // actually fits in the pack; one heavy enough to need placing (a storage hut) is offered from
-    // the ground instead, by pointing at it (see TargetActions).
+    // the ground instead, by pointing at it.
     internal static IReadOnlyList<ActionOffer> Recipes(WorldState world, Person person) =>
         world.Configuration.RecipeCatalog.Definitions
             .Where(recipe => person.Inventory.Get(recipe.InputItem) > 0)
@@ -96,8 +96,8 @@ internal static class WorkshopActions
             .ToList();
 
     // Eating out of the pack without leaving the bench for the card - offered only for a single
-    // pick that is actually food, the same restriction Eat carries there (see PersonActions.Eat).
-    // Not offered for a made thing at all: nothing worked ever eats.
+    // pick that is actually food, the same restriction the card's own Eat carries. Not offered
+    // for a made thing at all: nothing worked ever eats.
     internal static ActionOffer? Eat(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked) =>
         picked.Count == 1 && picked[0].Target is CarriedThing.Stock stock
             && world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(stock.Kind) > 0f
@@ -105,8 +105,8 @@ internal static class WorkshopActions
             : null;
 
     // Putting the one thing picked straight back down, the same act as the card's own Drop line
-    // (PersonActions.Drops) - a whole stack goes down at once, so the amount asked for is what is
-    // actually carried rather than the single unit a pick stands for elsewhere on this bench.
+    // - a whole stack goes down at once, so the amount asked for is what is actually carried
+    // rather than the single unit a pick stands for elsewhere on this bench.
     internal static ActionOffer? Drop(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked)
     {
         if (picked.Count != 1)
@@ -134,9 +134,8 @@ internal static class WorkshopActions
     };
 
     // One thing picked, from either tier. Raw stock is worked down - which verb is the item's
-    // own business (FormTransition, ReductiveVerbs) - and a worked thing is worked over, which
-    // today means its edge renewed (SharpenCommand). Neither branch grows as the vocabulary
-    // does, and neither names a verb to the player.
+    // own business - and a worked thing is worked over, which today means its edge renewed.
+    // Neither branch grows as the vocabulary does, and neither names a verb to the player.
     private static ActionOffer? Reductive(WorldState world, Person person, WorkshopEntry picked) => picked.Target switch
     {
         CarriedThing.Stock stock => ReductiveVerbs.For(person, stock.Kind, world.Configuration.ItemCatalog) is { } work

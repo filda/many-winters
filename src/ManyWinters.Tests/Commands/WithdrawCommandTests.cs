@@ -142,8 +142,8 @@ public class WithdrawCommandTests
         Assert.Equal(ActionBlocker.TooFar, new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
     }
 
-    // The store's shortage, not the person's - a distinction the player standing at an empty hut
-    // needs told apart from carrying nothing themselves.
+    // The store's shortage, not the person's - a distinction the player needs told apart from
+    // carrying nothing themselves.
     [Fact]
     public void AStoreWithoutEnoughOfTheItemBlocksTheWithdrawalAsStoreIsEmpty()
     {
@@ -172,8 +172,8 @@ public class WithdrawCommandTests
         Assert.Empty(building.Storage!.Assemblies);
     }
 
-    // Whole or not at all, as off a body or off the ground - and unlike a stack, of which what
-    // fits comes and the rest stays.
+    // Whole or not at all, as off a body or off the ground - unlike a stack, where what fits
+    // comes and the rest stays.
     [Fact]
     public void SomethingTooHeavyToCarryStaysOnTheShelf()
     {

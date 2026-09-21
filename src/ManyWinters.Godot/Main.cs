@@ -792,8 +792,6 @@ public partial class Main : Node3D
         _statusBar.BandRequested += ToggleBandPanel;
     }
 
-    // Opened and closed by the button on the status bar.
-    //
     // Placed on the way open rather than once at setup, so it always comes back where the player
     // expects it however far they dragged it last time: mirrored across the screen from the
     // selection panel, same inset from its own edge (see BandPanel), the band on the left and
@@ -954,25 +952,22 @@ public partial class Main : Node3D
         // Put away the old band's windows - the roster and selection are about dead people.
         CloseBandWindows();
 
-        // The new band has not walked this land yet â€” fog clears around their new camp.
+        // The new band has not walked this land yet - fog clears around their new camp.
         _world.Exploration.Reset();
-
-        // Clear selection: the old person is dead.
         _selectedPerson = null;
 
-        // Spawn the successor.
         var idRng = new Random(_world.Clock.CurrentTick.GetHashCode());
         var newCamp = MapLoader.SpawnNewBand(_world, idRng, _campCenter);
         _campCenter = newCamp;
 
-        // Reset ending tracker so the new band's fate changes are announced independently.
+        // So the new band's fate changes are announced independently of the old band's.
         _endingAnnouncements = new EndingAnnouncements();
 
         // Brief pre-roll so the new band is not standing still behind the prologue.
         _world.Advance(IdleTask.MaxPauseTicks + 1);
 
-        // Update the fog visuals so the area around the new camp is already revealed.
-        // _Process is blocked by the inscription, so we do it here instead of waiting.
+        // _Process is blocked while the inscription is up, so refresh the fog here rather than
+        // waiting for it.
         _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
@@ -981,7 +976,6 @@ public partial class Main : Node3D
         _bandArrivalTick = arrival.ArrivalTick;
         ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
-        // Move the camera to the new camp.
         var campX = (float)newCamp.X;
         var campZ = (float)newCamp.Y;
         var campHeight = _terrain.SampleHeight(campX, campZ);

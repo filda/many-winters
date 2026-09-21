@@ -7,11 +7,10 @@ namespace ManyWinters.Tests.Maps;
 
 public class MapLoaderTests
 {
-    // MapLoader.SpawnStarting recurses into a person's recorded parent before spawning that
-    // person, so World.People ends up in this order of MapLoader.StartingAgesInWinters/
-    // StartingMotherIndex/StartingFatherIndex indices - traced from those tables, not from any
-    // name. Naming is procedural now (PhoneticNameGenerator), so a test can no longer identify a
-    // starting person by a literal name; it identifies them by this fixed spawn position instead.
+    // Spawning recurses into a person's recorded parent before spawning that person, so
+    // World.People ends up in this order of original age/parent-table indices - traced from
+    // those tables, not from any name. Naming is procedural now, so a test can no longer identify
+    // a starting person by a literal name; it identifies them by this fixed spawn position instead.
     private static readonly int[] SpawnOrderOriginalIndex = [10, 1, 0, 2, 3, 6, 4, 8, 11, 5, 7, 9, 12, 13, 14];
 
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
@@ -22,13 +21,11 @@ public class MapLoaderTests
     private static List<Entity> BuildingEntities(WorldState world) =>
         world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
 
-    // person[i] in MapLoader's own index space (StartingAgesInWinters etc.), regardless of
-    // spawn order.
+    // person[i] in the original index space (age/parent tables), regardless of spawn order.
     private static Person PersonAt(LoadedMap map, int originalIndex) =>
         map.World.People[Array.IndexOf(SpawnOrderOriginalIndex, originalIndex)];
 
-    // The family table settles who bore whom before any id gets a say
-    // (MapLoader.StartingSexFor).
+    // The family table settles who bore whom before any id gets a say.
     [Fact]
     public void EveryStartingMotherIsAWomanAndEveryStartingFatherIsAMan()
     {
@@ -87,8 +84,8 @@ public class MapLoaderTests
         Assert.Equal(15, people.Count);
         Assert.Equal(SpawnOrderOriginalIndex.Length, people.Select(p => p.Name).Distinct().Count());
 
-        // A parent is always spawned before their child (MapLoader.SpawnStarting recurses into
-        // parents first) - checked here against every starting couple's children.
+        // A parent is always spawned before their child (spawning recurses into parents first) -
+        // checked here against every starting couple's children.
         Assert.True(people.IndexOf(PersonAt(map, 10)) < people.IndexOf(PersonAt(map, 0)));
         Assert.True(people.IndexOf(PersonAt(map, 1)) < people.IndexOf(PersonAt(map, 0)));
         Assert.True(people.IndexOf(PersonAt(map, 2)) < people.IndexOf(PersonAt(map, 14)));
@@ -134,7 +131,7 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // MapLoader.StartingAgesInWinters, in its own index order (0..14) rather than spawn order.
+        // Ages in original index order (0..14) rather than spawn order.
         var expectedAges = new long[] { 2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5 };
 
         Assert.Equal(expectedAges, Enumerable.Range(0, 15).Select(i => map.World.AgeInYears(PersonAt(map, i))));
@@ -145,7 +142,7 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // MapLoader.StartingMotherIndex/StartingFatherIndex, by original index rather than name.
+        // Family ties by original index rather than name.
         Assert.Same(PersonAt(map, 10), PersonAt(map, 0).Mother);
         Assert.Same(PersonAt(map, 1), PersonAt(map, 0).Father);
         Assert.Same(PersonAt(map, 10), PersonAt(map, 7).Mother);
@@ -167,7 +164,7 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // MapLoader.StartingMotherIndex/StartingFatherIndex are both null for these indices.
+        // These indices have no recorded parent.
         foreach (var index in new[] { 3, 9, 12, 10, 1 })
         {
             foreach (var parent in new[] { PersonAt(map, index).Mother, PersonAt(map, index).Father })
@@ -220,9 +217,8 @@ public class MapLoaderTests
     [Fact]
     public void LoadDefaultGivesEveryEntityTheSameIdOnEveryNewGame()
     {
-        // The starting map names ids from a seeded generator (MapLoader.EntityIdSeed), so
-        // everything keyed off an id's seed - tree variant, hairstyle, wander path - is the
-        // same world twice.
+        // The starting map names ids from a seeded generator, so everything keyed off an id's
+        // seed - tree variant, hairstyle, wander path - is the same world twice.
         var first = LoadDefault().World;
         var second = LoadDefault().World;
 
@@ -247,8 +243,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // The hand-placed stock the band brought is spawned before ScatterDecorations, so it is
-        // always the first two nodes.
+        // The hand-placed stock the band brought is spawned before decorations are scattered, so
+        // it is always the first two nodes.
         var expectedFirstTwo = new[]
         {
             (TestCatalogs.Wood, new Position(5f, 255f), 300f),
@@ -314,8 +310,8 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Sampled, not all-pairs over thousands of nodes; enough to catch a regression in
-        // MapLoader's spacing rejection (MinDecorationSpacing).
+        // Sampled, not all-pairs over thousands of nodes; enough to catch a regression in the
+        // minimum-spacing rejection.
         var positions = ResourceNodes(map.World).Skip(2).Select(n => n.Position).Take(500).ToList();
         for (var i = 0; i < positions.Count; i++)
         {
@@ -345,7 +341,7 @@ public class MapLoaderTests
             (8.587093795870151, 249.816741228071),
         };
 
-        // In MapLoader's own index order (0..14) - positions are drawn per index before anyone is
+        // In original index order (0..14) - positions are drawn per index before anyone is
         // spawned, so who stands where doesn't shift with the parents-first spawn order.
         Assert.Equal(15, map.World.People.Count);
         for (var i = 0; i < expected.Length; i++)
@@ -361,7 +357,7 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
 
-        // Every count is decided by MapLoader alone (fixed counts, seeded noise, placement
+        // Every count is decided by generation alone (fixed counts, seeded noise, placement
         // rejection), so a change in generation shows up here as a number. Update deliberately
         // when retuning; a surprise change is a bug.
         var expected = new Dictionary<EntityKindId, int>

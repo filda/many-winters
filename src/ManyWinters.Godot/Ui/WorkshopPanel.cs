@@ -5,16 +5,16 @@ using ManyWinters.Godot.Logic;
 namespace ManyWinters.Godot.Ui;
 
 // The workbench: everything one person is carrying, and the one question the player may ask of
-// it - take one thing or two, and see what comes of putting them together (see
-// docs/materials-and-crafting-architecture.md section 7).
+// it - take one thing or two, and see what comes of putting them together
+// (docs/materials-and-crafting-architecture.md section 7).
 //
 // Deliberately not a list of verbs. There is one button and it says "Make": the player forms the
 // hypothesis and the simulation rules on it, which is the loop worth playing. A menu of
 // Twist/Bind/Knap would hand them the answer before they had the idea.
 //
 // A fixed shape rather than a page that grows and shrinks with what is currently laid on it - the
-// naming panel that used to live inside it (moved out to NamingPanel) was what made it lurch
-// every time a thing nobody had a word for came off the bench.
+// naming question that used to live inside it, since moved to its own page, was what made it
+// lurch every time a thing nobody had a word for came off the bench.
 //
 // Time stands still while this is open, the way it does for the pause page - tinkering is meant
 // to be unhurried, not something to rush before the world moves on. Main holds the clock for
@@ -22,8 +22,8 @@ namespace ManyWinters.Godot.Ui;
 public partial class WorkshopPanel : FloatingPanel
 {
     // Wider than the cards that sit beside the world: this one is the workbench itself, in the
-    // middle of the screen (CentreOnScreen), and what a thing is made of runs long enough that a
-    // narrow column broke half the lines. Wide and low rather than tall - a bench is a surface
+    // middle of the screen, and what a thing is made of runs long enough that a narrow column
+    // broke half the lines. Wide and low rather than tall - a bench is a surface
     // things are laid out on, and a column of carried things reaching down the screen reads as an
     // inventory screen.
     private const float Width = 640f;
@@ -54,7 +54,7 @@ public partial class WorkshopPanel : FloatingPanel
     private const int CountFontSize = 12;
 
     // What a thing nobody has drawn yet comes out as - the same tint the world falls back to for
-    // an item with no icon (see ItemPileView).
+    // an item with no icon.
     private static readonly Color Undrawn = new(0.55f, 0.45f, 0.3f, 0.55f);
 
     private static readonly Color Ink = InscriptionFont.DarkInk;
@@ -128,9 +128,8 @@ public partial class WorkshopPanel : FloatingPanel
         _pack.AddChild(_entries);
 
         // Recipes get a section of their own beside the pack rather than a place in the same
-        // column - named up front (see WorkshopActions.Recipes), they are a different kind of
-        // choice from picking things to try, and read as one when they sit under the pack they
-        // are made out of.
+        // column - named up front, they are a different kind of choice from picking things to
+        // try, and read as one when they sit under the pack they are made out of.
         var recipeColumn = new VBoxContainer { CustomMinimumSize = new Vector2(RecipeColumnWidth, 0) };
         columns.AddChild(recipeColumn);
         recipeColumn.AddChild(InscriptionFont.BodyBoldLabel("Recipes", BodyFontSize, Ink));
@@ -144,13 +143,12 @@ public partial class WorkshopPanel : FloatingPanel
 
         // The same control the selected person's card uses, for the same reason ("same control,
         // same shape") - only ever holding offers the person can actually carry out, since a
-        // recipe with nothing to explain a grey button is not worth a line (see
-        // WorkshopActions.Recipes).
+        // recipe with nothing to explain a grey button is not worth a line.
         _recipes = new ActionList();
         _recipes.ActionInvoked += offer => RecipeInvoked?.Invoke(offer);
         recipeScroll.AddChild(_recipes);
 
-        // What the thing in hand is like, never what it is for (see MaterialWords).
+        // What the thing in hand is like, never what it is for.
         _words = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, QuietInk);
         _words.Visible = false;
         Body.AddChild(_words);
@@ -159,8 +157,7 @@ public partial class WorkshopPanel : FloatingPanel
     // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
     // rather than down in the body - they read on the selection the way the icons on a toolbar
     // do, not on the pack laid out underneath. Built while the title bar itself is still going
-    // up (see FloatingPanel.BuildTitleBarExtras), so their Pressed handlers are wired here too
-    // rather than back in _Ready.
+    // up, so their Pressed handlers are wired here too rather than back in _Ready.
     protected override void BuildTitleBarExtras(HBoxContainer titleBar)
     {
         _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
@@ -174,7 +171,7 @@ public partial class WorkshopPanel : FloatingPanel
         titleBar.AddChild(_drop);
 
         // Shown only while there is something for it to do - a button that reads "Make" while
-        // greyed out is a button promising an answer it does not have (see WorkshopActions).
+        // greyed out is a button promising an answer it does not have.
         _try = WorkshopIcons.Button("Make", WorkshopIcons.Make());
         _try.Visible = false;
         _try.Pressed += OnTryPressed;
@@ -191,13 +188,13 @@ public partial class WorkshopPanel : FloatingPanel
         ShowRecipes(recipes);
     }
 
-    // Redrawn whenever the pack does (see Show) - Main asks for both together after anything
-    // that could have changed what is carried.
+    // Redrawn whenever the pack does - the owner asks for both together after anything that
+    // could have changed what is carried.
     internal void ShowRecipes(IReadOnlyList<ActionOffer> recipes) => _recipes.Show(recipes);
 
-    // Pressed on a recipe line. Main runs it, the same way it runs a line off the person's own
-    // card (see ActionInvoked there) - this panel knows what an offer is, not what making one
-    // means for the rest of the game.
+    // Pressed on a recipe line. The owner runs it, the same way it runs a line off the person's
+    // own card - this panel knows what an offer is, not what making one means for the rest of
+    // the game.
     internal event Action<ActionOffer>? RecipeInvoked;
 
     // The clock is held while the bench is out, so the cross cannot simply hide it.
@@ -214,7 +211,7 @@ public partial class WorkshopPanel : FloatingPanel
         Closed?.Invoke();
     }
 
-    // Put away, so the world can start moving again (see Main).
+    // Put away, so the world can start moving again.
     internal event Action? Closed;
 
     // Redrawn after every attempt, because the pack has changed underneath it. A pick that is no
@@ -261,7 +258,7 @@ public partial class WorkshopPanel : FloatingPanel
     }
 
     // Eat and Drop, for whatever is picked right now - each hidden rather than disabled when
-    // there is nothing for it to do (see WorkshopActions.Eat, WorkshopActions.Drop).
+    // there is nothing for it to do.
     internal void OfferItemActions(ActionOffer? eat, ActionOffer? drop)
     {
         _eat.Visible = eat is not null;
@@ -355,9 +352,8 @@ public partial class WorkshopPanel : FloatingPanel
     }
 
     // The picture drawn for a thing, or none where nothing has been drawn for it yet - the tile
-    // then carries the blank tint instead (see ItemIcons). Internal rather than private: the
-    // naming panel wants the same picture, larger, for the thing it is asking a name for
-    // (NamingPanel).
+    // then carries the blank tint instead. Internal rather than private: the naming panel wants
+    // the same picture, larger, for the thing it is asking a name for.
     internal static Texture2D? IconFor(CarriedThing thing)
     {
         foreach (var path in ItemIcons.For(thing))

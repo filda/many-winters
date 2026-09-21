@@ -5,8 +5,7 @@ namespace ManyWinters.Core.Tasks;
 
 // "Stay with this person": walks toward the target whenever the gap opens past `keepWithin`.
 // Used for an infant keeping up with its mother (WorldState.DecideIdleTask), which is what feeds
-// it and keeps it in teaching reach. Never completes - how long to follow is WorldState.Advance's
-// call - and re-aims every tick because the target moves.
+// it and keeps it in teaching reach. Never completes; how long to follow is WorldState.Advance's call.
 public sealed class FollowTask(Person target, float keepWithin, float speedPerTick) : PersonTask
 {
     public Person Target { get; } = target;

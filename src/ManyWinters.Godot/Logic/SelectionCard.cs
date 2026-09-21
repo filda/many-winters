@@ -31,7 +31,7 @@ internal sealed record SelectionCard(
     // A belly with nothing wrong with it, someone who has begun looking for food of their own
     // accord, and someone near the end of it. The bar walks from the first to the last as hunger
     // rises, so the colour changes at the moment the person's own behaviour does.
-    // Deep enough to read on paper (PanelChrome.Parchment), which is what these are drawn on.
+    // Deep enough to read on the paper these are drawn on.
     private static readonly Color Fed = new(0.33f, 0.45f, 0.24f);
     private static readonly Color Hungry = new(0.76f, 0.58f, 0.16f);
     private static readonly Color Starving = new(0.60f, 0.18f, 0.14f);
@@ -73,13 +73,13 @@ internal sealed record SelectionCard(
     }
 
     // How full they are, not how hungry: the bar drains as hunger rises. The band's roster draws
-    // the same bar under every name (BandRoster), so the reading is built here for both.
+    // the same bar under every name, so the reading is built here for both.
     internal static MeterReading FedFor(Person person, float seekFoodThreshold) =>
         new("Fed", person.MaxHunger - person.Needs.Hunger, person.MaxHunger, HungerFill(person, seekFoodThreshold));
 
     // Green while the belly is its own business; yellow the moment hunger sends the person off to
-    // look for food by themselves (WorldState's own pass, at HungerSeekFoodThreshold), then
-    // deepening to red the rest of the way to the hunger that kills them.
+    // look for food by themselves, then deepening to red the rest of the way to the hunger that
+    // kills them.
     internal static Color HungerFill(Person person, float seekFoodThreshold)
     {
         if (person.Needs.Hunger < seekFoodThreshold)

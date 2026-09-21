@@ -23,8 +23,7 @@ public class MakingAnAxeTests
         person.KnownTechniques.Add(TestCatalogs.BasicBinding);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
 
-        // Practised hands, so this is a test of the chain rather than of the dice (see
-        // WorkAttempt).
+        // Practised hands, so this is a test of the chain rather than of the dice.
         foreach (var skill in new[] { KnapCommand.Skill, TwistCommand.Skill, BindCommand.Skill })
         {
             for (var i = 0; i < 50; i++)
@@ -67,8 +66,7 @@ public class MakingAnAxeTests
     }
 
     // Nothing was created and nothing destroyed along the way: the stone, the grass and the
-    // stick all still weigh what they did, now in one object (see FormTransition,
-    // Assembly.Joined.JointWeight).
+    // stick all still weigh what they did, now in one object.
     [Fact]
     public void ItWeighsWhatWentIntoIt()
     {

@@ -201,8 +201,8 @@ public class EatCommandTests
             world.Execute(new EatCommand(person, TestCatalogs.AppleItem));
         }
 
-        // Practice has diminishing returns (Skills.Increase): five meals leave the skill just over
-        // 2.5, where the threshold sits.
+        // Practice has diminishing returns: five meals leave the skill just over 2.5, where the
+        // threshold sits.
         Assert.Equal(2.553f, person.Skills.Get(EatCommand.Skill), 3);
         Assert.Contains(TestCatalogs.EfficientEating, person.KnownTechniques);
     }
@@ -277,8 +277,8 @@ public class EatCommandTests
         Assert.Equal(ActionBlocker.NotEdible, new EatCommand(person, TestCatalogs.WoodItem).Blocker(world));
     }
 
-    // The player's Eat button stops only at no hunger at all, not at
-    // WorldState.IsHungryEnoughToEat: being told to eat is not the same as deciding to.
+    // The player's Eat button stops only at no hunger at all, not at some lower "hungry enough"
+    // threshold: being told to eat is not the same as deciding to.
     [Fact]
     public void HavingNoHungerLeftBlocksTheMealAsNotHungry()
     {
@@ -300,8 +300,8 @@ public class EatCommandTests
         Assert.Equal(ActionBlocker.MissingMaterials, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
     }
 
-    // Knowledge is the last thing asked (see ActionBlocker.NotLearned), so a hungry person with an
-    // empty pack hears about the pack. The player's menu leans on this: it forgives NotLearned for
+    // Knowledge is the last thing asked, so a hungry person with an empty pack hears about the
+    // pack. The player's menu leans on this: it forgives NotLearned for
     // actions where directing someone teaches them, and that would hide a second reason if
     // NotLearned could win over one.
     [Fact]

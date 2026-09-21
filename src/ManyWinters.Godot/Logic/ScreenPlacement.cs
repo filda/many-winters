@@ -3,8 +3,7 @@ using Godot;
 namespace ManyWinters.Godot.Logic;
 
 // Where a panel that was placed by the cursor ends up once the screen has had its say. A menu
-// opened near the right edge would otherwise run off it, taking its own actions with it (see
-// ContextMenu).
+// opened near the right edge would otherwise run off it, taking its own actions with it.
 internal static class ScreenPlacement
 {
     // Pushed left and up only as far as it takes, never past the margin on the near side: on a
@@ -16,9 +15,9 @@ internal static class ScreenPlacement
             KeptOnAxis(position.Y, size.Y, screen.Y, margin));
 
     // Where a panel that is the thing the player is doing rather than a card beside it goes:
-    // the middle of the screen (see WorkshopPanel). On whole pixels, so the text on it is not
-    // set half a pixel off its grid, and never off the near edge on a screen too small to hold
-    // the panel - the same reasoning as KeptOnScreen.
+    // the middle of the screen. On whole pixels, so the text on it is not set half a pixel off
+    // its grid, and never off the near edge on a screen too small to hold the panel - the same
+    // reasoning as KeptOnScreen.
     internal static Vector2 Centred(Vector2 size, Vector2 screen) =>
         new(CentredOnAxis(size.X, screen.X), CentredOnAxis(size.Y, screen.Y));
 

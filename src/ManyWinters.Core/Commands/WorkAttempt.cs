@@ -40,11 +40,11 @@ public static class WorkAttempt
 
     public static float QualityFor(Person person, SkillTypeId skill) => Practised(person, skill);
 
-    // Deterministic from the person's seed, the verb and the tick, as every other roll in the
-    // game is (see WorldState.PassesCasualTeachingRoll) - never a shared Random. The tick is in
-    // the mix, so a second try is a second roll rather than the same one again; that is also why
-    // an attempt costs time (see SimulationRules.TicksPerWorkAttempt), or a player could stand
-    // at a held clock and press until it worked.
+    // Deterministic from the person's seed, the verb and the tick - never a shared Random, as
+    // every other roll in the game is (see WorldState.PassesCasualTeachingRoll). The tick is in
+    // the mix so a second try is a second roll, not the same one again; that's also why an
+    // attempt costs time (see SimulationRules.TicksPerWorkAttempt), or a player could stand at a
+    // held clock and press until it worked.
     public static bool Succeeds(Person person, SkillTypeId skill, TechniqueId verb, long tick)
     {
         var mixed = unchecked((uint)(person.Id.Seed * 73856093) ^ (uint)(StableStringHash(verb.Value) * 19349663) ^ ((uint)tick * 2654435761u));

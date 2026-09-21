@@ -15,7 +15,7 @@ internal static class CameraMotion
 
     // Clamped because both ends break the illusion: edge-on flattens the world, and overhead
     // leaves a FixedY billboard nothing to yaw toward, so every sprite renders edge-on and
-    // vanishes (see BillboardSprite).
+    // vanishes.
     internal static float Tilted(float currentDegrees, float deltaDegrees, float minDegrees, float maxDegrees) =>
         Mathf.Clamp(currentDegrees + deltaDegrees, minDegrees, maxDegrees);
 

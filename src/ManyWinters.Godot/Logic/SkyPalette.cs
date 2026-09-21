@@ -2,9 +2,9 @@ using Godot;
 
 namespace ManyWinters.Godot.Logic;
 
-// What the sky is painted with (Content/effects/sky.gdshader, set up by SkySetup) and, from the
-// same numbers, what the fog-of-war sheet fades to at its far edge: the two meet along the
-// skyline, and any difference shows there as a line across the whole map.
+// What the sky is painted with (Content/effects/sky.gdshader) and, from the same numbers, what
+// the fog-of-war sheet fades to at its far edge: the two meet along the skyline, and any
+// difference shows there as a line across the whole map.
 internal static class SkyPalette
 {
     public static readonly Color Zenith = new(0.26f, 0.45f, 0.70f);

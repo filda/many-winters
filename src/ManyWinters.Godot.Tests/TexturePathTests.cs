@@ -3,8 +3,8 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// Path building only - not ResourceNodeView.BaseTexturePathFor, which probes the filesystem
-// through ResourceLoader and would abort the run (see this project's README).
+// Path building only - not the texture lookup that probes the filesystem through ResourceLoader
+// and would abort the run (see this project's README).
 public class TexturePathTests
 {
     [Fact]

@@ -14,13 +14,13 @@ namespace ManyWinters.Godot.Ui;
 // part of the game.
 //
 // It holds no opinions of its own - what an action is called, whether it can run and why not all
-// arrive as ActionOffer (see PersonActions), and the person's own card as SelectionCard. This
-// class draws them and reports which one was pressed; the column of actions itself is the same
-// control the contextual menu draws (ActionList).
+// arrive as ActionOffer, and the person's own card as SelectionCard. This class draws them and
+// reports which one was pressed; the column of actions itself is the same control the contextual
+// menu draws.
 internal partial class SelectionPanel : PanelContainer
 {
     // Internal, because the band's roster is the same page on the other edge of the screen and
-    // mirrors both (BandPanel).
+    // mirrors both.
     internal const float Width = 300f;
     internal const float Margin = 16f;
 
@@ -59,8 +59,7 @@ internal partial class SelectionPanel : PanelContainer
     internal event Action? PackRequested;
 
     // The player pressed the name: everything the card knows about this person, laid out with
-    // room to breathe instead of squeezed into this fixed-width column. Main opens
-    // PersonDetailPanel over it.
+    // room to breathe instead of squeezed into this fixed-width column.
     internal event Action? DetailRequested;
 
     // The cross in the corner: nobody is selected any more. Main holds the selection, so it is
@@ -88,7 +87,7 @@ internal partial class SelectionPanel : PanelContainer
         OffsetTop = Margin;
 
         // The padding lives here rather than in the StyleBox, so the grain above reaches the paper's
-        // own edge instead of stopping at a clean frame (see PanelChrome.Parchment).
+        // own edge instead of stopping at a clean frame.
         var padding = new MarginContainer();
         foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
         {
@@ -109,11 +108,11 @@ internal partial class SelectionPanel : PanelContainer
         heading.AddThemeConstantOverride("separation", HeadingSpacing);
         _column.AddChild(heading);
 
-        // The whole line is the button, the same way a row of the band's own roster is
-        // (BandPanel) - the highlight the player already reads there says the same thing here:
-        // this name opens something too. Both texts ride on the button's rect rather than being
-        // laid out by it (a Button is no container), so a margin holds them where a button's own
-        // caption would sit.
+        // The whole line is the button, the same way a row of the band's own roster is - the
+        // highlight the player already reads there says the same thing here: this name opens
+        // something too. Both texts ride on the button's rect rather than being laid out by it
+        // (a Button is no container), so a margin holds them where a button's own caption would
+        // sit.
         _heading = new Button
         {
             Text = string.Empty,
@@ -167,8 +166,8 @@ internal partial class SelectionPanel : PanelContainer
         _meterRows = new MeterRows(_meters, MeterHeight, BodyFontSize);
 
         // A button, not a line of text: the pack is the way into the workshop, where what is in
-        // it can be worked (see WorkshopPanel). Left-aligned and quiet, so it still reads as part
-        // of the card rather than as a control shouting to be pressed.
+        // it can be worked. Left-aligned and quiet, so it still reads as part of the card rather
+        // than as a control shouting to be pressed.
         _carried = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
         _carried.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
         _carried.Pressed += () => PackRequested?.Invoke();
