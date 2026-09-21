@@ -40,12 +40,12 @@ internal partial class SelectionPanel : PanelContainer
     private ActionList _actions = null!;
     private Button _carried = null!;
     private Label _death = null!;
-    private VBoxContainer _knowledge = null!;
+    private Button _knowledge = null!;
     private VBoxContainer _personBody = null!;
     private Label _graveRecord = null!;
     private VBoxContainer _column = null!;
 
-    private readonly List<MeterRow> _meterRows = [];
+    private MeterRows _meterRows = null!;
 
     // Which action the player pressed. Main runs it: the panel knows what an offer is, not what
     // executing one means for the rest of the game.
@@ -53,6 +53,11 @@ internal partial class SelectionPanel : PanelContainer
 
     // The player asked to see the pack itself. Main opens the workshop over it.
     internal event Action? PackRequested;
+
+    // The player asked to see this person's full page - everything the card knows about them,
+    // laid out with room to breathe instead of squeezed into this fixed-width column. Main opens
+    // PersonDetailPanel over it.
+    internal event Action? DetailRequested;
 
     // The cross in the corner: nobody is selected any more. Main holds the selection, so it is
     // Main that lets it go - this card only says the player asked for it.
@@ -132,6 +137,7 @@ internal partial class SelectionPanel : PanelContainer
 
         _meters = new VBoxContainer();
         _personBody.AddChild(_meters);
+        _meterRows = new MeterRows(_meters, MeterHeight, BodyFontSize);
 
         // A button, not a line of text: the pack is the way into the workshop, where what is in
         // it can be worked (see WorkshopPanel). Left-aligned and quiet, so it still reads as part
@@ -144,15 +150,20 @@ internal partial class SelectionPanel : PanelContainer
         _task = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _personBody.AddChild(_task);
 
-        _personBody.AddChild(Rule());
+        _personBody.AddChild(PanelChrome.Rule());
 
         _actions = new ActionList();
         _actions.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _personBody.AddChild(_actions);
 
-        _personBody.AddChild(Rule());
+        _personBody.AddChild(PanelChrome.Rule());
 
-        _knowledge = new VBoxContainer();
+        // A button, not the list itself: a person's skills grew long enough to push the actions
+        // below them off the card, so the full list moved to its own page (PersonDetailPanel) and
+        // the card keeps only how much of it there is to read.
+        _knowledge = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
+        _knowledge.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
+        _knowledge.Pressed += () => DetailRequested?.Invoke();
         _personBody.AddChild(_knowledge);
 
         _graveRecord = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
@@ -178,7 +189,7 @@ internal partial class SelectionPanel : PanelContainer
 
         SyncKnowledge(card.KnowledgeLabel, card.Knowledge);
 
-        SyncMeters(card.Meters);
+        _meterRows.Sync(card.Meters);
         _actions.Show(offers);
     }
 
@@ -197,79 +208,10 @@ internal partial class SelectionPanel : PanelContainer
 
     internal void ClearSelection() => Visible = false;
 
-    // A line per skill under its own heading, rather than one comma-spliced sentence. Rebuilt on
-    // each refresh: a person learns something perhaps once a minute, so there is nothing here to
-    // blink.
-    private void SyncKnowledge(string label, IReadOnlyList<string> known)
-    {
-        foreach (var child in _knowledge.GetChildren())
-        {
-            child.QueueFree();
-        }
-
-        // "nothing yet" for the living, who may still learn; "nothing" for the dead, who will not.
-        var heading = known.Count > 0 ? $"{label}:" : $"{label}: {(label == "Knows" ? "nothing yet" : "nothing")}";
-        _knowledge.AddChild(InscriptionFont.BodyLabel(heading, BodyFontSize, InscriptionFont.FadedDarkInk));
-
-        foreach (var skill in known)
-        {
-            var line = InscriptionFont.BodyLabel($"  {skill}", BodyFontSize, InscriptionFont.FadedDarkInk);
-            _knowledge.AddChild(line);
-        }
-    }
-
-    // Updated in place, never freed and rebuilt: the panel refreshes on every tick, and tearing
-    // the bars down and putting them back is what made the card blink.
-    private void SyncMeters(IReadOnlyList<MeterReading> readings)
-    {
-        while (_meterRows.Count < readings.Count)
-        {
-            _meterRows.Add(NewMeter());
-        }
-
-        for (var i = 0; i < _meterRows.Count; i++)
-        {
-            _meterRows[i].Apply(i < readings.Count ? readings[i] : null);
-        }
-    }
-
-    private MeterRow NewMeter()
-    {
-        var container = new VBoxContainer();
-        _meters.AddChild(container);
-
-        var caption = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
-        container.AddChild(caption);
-
-        var bar = PanelChrome.MeterBar(MeterHeight);
-        container.AddChild(bar);
-
-        return new MeterRow(container, caption, bar);
-    }
-
-    // A hairline in the ink; the engine's own separator draws a grey bevel.
-    private static HSeparator Rule()
-    {
-        var rule = new HSeparator();
-        rule.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(InscriptionFont.DarkInk, 0.28f) });
-        return rule;
-    }
-
-    // One measure's caption and bar. Same shape as an action's row (ActionList): kept between
-    // refreshes, and given new numbers.
-    private sealed class MeterRow(VBoxContainer container, Label caption, ProgressBar bar)
-    {
-        public void Apply(MeterReading? reading)
-        {
-            container.Visible = reading is not null;
-            if (reading is not { } shown)
-            {
-                return;
-            }
-
-            caption.Text = shown.Label;
-            bar.Value = shown.Fraction;
-            bar.AddThemeStyleboxOverride("fill", PanelChrome.Filled(shown.Fill));
-        }
-    }
+    // How much there is to read, not the list itself (PersonDetailPanel has that). "Nothing yet"
+    // for the living, who may still learn; "nothing" for the dead, who will not.
+    private void SyncKnowledge(string label, IReadOnlyList<string> known) =>
+        _knowledge.Text = known.Count > 0
+            ? $"{label}: {known.Count} skill{(known.Count == 1 ? string.Empty : "s")}"
+            : $"{label}: {(label == "Knows" ? "nothing yet" : "nothing")}";
 }

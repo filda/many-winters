@@ -185,6 +185,15 @@ public static class PanelChrome
         CornerRadiusBottomRight = 3,
     };
 
+    // A hairline in the ink, between sections of a page - the engine's own separator draws a grey
+    // bevel, which is not a mark paper makes.
+    public static HSeparator Rule()
+    {
+        var rule = new HSeparator();
+        rule.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(InscriptionFont.DarkInk, 0.28f) });
+        return rule;
+    }
+
     // The age on the page: broad blotches where it was handled, and the printer's hatching under
     // them, the same diagonal stroke the sprites are drawn with. Both faint - past a certain
     // strength this stops being paper and becomes wallpaper, and the ink has to fight it.

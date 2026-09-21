@@ -40,6 +40,7 @@ public partial class Main : Node3D
     private Label _buildingsLabel = null!;
     private Label _gravesLabel = null!;
     private SelectionPanel _selectionPanel = null!;
+    private PersonDetailPanel _detailPanel = null!;
     private StatusBar _statusBar = null!;
     private InscriptionOverlay _inscriptionOverlay = null!;
     private PausePanel _pausePanel = null!;
@@ -210,8 +211,11 @@ public partial class Main : Node3D
         // Time stands still while an inscription is up: what it says is true of this moment, and
         // the player decides when the world moves on (at the start, a chance to look around before
         // hunger counts). A pause the player asked for (TogglePause) holds the clock the same way,
-        // and so does the controls page - it is read instead of playing, not while playing.
-        if (_inscriptionOverlay.Visible || _pausePanel.Visible || _helpPanel.Visible || _workshop.Visible)
+        // and so does the controls page - it is read instead of playing, not while playing. The
+        // detail page holds it for the same reason the workbench does: it is a window the player
+        // asked to have the whole screen for, not something meant to be read while the world moves
+        // on underneath it.
+        if (_inscriptionOverlay.Visible || _pausePanel.Visible || _helpPanel.Visible || _workshop.Visible || _detailPanel.Visible)
         {
             return;
         }
@@ -323,6 +327,8 @@ public partial class Main : Node3D
             {
                 _helpPanel.Dismiss();
             }
+
+            _detailPanel.Close();
         }
 
         HandleRightButton(@event);
@@ -1162,8 +1168,27 @@ public partial class Main : Node3D
         _selectionPanel = new SelectionPanel();
         _selectionPanel.ActionInvoked += OnActionInvoked;
         _selectionPanel.PackRequested += OpenWorkshop;
+        _selectionPanel.DetailRequested += OpenDetail;
         _selectionPanel.CloseRequested += ClearSelection;
         canvas.AddChild(_selectionPanel);
+
+        // Added after the card it reads from, so it draws on top of it (see FloatingPanel).
+        _detailPanel = new PersonDetailPanel();
+        _detailPanel.ActionInvoked += OnActionInvoked;
+        _detailPanel.PackRequested += OpenWorkshop;
+        _detailPanel.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        canvas.AddChild(_detailPanel);
+    }
+
+    // The player asked to see the selected person's full page.
+    private void OpenDetail()
+    {
+        if (_selectedPerson is not { } person)
+        {
+            return;
+        }
+
+        _detailPanel.Open(SelectionCard.For(_world, person), PersonActions.For(_world, person));
     }
 
     private void SetUpStatusBar(CanvasLayer canvas)
@@ -1462,16 +1487,29 @@ public partial class Main : Node3D
         if (_selectedGrave is { } grave)
         {
             _selectionPanel.ShowGrave(InspectorText.ForGraveRecord(grave, _world.Configuration.SkillCatalog));
+            _detailPanel.Close();
             return;
         }
 
         if (_selectedPerson is { } person)
         {
-            _selectionPanel.ShowPerson(SelectionCard.For(_world, person), PersonActions.For(_world, person));
+            var card = SelectionCard.For(_world, person);
+            var offers = PersonActions.For(_world, person);
+            _selectionPanel.ShowPerson(card, offers);
+
+            // Only while it is open, and on the same person it was opened for - the summary card
+            // it reads from is rebuilt every refresh, and the page left open behind it should
+            // read as true as the card does rather than freezing on the moment it was opened.
+            if (_detailPanel.Visible)
+            {
+                _detailPanel.Show(card, offers);
+            }
+
             return;
         }
 
         _selectionPanel.ClearSelection();
+        _detailPanel.Close();
     }
 
     private void RefreshInfoLabel()
