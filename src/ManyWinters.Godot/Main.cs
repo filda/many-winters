@@ -54,6 +54,31 @@ public partial class Main : Node3D
 
     // The same, for the detail page (SetUpDetailPanel).
     private Control _detailShield = null!;
+
+    // Every full-screen page or window that asks for the player's whole attention, tagged with
+    // what that means for it, in one place - so a page added here only has to be added here, and
+    // not hunted down separately everywhere something else already checks the others (which is
+    // how the pause panel twice ended up stackable behind one of these). `HoldsClock` says
+    // whether it stops the world while it is up (see _Process); `BlocksPause` says whether its
+    // being up should stop Space from opening a second window on top of it (see TogglePause). The
+    // pause panel holds the clock but is not its own blocker - TogglePause decides what pressing
+    // Space does to the one already up, not whether it is allowed to be up at all.
+    private IEnumerable<ModalWindow> ModalWindows =>
+    [
+        new ModalWindow(_inscriptionOverlay, HoldsClock: true, BlocksPause: true),
+        new ModalWindow(_pausePanel, HoldsClock: true, BlocksPause: false),
+        new ModalWindow(_helpPanel, HoldsClock: true, BlocksPause: true),
+        new ModalWindow(_workshop, HoldsClock: true, BlocksPause: true),
+        new ModalWindow(_detailPanel, HoldsClock: true, BlocksPause: true),
+        new ModalWindow(_chronicle, HoldsClock: false, BlocksPause: true),
+    ];
+
+    private bool AnyClockHoldingWindowVisible => ModalWindows.Any(window => window.HoldsClock && window.Control.Visible);
+
+    private bool AnyPauseBlockingWindowVisible => ModalWindows.Any(window => window.BlocksPause && window.Control.Visible);
+
+    private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
+
     private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
     private EndingAnnouncements _endingAnnouncements = new();
@@ -211,14 +236,10 @@ public partial class Main : Node3D
         // Also every frame: the mask camera tracks the main camera's continuous movement.
         _cloudFogMask.Update();
 
-        // Time stands still while an inscription is up: what it says is true of this moment, and
-        // the player decides when the world moves on (at the start, a chance to look around before
-        // hunger counts). A pause the player asked for (TogglePause) holds the clock the same way,
-        // and so does the controls page - it is read instead of playing, not while playing. The
-        // detail page holds it for the same reason the workbench does: it is a window the player
-        // asked to have the whole screen for, not something meant to be read while the world moves
-        // on underneath it.
-        if (_inscriptionOverlay.Visible || _pausePanel.Visible || _helpPanel.Visible || _workshop.Visible || _detailPanel.Visible)
+        // Time stands still while any window that holds the clock is up (see ModalWindows) - an
+        // inscription, a pause the player asked for, the controls page, the workbench, the detail
+        // page. Each is read or worked on instead of played through, not while playing.
+        if (AnyClockHoldingWindowVisible)
         {
             return;
         }
@@ -987,11 +1008,10 @@ public partial class Main : Node3D
     // inscription dismissal does (SetUpInscriptionOverlay), so the world resumes next frame.
     private void TogglePause()
     {
-        // None of these are the player's to override, and all already hold the clock: a pause
-        // asked for behind a page nobody can see would only surface once that page comes down, as
-        // an extra pause panel nobody asked to see waiting behind the workbench, the detail page
-        // or the chronicle.
-        if (_inscriptionOverlay.Visible || _helpPanel.Visible || _workshop.Visible || _detailPanel.Visible || _chronicle.Visible)
+        // None of these are the player's to override (see ModalWindows): a pause asked for behind
+        // a page nobody can see would only surface once that page comes down, as an extra pause
+        // panel nobody asked to see waiting behind it.
+        if (AnyPauseBlockingWindowVisible)
         {
             return;
         }
