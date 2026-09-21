@@ -987,9 +987,11 @@ public partial class Main : Node3D
     // inscription dismissal does (SetUpInscriptionOverlay), so the world resumes next frame.
     private void TogglePause()
     {
-        // Neither is the player's to override, and both already hold the clock: a pause asked for
-        // behind a page nobody can see would only surface when that page comes down.
-        if (_inscriptionOverlay.Visible || _helpPanel.Visible)
+        // None of these are the player's to override, and all already hold the clock: a pause
+        // asked for behind a page nobody can see would only surface once that page comes down, as
+        // an extra pause panel nobody asked to see waiting behind the workbench, the detail page
+        // or the chronicle.
+        if (_inscriptionOverlay.Visible || _helpPanel.Visible || _workshop.Visible || _detailPanel.Visible || _chronicle.Visible)
         {
             return;
         }
