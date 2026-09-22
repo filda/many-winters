@@ -6,9 +6,9 @@ namespace ManyWinters.Build;
 /// <summary>
 /// Runs the windowed, screenshot-driven end-to-end suite (src/ManyWinters.E2E.Tests) — golden
 /// paths through the actual rendered game, distinct from the fast <c>Test</c> target's headless
-/// unit/integration coverage. Part of <c>CI</c> so it can't silently rot, but it can only ever
-/// drive a real window (PrintWindow/PostMessage), so it skips itself rather than failing on any
-/// other OS — the same way the Linux <c>build-and-test</c> job runs this target too.
+/// unit/integration coverage. Part of the <c>CI</c> target so it can't silently rot, but it can
+/// only ever drive a real window (PrintWindow/PostMessage), so it skips itself rather than
+/// failing on any other OS; the <c>e2e-windows</c> CI job is what actually runs it.
 /// </summary>
 [TaskName("E2E")]
 [IsDependentOn(typeof(BuildTask))]

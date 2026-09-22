@@ -12,7 +12,13 @@ on:
 # cost of pinning is that this line ages silently and has to be bumped by hand.
 
 jobs:
-  build-and-test:
+  # The Cake CI target's checks run as parallel jobs rather than one serial job: each check that
+  # needs no build gets its own runner, so the (slow) build no longer holds up the line-ending or
+  # format check. Build, Test and InspectCode stay together in build-test because they share one
+  # Release build - a Cake task pulls its dependencies, so giving Test or InspectCode its own job
+  # would rebuild the solution there, or need a build artifact shuttled between jobs. Neither is
+  # worth the seconds it saves.
+  line-endings:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
@@ -22,8 +28,43 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Cake Frosting CI
-        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=CI
+      - name: Check line endings
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=LineEndings
+
+  format:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Check formatting
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=Format
+
+  # One job on purpose: Build runs once and Test and InspectCode consume it from the shared
+  # working directory. The E2E target used to sit in here too, but on ubuntu it can only ever
+  # skip itself (Windows only), so it lives in e2e-windows, where it actually runs.
+  build-test:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=Build
+
+      - name: Test
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=Test
+
+      - name: InspectCode
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=InspectCode
 
       # InspectCode names the issues it found but not where they are; the XML has the file and
       # line for each. Only worth keeping when something failed, hence the condition.
@@ -36,11 +77,16 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # build-and-test already runs the CI target, but on ubuntu-26.04 the E2E task inside it just
-  # skips itself (Windows only). This job is what actually exercises it, against a plain editor
-  # launch of the project rather than a full release export — no export templates, no publish.
+  # The windowed, screenshot-driven E2E suite, run against a plain editor launch of the project
+  # rather than a full release export - no export templates, no publish. It needs its own Windows
+  # build: it drives a real window (PrintWindow/PostMessage), which build-test's ubuntu output
+  # cannot serve. It is a hard gate on the release - publish waits on this job, so a red E2E cuts
+  # no release even when both exports are green. It runs only when shipped code changed (the same
+  # check-game-changes signal that cuts a release): a docs- or tests-only change can't break what
+  # it checks, and it does not run on pull requests, where there is no release for it to gate.
   e2e-windows:
-    needs: build-and-test
+    needs: [build-test, check-game-changes]
+    if: needs.check-game-changes.outputs.changed == 'true'
     runs-on: windows-latest
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -184,7 +230,7 @@ jobs:
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
 
   release-windows:
-    needs: [build-and-test, version]
+    needs: [build-test, version]
     runs-on: windows-latest
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -409,7 +455,7 @@ jobs:
           retention-days: 1
 
   release-linux:
-    needs: [build-and-test, version]
+    needs: [build-test, version]
     runs-on: ubuntu-26.04
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -575,7 +621,7 @@ jobs:
           retention-days: 1
 
   publish:
-    needs: [version, release-windows, release-linux]
+    needs: [version, release-windows, release-linux, e2e-windows]
     runs-on: ubuntu-26.04
     permissions:
       contents: write

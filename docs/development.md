@@ -157,9 +157,24 @@ dotnet run --project build/ManyWinters.Build.csproj -- --target=Beckett
 dotnet run --project build/ManyWinters.Build.csproj -- --target=Screenshot --out=shot.png
 ```
 
-The `CI` target is what `ci.yml` runs: the line-ending check, restore, formatting, the Release build, InspectCode and tests, stopping at the first failure. Run it before considering a change done. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build, and it is the home for every repository task that needs a process launched, a log parsed or a Win32 call made. Do not add shell scripts beside it.
+The `CI` target is the whole local gate: the line-ending check, restore, formatting, the Release build, InspectCode, tests and (on Windows) the E2E suite, stopping at the first failure. Run it before considering a change done. In CI the same checks run as parallel jobs instead of the single target — LineEndings and Format each get their own runner, Build, Test and InspectCode share one job (they need the same Release build), and the E2E suite runs in its own Windows job and gates the release. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build, and it is the home for every repository task that needs a process launched, a log parsed or a Win32 call made. Do not add shell scripts beside it.
 
 `Screenshot` captures the window's own composited surface through `PrintWindow`, so the game may be behind other windows. It picks the main window whose title starts with "ManyWinters Godot" and skips the editor; `--pid=<n>` or `--title=<prefix>` override that.
+
+**Running the E2E suite from a restrictive shell.** `GameWindow.LaunchAsync` (in `ManyWinters.Tools`) starts the game with `godot` on `PATH` by default, resolved through `MW_GODOT_EXE` if that's set. Normally it launches with `CREATE_BREAKAWAY_FROM_JOB` and that's the end of it. But some shells — the GitHub-hosted Windows runner, and an agent's sandboxed terminal — put their processes in a Windows Job Object whose policy refuses breakaway outright (Win32 error 5), and `GameWindow` then falls back to Task Scheduler, which runs the task in a fresh process tree with its own environment rather than inheriting the calling shell's `PATH`. A bare `godot` doesn't resolve there, so the fallback silently launches nothing and every E2E test times out waiting for a window that was never created — no error explaining why. Set `MW_GODOT_EXE` to the full executable path before running `--target=CI` or `--target=E2E` from such a shell:
+
+```powershell
+$env:MW_GODOT_EXE = (Get-Command godot).Source
+dotnet run --project build/ManyWinters.Build.csproj -- --target=E2E
+```
+
+Set it once as a permanent user variable instead if you want every shell to pick it up without re-exporting it:
+
+```powershell
+setx MW_GODOT_EXE "$((Get-Command godot).Source)"
+```
+
+(`setx` only affects new shells — restart the terminal, or export it manually in the current one, for it to take effect right away.)
 
 ### Editor plugins
 

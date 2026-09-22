@@ -34,8 +34,11 @@ lines away if it is ever wanted.
 saves ~40 MB of download and costs every tester a runtime install — not a trade worth
 making for an alpha.
 
-**Gated on `build-and-test`, not CodeQL.** CodeQL is a security scan; it should not be
-able to hold up a build.
+**Gated on `build-test` and the real E2E, not CodeQL.** CodeQL is a security scan; it should not be
+able to hold up a build. The windowed E2E suite (its own Windows job, `e2e-windows`) gates the
+release too: `publish` waits on it, so a red E2E cuts no release even when both exports are green.
+It runs only on the game-change pushes that cut a release, so it skips docs- or tests-only pushes
+and pull requests, where there is no release for it to gate.
 
 **Only game changes cut a release.** Changes to `src/ManyWinters.Core/`,
 `src/ManyWinters.Godot/`, `Directory.Build.props`, `ManyWinters.sln` or
