@@ -51,8 +51,8 @@ internal sealed class WorkshopController
     public Control ModalControl => _workshop;
 
     // The workbench, opened from the pack line on the selected person's card. Like the pause page
-    // it holds the clock while it is up (see Main._Process): working a thing over is meant to be
-    // unhurried.
+    // it holds the clock while it is up (see SimulationLoop.Update): working a thing over is
+    // meant to be unhurried.
     public WorkshopController(CanvasLayer canvas, WorldState world, OrderCoordinator orders)
     {
         _world = world;

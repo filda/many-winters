@@ -9,7 +9,7 @@ public sealed record SimulationPacing
 
     public double TickIntervalSeconds { get; } = 1.0;
 
-    // Renewed every tick while the person stays selected (see Main._Process); the window only
-    // runs out once selection moves on.
+    // Renewed every tick while the person stays selected (see SimulationLoop.Update); the
+    // window only runs out once selection moves on.
     public long SelectedPersonIdleGraceTicks { get; } = 5;
 }

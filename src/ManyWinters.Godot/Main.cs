@@ -35,7 +35,8 @@ public partial class Main : Node3D
     private MainUi _mainUi = null!;
     private WorldInputController _worldInput = null!;
     private BandContinuityController _continuity = null!;
-    private double _tickAccumulator;
+    private WorldFrameUpdater _worldFrameUpdater = null!;
+    private SimulationLoop _simulationLoop = null!;
     private OcclusionFader _occlusionFader = null!;
     private OrderCoordinator _orderCoordinator = null!;
 
@@ -105,11 +106,13 @@ public partial class Main : Node3D
         await Building(85, "Gathering the clouds");
         CloudScatter.Scatter(this, _terrain.Half);
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
+        _worldFrameUpdater = new WorldFrameUpdater(_cameraRig, _occlusionFader, _selection, _presenter, _cloudFogMask);
 
         await Building(90, "Setting out the band");
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
         _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _workshopController);
+        _simulationLoop = new SimulationLoop(_world, _pacing, _presenter, _cameraRig, _fogOfWar, _groundClouds, _orderCoordinator, _mainUi, _selection, _continuity);
 
         await Building(100, "The band arrives");
 
@@ -155,78 +158,8 @@ public partial class Main : Node3D
             return;
         }
 
-        _cameraRig.HandleInput((float)delta);
-        // Every frame, not per tick: the camera and the selected person's interpolated position
-        // move continuously between ticks, so what stands in the way changes continuously too.
-        _occlusionFader.Update(_selection.Person);
-        // Main._Process still drives this directly - moving it under selection's own refresh
-        // waits for Plan 8's frame-loop extraction.
-        _selection.UpdateMarker();
-        // Also every frame: hover is taken on mouse movement but can be lost without any - a
-        // person can walk out from under a resting cursor (see HoverArbiter).
-        _presenter.RevalidateHover();
-        // Also every frame: the mask camera tracks the main camera's continuous movement.
-        _cloudFogMask.Update();
-
-        // Time stands still while any registered modal that holds the clock is up (see MainUi) -
-        // an inscription, a pause the player asked for, the controls page, the workbench, the
-        // detail page. Each is read or worked on instead of played through, not while playing.
-        if (_mainUi.HoldsClock)
-        {
-            return;
-        }
-
-        _tickAccumulator += delta;
-        if (_tickAccumulator < _pacing.TickIntervalSeconds)
-        {
-            return;
-        }
-
-        _tickAccumulator -= _pacing.TickIntervalSeconds;
-        if (_selection.Person is { } selectedPerson)
-        {
-            _world.Execute(new GrantIdleGraceCommand(selectedPerson, _pacing.SelectedPersonIdleGraceTicks));
-        }
-
-        _world.Advance(1);
-        _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
-        _fogOfWar.Refresh();
-        _groundClouds.Refresh();
-        _orderCoordinator.ResolvePending();
-        _mainUi.StatusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
-        _selection.Refresh();
-        RefreshBuildingsLabel();
-        RefreshGravesLabel();
-        _continuity.AnnounceEndingIfAny();
-
-        foreach (var person in _world.People)
-        {
-            _presenter.SetPersonAlive(person.Id, person.IsAlive);
-            // A person who dies mid-stride still tweens to that tick's final position over the
-            // next second - one last visible step. Snapping (overSeconds: 0) once dead pins the
-            // corpse there with nothing left to glide.
-            _presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)_pacing.TickIntervalSeconds : 0f);
-        }
-
-        foreach (var node in _world.Entities)
-        {
-            if (node.Growth is not { } growth)
-            {
-                continue;
-            }
-
-            if (!growth.IsAlive)
-            {
-                // Nodes that withered from climate stress (see WorldState.Advance); felling
-                // removes its own view immediately.
-                _presenter.RemoveResourceNodeView(node.Id);
-                continue;
-            }
-
-            _presenter.SetResourceNodeHasFruit(node.Id, growth.RemainingAmount > 0);
-        }
-
-        GD.Print($"Tick {_world.Clock.CurrentTick}: {_world.People.Count(p => p.IsAlive)} of {_world.People.Count} people alive.");
+        _worldFrameUpdater.Update((float)delta);
+        _simulationLoop.Update(delta);
     }
 
     public override void _Input(InputEvent @event)
@@ -339,7 +272,7 @@ public partial class Main : Node3D
         _mainUi.AttachOverlaysAndPauseHelp();
         // Letting a clock-holding page this type owns go primes the tick accumulator, so the
         // world starts again on the next frame rather than a full interval later.
-        _mainUi.ClockShouldResume += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        _mainUi.ClockShouldResume += TickAsSoonAsPossible;
 
         // The workbench and the detail page keep owning their own clock-holding/pause-blocking
         // registration, since MainUi never reaches into controls it does not itself construct.
@@ -357,7 +290,7 @@ public partial class Main : Node3D
         _selection.Refreshed += RefreshInfoLabel;
         // Letting the detail page go primes the tick accumulator, so the world starts again on
         // the next frame rather than a full interval later - as dismissing the controls page does.
-        _selection.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        _selection.Closed += TickAsSoonAsPossible;
         _mainUi.StatusBar.BandRequested += _selection.ToggleBandPanel;
     }
 
@@ -369,7 +302,7 @@ public partial class Main : Node3D
         _workshopController = new WorkshopController(canvas, _world, _orderCoordinator);
         // Letting the workbench go primes the tick accumulator, so the world starts again on the
         // next frame rather than a full interval later - as dismissing the controls page does.
-        _workshopController.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        _workshopController.Closed += TickAsSoonAsPossible;
     }
 
     // After the windows, so a menu opened over one of them is on top of it; before the
@@ -419,9 +352,15 @@ public partial class Main : Node3D
     private void OnOrderCoordinatorWorldChanged()
     {
         _selection.Refresh();
-        RefreshBuildingsLabel();
-        RefreshGravesLabel();
+        _simulationLoop.RefreshBuildingsLabel();
+        _simulationLoop.RefreshGravesLabel();
     }
+
+    // Wired to every clock-holding page's own dismiss/close/resume signal (see SetUpUi,
+    // SetUpSelectionController, SetUpWorkshopController): _simulationLoop does not exist yet
+    // when those signals are first subscribed, so this reads it lazily at call time instead of
+    // being passed as a callback directly.
+    private void TickAsSoonAsPossible() => _simulationLoop.TickAsSoonAsPossible();
 
     private Position FindFreeSpawnPosition()
     {
@@ -511,27 +450,6 @@ public partial class Main : Node3D
             $"Inventory: {inventory}");
     }
 
-    private void RefreshBuildingsLabel()
-    {
-        var buildings = _world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
-        _mainUi.Inspector.ShowBuildings("Buildings: " + (buildings.Count > 0
-            ? string.Join(", ", buildings.Select(BuildingSummary))
-            : "none"));
-    }
-
     private string AgeText(Person person) =>
         DurationText.For(_world.Clock.CurrentTick - person.BirthTick, _world.Configuration.Rules.TicksPerYear, _world.Configuration.Rules.TicksPerSeason);
-
-    private void RefreshGravesLabel()
-    {
-        _mainUi.Inspector.ShowGraves($"Graves: {_world.Graves.Count}");
-    }
-
-    private static string BuildingSummary(Entity building)
-    {
-        var inventory = building.Storage!.Counts.Count > 0
-            ? string.Join(", ", building.Storage.Counts.Select(kv => $"{kv.Key} x{kv.Value}"))
-            : "empty";
-        return $"{building.Kind} #{building.Id} ({building.Condition!.Value:0}%) [{inventory}]";
-    }
 }

@@ -90,10 +90,10 @@ internal sealed class SelectionController
     }
 
     // The full page, opened from the name on the selected person's card. Like the workbench it
-    // holds the clock while it is up (see Main._Process) and shields everything under it from the
-    // click that would otherwise land on the world or another window through it - reading or
-    // acting on somebody here is meant to have the player's whole attention, the same as working
-    // something over is.
+    // holds the clock while it is up (see SimulationLoop.Update) and shields everything under it
+    // from the click that would otherwise land on the world or another window through it -
+    // reading or acting on somebody here is meant to have the player's whole attention, the same
+    // as working something over is.
     //
     // Attached rather than built alongside the rest above: the page has to land later in the
     // canvas than the workbench so it draws on top of it, and this controller is built before the

@@ -15,10 +15,10 @@ internal sealed class MainUi
 {
     // Every full-screen page or window that asks for the player's whole attention, tagged with
     // what that means for it. `HoldsClock` says whether it stops the world while it is up (see
-    // Main._Process); `BlocksPause` says whether its being up should stop Space from opening a
-    // second window on top of it (see TogglePause). The pause panel holds the clock but is not
-    // its own blocker - TogglePause decides what pressing Space does to the one already up, not
-    // whether it is allowed to be up at all.
+    // SimulationLoop.Update); `BlocksPause` says whether its being up should stop Space from
+    // opening a second window on top of it (see TogglePause). The pause panel holds the clock
+    // but is not its own blocker - TogglePause decides what pressing Space does to the one
+    // already up, not whether it is allowed to be up at all.
     private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
 
     private readonly List<ModalWindow> _modals = [];

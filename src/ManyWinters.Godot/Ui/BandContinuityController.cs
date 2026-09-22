@@ -129,8 +129,8 @@ internal sealed class BandContinuityController
         // Brief pre-roll so the new band is not standing still behind the prologue.
         _world.Advance(IdleTask.MaxPauseTicks + 1);
 
-        // Main._Process is blocked while the inscription is up, so refresh the fog here rather
-        // than waiting for it.
+        // SimulationLoop.Update is blocked while the inscription is up, so refresh the fog here
+        // rather than waiting for it.
         _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
@@ -152,8 +152,9 @@ internal sealed class BandContinuityController
         _workshop.Close();
     }
 
-    // Every inscription stops the clock until dismissed (see Main._Process); its title goes up
-    // on the overlay and the whole of it into the chronicle, where it stays for the session.
+    // Every inscription stops the clock until dismissed (see SimulationLoop.Update); its title
+    // goes up on the overlay and the whole of it into the chronicle, where it stays for the
+    // session.
     private void ShowInscription(Inscription inscription, bool offerAnotherBand)
     {
         Record(inscription);
