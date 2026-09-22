@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Windows-only: PrintWindow/PostMessage capture and input, and PNG encoding for diffs. -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.31" />
+  </ItemGroup>
+
+</Project>

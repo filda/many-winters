@@ -179,6 +179,7 @@ public sealed class InspectCodeTask : FrostingTask<BuildContext>
 [IsDependentOn(typeof(BuildTask))]
 [IsDependentOn(typeof(InspectCodeTask))]
 [IsDependentOn(typeof(TestTask))]
+[IsDependentOn(typeof(E2ETask))]
 public sealed class CiTask : FrostingTask
 {
 }

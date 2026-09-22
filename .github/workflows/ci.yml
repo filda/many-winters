@@ -36,6 +36,82 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # build-and-test already runs the CI target, but on ubuntu-26.04 the E2E task inside it just
+  # skips itself (Windows only). This job is what actually exercises it, against a plain editor
+  # launch of the project rather than a full release export — no export templates, no publish.
+  e2e-windows:
+    needs: build-and-test
+    runs-on: windows-latest
+    env:
+      GODOT_RELEASE: 4.7.1-stable
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: Cache Godot editor
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: tools/godot
+          key: godot-editor-${{ env.GODOT_RELEASE }}-mono-win64-v1
+
+      - name: Download Godot editor
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_RELEASE"
+          New-Item -ItemType Directory -Force tools/godot | Out-Null
+          Invoke-WebRequest "$base/Godot_v${env:GODOT_RELEASE}_mono_win64.zip" -OutFile godot.zip
+          Expand-Archive godot.zip -DestinationPath tools/godot
+
+      - name: Locate Godot
+        run: |
+          # The console wrapper, same reasoning as release-windows: it doesn't swallow stderr.
+          $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64_console.exe" |
+            Select-Object -First 1).FullName
+          if (-not $godot) { throw "Godot console binary not found under tools/godot" }
+          "MW_GODOT_EXE=$godot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore editor plugins
+        run: |
+          # See the equivalent step in release-windows for why the exit code is ignored here.
+          & $env:MW_GODOT_EXE --headless --path src/ManyWinters.Godot -s plug.gd install
+          "gd-plug exit code: $LASTEXITCODE"
+          if (-not (Test-Path src/ManyWinters.Godot/addons/beckett/plugin.cfg)) {
+            throw "gd-plug did not install Beckett into src/ManyWinters.Godot/addons"
+          }
+          exit 0
+
+      - name: Import assets
+        run: |
+          # First headless run builds the .godot/ import cache; a non-zero exit here is normal.
+          & $env:MW_GODOT_EXE --headless --path src/ManyWinters.Godot --import
+          "import exit code: $LASTEXITCODE"
+          exit 0
+
+      - name: Cake Frosting E2E
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=E2E
+
+      - name: Upload E2E diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-diffs
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
   codeql:
     runs-on: ubuntu-26.04
     permissions:

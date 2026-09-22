@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Deliberately not in ManyWinters.sln, same reasoning as build/ManyWinters.Build.csproj:
+    these are slow, Windows-only, need a real window and launch the full game, so they must
+    not run as part of `dotnet test ManyWinters.sln` / the fast CI gate. The E2E Cake target
+    runs `dotnet test` against this project by path instead.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ManyWinters.Tools\E2EHarness\ManyWinters.Tools.E2EHarness.csproj" />
+  </ItemGroup>
+
+</Project>
