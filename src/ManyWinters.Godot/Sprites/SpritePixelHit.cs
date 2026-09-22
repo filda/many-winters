@@ -27,11 +27,13 @@ public static class SpritePixelHit
 
     // Takes a screen point, the one thing every caller has: HoverArbiter.Revalidate has only
     // the cursor, and SpriteEntityView projects a ray hit once and tests each layer against it.
-    //
+    public static bool IsOpaqueAtScreen(Camera3D camera, Vector2 screenPosition, Sprite3D sprite, string texturePath) =>
+        IsOpaqueAtScreen(camera, screenPosition, sprite, texturePath, sprite.GlobalPosition);
+
     // spriteCenterOverride pins the plane to a stable anchor: PersonView's walk bob moves its
     // layers' Position every frame, which otherwise sweeps the sampled pixel across silhouette
     // edges under a still cursor and flickers the hover.
-    public static bool IsOpaqueAtScreen(Camera3D camera, Vector2 screenPosition, Sprite3D sprite, string texturePath, Vector3? spriteCenterOverride = null)
+    public static bool IsOpaqueAtScreen(Camera3D camera, Vector2 screenPosition, Sprite3D sprite, string texturePath, Vector3 spriteCenterOverride)
     {
         // What the player can see through, they can click through: a canopy ghosted by the
         // occlusion fade is transparent here, so the click falls through to what is visibly
@@ -41,7 +43,7 @@ public static class SpritePixelHit
             return false;
         }
 
-        if (UvAt(camera, screenPosition, sprite, spriteCenterOverride ?? sprite.GlobalPosition) is not { } uv)
+        if (UvAt(camera, screenPosition, sprite, spriteCenterOverride) is not { } uv)
         {
             return false;
         }

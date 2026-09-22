@@ -75,7 +75,7 @@ public partial class WorkshopPanel : FloatingPanel
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
     public WorkshopPanel()
-        : base("Workshop", onPaper: true, titleFontSize: TitleFontSize, fixedBodyHeight: BodyHeight)
+        : base("Workshop", BodyHeight, onPaper: true, titleFontSize: TitleFontSize)
     {
         CustomMinimumSize = new Vector2(Width, 0);
         // The bench is what the player is doing, not a card beside the world: it holds the middle
@@ -246,40 +246,62 @@ public partial class WorkshopPanel : FloatingPanel
         _pack.CustomMinimumSize = new Vector2(0, Mathf.Min(_entries.GetCombinedMinimumSize().Y, MaxPackHeight));
     }
 
-    // What the panel is currently able to offer, so the button says what pressing it would do.
+    // What the current pick would do, so the button says what pressing it would do.
     //
     // The refusal fully decides the status line rather than only filling it in when there is one
     // to show: a pick that is undone (or acted on some other way, like Eat or Drop) leaves no
     // refusal behind, and the line has to be told to go quiet rather than being left holding
-    // whatever it last said.
-    internal void Offer(ActionOffer? offer, string? refusal, IReadOnlyList<string> words)
+    // whatever it last said. An absent refusal is the empty string, not null - there is always
+    // exactly one status line, said or quiet.
+    internal void ShowOffer(ActionOffer offer, string refusal, IReadOnlyList<string> words)
+    {
+        SetWords(words);
+        _try.Visible = offer.IsAvailable;
+        _try.Text = _picked.Count > 1 ? $"Make ({_picked.Count})" : "Make";
+        SetOutcome(refusal);
+    }
+
+    // The current pick would do nothing at all - a pick of things that do not go together, or
+    // nothing picked yet.
+    internal void ClearOffer(string refusal, IReadOnlyList<string> words)
+    {
+        SetWords(words);
+        _try.Visible = false;
+        SetOutcome(refusal);
+    }
+
+    private void SetWords(IReadOnlyList<string> words)
     {
         _words.Text = words.Count > 0 ? $"It is {string.Join(", ", words)}." : string.Empty;
         _words.Visible = words.Count > 0;
-
-        _try.Visible = offer is { IsAvailable: true };
-        _try.Text = _picked.Count > 1 ? $"Make ({_picked.Count})" : "Make";
-
-        _outcome.Text = refusal ?? string.Empty;
-        _outcome.Visible = refusal is { Length: > 0 };
     }
 
-    // Eat and Drop, for whatever is picked right now - each hidden rather than disabled when
-    // there is nothing for it to do.
-    internal void OfferItemActions(ActionOffer? eat, ActionOffer? drop)
+    // Eat, for whatever is picked right now - hidden rather than disabled when there is nothing
+    // for it to do.
+    internal void ShowEat(ActionOffer eat)
     {
-        _eat.Visible = eat is not null;
-        _eat.Disabled = eat is not { IsAvailable: true };
-
-        _drop.Visible = drop is not null;
-        _drop.Disabled = drop is not { IsAvailable: true };
+        _eat.Visible = true;
+        _eat.Disabled = !eat.IsAvailable;
     }
+
+    internal void HideEat() => _eat.Visible = false;
+
+    // Drop, for whatever is picked right now - the same shape as Eat.
+    internal void ShowDrop(ActionOffer drop)
+    {
+        _drop.Visible = true;
+        _drop.Disabled = !drop.IsAvailable;
+    }
+
+    internal void HideDrop() => _drop.Visible = false;
 
     // What came of the last attempt, in the player's own words rather than a number (section 9).
-    internal void ReportOutcome(string sentence)
+    internal void ReportOutcome(string sentence) => SetOutcome(sentence);
+
+    private void SetOutcome(string text)
     {
-        _outcome.Text = sentence;
-        _outcome.Visible = sentence.Length > 0;
+        _outcome.Text = text;
+        _outcome.Visible = text.Length > 0;
     }
 
     internal IReadOnlyList<WorkshopEntry> Picked => _picked;

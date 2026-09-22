@@ -8,9 +8,10 @@ using System.Text;
 namespace ManyWinters.Tools.E2EHarness;
 
 /// <summary>
-/// Launches the game windowed (<c>godot --path src/ManyWinters.Godot</c>) and gives a test
-/// its window handle to drive and capture. One instance per test, not shared: each test starts
-/// from the boot splash so state from a previous test can't leak into the next.
+/// Launches the game windowed — by default <c>godot --path src/ManyWinters.Godot</c>, or an
+/// exported build when <c>MW_E2E_GAME_EXE</c> is set — and gives a test its window handle to
+/// drive and capture. One instance per test, not shared: each test starts from the boot splash
+/// so state from a previous test can't leak into the next.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class GameWindow : IDisposable
@@ -26,14 +27,29 @@ public sealed class GameWindow : IDisposable
     public IntPtr Handle { get; }
 
     /// <summary>
-    /// Starts the game and waits for it to report ready. Honors <c>MW_GODOT_EXE</c> (falling
-    /// back to "godot" on PATH) — that's the env var the e2e-windows CI job sets to point at
-    /// the downloaded editor binary; see .github/workflows/ci.yml.
+    /// Starts the game and waits for it to report ready. Honors <c>MW_E2E_GAME_EXE</c> (launch
+    /// that exported build directly) and, failing that, <c>MW_GODOT_EXE</c> (falling back to
+    /// "godot" on PATH) to run the project through the editor; see .github/workflows/ci.yml.
     /// </summary>
     public static async Task<GameWindow> LaunchAsync(string godotProjectPath, TimeSpan timeout)
     {
-        var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
-        var process = Start(godotExe, "--path", godotProjectPath);
+        Process process;
+        var gameExe = Environment.GetEnvironmentVariable("MW_E2E_GAME_EXE");
+        if (!string.IsNullOrWhiteSpace(gameExe))
+        {
+            // Pointed at an exported build (the release-windows CI job): launch the self-contained
+            // exe directly instead of godot --path. It is the same Godot project, so the "Main
+            // ready." log line and the "ManyWinters Godot" window title that the readiness polling
+            // below depends on are identical to the editor-launch path. Its own folder is the working
+            // directory; the game resolves its .pck and data_* next to the exe regardless, but this
+            // keeps any relative access pointed there too.
+            process = Start(gameExe, Path.GetDirectoryName(gameExe));
+        }
+        else
+        {
+            var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
+            process = Start(godotExe, null, "--path", godotProjectPath);
+        }
 
         var logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -120,11 +136,11 @@ public sealed class GameWindow : IDisposable
     /// that schtasks doesn't hand back the child's PID, so that path has to find the window by
     /// title instead (the same way ScreenshotTask.FindWindow does).
     /// </summary>
-    private static Process Start(string fileName, params string[] arguments)
+    private static Process Start(string fileName, string? workingDirectory, params string[] arguments)
     {
         try
         {
-            return StartBreakingAwayFromAnyRestrictiveJob(fileName, arguments);
+            return StartBreakingAwayFromAnyRestrictiveJob(fileName, workingDirectory, arguments);
         }
         catch (InvalidOperationException ex) when (ex.InnerException is Win32Exception { NativeErrorCode: 5 })
         {
@@ -132,7 +148,7 @@ public sealed class GameWindow : IDisposable
         }
     }
 
-    private static Process StartBreakingAwayFromAnyRestrictiveJob(string fileName, string[] arguments)
+    private static Process StartBreakingAwayFromAnyRestrictiveJob(string fileName, string? workingDirectory, string[] arguments)
     {
         const uint createBreakawayFromJob = 0x0100_0000;
 
@@ -150,7 +166,7 @@ public sealed class GameWindow : IDisposable
         var startupInfo = new NativeMethods.StartupInfo { Cb = Marshal.SizeOf<NativeMethods.StartupInfo>() };
         if (!NativeMethods.CreateProcess(
                 null, commandLineBuffer, IntPtr.Zero, IntPtr.Zero, false, createBreakawayFromJob,
-                IntPtr.Zero, null, ref startupInfo, out var processInformation))
+                IntPtr.Zero, workingDirectory, ref startupInfo, out var processInformation))
         {
             var error = Marshal.GetLastWin32Error();
             throw new InvalidOperationException(

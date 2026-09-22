@@ -70,11 +70,24 @@ public partial class NamingPanel : FloatingPanel
     // Asked here and now rather than as an interruption of something else - the description and
     // picture are what the player is looking at already, repeated here so the question is not
     // left to memory.
-    internal void Open(string description, Texture2D? image)
+    internal void Open(string description, Texture2D image)
+    {
+        _image.Texture = image;
+        _image.Visible = true;
+        OpenCore(description);
+    }
+
+    // For a thing nobody has drawn a picture of yet.
+    internal void Open(string description)
+    {
+        _image.Texture = null;
+        _image.Visible = false;
+        OpenCore(description);
+    }
+
+    private void OpenCore(string description)
     {
         _description.Text = description;
-        _image.Texture = image;
-        _image.Visible = image is not null;
         _name.Text = string.Empty;
         Visible = true;
         _name.GrabFocus();

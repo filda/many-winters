@@ -12,11 +12,7 @@ namespace ManyWinters.Godot.Ui;
 // `onPaper` picks which of the two the frame is made of: a weathered page with dark ink like the
 // player's own card, or the dark card the panels over the world use. The panel applies its own
 // chrome either way, so nobody has to remember to pair the right stylebox with the right ink.
-public partial class FloatingPanel(
-    string title,
-    bool onPaper = false,
-    int? titleFontSize = null,
-    float? fixedBodyHeight = null) : PanelContainer
+public partial class FloatingPanel : PanelContainer
 {
     private const float TitleBarHeight = 28f;
     private const int TitleFontSize = 15;
@@ -24,6 +20,11 @@ public partial class FloatingPanel(
     // Room below the panel for the status bar (StatusBar.BarHeight) plus breathing space, so a
     // tall body scrolls instead of drawing over it.
     private const float BottomClearance = 56f;
+
+    private readonly string _title;
+    private readonly bool _onPaper;
+    private readonly int? _titleFontSize;
+    private readonly float? _fixedBodyHeight;
 
     private Label _titleLabel = null!;
     private ScrollContainer _scroll = null!;
@@ -38,18 +39,35 @@ public partial class FloatingPanel(
     // pack changes - which is why it is checked every frame rather than placed once on opening.
     protected bool KeepCentred { get; init; }
 
+    // A page that grows and shrinks with what is currently laid on it, capped to the room left
+    // on screen (FitBody).
+    protected FloatingPanel(string title, bool onPaper = false, int? titleFontSize = null)
+    {
+        _title = title;
+        _onPaper = onPaper;
+        _titleFontSize = titleFontSize;
+    }
+
+    // A panel given a fixed shape (WorkshopPanel) rather than a page that grows and shrinks: its
+    // scroll area is exactly this height whatever the body inside asks for.
+    protected FloatingPanel(string title, float fixedBodyHeight, bool onPaper = false, int? titleFontSize = null)
+        : this(title, onPaper, titleFontSize)
+    {
+        _fixedBodyHeight = fixedBodyHeight;
+    }
+
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
-        AddThemeStyleboxOverride("panel", onPaper ? PanelChrome.Parchment() : PanelChrome.Background());
+        AddThemeStyleboxOverride("panel", _onPaper ? PanelChrome.Parchment() : PanelChrome.Background());
 
         // On paper the grain goes down first and the padding moves inside it, or the weathering
         // would stop short of the edge and leave a clean frame.
-        if (onPaper)
+        if (_onPaper)
         {
             // The window's own title is what decides how its page aged, so no two windows
             // are stained alike.
-            AddChild(PanelChrome.Grain(title));
+            AddChild(PanelChrome.Grain(_title));
         }
 
         var outer = new VBoxContainer();
@@ -71,10 +89,10 @@ public partial class FloatingPanel(
 
         outer.AddChild(titleBar);
 
-        _titleLabel = onPaper
-            ? InscriptionFont.BodyLabel(title, titleFontSize ?? TitleFontSize, InscriptionFont.DarkInk)
-            : new Label { Text = title };
-        if (!onPaper && titleFontSize is { } size)
+        _titleLabel = _onPaper
+            ? InscriptionFont.BodyLabel(_title, _titleFontSize ?? TitleFontSize, InscriptionFont.DarkInk)
+            : new Label { Text = _title };
+        if (!_onPaper && _titleFontSize is { } size)
         {
             _titleLabel.AddThemeFontSizeOverride("font_size", size);
         }
@@ -86,7 +104,7 @@ public partial class FloatingPanel(
         // the current selection rather than on the window as a whole (WorkshopPanel).
         BuildTitleBarExtras(titleBar);
 
-        var cross = PanelChrome.CloseCross(onPaper ? InscriptionFont.DarkInk : InscriptionFont.Ink);
+        var cross = PanelChrome.CloseCross(_onPaper ? InscriptionFont.DarkInk : InscriptionFont.Ink);
         cross.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         cross.Pressed += OnCloseRequested;
         titleBar.AddChild(cross);
@@ -142,7 +160,7 @@ public partial class FloatingPanel(
     // scroll area is exactly that height whatever the body inside asks for.
     private void FitBody()
     {
-        if (fixedBodyHeight is { } fixedHeight)
+        if (_fixedBodyHeight is { } fixedHeight)
         {
             _scroll.CustomMinimumSize = new Vector2(0, fixedHeight);
             return;
@@ -160,7 +178,7 @@ public partial class FloatingPanel(
     // stylebox and wants nothing here.
     private Control Wrapped(Control content)
     {
-        if (!onPaper)
+        if (!_onPaper)
         {
             return content;
         }
