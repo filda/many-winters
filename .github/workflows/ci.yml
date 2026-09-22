@@ -46,8 +46,11 @@ jobs:
 
   # One job on purpose: Build runs once and Test and InspectCode consume it from the shared
   # working directory. The E2E target used to sit in here too, but on ubuntu it can only ever
-  # skip itself (Windows only), so it lives in e2e-windows, where it actually runs.
+  # skip itself (Windows only), so it lives in e2e-windows, where it actually runs. It runs only
+  # after line-endings and format pass: both are cheap, and gating the build on them means a
+  # failing lint check skips the expensive build instead of running it in parallel.
   build-test:
+    needs: [line-endings, format]
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
