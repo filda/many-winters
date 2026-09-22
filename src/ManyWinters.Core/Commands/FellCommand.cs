@@ -59,11 +59,7 @@ public sealed record FellCommand(Person Person, Entity Node) : ICommand
         growth.DeathTick = world.Clock.CurrentTick;
         growth.CauseOfDeath = ResourceDeathCause.Felled;
 
-        if (world.Configuration.ResourceCatalog.Get(Node.Kind).FellLeaves is not { } leftovers)
-        {
-            return;
-        }
-
+        var leftovers = world.Configuration.ResourceCatalog.Get(Node.Kind).FellLeaves;
         for (var i = 0; i < leftovers.Count; i++)
         {
             var leftover = leftovers[i];

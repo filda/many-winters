@@ -69,7 +69,7 @@ public class ResourceDefinitionTests
         var definition = new ResourceDefinition(TestCatalogs.Wood, "Wood", TestCatalogs.Woodcutting);
 
         Assert.False(definition.CanFell);
-        Assert.Null(definition.FellLeaves);
+        Assert.Empty(definition.FellLeaves);
         Assert.Equal(float.MaxValue, definition.TicksToWither);
     }
 }

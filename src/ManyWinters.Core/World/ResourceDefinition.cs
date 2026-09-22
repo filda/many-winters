@@ -13,7 +13,8 @@ public sealed record ResourceDefinition(
     bool CanFell = false,
     // Felling does not hand the yield to the inventory: it leaves one ordinary resource node per
     // entry (typically wood), gathered like anything else, standing in for the tree. The first
-    // sits where the tree stood (a stump), further ones (a fallen log) land nearby.
+    // sits where the tree stood (a stump), further ones (a fallen log) land nearby. Empty for
+    // anything that cannot be felled.
     IReadOnlyList<ResourceDefinition.FellLeaf>? FellLeaves = null,
     // Whether felling this needs the felling skill's Tool in hand - a trunk needs an axe, a bush
     // does not, even though both use woodcutting.
@@ -28,13 +29,14 @@ public sealed record ResourceDefinition(
 {
     public sealed record FellLeaf(EntityKindId Kind, float Amount);
 
+    // C# does not allow a collection-expression default on the primary constructor parameters
+    // above, so the empty-collection normalization happens here instead.
+    public IReadOnlyList<ClimateYield> ClimateYields { get; } = ClimateYields ?? [];
+
+    public IReadOnlyList<FellLeaf> FellLeaves { get; } = FellLeaves ?? [];
+
     public float YieldMultiplierFor(Climate climate)
     {
-        if (ClimateYields is null)
-        {
-            return 1f;
-        }
-
         foreach (var entry in ClimateYields)
         {
             if (entry.Climate == climate)

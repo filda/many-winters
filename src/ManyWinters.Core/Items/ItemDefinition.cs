@@ -18,6 +18,11 @@ public sealed record ItemDefinition(
     // Flat carry-capacity bonus for having this kind at all - presence, not count. A property of
     // the shape, not the substance, so it stays on the item.
     float CarryCapacityBonus = 0f,
-    // What working this item leaves behind, one entry per verb it answers to. Null for anything
+    // What working this item leaves behind, one entry per verb it answers to. Empty for anything
     // nothing can be done to yet.
-    IReadOnlyList<FormTransition>? Transitions = null);
+    IReadOnlyList<FormTransition>? Transitions = null)
+{
+    // C# does not allow a collection-expression default on the primary constructor parameter
+    // above, so the empty-collection normalization happens here instead.
+    public IReadOnlyList<FormTransition> Transitions { get; } = Transitions ?? [];
+}

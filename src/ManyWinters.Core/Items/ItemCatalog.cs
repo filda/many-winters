@@ -93,7 +93,7 @@ public sealed class ItemCatalog
     // such verb.
     public FormTransition? TransitionFor(ItemKindId id, TechniqueId verb) =>
         _definitions.TryGetValue(id, out var definition)
-            ? definition.Transitions?.FirstOrDefault(transition => transition.Verb == verb)
+            ? definition.Transitions.FirstOrDefault(transition => transition.Verb == verb)
             : null;
 
     private float WeightOf(ItemDefinition definition) => (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume;
