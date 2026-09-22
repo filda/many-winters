@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
@@ -31,7 +33,7 @@ public sealed class GameWindow : IDisposable
     public static async Task<GameWindow> LaunchAsync(string godotProjectPath, TimeSpan timeout)
     {
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
-        var process = StartBreakingAwayFromAnyRestrictiveJob(godotExe, "--path", godotProjectPath);
+        var process = Start(godotExe, "--path", godotProjectPath);
 
         var logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -109,10 +111,28 @@ public sealed class GameWindow : IDisposable
     /// caller belongs to; under a VSTest test host that job carries UI restrictions that make
     /// the child's own window invisible to window-handle lookups, from any process, once created
     /// that way (see the comment in <see cref="LaunchAsync"/>). CREATE_BREAKAWAY_FROM_JOB frees
-    /// the child from that job so it gets an ordinary, unrestricted top-level window; it only
-    /// fails if the job explicitly disallows breakaway, which we'd rather surface than swallow.
+    /// the child from that job so it gets an ordinary, unrestricted top-level window - and is all
+    /// that's needed on a normal dev machine. On the GitHub-hosted Windows runner it instead
+    /// fails with ERROR_ACCESS_DENIED (Win32 error 5): that job's policy disallows breakaway
+    /// outright, confirmed 2026-09-22 on the e2e-windows CI job. The fallback there is Task
+    /// Scheduler: a task it runs is a fresh process tree with no calling job at all, escaping
+    /// the restriction by construction rather than needing permission to leave it - the price is
+    /// that schtasks doesn't hand back the child's PID, so that path has to find the window by
+    /// title instead (the same way ScreenshotTask.FindWindow does).
     /// </summary>
-    private static Process StartBreakingAwayFromAnyRestrictiveJob(string fileName, params string[] arguments)
+    private static Process Start(string fileName, params string[] arguments)
+    {
+        try
+        {
+            return StartBreakingAwayFromAnyRestrictiveJob(fileName, arguments);
+        }
+        catch (InvalidOperationException ex) when (ex.InnerException is Win32Exception { NativeErrorCode: 5 })
+        {
+            return StartViaScheduledTask(fileName, arguments);
+        }
+    }
+
+    private static Process StartBreakingAwayFromAnyRestrictiveJob(string fileName, string[] arguments)
     {
         const uint createBreakawayFromJob = 0x0100_0000;
 
@@ -133,12 +153,86 @@ public sealed class GameWindow : IDisposable
                 IntPtr.Zero, null, ref startupInfo, out var processInformation))
         {
             var error = Marshal.GetLastWin32Error();
-            throw new InvalidOperationException($"CreateProcess('{fileName}', CREATE_BREAKAWAY_FROM_JOB) failed with Win32 error {error}.");
+            throw new InvalidOperationException(
+                $"CreateProcess('{fileName}', CREATE_BREAKAWAY_FROM_JOB) failed with Win32 error {error}.",
+                new Win32Exception(error));
         }
 
         NativeMethods.CloseHandle(processInformation.HThread);
         NativeMethods.CloseHandle(processInformation.HProcess);
         return Process.GetProcessById(processInformation.DwProcessId);
+    }
+
+    private static Process StartViaScheduledTask(string fileName, string[] arguments)
+    {
+        var taskName = "ManyWintersE2E-" + Guid.NewGuid().ToString("N");
+        var action = Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument)));
+
+        RunSchtasks("/Create", "/TN", taskName, "/TR", action, "/SC", "ONCE", "/ST", "00:00", "/F");
+        try
+        {
+            RunSchtasks("/Run", "/TN", taskName);
+            return FindWindowByTitle(TimeSpan.FromSeconds(15));
+        }
+        finally
+        {
+            // Best-effort: the task's job is done once it's launched the process, and a leaked
+            // one-off task next to hundreds of others is exactly the kind of thing nobody notices
+            // until it's a mess, but a failure to delete it must not mask the real result above.
+            try
+            {
+                RunSchtasks("/Delete", "/TN", taskName, "/F");
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+    }
+
+    private static void RunSchtasks(params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo("schtasks.exe") { RedirectStandardError = true, UseShellExecute = false };
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start schtasks.exe.");
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"schtasks.exe {string.Join(' ', arguments)} exited with {process.ExitCode}: {error}");
+        }
+    }
+
+    /// <summary>
+    /// Same filter as build/ScreenshotTask.cs.FindWindow: the game's window title starts with
+    /// "ManyWinters Godot", the editor's ends in "- Godot Engine". Only needed by the Task
+    /// Scheduler fallback, which has no PID to poll directly - the CI job it exists for never
+    /// has an editor open on the project, so there's nothing else this could mistakenly match.
+    /// </summary>
+    private static Process FindWindowByTitle(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            foreach (var candidate in Process.GetProcesses())
+            {
+                if (candidate.MainWindowHandle != IntPtr.Zero
+                    && candidate.MainWindowTitle.StartsWith("ManyWinters Godot", StringComparison.Ordinal)
+                    && !candidate.MainWindowTitle.Contains("- Godot Engine", StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+
+                candidate.Dispose();
+            }
+
+            Thread.Sleep(200);
+        }
+
+        throw new TimeoutException($"No 'ManyWinters Godot' window appeared within {timeout} after launching via Task Scheduler.");
     }
 
     private static string Quote(string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
