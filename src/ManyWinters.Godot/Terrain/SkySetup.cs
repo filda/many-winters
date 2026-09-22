@@ -11,7 +11,9 @@ public static class SkySetup
 {
     private const string SkyShaderPath = "res://Content/effects/sky.gdshader";
 
-    public static void Create(Node3D parent)
+    // Unattached: composition code attaches it once, rather than this type reaching into a
+    // caller-owned scene tree.
+    public static WorldEnvironment Create()
     {
         var material = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(SkyShaderPath) };
         material.SetShaderParameter("zenith_color", SkyPalette.Zenith);
@@ -19,7 +21,7 @@ public static class SkySetup
         material.SetShaderParameter("streak_color", SkyPalette.Streak);
         material.SetShaderParameter("below_horizon_color", SkyPalette.BelowHorizon);
 
-        parent.AddChild(new WorldEnvironment
+        return new WorldEnvironment
         {
             Environment = new GodotEnvironment
             {
@@ -31,6 +33,6 @@ public static class SkySetup
                 AmbientLightSource = GodotEnvironment.AmbientSource.Disabled,
                 ReflectedLightSource = GodotEnvironment.ReflectionSource.Disabled,
             },
-        });
+        };
     }
 }

@@ -12,32 +12,40 @@ namespace ManyWinters.Godot.Ui;
 //
 // Raises what the player pressed rather than acting on it: composition code decides what
 // spawning, extinguishing, or revealing the map actually does to the world.
-internal sealed class DebugInspector
+//
+// A FloatingPanel subclass, not a plain object wrapping one: its body is built in this type's
+// own _Ready, the same as every other panel, so it works whether Body is filled in immediately
+// (added straight to an already-live tree) or only once its own ancestor chain - MainUi included
+// - reaches the tree.
+internal sealed partial class InspectorPanel : FloatingPanel
 {
     private const float Width = 340f;
 
-    private readonly Label _infoLabel;
-    private readonly Label _buildingsLabel;
-    private readonly Label _gravesLabel;
+    private readonly int _fontSize;
+    private Label _infoLabel = null!;
+    private Label _buildingsLabel = null!;
+    private Label _gravesLabel = null!;
 
     public event Action? SpawnRequested;
     public event Action? ExtinguishRequested;
     public event Action<bool>? RevealMapToggled;
 
-    public DebugInspector(CanvasLayer canvas, StatusBar statusBar, PresentationSettings presentation)
+    public InspectorPanel(PresentationSettings presentation)
+        : base("Inspector (debug)")
     {
-        var panel = new FloatingPanel("Inspector (debug)")
-        {
-            Position = new Vector2(16, 16),
-            Visible = false,
-            CustomMinimumSize = new Vector2(Width, 0),
-            // A Theme resource cascades its DefaultFontSize down to every descendant Control that
-            // doesn't set its own override - unlike AddThemeFontSizeOverride, which only affects
-            // the single Control it's called on.
-            Theme = new Theme { DefaultFontSize = presentation.InspectorFontSize },
-        };
-        canvas.AddChild(panel);
-        statusBar.InspectorRequested += () => panel.Visible = !panel.Visible;
+        _fontSize = presentation.InspectorFontSize;
+        Position = new Vector2(16, 16);
+        Visible = false;
+        CustomMinimumSize = new Vector2(Width, 0);
+    }
+
+    public override void _Ready()
+    {
+        // A Theme resource cascades its DefaultFontSize down to every descendant Control that
+        // doesn't set its own override - unlike AddThemeFontSizeOverride, which only affects the
+        // single Control it's called on.
+        Theme = new Theme { DefaultFontSize = _fontSize };
+        base._Ready();
 
         _infoLabel = new Label
         {
@@ -45,30 +53,30 @@ internal sealed class DebugInspector
             CustomMinimumSize = new Vector2(Width, 0),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        panel.Body.AddChild(_infoLabel);
+        Body.AddChild(_infoLabel);
 
         var spawnButton = new Button { Text = "Spawn Person" };
         spawnButton.Pressed += () => SpawnRequested?.Invoke();
-        panel.Body.AddChild(spawnButton);
+        Body.AddChild(spawnButton);
 
         // The quick way to the epitaph and its "Another band comes" offer (docs/todo/todo.md):
         // the epitaph of a band nobody is left in carries no closing words, so without this the
         // only way to that screen is playing the band out by hand.
         var extinguishButton = new Button { Text = "Extinguish Band" };
         extinguishButton.Pressed += () => ExtinguishRequested?.Invoke();
-        panel.Body.AddChild(extinguishButton);
+        Body.AddChild(extinguishButton);
 
         // A development view, not a gameplay one (see RevealableExploration): the whole map as if
         // fog of war did not exist.
         var revealMapToggle = new CheckButton { Text = "Reveal Map" };
         revealMapToggle.Toggled += toggledOn => RevealMapToggled?.Invoke(toggledOn);
-        panel.Body.AddChild(revealMapToggle);
+        Body.AddChild(revealMapToggle);
 
         _buildingsLabel = new Label { Text = "Buildings: none" };
-        panel.Body.AddChild(_buildingsLabel);
+        Body.AddChild(_buildingsLabel);
 
         _gravesLabel = new Label { Text = "Graves: none" };
-        panel.Body.AddChild(_gravesLabel);
+        Body.AddChild(_gravesLabel);
     }
 
     public void ShowInfo(string text) => _infoLabel.Text = text;

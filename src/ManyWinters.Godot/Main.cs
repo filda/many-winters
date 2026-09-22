@@ -84,19 +84,22 @@ public partial class Main : Node3D
         var campCenter = map.CampCenter;
         GetViewport().PhysicsObjectPicking = true;
         SetUpLighting();
-        SetUpSky();
+        AddChild(SkySetup.Create());
 
         await Building(55, "Laying the ground");
-        SetUpTerrain();
+        _terrain = TerrainRenderer.CreateDefault();
+        AddChild(_terrain);
 
         await Building(70, "Placing the camera");
-        SetUpCamera(campCenter);
+        var campX = (float)campCenter.X;
+        var campZ = (float)campCenter.Y;
+        var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
+        _cameraRig = new FreeCameraRig(campPosition, _presentation.InitialZoomDistance, _presentation.MinZoom, _presentation.MaxZoom, _terrain.SampleHeight);
+        AddChild(_cameraRig);
 
         await Building(75, "Drawing the pages");
-        // Built ahead of the UI rather than with the rest of the band below: SetUpUi constructs
-        // the workshop controller, which needs the order coordinator (and, through it, the
-        // presenter) already in hand.
-        _presenter = new WorldPresenter(this, _world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(_world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, _terrain.SampleHeight);
+        AddChild(_presenter);
         _occlusionFader = new OcclusionFader(_cameraRig, _presenter, _presentation);
         _orderCoordinator = new OrderCoordinator(_world, _presenter, _presentation);
         SetUpUi();
@@ -104,15 +107,25 @@ public partial class Main : Node3D
         _orderCoordinator.OrderFailed += _mainUi.StatusBar.Notify;
 
         await Building(85, "Gathering the clouds");
-        CloudScatter.Scatter(this, _terrain.Half);
-        _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
+        AddChild(CloudScatter.Scatter(_terrain.Half));
+        _cloudFogMask = new CloudFogMask(_cameraRig.Camera);
+        AddChild(_cloudFogMask);
         _worldFrameUpdater = new WorldFrameUpdater(_cameraRig, _occlusionFader, _selection, _presenter, _cloudFogMask);
 
         await Building(90, "Setting out the band");
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
-        _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
+        _groundClouds = new GroundClouds(_fogOfWar, _terrain.Half, _terrain.SampleHeight);
+        AddChild(_groundClouds.Root);
         _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _workshopController);
         _simulationLoop = new SimulationLoop(_world, _pacing, _presenter, _cameraRig, _fogOfWar, _groundClouds, _orderCoordinator, _mainUi, _selection, _continuity);
+
+        // Letting a clock-holding page go primes the tick accumulator, so the world starts again
+        // on the next frame rather than a full interval later. Input is disabled until _loading
+        // clears below, so nothing can dismiss one of these pages before the loop exists to wire
+        // straight to.
+        _selection.Closed += _simulationLoop.TickAsSoonAsPossible;
+        _workshopController.Closed += _simulationLoop.TickAsSoonAsPossible;
+        _mainUi.ClockShouldResume += _simulationLoop.TickAsSoonAsPossible;
 
         await Building(100, "The band arrives");
 
@@ -231,90 +244,30 @@ public partial class Main : Node3D
         });
     }
 
-    private void SetUpSky()
-    {
-        SkySetup.Create(this);
-    }
-
-    private void SetUpTerrain()
-    {
-        _terrain = TerrainSetup.Create(this, OnGroundInputEvent);
-    }
-
-    private void SetUpCamera(Position campCenter)
-    {
-        var campX = (float)campCenter.X;
-        var campZ = (float)campCenter.Y;
-        var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
-        _cameraRig = new FreeCameraRig(
-            this,
-            campPosition,
-            _presentation.InitialZoomDistance,
-            _presentation.MinZoom,
-            _presentation.MaxZoom,
-            _terrain.SampleHeight);
-    }
-
+    // Every control SelectionController, WorkshopController and WorldInputController operate is
+    // already built and attached by MainUi's own constructor (see MainUi); here they are only
+    // handed the bundle they need and wired to each other and to Main.
     private void SetUpUi()
     {
-        _mainUi = new MainUi(this, _world, _presentation);
+        _mainUi = new MainUi(_world, _presentation);
+        AddChild(_mainUi);
 
-        SetUpSelectionController(_mainUi.Canvas);
-        // Opposite the inspector, so the two can be open at once without covering each other.
-        _mainUi.AttachChronicle();
-        SetUpWorkshopController(_mainUi.Canvas);
-        // Attached rather than built with the rest of selection above: the detail page has to
-        // land after the workbench in the canvas so it draws on top of it.
-        _selection.AttachDetailPanel(_mainUi.Canvas);
+        _selection = new SelectionController(_mainUi.Selection, _world, _presenter, _cameraRig, _presentation);
+        _selection.Refreshed += RefreshInfoLabel;
+        _mainUi.StatusBar.BandRequested += _selection.ToggleBandPanel;
+
+        // The workbench, opened from the pack line on the selected person's card. Like the pause
+        // page it holds the clock while it is up (see _Process): working a thing over is meant to
+        // be unhurried.
+        _workshopController = new WorkshopController(_mainUi.Workshop, _world, _orderCoordinator);
         _selection.WorkshopRequested += _workshopController.Toggle;
-        SetUpWorldInputController(_mainUi.Canvas);
-        // Last: inscriptions and the pause/help pages draw over everything else built above.
-        _mainUi.AttachOverlaysAndPauseHelp();
-        // Letting a clock-holding page this type owns go primes the tick accumulator, so the
-        // world starts again on the next frame rather than a full interval later.
-        _mainUi.ClockShouldResume += TickAsSoonAsPossible;
 
-        // The workbench and the detail page keep owning their own clock-holding/pause-blocking
-        // registration, since MainUi never reaches into controls it does not itself construct.
-        _mainUi.RegisterModal(_workshopController.ModalControl, holdsClock: true, blocksPause: true);
-        _mainUi.RegisterModal(_selection.DetailModalControl, holdsClock: true, blocksPause: true);
+        _worldInput = new WorldInputController(_mainUi.ContextMenu, _world, _cameraRig, _presenter, _terrain, _selection, _orderCoordinator, _mainUi.StatusBar, _presentation);
+        _selection.ActionInvoked += _worldInput.PerformAction;
 
         _mainUi.Inspector.SpawnRequested += OnSpawnButtonPressed;
         _mainUi.Inspector.ExtinguishRequested += OnExtinguishButtonPressed;
         _mainUi.Inspector.RevealMapToggled += OnRevealMapToggled;
-    }
-
-    private void SetUpSelectionController(CanvasLayer canvas)
-    {
-        _selection = new SelectionController(canvas, _world, _presenter, _cameraRig, _presentation);
-        _selection.Refreshed += RefreshInfoLabel;
-        // Letting the detail page go primes the tick accumulator, so the world starts again on
-        // the next frame rather than a full interval later - as dismissing the controls page does.
-        _selection.Closed += TickAsSoonAsPossible;
-        _mainUi.StatusBar.BandRequested += _selection.ToggleBandPanel;
-    }
-
-    // The workbench, opened from the pack line on the selected person's card. Like the pause
-    // page it holds the clock while it is up (see _Process): working a thing over is meant to be
-    // unhurried.
-    private void SetUpWorkshopController(CanvasLayer canvas)
-    {
-        _workshopController = new WorkshopController(canvas, _world, _orderCoordinator);
-        // Letting the workbench go primes the tick accumulator, so the world starts again on the
-        // next frame rather than a full interval later - as dismissing the controls page does.
-        _workshopController.Closed += TickAsSoonAsPossible;
-    }
-
-    // After the windows, so a menu opened over one of them is on top of it; before the
-    // inscription overlay and the pause panel, which are on top of everything.
-    private void SetUpWorldInputController(CanvasLayer canvas)
-    {
-        _worldInput = new WorldInputController(canvas, _world, _cameraRig, _selection, _orderCoordinator, _mainUi.StatusBar, _presentation);
-        // Presenter is already built (see _Ready) by the time this runs; the two-step handoff
-        // exists for the construction cycle - the presenter is itself built with this
-        // controller's click callbacks - not because the presenter is unready here.
-        _worldInput.AttachPresenter(_presenter);
-        _selection.ActionInvoked += _worldInput.PerformAction;
     }
 
     // Space toggles the clock at the player's request - ignored while an inscription holds it,
@@ -356,12 +309,6 @@ public partial class Main : Node3D
         _simulationLoop.RefreshGravesLabel();
     }
 
-    // Wired to every clock-holding page's own dismiss/close/resume signal (see SetUpUi,
-    // SetUpSelectionController, SetUpWorkshopController): _simulationLoop does not exist yet
-    // when those signals are first subscribed, so this reads it lazily at call time instead of
-    // being passed as a callback directly.
-    private void TickAsSoonAsPossible() => _simulationLoop.TickAsSoonAsPossible();
-
     private Position FindFreeSpawnPosition()
     {
         const float minDistance = 1.2f;
@@ -388,26 +335,6 @@ public partial class Main : Node3D
 
         return bonds.Count > 0 ? string.Join(", ", bonds) : "none";
     }
-
-    // Passed to WorldPresenter/TerrainSetup as click callbacks before WorldInputController can
-    // exist (it is built inside SetUpUi, from SelectionController and OrderCoordinator - see
-    // _Ready), so these forward instead of being the controller's own methods directly. Each
-    // reads _worldInput lazily at call time, long after _Ready has finished building it.
-    private void OnPersonClicked(Person person, MouseButton button) => _worldInput.OnPersonClicked(person, button);
-
-    private void OnGraveSelected(Grave grave) => _worldInput.OnGraveSelected(grave);
-
-    private void OnResourceNodeClicked(Entity node, MouseButton button) => _worldInput.OnResourceNodeClicked(node, button);
-
-    private void OnItemPileClicked(Entity pile, MouseButton button) => _worldInput.OnItemPileClicked(pile, button);
-
-    private void OnBuildingClicked(Entity building, MouseButton button) => _worldInput.OnBuildingClicked(building, button);
-
-    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
-        _worldInput.OnMissedClick(camera, @event, position, normal, shapeIdx);
-
-    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
-        _worldInput.OnGroundInputEvent(camera, @event, position, normal, shapeIdx);
 
     // The debug inspector's raw dump of whoever is selected - kept apart from the player-facing
     // panels, which are SelectionController's own to refresh.

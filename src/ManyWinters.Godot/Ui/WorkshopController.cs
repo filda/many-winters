@@ -1,4 +1,3 @@
-using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Materials;
@@ -48,45 +47,30 @@ internal sealed class WorkshopController
     // not this controller's to know about.
     public event Action<Inscription>? InscriptionRecorded;
 
-    public Control ModalControl => _workshop;
-
     // The workbench, opened from the pack line on the selected person's card. Like the pause page
     // it holds the clock while it is up (see SimulationLoop.Update): working a thing over is
     // meant to be unhurried.
-    public WorkshopController(CanvasLayer canvas, WorldState world, OrderCoordinator orders)
+    public WorkshopController(WorkshopUi ui, WorldState world, OrderCoordinator orders)
     {
         _world = world;
         _orders = orders;
 
-        // Laid in before the workbench, so it sits under it and over everything added earlier -
-        // the roster, the selected person's card, the status bar, the world itself. The clock is
-        // stopped while the bench is out, and an order given into a stopped clock lands the
-        // moment it starts again (the same reasoning as InscriptionOverlay). It draws nothing:
-        // the world is what the player is working in the middle of, and the camera keeps turning
-        // over it.
-        var shield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        shield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        canvas.AddChild(shield);
-
-        _workshop = new WorkshopPanel();
-        // Tied to the panel itself rather than to the places that open and close it, of which
-        // there are several (the pack line, Escape, the way out of the panel).
-        _workshop.VisibilityChanged += () => shield.Visible = _workshop.Visible;
+        // ui.Shield is MainUi's to attach and show/hide alongside the panel (see MainUi) - the
+        // clock is stopped while the bench is out, and an order given into a stopped clock lands
+        // the moment it starts again (the same reasoning as InscriptionOverlay). It draws
+        // nothing: the world is what the player is working in the middle of, and the camera keeps
+        // turning over it.
+        _workshop = ui.Panel;
         _workshop.Closed += () => Closed?.Invoke();
         _workshop.Attempted += OnAttempt;
         _workshop.EatRequested += OnEat;
         _workshop.DropRequested += OnDrop;
         _workshop.PickChanged += RefreshOffer;
         _workshop.RecipeInvoked += OnRecipe;
-        canvas.AddChild(_workshop);
 
-        // Added after the workshop, so it lands on top of it rather than beside it - both are
-        // centred on the same spot (NamingPanel.KeepCentred), which is what makes the one read as
-        // a page laid over the other.
-        _namingPanel = new NamingPanel();
+        _namingPanel = ui.NamingPanel;
         _namingPanel.Named += OnNamed;
         _namingPanel.Cancelled += () => _justMade = null;
-        canvas.AddChild(_namingPanel);
     }
 
     public void Toggle(Person person)

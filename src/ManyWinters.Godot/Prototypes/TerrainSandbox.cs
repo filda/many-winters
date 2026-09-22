@@ -10,10 +10,6 @@ namespace ManyWinters.Godot.Prototypes;
 // and camera behavior, per conventions.md's prototype/production split.
 public partial class TerrainSandbox : Node3D
 {
-    private const string HeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
-    private const string WaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
-    private const string GroundTexturePath = "res://Content/terrain/ground.png";
-
     private const string ConiferTreePath = "res://Content/terrain/conifer_tree.png";
     private const string DeciduousTreePath = "res://Content/terrain/deciduous_tree.png";
     private const string BushPath = "res://Content/terrain/bush.png";
@@ -58,29 +54,28 @@ public partial class TerrainSandbox : Node3D
     {
         SetUpLighting();
 
-        _terrain = new TerrainRenderer(HeightmapPath, WaterwaysPath, GroundTexturePath);
-        _terrain.BuildTerrainMesh(this);
-        _terrain.BuildWaterways(this);
+        _terrain = TerrainRenderer.CreateDefault();
+        AddChild(_terrain);
 
         // Scattered across the whole loaded patch (radius = _terrain.Half), not a camp-centered
         // radius: this scene is for eyeballing decoration over real terrain at full scale.
         var rng = new Random(PropScatterSeed);
-        _terrain.ScatterDecoration(this, rng, TreeCount, new[] { ConiferTreePath }, TreeHeightMeters, TreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, DeciduousTreeCount, new[] { DeciduousTreePath }, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, BushCount, new[] { BushPath }, BushHeightMeters, BushFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, GrassCount, new[] { GrassPath }, GrassHeightMeters, GrassFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, FlowerCount, new[] { FlowerPath }, FlowerHeightMeters, FlowerFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, RockCount, new[] { RockPilePath }, RockHeightMeters, RockFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
-        _terrain.ScatterDecoration(this, rng, PersonCount, new[] { PersonTexturePath }, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, TreeCount, new[] { ConiferTreePath }, TreeHeightMeters, TreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, DeciduousTreeCount, new[] { DeciduousTreePath }, DeciduousTreeHeightMeters, DeciduousTreeFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, BushCount, new[] { BushPath }, BushHeightMeters, BushFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, GrassCount, new[] { GrassPath }, GrassHeightMeters, GrassFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, FlowerCount, new[] { FlowerPath }, FlowerHeightMeters, FlowerFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, RockCount, new[] { RockPilePath }, RockHeightMeters, RockFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
+        _terrain.ScatterDecoration(rng, PersonCount, new[] { PersonTexturePath }, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
 
         var initialPosition = new Vector3(0f, _terrain.SampleHeight(0f, 0f), 0f);
         _cameraRig = new FreeCameraRig(
-            this,
             initialPosition,
             Presentation.InitialZoomDistance,
             Presentation.MinZoom,
             Presentation.MaxZoom,
             _terrain.SampleHeight);
+        AddChild(_cameraRig);
     }
 
     public override void _Process(double delta)

@@ -35,15 +35,17 @@ public sealed class GroundClouds
     // a pattern.
     private const int Seed = 23;
 
-    private readonly Node3D _parent;
+    // Everything this type adds goes beneath its own root, never beneath Main directly:
+    // composition code attaches this once and never reaches into it again.
+    public Node3D Root { get; } = new() { Name = "GroundClouds" };
+
     private readonly FogOfWarRenderer _fogOfWar;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly IReadOnlyList<CloudSpot> _candidates;
     private readonly Dictionary<int, (Sprite3D Sprite, Sprite3D Proxy)> _live = new();
 
-    public GroundClouds(Node3D parent, FogOfWarRenderer fogOfWar, float halfExtentMeters, Func<float, float, float> sampleHeight)
+    public GroundClouds(FogOfWarRenderer fogOfWar, float halfExtentMeters, Func<float, float, float> sampleHeight)
     {
-        _parent = parent;
         _fogOfWar = fogOfWar;
         _sampleHeight = sampleHeight;
         _candidates = CloudSpotScatter.Generate(halfExtentMeters, MeanSpacingMeters, MinWorldSize, MaxWorldSize, CloudScatter.TexturePaths.Length, Seed);
@@ -76,7 +78,7 @@ public sealed class GroundClouds
                 var y = _sampleHeight(candidate.X, candidate.Z) + (candidate.Size * aboveGround);
                 var position = new Vector3(candidate.X, y, candidate.Z);
                 var texturePath = CloudScatter.TexturePaths[candidate.TextureIndex];
-                _live[i] = CloudScatter.CreateCloudWithMaskProxy(_parent, texturePath, candidate.Size, position, excludeFromOcclusionFade: true);
+                _live[i] = CloudScatter.CreateCloudWithMaskProxy(Root, texturePath, candidate.Size, position, excludeFromOcclusionFade: true);
             }
         }
     }

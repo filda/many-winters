@@ -14,8 +14,6 @@ namespace ManyWinters.Godot.Ui;
 // the one place the mutual exclusion between a person and a grave is kept.
 internal sealed class SelectionController
 {
-    private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
-
     private readonly WorldState _world;
     private readonly WorldPresenter _presenter;
     private readonly FreeCameraRig _cameraRig;
@@ -23,7 +21,7 @@ internal sealed class SelectionController
     private readonly TextureRect _marker;
     private readonly SelectionPanel _selectionPanel;
     private readonly BandPanel _bandPanel;
-    private PersonDetailPanel _detailPanel = null!;
+    private readonly PersonDetailPanel _detailPanel;
 
     private Person? _person;
     private Grave? _grave;
@@ -50,10 +48,8 @@ internal sealed class SelectionController
 
     public Grave? Grave => _grave;
 
-    public Control DetailModalControl => _detailPanel;
-
     public SelectionController(
-        CanvasLayer canvas,
+        SelectionUi ui,
         WorldState world,
         WorldPresenter presenter,
         FreeCameraRig cameraRig,
@@ -64,54 +60,28 @@ internal sealed class SelectionController
         _cameraRig = cameraRig;
         _presentation = presentation;
 
-        _marker = new TextureRect
-        {
-            Texture = ResourceLoader.Load<Texture2D>(SelectionMarkerTexturePath),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspect,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            Size = new Vector2(_presentation.SelectionMarkerScreenSize, _presentation.SelectionMarkerScreenSize),
-            Visible = false,
-        };
-        canvas.AddChild(_marker);
+        _marker = ui.Marker;
 
         // The player's panel, against the opposite edge from the debug inspector so both can be
         // open.
-        _selectionPanel = new SelectionPanel();
+        _selectionPanel = ui.Panel;
         _selectionPanel.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _selectionPanel.PackRequested += OnPackRequested;
         _selectionPanel.DetailRequested += OpenDetail;
         _selectionPanel.CloseRequested += Clear;
-        canvas.AddChild(_selectionPanel);
 
-        _bandPanel = new BandPanel();
+        _bandPanel = ui.BandPanel;
         _bandPanel.PersonChosen += SelectAndFocus;
-        canvas.AddChild(_bandPanel);
-    }
 
-    // The full page, opened from the name on the selected person's card. Like the workbench it
-    // holds the clock while it is up (see SimulationLoop.Update) and shields everything under it
-    // from the click that would otherwise land on the world or another window through it -
-    // reading or acting on somebody here is meant to have the player's whole attention, the same
-    // as working something over is.
-    //
-    // Attached rather than built alongside the rest above: the page has to land later in the
-    // canvas than the workbench so it draws on top of it, and this controller is built before the
-    // workbench exists.
-    public void AttachDetailPanel(CanvasLayer canvas)
-    {
-        // Laid in before the page, so it sits under it and over everything added earlier - the
-        // world, the status bar, the roster, the selected person's card, the workbench.
-        var shield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        shield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        canvas.AddChild(shield);
-
-        _detailPanel = new PersonDetailPanel();
-        _detailPanel.VisibilityChanged += () => shield.Visible = _detailPanel.Visible;
+        // The full page, opened from the name on the selected person's card. Like the workbench
+        // it holds the clock while it is up (see SimulationLoop.Update) and shields everything
+        // under it from the click that would otherwise land on the world or another window
+        // through it - reading or acting on somebody here is meant to have the player's whole
+        // attention, the same as working something over is.
+        _detailPanel = ui.DetailPanel;
         _detailPanel.Closed += () => Closed?.Invoke();
         _detailPanel.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _detailPanel.PackRequested += OnPackRequested;
-        canvas.AddChild(_detailPanel);
     }
 
     public void Select(Person person)

@@ -3,16 +3,26 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Ui;
 
+// Everything SelectionController shows about who is picked: the marker over their head, the
+// card, the roster, and the full page behind the card. Built here, in the one order the screen
+// draws them, so SelectionController only ever wires behaviour onto controls it did not itself
+// create or attach.
+internal sealed record SelectionUi(TextureRect Marker, SelectionPanel Panel, BandPanel BandPanel, PersonDetailPanel DetailPanel);
+
+// Everything WorkshopController shows: the workbench itself and the naming question laid over
+// it. The shield that blocks the world while it is open is MainUi's alone to show and hide (see
+// its constructor), so it is not handed down here.
+internal sealed record WorkshopUi(WorkshopPanel Panel, NamingPanel NamingPanel);
+
 // The screen's own furniture: the status bar, the debug inspector, the chronicle, the
-// inscription overlay, and the pause and help pages. What a page is for the world - whether it
-// holds the clock, whether it blocks a second one opening on top of it - is decided in exactly
-// one registry here rather than read off scattered `Control.Visible` checks.
-//
-// SelectionController, WorkshopController, and WorldInputController keep owning their own
-// controls; they attach them to Canvas and register them here explicitly (RegisterModal)
-// instead of this type reaching into them.
-internal sealed class MainUi
+// inscription overlay, and the pause and help pages - plus every control SelectionController,
+// WorkshopController, and WorldInputController operate. This is the one place that builds and
+// attaches every one of them, in the order the screen draws them; the controllers above only
+// wire behaviour onto what they are handed (see SelectionUi, WorkshopUi).
+internal sealed partial class MainUi : CanvasLayer
 {
+    private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
+
     // Every full-screen page or window that asks for the player's whole attention, tagged with
     // what that means for it. `HoldsClock` says whether it stops the world while it is up (see
     // SimulationLoop.Update); `BlocksPause` says whether its being up should stop Space from
@@ -30,15 +40,19 @@ internal sealed class MainUi
     // type has no simulation clock of its own to prime.
     public event Action? ClockShouldResume;
 
-    public CanvasLayer Canvas { get; }
-
     public StatusBar StatusBar { get; }
 
-    public ChroniclePanel Chronicle { get; private set; } = null!;
+    public ChroniclePanel Chronicle { get; }
 
-    public InscriptionOverlay InscriptionOverlay { get; private set; } = null!;
+    public InscriptionOverlay InscriptionOverlay { get; }
 
-    public DebugInspector Inspector { get; }
+    public InspectorPanel Inspector { get; }
+
+    public SelectionUi Selection { get; }
+
+    public WorkshopUi Workshop { get; }
+
+    public ContextMenu ContextMenu { get; }
 
     // True while any registered control that holds the clock is visible.
     public bool HoldsClock => _modals.Any(modal => modal.HoldsClock && modal.Control.Visible);
@@ -47,53 +61,111 @@ internal sealed class MainUi
     // it is visible.
     public bool BlocksPause => _modals.Any(modal => modal.BlocksPause && modal.Control.Visible);
 
-    public MainUi(Node parent, WorldState world, PresentationSettings presentation)
+    private readonly WorldState _world;
+
+    public MainUi(WorldState world, PresentationSettings presentation)
     {
-        Canvas = new CanvasLayer();
-        parent.AddChild(Canvas);
+        _world = world;
 
         // First: it carries the buttons the windows below hang their own toggles on.
         StatusBar = new StatusBar();
         StatusBar.AddThemeStyleboxOverride("panel", PanelChrome.Background());
-        Canvas.AddChild(StatusBar);
-        StatusBar.SetTick(world.Clock.CurrentTick, world.CurrentSeason);
+        AddChild(StatusBar);
+        // Not ticked here: StatusBar builds _tickLabel in its own _Ready, which needs it inside
+        // the tree - not yet true during this constructor (see this type's own _Ready).
 
-        Inspector = new DebugInspector(Canvas, StatusBar, presentation);
+        Inspector = new InspectorPanel(presentation);
+        AddChild(Inspector);
+        StatusBar.InspectorRequested += () => Inspector.Visible = !Inspector.Visible;
+
+        // The player's own read of who is selected: the marker over their head, the card, and
+        // the band's roster - built next so they sit above the status bar and under everything
+        // that follows.
+        var marker = new TextureRect
+        {
+            Texture = ResourceLoader.Load<Texture2D>(SelectionMarkerTexturePath),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspect,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Size = new Vector2(presentation.SelectionMarkerScreenSize, presentation.SelectionMarkerScreenSize),
+            Visible = false,
+        };
+        AddChild(marker);
+
+        var selectionPanel = new SelectionPanel();
+        AddChild(selectionPanel);
+
+        var bandPanel = new BandPanel();
+        AddChild(bandPanel);
+
+        // Opposite the inspector, so the two can be open at once without covering each other.
+        // Positioned in _Ready, not here: GetViewport() needs this CanvasLayer inside the tree,
+        // which it is not yet - composition code attaches it only once this constructor returns.
+        Chronicle = new ChroniclePanel();
+        AddChild(Chronicle);
+        StatusBar.ChronicleRequested += Chronicle.Toggle;
+        RegisterModal(Chronicle, holdsClock: false, blocksPause: true);
+
+        // The workbench. Laid in before the panel itself, so the shield sits under it and over
+        // everything added earlier - the roster, the selected person's card, the status bar, the
+        // world itself. The clock is stopped while the bench is out; it draws nothing, since the
+        // world is what the player is working in the middle of and the camera keeps turning
+        // over it.
+        var workshopShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        workshopShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        AddChild(workshopShield);
+
+        var workshopPanel = new WorkshopPanel();
+        workshopPanel.VisibilityChanged += () => workshopShield.Visible = workshopPanel.Visible;
+        AddChild(workshopPanel);
+
+        // Added after the workshop, so it lands on top of it rather than beside it - both are
+        // centred on the same spot (NamingPanel.KeepCentred), which is what makes the one read as
+        // a page laid over the other.
+        var namingPanel = new NamingPanel();
+        AddChild(namingPanel);
+
+        Workshop = new WorkshopUi(workshopPanel, namingPanel);
+        RegisterModal(workshopPanel, holdsClock: true, blocksPause: true);
+
+        // The full page behind the selected person's card. Laid in after the workbench, so it
+        // sits under it and over everything added earlier, and drawn to land later than the
+        // workbench so it covers it - reading or acting on somebody here is meant to have the
+        // player's whole attention, the same as working something over is.
+        var detailShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        detailShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        AddChild(detailShield);
+
+        var detailPanel = new PersonDetailPanel();
+        detailPanel.VisibilityChanged += () => detailShield.Visible = detailPanel.Visible;
+        AddChild(detailPanel);
+
+        Selection = new SelectionUi(marker, selectionPanel, bandPanel, detailPanel);
+        RegisterModal(detailPanel, holdsClock: true, blocksPause: true);
+
+        // After the windows, so a menu opened over one of them is on top of it; before the
+        // inscription overlay and the pause panel, which are on top of everything.
+        ContextMenu = new ContextMenu();
+        AddChild(ContextMenu);
 
         // Built here so callers that only need Show/Record never construct a PausePanel or
         // HelpPanel of their own; the fields stay private since nothing outside this type reads
         // their visibility directly (see HoldsClock/BlocksPause).
         _pausePanel = new PausePanel();
         _helpPanel = new HelpPanel();
-    }
 
-    // Called once SelectionController has added its own pieces to the canvas - the chronicle
-    // sits after the roster and the selection card in the canvas order today.
-    public void AttachChronicle()
-    {
-        Chronicle = new ChroniclePanel
-        {
-            Position = new Vector2(Canvas.GetViewport().GetVisibleRect().Size.X - 476f, 16f),
-        };
-        Canvas.AddChild(Chronicle);
-        StatusBar.ChronicleRequested += Chronicle.Toggle;
-        RegisterModal(Chronicle, holdsClock: false, blocksPause: true);
-    }
-
-    // Called last, after the workbench, the detail page, and world input have all added their
-    // own controls - inscriptions and the pause/help pages draw over everything else.
-    public void AttachOverlaysAndPauseHelp()
-    {
+        // Last of all: inscriptions and the pause/help pages draw over everything else built
+        // above.
         InscriptionOverlay = new InscriptionOverlay();
         // The clock stood still, so the next tick is due the moment the inscription comes down -
         // a full interval later read as the world taking a second to notice.
         InscriptionOverlay.Dismissed += () => ClockShouldResume?.Invoke();
-        Canvas.AddChild(InscriptionOverlay);
+        AddChild(InscriptionOverlay);
         RegisterModal(InscriptionOverlay, holdsClock: true, blocksPause: true);
 
         // The cross on the page is the other half of Space: both let the world go again.
         _pausePanel.Resumed += HidePause;
-        Canvas.AddChild(_pausePanel);
+        AddChild(_pausePanel);
         RegisterModal(_pausePanel, holdsClock: true, blocksPause: false);
 
         // Last of all, so the controls can be read over whatever else is up. Opened and closed
@@ -101,14 +173,23 @@ internal sealed class MainUi
         // letting it go primes the tick accumulator so the world starts again on the next frame
         // rather than a full interval later.
         _helpPanel.Dismissed += () => ClockShouldResume?.Invoke();
-        Canvas.AddChild(_helpPanel);
+        AddChild(_helpPanel);
         StatusBar.HelpRequested += _helpPanel.Toggle;
         RegisterModal(_helpPanel, holdsClock: true, blocksPause: true);
     }
 
-    // For controls SelectionController, WorkshopController, and WorldInputController keep
-    // owning: their visibility still has to count toward HoldsClock/BlocksPause.
-    public void RegisterModal(Control control, bool holdsClock, bool blocksPause) =>
+    // Two things the constructor above cannot finish: Chronicle's position needs GetViewport(),
+    // and StatusBar's tick label is built in StatusBar's own _Ready - both need this CanvasLayer
+    // inside the tree, which is not yet true while this constructor runs.
+    public override void _Ready()
+    {
+        Chronicle.Position = new Vector2(GetViewport().GetVisibleRect().Size.X - 476f, 16f);
+        StatusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
+    }
+
+    // Every registration happens inside this constructor now that MainUi builds and attaches
+    // every control itself; nothing outside this type calls it any more.
+    private void RegisterModal(Control control, bool holdsClock, bool blocksPause) =>
         _modals.Add(new ModalWindow(control, holdsClock, blocksPause));
 
     // Space toggles the clock at the player's request - ignored while a page nobody asked to see

@@ -13,7 +13,7 @@ namespace ManyWinters.Godot.Fog;
 // testing, as it does in the main view - a proxy-only render left the hill unfogged where a
 // distant cloud met the horizon. Telling a proxy pixel from a terrain pixel is the flag
 // colour's job, tested in fog_of_war_screen.gdshader.
-public sealed class CloudFogMask
+public sealed partial class CloudFogMask : SubViewport
 {
     // CloudScatter's mask-only proxies: excluded from the main camera's CullMask, rendered only
     // by the mask camera.
@@ -35,31 +35,27 @@ public sealed class CloudFogMask
 
     private readonly Camera3D _mainCamera;
     private readonly Camera3D _maskCamera;
-    private readonly SubViewport _maskViewport;
 
-    public CloudFogMask(Node3D parent, Camera3D mainCamera)
+    public CloudFogMask(Camera3D mainCamera)
     {
         _mainCamera = mainCamera;
 
-        _maskViewport = new SubViewport
-        {
-            TransparentBg = true,
-            RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
-            // A SubViewport gets its own empty World3D by default and would render nothing;
-            // share the main camera's so this one sees the same scene through another cull mask.
-            World3D = mainCamera.GetWorld3D(),
-        };
+        TransparentBg = true;
+        RenderTargetUpdateMode = UpdateMode.Always;
+        // A SubViewport gets its own empty World3D by default and would render nothing; share
+        // the main camera's so this one sees the same scene through another cull mask.
+        World3D = mainCamera.GetWorld3D();
+
         // Layer 1 (default - terrain, trees, people) for real occlusion, plus the proxies;
         // VisibleCloudLayerBit is deliberately left out (see the class comment).
         _maskCamera = new Camera3D { CullMask = 1 | CloudLayerBit, Current = true };
-        _maskViewport.AddChild(_maskCamera);
-        parent.AddChild(_maskViewport);
+        AddChild(_maskCamera);
 
         SyncViewportSize();
         SyncCamera();
     }
 
-    public Texture2D Texture => _maskViewport.GetTexture();
+    public Texture2D Texture => GetTexture();
 
     // Called every frame: the mask camera must track the main camera's transform and projection
     // exactly, or the mask will not line up with the main view.
@@ -75,9 +71,9 @@ public sealed class CloudFogMask
         var maskSize = new Vector2I(
             Mathf.Max(1, (int)mainSize.X / MaskResolutionDivisor),
             Mathf.Max(1, (int)mainSize.Y / MaskResolutionDivisor));
-        if (_maskViewport.Size != maskSize)
+        if (Size != maskSize)
         {
-            _maskViewport.Size = maskSize;
+            Size = maskSize;
         }
     }
 

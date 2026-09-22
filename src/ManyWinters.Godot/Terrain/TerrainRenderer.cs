@@ -6,10 +6,21 @@ using ManyWinters.Godot.Sprites;
 namespace ManyWinters.Godot.Terrain;
 
 // Real-terrain rendering (docs/terrain-and-world-scale-architecture.md): loads one
-// elevation/waterway patch and builds it into a Node3D. Shared by Prototypes/TerrainSandbox.cs
-// and Main.cs (via TerrainSetup) so both render identical terrain.
-public sealed class TerrainRenderer
+// elevation/waterway patch and builds it into its own subtree. Shared by
+// Prototypes/TerrainSandbox.cs and Main.cs so both render identical terrain.
+public sealed partial class TerrainRenderer : Node3D
 {
+    // Published rather than taken as a constructor callback: a click on the ground body is
+    // this type's own business to report, not a consumer's to wire in before this exists.
+    public event CollisionObject3D.InputEventEventHandler? GroundInputEvent;
+
+    // The one terrain patch the game ships, owned here rather than by whichever entry point
+    // happens to construct it - Main and TerrainSandbox both render this same patch, and neither
+    // is where the shipped asset paths belong.
+    private const string DefaultHeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
+    private const string DefaultWaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
+    private const string DefaultGroundTexturePath = "res://Content/terrain/ground.png";
+
     private const float TextureTileMeters = 16f;
     private const float WaterSurfaceOffset = 0.15f;
 
@@ -61,6 +72,16 @@ public sealed class TerrainRenderer
         LoadHeightmap(heightmapPath);
     }
 
+    // The shipped terrain patch, mesh and waterways already built - unattached, ready for
+    // composition code to AddChild once and never construct a second one from these same paths.
+    public static TerrainRenderer CreateDefault()
+    {
+        var terrain = new TerrainRenderer(DefaultHeightmapPath, DefaultWaterwaysPath, DefaultGroundTexturePath);
+        terrain.BuildTerrainMesh();
+        terrain.BuildWaterways();
+        return terrain;
+    }
+
     private void LoadHeightmap(string heightmapPath)
     {
         var json = ContentFiles.ReadText(heightmapPath);
@@ -101,8 +122,7 @@ public sealed class TerrainRenderer
         return Convert.ToHexString(hash);
     }
 
-    // Returns the collision body so callers can hook click-to-walk handling onto it.
-    public StaticBody3D BuildTerrainMesh(Node3D parent)
+    public void BuildTerrainMesh()
     {
         var cacheKey = ComputeMeshCacheKey();
         var meshCachePath = $"{TerrainMeshCacheDirectory}/{cacheKey}.mesh.res";
@@ -138,12 +158,13 @@ public sealed class TerrainRenderer
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             },
         };
-        parent.AddChild(meshInstance);
+        AddChild(meshInstance);
 
         var collisionBody = new StaticBody3D { InputRayPickable = true };
         collisionBody.AddChild(new CollisionShape3D { Shape = collisionShape });
-        parent.AddChild(collisionBody);
-        return collisionBody;
+        collisionBody.InputEvent += (camera, @event, position, normal, shapeIdx) =>
+            GroundInputEvent?.Invoke(camera, @event, position, normal, shapeIdx);
+        AddChild(collisionBody);
     }
 
     private (Mesh Mesh, Shape3D CollisionShape) BuildMeshAndCollision()
@@ -222,7 +243,7 @@ public sealed class TerrainRenderer
 
     // Real OSM waterway centerlines (art/fetch_stream.py) as flat ribbons following the terrain's
     // raw height at each point - the DEM already holds the valley the river cut.
-    public void BuildWaterways(Node3D parent)
+    public void BuildWaterways()
     {
         if (!ContentFiles.Exists(_waterwaysPath))
         {
@@ -273,7 +294,7 @@ public sealed class TerrainRenderer
         surfaceTool.GenerateNormals();
         var mesh = surfaceTool.Commit();
 
-        parent.AddChild(new MeshInstance3D
+        AddChild(new MeshInstance3D
         {
             Mesh = mesh,
             MaterialOverride = new StandardMaterial3D
@@ -302,7 +323,6 @@ public sealed class TerrainRenderer
     // dense enough there would still leave the small playable area bare. Each instance picks
     // one of texturePaths at random, so one call can mix differently shaped rocks.
     public void ScatterDecoration(
-        Node3D parent,
         Random rng,
         int count,
         IReadOnlyList<string> texturePaths,
@@ -341,11 +361,11 @@ public sealed class TerrainRenderer
 
             var groundShadow = GroundShadow.Create(worldHeight * 0.5f);
             groundShadow.Position += new Vector3(x, SampleHeight(x, z) + GroundShadow.GroundOffset, z);
-            parent.AddChild(groundShadow);
+            AddChild(groundShadow);
 
             var sprite = BillboardSprite.Create(texturePath, worldHeight, fallbackColor);
             sprite.Position = new Vector3(x, SampleHeight(x, z) + (worldHeight / 2f), z);
-            parent.AddChild(sprite);
+            AddChild(sprite);
         }
     }
 

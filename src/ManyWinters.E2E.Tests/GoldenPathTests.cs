@@ -80,13 +80,13 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
     }
 }
 
-/// <summary>The debug inspector's real "Extinguish Band" hook (Ui/DebugInspector.cs) is the
+/// <summary>The debug inspector's real "Extinguish Band" hook (Ui/InspectorPanel.cs) is the
 /// quick way to a band's epitaph and its "Another band comes" offer — the only other way there
 /// is playing a band out to its last death by hand.</summary>
 public sealed class ExtinctionTransitionTests : IClassFixture<GameFixture>
 {
     // TODO(calibrate): StatusBar is a fixed 48px bottom bar with buttons packed against its
-    // right edge (Band, Inspector, then the 28px "?" Help button); DebugInspector's panel opens
+    // right edge (Band, Inspector, then the 28px "?" Help button); InspectorPanel's panel opens
     // at a fixed Position (16, 16) with "Spawn Person" then "Extinguish Band" stacked under it.
     // These offsets need a real run to nail down precisely.
     private const int InspectorButtonX = -80; // relative to window width, see below
@@ -108,7 +108,7 @@ public sealed class ExtinctionTransitionTests : IClassFixture<GameFixture>
     {
         var size = _game.WindowSize();
         _game.Click(size.Width + InspectorButtonX, size.Height + InspectorButtonY); // StatusBar "Inspector"
-        _game.Click(ExtinguishButtonX, ExtinguishButtonY); // DebugInspector "Extinguish Band"
+        _game.Click(ExtinguishButtonX, ExtinguishButtonY); // InspectorPanel "Extinguish Band"
         _game.AssertMatchesBaseline("epitaph");
 
         _game.Click(AnotherBandComesX, AnotherBandComesY);

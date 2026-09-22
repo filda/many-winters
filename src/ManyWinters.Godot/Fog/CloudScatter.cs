@@ -40,8 +40,11 @@ public static class CloudScatter
     // silhouette could disagree with the real sprite's.
     private static readonly Color MaskFlagModulate = new(12f, 0f, 12f);
 
-    public static void Scatter(Node3D parent, float halfExtentMeters)
+    // Returns an unattached root holding every scattered cloud pair: composition code attaches
+    // it once, rather than this type reaching into Main's own tree.
+    public static Node3D Scatter(float halfExtentMeters)
     {
+        var root = new Node3D { Name = "SkyClouds" };
         var rng = new RandomNumberGenerator { Seed = Seed };
         for (var i = 0; i < CloudCount; i++)
         {
@@ -50,8 +53,10 @@ public static class CloudScatter
             var y = rng.RandfRange(MinHeight, MaxHeight);
             var size = rng.RandfRange(MinWorldSize, MaxWorldSize);
             var texturePath = TexturePaths[rng.RandiRange(0, TexturePaths.Length - 1)];
-            CreateCloudWithMaskProxy(parent, texturePath, size, new Vector3(x, y, z));
+            CreateCloudWithMaskProxy(root, texturePath, size, new Vector3(x, y, z));
         }
+
+        return root;
     }
 
     // One cloud as the main camera sees it plus its fog-mask stand-in; the same pair serves sky

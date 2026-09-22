@@ -6,15 +6,23 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Views;
 
-public sealed class WorldPresenter
+public sealed partial class WorldPresenter : Node3D
 {
-    private readonly Node3D _container;
-    private readonly Action<Person, MouseButton> _onPersonClicked;
-    private readonly Action<Entity, MouseButton> _onResourceNodeClicked;
-    private readonly Action<Entity, MouseButton> _onBuildingClicked;
-    private readonly Action<Grave> _onGraveSelected;
-    private readonly Action<Entity, MouseButton> _onItemPileClicked;
-    private readonly CollisionObject3D.InputEventEventHandler _onMissedClick;
+    // Raised by the small per-family methods below rather than known about by the views
+    // themselves: a view only reports "I was clicked", and this is the one place that turns that
+    // into an event nobody upstream has to be constructed before this presenter is.
+    public event Action<Person, MouseButton>? PersonClicked;
+
+    public event Action<Entity, MouseButton>? ResourceNodeClicked;
+
+    public event Action<Entity, MouseButton>? BuildingClicked;
+
+    public event Action<Grave>? GraveSelected;
+
+    public event Action<Entity, MouseButton>? ItemPileClicked;
+
+    public event CollisionObject3D.InputEventEventHandler? MissedClick;
+
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
     private readonly RevealableExploration _exploration;
@@ -56,26 +64,12 @@ public sealed class WorldPresenter
     private const float ViewReleaseRadiusMultiplier = 1.25f;
 
     public WorldPresenter(
-        Node3D container,
         WorldState world,
         RevealableExploration exploration,
         Vector3 initialCameraPosition,
         float initialViewRadius,
-        Action<Person, MouseButton> onPersonClicked,
-        Action<Entity, MouseButton> onResourceNodeClicked,
-        Action<Entity, MouseButton> onBuildingClicked,
-        Action<Grave> onGraveSelected,
-        Action<Entity, MouseButton> onItemPileClicked,
-        CollisionObject3D.InputEventEventHandler onMissedClick,
         Func<float, float, float> sampleHeight)
     {
-        _container = container;
-        _onPersonClicked = onPersonClicked;
-        _onResourceNodeClicked = onResourceNodeClicked;
-        _onBuildingClicked = onBuildingClicked;
-        _onGraveSelected = onGraveSelected;
-        _onItemPileClicked = onItemPileClicked;
-        _onMissedClick = onMissedClick;
         _sampleHeight = sampleHeight;
         _resourceCatalog = world.Configuration.ResourceCatalog;
         _exploration = exploration;
@@ -167,9 +161,22 @@ public sealed class WorldPresenter
         }
     }
 
+    private void RaisePersonClicked(Person person, MouseButton button) => PersonClicked?.Invoke(person, button);
+
+    private void RaiseResourceNodeClicked(Entity node, MouseButton button) => ResourceNodeClicked?.Invoke(node, button);
+
+    private void RaiseBuildingClicked(Entity building, MouseButton button) => BuildingClicked?.Invoke(building, button);
+
+    private void RaiseGraveSelected(Grave grave) => GraveSelected?.Invoke(grave);
+
+    private void RaiseItemPileClicked(Entity pile, MouseButton button) => ItemPileClicked?.Invoke(pile, button);
+
+    private void RaiseMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
+        MissedClick?.Invoke(camera, @event, position, normal, shapeIdx);
+
     private void CreatePersonView(Person person)
     {
-        var view = new PersonView(person, _hover, _onPersonClicked, _onMissedClick)
+        var view = new PersonView(person, _hover, RaisePersonClicked, RaiseMissedClick)
         {
             Name = person.Name,
             Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
@@ -177,7 +184,7 @@ public sealed class WorldPresenter
         // Snapped, not faded: there is nothing on screen to fade from. Called before the view
         // enters the tree, which is why SnapRemembered may not touch a node.
         view.SnapRemembered(IsOutOfSight(person.Position));
-        _container.AddChild(view);
+        AddChild(view);
         _personViews[person.Id] = view;
     }
 
@@ -229,10 +236,10 @@ public sealed class WorldPresenter
     private void CreateResourceNodeViewNow(Entity node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
-        var view = new ResourceNodeView(node, canFell, _hover, _onResourceNodeClicked, _onMissedClick);
+        var view = new ResourceNodeView(node, canFell, _hover, RaiseResourceNodeClicked, RaiseMissedClick);
         view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
         view.SnapRemembered(IsOutOfSight(node.Position));
-        _container.AddChild(view);
+        AddChild(view);
         _resourceNodeViews[node.Id] = view;
     }
 
@@ -348,34 +355,34 @@ public sealed class WorldPresenter
 
     private void CreateBuildingView(Entity building)
     {
-        var view = new BuildingView(building, _hover, _onBuildingClicked, _onMissedClick)
+        var view = new BuildingView(building, _hover, RaiseBuildingClicked, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),
         };
         view.SnapRemembered(IsOutOfSight(building.Position));
-        _container.AddChild(view);
+        AddChild(view);
         _buildingViews[building.Id] = view;
     }
 
     private void CreateGraveView(Grave grave)
     {
-        var view = new GraveView(grave, _onGraveSelected, _onMissedClick)
+        var view = new GraveView(grave, RaiseGraveSelected, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(grave.Position, GraveView.Size / 2f, _sampleHeight),
         };
         view.SnapRemembered(IsOutOfSight(grave.Position));
         _graveViews[grave.Id] = view;
-        _container.AddChild(view);
+        AddChild(view);
     }
 
     private void CreateItemPileView(Entity pile)
     {
-        var view = new ItemPileView(pile, _hover, _onItemPileClicked, _onMissedClick)
+        var view = new ItemPileView(pile, _hover, RaiseItemPileClicked, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(pile.Position, ItemPileView.Size / 2f, _sampleHeight),
         };
         view.SnapRemembered(IsOutOfSight(pile.Position));
-        _container.AddChild(view);
+        AddChild(view);
         _itemPileViews[pile.Id] = view;
     }
 

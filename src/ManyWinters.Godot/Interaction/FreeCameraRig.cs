@@ -7,7 +7,7 @@ namespace ManyWinters.Godot.Interaction;
 // Free pan/zoom/rotate camera shared by TerrainSandbox and Main. Perspective is the default
 // projection (compared directly in the sandbox, see docs/terrain-and-world-scale-architecture.md);
 // orthographic stays available via ToggleProjection.
-public sealed class FreeCameraRig
+public sealed partial class FreeCameraRig : Node3D
 {
     // Pan speed scales with zoom distance: the zoom range spans 3 to 2000, so a fixed speed is
     // glacial zoomed out and wild zoomed in - the same reason zoom is multiplicative.
@@ -43,7 +43,6 @@ public sealed class FreeCameraRig
     // where popping in a touch early costs nothing a real culling error would.
     private const float ViewRadiusMultiplier = 3f;
 
-    private readonly Node3D _rig;
     private readonly Camera3D _camera;
     private readonly float _minZoom;
     private readonly float _maxZoom;
@@ -59,7 +58,7 @@ public sealed class FreeCameraRig
 
     // The orbit/pan target - Main's fallback line-of-sight target for the occlusion fade when
     // nothing is selected.
-    public Vector3 RigGlobalPosition => _rig.GlobalPosition;
+    public Vector3 RigGlobalPosition => GlobalPosition;
 
     // For screen-space projection (Main's selection marker, click radius) - UnprojectPosition and
     // IsPositionBehind are not exposed any other way.
@@ -73,16 +72,14 @@ public sealed class FreeCameraRig
     // sampleHeight: the same ground-height function everything else on the ground uses. Panning
     // only moves the rig in XZ, so without it the rig's Y stays frozen where it started and the
     // camera ends up under a nearby bump after panning.
-    public FreeCameraRig(Node3D parent, Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom, Func<float, float, float> sampleHeight)
+    public FreeCameraRig(Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom, Func<float, float, float> sampleHeight)
     {
         _minZoom = minZoom;
         _maxZoom = maxZoom;
         _zoomDistance = initialDistance;
         _orthographicSize = initialDistance;
         _sampleHeight = sampleHeight;
-
-        _rig = new Node3D { Position = initialPosition };
-        parent.AddChild(_rig);
+        Position = initialPosition;
 
         // Depth precision depends on the Far/Near ratio, not Far alone. The engine default Near
         // (0.05) against this Far gave 100,000:1 - so little precision remained at background-tree
@@ -92,9 +89,13 @@ public sealed class FreeCameraRig
         // CullMask excludes CloudFogMask.CloudLayerBit: that layer holds only CloudScatter's
         // mask-only cloud proxies, which the default mask would draw on top of each real cloud.
         _camera = new Camera3D { Far = 5000f, Near = 0.5f, CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit };
-        _rig.AddChild(_camera);
-        UpdateCamera();
+        AddChild(_camera);
     }
+
+    // UpdateCamera reads GlobalPosition and calls LookAt, both of which need this node inside the
+    // tree - not yet true during the constructor, since composition code adds this rig to the
+    // scene only after constructing it.
+    public override void _Ready() => UpdateCamera();
 
     // Puts the orbit point on a spot in the world, keeping the zoom, rotation and tilt the player
     // has set: taking the view to somebody (Main's band roster) is a pan, not a new camera.
@@ -105,7 +106,7 @@ public sealed class FreeCameraRig
     public void FocusOn(Vector3 target)
     {
         _panVelocity = Vector3.Zero;
-        _rig.Position = new Vector3(target.X, _sampleHeight(target.X, target.Z), target.Z);
+        Position = new Vector3(target.X, _sampleHeight(target.X, target.Z), target.Z);
         UpdateCamera();
     }
 
@@ -146,15 +147,15 @@ public sealed class FreeCameraRig
         }
 
         var panSpeed = (_isOrthographic ? _orthographicSize : _zoomDistance) * PanSpeedPerZoomUnit;
-        var targetPanVelocity = CameraMotion.PanVelocity(_rig.Basis, panDirection, panSpeed);
+        var targetPanVelocity = CameraMotion.PanVelocity(Basis, panDirection, panSpeed);
         _panVelocity = CameraMotion.Eased(_panVelocity, targetPanVelocity, PanEaseRate, delta);
-        _rig.Position += _panVelocity * delta;
+        Position += _panVelocity * delta;
 
         // Every frame, not only while a pan key is held: the rig's Y never drifts from the ground
         // under it however it got to this (X, Z), and a rig that started wrong self-heals.
-        var rigPosition = _rig.Position;
+        var rigPosition = Position;
         rigPosition.Y = _sampleHeight(rigPosition.X, rigPosition.Z);
-        _rig.Position = rigPosition;
+        Position = rigPosition;
 
         var rotateDirection = 0f;
         if (Held(Key.Q))
@@ -169,7 +170,7 @@ public sealed class FreeCameraRig
 
         if (rotateDirection != 0f)
         {
-            _rig.RotateY(rotateDirection * RotateSpeed * delta);
+            RotateY(rotateDirection * RotateSpeed * delta);
         }
 
         var zoomDirection = 0f;
@@ -226,7 +227,7 @@ public sealed class FreeCameraRig
                 HandleScrollZoom(1f);
                 break;
             case InputEventMouseMotion mouseMotion when _mouseRotating:
-                _rig.RotateY(-mouseMotion.Relative.X * MouseRotateRadiansPerPixel);
+                RotateY(-mouseMotion.Relative.X * MouseRotateRadiansPerPixel);
                 _tiltDegrees = CameraMotion.Tilted(
                     _tiltDegrees,
                     -mouseMotion.Relative.Y * MouseTiltDegreesPerPixel,
@@ -262,7 +263,7 @@ public sealed class FreeCameraRig
     private void UpdateCamera()
     {
         _camera.Position = CameraMotion.OffsetDirection(_tiltDegrees) * _zoomDistance;
-        _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
+        _camera.LookAt(GlobalPosition, Vector3.Up);
         _camera.Size = _orthographicSize;
 
         // Belt-and-suspenders on top of HandleInput's rig ground-following: the camera sits offset
@@ -273,7 +274,7 @@ public sealed class FreeCameraRig
         {
             globalPosition.Y = cleared;
             _camera.GlobalPosition = globalPosition;
-            _camera.LookAt(_rig.GlobalPosition, Vector3.Up);
+            _camera.LookAt(GlobalPosition, Vector3.Up);
         }
     }
 }

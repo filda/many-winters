@@ -3,6 +3,7 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
+using ManyWinters.Godot.Terrain;
 using ManyWinters.Godot.Ui;
 using ManyWinters.Godot.Views;
 
@@ -19,7 +20,6 @@ internal sealed class WorldInputController
     // player gives goes through Acting(), so it is said in exactly one way.
     private const string NobodySelected = "Select someone first, then tell them what to do.";
 
-    private readonly CanvasLayer _canvas;
     private readonly WorldState _world;
     private readonly FreeCameraRig _cameraRig;
     private readonly SelectionController _selection;
@@ -27,11 +27,7 @@ internal sealed class WorldInputController
     private readonly StatusBar _statusBar;
     private readonly PresentationSettings _presentation;
     private readonly ContextMenu _contextMenu;
-
-    // Attached once presenter construction completes (see AttachPresenter) - presenter itself is
-    // constructed with this controller's own click callbacks, so it cannot be a constructor
-    // argument here without a cycle.
-    private WorldPresenter? _presenter;
+    private readonly WorldPresenter _presenter;
 
     // Telling a right-click apart from the right-drag that turns the camera, and what the press
     // landed on until the button comes up (see HandleRightButton). The world's views report the
@@ -40,34 +36,35 @@ internal sealed class WorldInputController
     private Func<Person, TargetMenu>? _pointedAt;
 
     public WorldInputController(
-        CanvasLayer canvas,
+        ContextMenu contextMenu,
         WorldState world,
         FreeCameraRig cameraRig,
+        WorldPresenter presenter,
+        TerrainRenderer terrain,
         SelectionController selection,
         OrderCoordinator orders,
         StatusBar statusBar,
         PresentationSettings presentation)
     {
-        _canvas = canvas;
         _world = world;
         _cameraRig = cameraRig;
+        _presenter = presenter;
         _selection = selection;
         _orders = orders;
         _statusBar = statusBar;
         _presentation = presentation;
 
-        // After the windows, so a menu opened over one of them is on top of it; before the
-        // inscription overlay and the pause panel, which are on top of everything.
-        _contextMenu = new ContextMenu();
+        _contextMenu = contextMenu;
         _contextMenu.ActionInvoked += PerformAction;
-        canvas.AddChild(_contextMenu);
-    }
 
-    // One explicit, one-time hookup rather than a Func<WorldPresenter> or a service locator:
-    // nearest-person lookup needs the presenter, but the presenter is constructed with this
-    // controller's own click callbacks, so it cannot exist yet when this controller is built.
-    // Nothing calls into this controller before _Ready finishes attaching it (Main._loading).
-    public void AttachPresenter(WorldPresenter presenter) => _presenter = presenter;
+        presenter.PersonClicked += OnPersonClicked;
+        presenter.ResourceNodeClicked += OnResourceNodeClicked;
+        presenter.BuildingClicked += OnBuildingClicked;
+        presenter.GraveSelected += OnGraveSelected;
+        presenter.ItemPileClicked += OnItemPileClicked;
+        presenter.MissedClick += OnMissedClick;
+        terrain.GroundInputEvent += OnGroundInputEvent;
+    }
 
     // A line pressed on the selected person's card, the detail page, or the contextual menu -
     // all draw offers for whoever is selected, so that is who carries it out.
@@ -123,7 +120,7 @@ internal sealed class WorldInputController
         _cameraRig.HandleMouseInput(@event);
     }
 
-    public void OnPersonClicked(Person person, MouseButton button)
+    private void OnPersonClicked(Person person, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
@@ -134,7 +131,7 @@ internal sealed class WorldInputController
         _selection.Select(person);
     }
 
-    public void OnGraveSelected(Grave grave) => _selection.Select(grave);
+    private void OnGraveSelected(Grave grave) => _selection.Select(grave);
 
     // A left click on a resource is the one shortcut kept from before there was a menu: "gather
     // that" is the only thing anybody means by pointing at a bush, and it is how the game is
@@ -142,7 +139,7 @@ internal sealed class WorldInputController
     //
     // Depleting a node to zero keeps its view - the plant is still there, fruitless until
     // RegenPerTick refills it. Only IsAlive turning false (felled or withered) removes it.
-    public void OnResourceNodeClicked(Entity node, MouseButton button)
+    private void OnResourceNodeClicked(Entity node, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
@@ -158,7 +155,7 @@ internal sealed class WorldInputController
 
     // A left click on a pile is the one shortcut kept, the same as a resource's Gather: "pick
     // that up" is the only thing anybody means by pointing at it.
-    public void OnItemPileClicked(Entity pile, MouseButton button)
+    private void OnItemPileClicked(Entity pile, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
@@ -174,13 +171,13 @@ internal sealed class WorldInputController
 
     // Either button opens the store's menu: a hut has no one obvious thing to do with it, so
     // putting something in, taking something out and mending it are equally the point.
-    public void OnBuildingClicked(Entity building, MouseButton button)
+    private void OnBuildingClicked(Entity building, MouseButton button)
     {
         _pointedAt = actor => TargetActions.For(_world, actor, building);
 
         if (button == MouseButton.Left)
         {
-            ShowContextMenu(_canvas.GetViewport().GetMousePosition());
+            ShowContextMenu(_contextMenu.GetViewport().GetMousePosition());
         }
     }
 
@@ -194,7 +191,7 @@ internal sealed class WorldInputController
     // ReSharper disable UnusedParameter.Global - position, normal and shapeIndex are unused here,
     // but the method must match CollisionObject3D.InputEventEventHandler to be wired as a view's
     // InputEvent handler.
-    public void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIndex)
+    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIndex)
     {
         if (camera is not Camera3D camera3D
             || @event is not InputEventMouseButton { Pressed: true } mouseButton)
@@ -209,7 +206,7 @@ internal sealed class WorldInputController
     }
 
     // camera, normal and shapeIndex are unused for the same reason as OnMissedClick above.
-    public void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIndex)
+    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIndex)
     {
         if (@event is InputEventMouseButton { Pressed: true } mouseButton)
         {
@@ -280,11 +277,6 @@ internal sealed class WorldInputController
     // the click falls through to picking; their own opaque pixels still re-select them.
     private Person? FindNearestPersonOnScreen(Vector2 screenPosition)
     {
-        if (_presenter is not { } presenter)
-        {
-            return null;
-        }
-
         var camera = _cameraRig.Camera;
         Person? nearest = null;
         var nearestDistance = float.MaxValue;
@@ -292,7 +284,7 @@ internal sealed class WorldInputController
         foreach (var person in _world.People)
         {
             if (person == _selection.Person
-                || presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
+                || _presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
                 || camera.IsPositionBehind(personGlobalPosition))
             {
                 continue;
