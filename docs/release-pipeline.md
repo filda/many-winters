@@ -35,12 +35,12 @@ saves ~40 MB of download and costs every tester a runtime install — not a trad
 making for an alpha.
 
 **Gated on `build-test` and the real E2E, not CodeQL.** CodeQL is a security scan; it should not be
-able to hold up a build. The windowed E2E suite (its own Windows job, `e2e-windows`) gates the
-release: both exports and `publish` wait on it, so a red E2E neither builds the artifacts nor
-cuts a release. The exports therefore run after a green E2E rather than in parallel with it -
-deliberate, since building artifacts for a version whose E2E fails would be pure waste. It runs
-only on the game-change pushes that cut a release, so it skips docs- or tests-only pushes and
-pull requests, where there is no release for it to gate.
+able to hold up a build. The windowed E2E suite runs against the exported Windows build inside
+`release-windows` (MW_E2E_GAME_EXE points at ManyWinters.exe) and is the release gate: a red E2E
+fails `release-windows`, so `publish` cuts no release. It runs only on the game-change pushes that
+cut a release, so it skips docs- or tests-only pushes and pull requests. It is Windows-only
+(PrintWindow/PostMessage drives a real window), so the Linux export keeps only the headless smoke
+test.
 
 **Only game changes cut a release.** Changes to `src/ManyWinters.Core/`,
 `src/ManyWinters.Godot/`, `Directory.Build.props`, `ManyWinters.sln` or
