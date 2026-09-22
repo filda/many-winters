@@ -37,6 +37,7 @@ internal partial class SelectionPanel : PanelContainer
     private const int HeadingHeight = NameFontSize + 8;
 
     private Button _heading = null!;
+    private TextureRect _detailIcon = null!;
     private Label _name = null!;
     private Label _beside = null!;
     private Label _parents = null!;
@@ -146,6 +147,21 @@ internal partial class SelectionPanel : PanelContainer
         _beside.MouseFilter = MouseFilterEnum.Ignore;
         row.AddChild(_beside);
 
+        // Pushes the icon below to the far end of the line, clear of a long name.
+        row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
+
+        // A magnifying glass, the plain shape for "look closer": a hint that the line opens a
+        // page, not a second way in of its own. Takes no mouse itself, so hovering it is hovering
+        // the button underneath - the whole line lights up together rather than the icon alone.
+        _detailIcon = new TextureRect
+        {
+            Texture = DetailGlass(),
+            CustomMinimumSize = new Vector2(DetailIconSize, DetailIconSize),
+            MouseFilter = MouseFilterEnum.Ignore,
+            StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+        };
+        row.AddChild(_detailIcon);
+
         var cross = PanelChrome.CloseCross(InscriptionFont.DarkInk);
         cross.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         cross.Pressed += () => CloseRequested?.Invoke();
@@ -193,6 +209,7 @@ internal partial class SelectionPanel : PanelContainer
         _personBody.Visible = true;
         _graveRecord.Visible = false;
         _heading.Disabled = false;
+        _detailIcon.Visible = true;
 
         _name.Text = card.Name;
         _beside.Text = card.Beside;
@@ -216,6 +233,7 @@ internal partial class SelectionPanel : PanelContainer
         // Nothing behind a grave for the detail page to say - the heading stops answering to a
         // press rather than opening a page about nobody.
         _heading.Disabled = true;
+        _detailIcon.Visible = false;
 
         _name.Text = "Grave";
         _beside.Text = string.Empty;
@@ -225,4 +243,38 @@ internal partial class SelectionPanel : PanelContainer
     }
 
     internal void ClearSelection() => Visible = false;
+
+    // A magnifying glass, drawn rather than loaded off disk - the same reasoning as the workshop's
+    // own icons: nobody has painted this yet, and a plain shape in the page's own ink is a better
+    // placeholder than a word small enough to look like a toolbar.
+    private const int DetailIconSize = 18;
+
+    private static ImageTexture DetailGlass()
+    {
+        const float lensCenter = -3f;
+        const float lensRadius = 6f;
+        const float ringThickness = 1.6f;
+
+        var image = Image.CreateEmpty(DetailIconSize, DetailIconSize, false, Image.Format.Rgba8);
+        for (var y = 0; y < DetailIconSize; y++)
+        {
+            for (var x = 0; x < DetailIconSize; x++)
+            {
+                var dx = x - (DetailIconSize / 2f) + 0.5f;
+                var dy = y - (DetailIconSize / 2f) + 0.5f;
+
+                var fromLensCenter = new Vector2(dx - lensCenter, dy - lensCenter).Length();
+                // The ring the lens is drawn as, and the short diagonal handle running from its
+                // rim to the corner - the one shape "look closer" is drawn with everywhere.
+                var onRing = Mathf.Abs(fromLensCenter - lensRadius) <= ringThickness / 2f;
+                var onHandle = dx is >= 3f and <= 8f && dy is >= 3f and <= 8f && Mathf.Abs(dx - dy) <= 1.7f;
+                if (onRing || onHandle)
+                {
+                    image.SetPixel(x, y, InscriptionFont.FadedDarkInk);
+                }
+            }
+        }
+
+        return ImageTexture.CreateFromImage(image);
+    }
 }
