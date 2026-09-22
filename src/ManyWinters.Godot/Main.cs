@@ -44,11 +44,7 @@ public partial class Main : Node3D
     private PausePanel _pausePanel = null!;
     private HelpPanel _helpPanel = null!;
     private ChroniclePanel _chronicle = null!;
-    private WorkshopPanel _workshop = null!;
-    private NamingPanel _namingPanel = null!;
-
-    // What keeps the rest of the screen out of reach while the workbench is out (SetUpWorkshop).
-    private Control _workshopShield = null!;
+    private WorkshopController _workshopController = null!;
 
     // The same, for the detail page (SetUpDetailPanel).
     private Control _detailShield = null!;
@@ -66,7 +62,7 @@ public partial class Main : Node3D
         new ModalWindow(_inscriptionOverlay, HoldsClock: true, BlocksPause: true),
         new ModalWindow(_pausePanel, HoldsClock: true, BlocksPause: false),
         new ModalWindow(_helpPanel, HoldsClock: true, BlocksPause: true),
-        new ModalWindow(_workshop, HoldsClock: true, BlocksPause: true),
+        new ModalWindow(_workshopController.ModalControl, HoldsClock: true, BlocksPause: true),
         new ModalWindow(_detailPanel, HoldsClock: true, BlocksPause: true),
         new ModalWindow(_chronicle, HoldsClock: false, BlocksPause: true),
     ];
@@ -156,18 +152,21 @@ public partial class Main : Node3D
         SetUpCamera();
 
         await Building(75, "Drawing the pages");
+        // Built ahead of the UI rather than with the rest of the band below: SetUpUi constructs
+        // the workshop controller, which needs the order coordinator (and, through it, the
+        // presenter) already in hand.
+        _presenter = new WorldPresenter(this, _world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
+        _occlusionFader = new OcclusionFader(_cameraRig, _presenter, _presentation);
+        _orderCoordinator = new OrderCoordinator(_world, _presenter, _presentation);
         SetUpUi();
+        _orderCoordinator.WorldChanged += OnOrderCoordinatorWorldChanged;
+        _orderCoordinator.OrderFailed += _statusBar.Notify;
 
         await Building(85, "Gathering the clouds");
         CloudScatter.Scatter(this, _terrain.Half);
         _cloudFogMask = new CloudFogMask(this, _cameraRig.Camera);
 
         await Building(90, "Setting out the band");
-        _presenter = new WorldPresenter(this, _world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, OnPersonClicked, OnResourceNodeClicked, OnBuildingClicked, OnGraveSelected, OnItemPileClicked, OnMissedClick, _terrain.SampleHeight);
-        _occlusionFader = new OcclusionFader(_cameraRig, _presenter, _presentation);
-        _orderCoordinator = new OrderCoordinator(_world, _presenter, _presentation);
-        _orderCoordinator.WorldChanged += OnOrderCoordinatorWorldChanged;
-        _orderCoordinator.OrderFailed += _statusBar.Notify;
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
 
@@ -326,18 +325,7 @@ public partial class Main : Node3D
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
             _contextMenu.Close();
-
-            // The naming panel sits over the workshop rather than beside it, so Escape only
-            // reaches the workshop underneath once there is no question sitting on top of it to
-            // answer first.
-            if (_namingPanel.Visible)
-            {
-                _namingPanel.Close();
-            }
-            else
-            {
-                _workshop.Close();
-            }
+            _workshopController.HandleEscape();
 
             if (_helpPanel.Visible)
             {
@@ -559,7 +547,7 @@ public partial class Main : Node3D
         SetUpSelectionPanel(canvas);
         SetUpBandPanel(canvas);
         SetUpChronicle(canvas);
-        SetUpWorkshop(canvas);
+        SetUpWorkshopController(canvas);
         SetUpDetailPanel(canvas);
         SetUpContextMenu(canvas);
         SetUpInscriptionOverlay(canvas);
@@ -570,215 +558,23 @@ public partial class Main : Node3D
     // The workbench, opened from the pack line on the selected person's card. Like the pause
     // page it holds the clock while it is up (see _Process): working a thing over is meant to be
     // unhurried.
-    private void SetUpWorkshop(CanvasLayer canvas)
+    private void SetUpWorkshopController(CanvasLayer canvas)
     {
-        // Laid in before the workbench, so it sits under it and over everything added earlier -
-        // the roster, the selected person's card, the status bar, the world itself. The clock is
-        // stopped while the bench is out, and an order given into a stopped clock lands the
-        // moment it starts again (the same reasoning as InscriptionOverlay). It draws nothing:
-        // the world is what the player is working in the middle of, and the camera keeps turning
-        // over it.
-        _workshopShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        _workshopShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        canvas.AddChild(_workshopShield);
-
-        _workshop = new WorkshopPanel();
-        // Tied to the panel itself rather than to the places that open and close it, of which
-        // there are several (the pack line, Escape, the way out of the panel).
-        _workshop.VisibilityChanged += () => _workshopShield.Visible = _workshop.Visible;
-        // Letting it go primes the tick accumulator, so the world starts again on the next frame
-        // rather than a full interval later - as dismissing the controls page does.
-        _workshop.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
-        _workshop.Attempted += OnWorkshopAttempt;
-        _workshop.EatRequested += OnWorkshopEat;
-        _workshop.DropRequested += OnWorkshopDrop;
-        _workshop.PickChanged += RefreshWorkshopOffer;
-        _workshop.RecipeInvoked += OnWorkshopRecipe;
-        canvas.AddChild(_workshop);
-
-        // Added after the workshop, so it lands on top of it rather than beside it - both are
-        // centred on the same spot (NamingPanel.KeepCentred), which is what makes the one read
-        // as a page laid over the other.
-        _namingPanel = new NamingPanel();
-        _namingPanel.Named += OnWorkshopNamed;
-        _namingPanel.Cancelled += () => _justMade = null;
-        canvas.AddChild(_namingPanel);
-    }
-
-    private void OpenWorkshop()
-    {
-        // Pressing the pack line again puts the workbench away: the way in is the way out.
-        if (_workshop.Visible)
-        {
-            _workshop.Close();
-            return;
-        }
-
-        if (_selectedPerson is not { } person)
-        {
-            return;
-        }
-
-        // It puts itself in the middle of the screen and stays there (FloatingPanel.KeepCentred):
-        // the world stands still while this is open, so it is the thing being done rather than a
-        // card to read beside it.
-        _workshop.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));
-        RefreshWorkshopOffer();
-    }
-
-    // Pressed a "Make X" line rather than picked something to try - the recipe list has its own
-    // event because a successful one changes the pack the same attempt does, and the panel needs
-    // both redrawn (WorkshopActions.Carried, WorkshopActions.Recipes).
-    private void OnWorkshopRecipe(ActionOffer offer)
-    {
-        if (_selectedPerson is not { } person)
-        {
-            return;
-        }
-
-        _orderCoordinator.Perform(person, offer);
-        RefreshWorkshopPack(person);
-    }
-
-    // Eat or Drop, pressed on whatever is picked. Neither is an attempt (WorkshopActions.Attempt)
-    // - there is no dice roll and no cost to the clock, the same as pressing either off the
-    // person's own card - so this only carries the command out and redraws the pack underneath
-    // it, the way a recipe does (OnWorkshopRecipe).
-    private void OnWorkshopEat()
-    {
-        if (_selectedPerson is not { } person || WorkshopActions.Eat(_world, person, _workshop.Picked) is not { } offer)
-        {
-            return;
-        }
-
-        _orderCoordinator.Perform(person, offer);
-        RefreshWorkshopPack(person);
-    }
-
-    private void OnWorkshopDrop()
-    {
-        if (_selectedPerson is not { } person || WorkshopActions.Drop(_world, person, _workshop.Picked) is not { } offer)
-        {
-            return;
-        }
-
-        _orderCoordinator.Perform(person, offer);
-        RefreshWorkshopPack(person);
-    }
-
-    // Redrawn after anything that could have changed what is carried - the pack, the recipes it
-    // makes room for, and what the current pick can now do.
-    private void RefreshWorkshopPack(Person person)
-    {
-        _workshop.Show(WorkshopActions.Carried(_world, person));
-        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
-        RefreshWorkshopOffer();
-    }
-
-    // What the current pick would do, asked of the world rather than of the panel: the panel
-    // holds no world and no opinion about what works (see WorkshopActions).
-    private void RefreshWorkshopOffer()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            return;
-        }
-
-        var offer = WorkshopActions.Attempt(_world, person, _workshop.Picked);
-        _workshop.Offer(offer, RefusalFor(offer), WorkshopActions.WordsFor(_world, person, _workshop.Picked));
-        _workshop.OfferItemActions(
-            WorkshopActions.Eat(_world, person, _workshop.Picked),
-            WorkshopActions.Drop(_world, person, _workshop.Picked));
-    }
-
-    // Said whenever a pick turns out to lead nowhere - several ways to say the same nothing, so
-    // trying a few unworkable pairs in a row does not read as the game reciting one stock line
-    // back at the player.
-    private static readonly string[] NothingComesOfIt =
-    [
-        "Nothing comes of it.",
-        "Nothing comes of that.",
-        "No good comes of it.",
-        "It comes to nothing.",
-    ];
-
-    // Nothing is said about a pick that leads nowhere until the player has picked something: an
-    // empty workbench that already says "nothing comes of it" is answering a question nobody
-    // asked.
-    private string? RefusalFor(ActionOffer? offer) => (offer, _workshop.Picked.Count) switch
-    {
-        (null, 0) => null,
-        (null, _) => NothingComesOfIt[Random.Shared.Next(NothingComesOfIt.Length)],
-        ({ IsAvailable: false }, _) => ActionBlockerText.For(offer.Value),
-        _ => null,
-    };
-
-    private void OnWorkshopAttempt()
-    {
-        if (_selectedPerson is not { } person
-            || WorkshopActions.Attempt(_world, person, _workshop.Picked) is not { } offer)
-        {
-            return;
-        }
-
-        var before = person.Inventory.Assemblies.ToList();
-        _orderCoordinator.Perform(person, offer);
-
-        // An attempt costs time whether or not it came off - the clock is held while the bench is
-        // open, so this is the only thing that moves it, and it is what stops a player pressing
-        // until the dice land (see WorkAttempt, SimulationRules.TicksPerWorkAttempt).
-        _world.Advance(_world.Configuration.Rules.TicksPerWorkAttempt);
-
-        var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
-        _workshop.Show(WorkshopActions.Carried(_world, person));
-        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
-
-        // Before ReportOutcome, not after: refreshing the offer recomputes the status line from
-        // the pick (now empty, the thing just picked having been consumed or come apart), and
-        // would otherwise overwrite the very sentence this method is about to report.
-        RefreshWorkshopOffer();
-        _workshop.ReportOutcome(made is null
-            ? "It comes apart in your hands."
-            : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
-
-        // A shape nobody in the band has a word for is a thing worth naming, and this is the
-        // moment to ask: they are looking at what they just made (see Vocabulary).
-        if (made is not null && !_world.Vocabulary.HasAWordFor(made))
-        {
-            _justMade = made;
-            _namingPanel.Open(InspectorText.ForWorkedThing(made, _world), WorkshopPanel.IconFor(new CarriedThing.Worked(made)));
-        }
-    }
-
-    // What the last attempt turned out, held only long enough for the player to name it.
-    private Core.Materials.Assembly? _justMade;
-
-    private void OnWorkshopNamed(string word)
-    {
-        if (_justMade is not { } made)
-        {
-            return;
-        }
-
-        _world.Vocabulary.Name(made, word);
-        _justMade = null;
-
+        _workshopController = new WorkshopController(canvas, _world, _orderCoordinator);
+        // Letting the workbench go primes the tick accumulator, so the world starts again on the
+        // next frame rather than a full interval later - as dismissing the controls page does.
+        _workshopController.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
         // than only into the panel that asked for it.
-        RecordInscription(new Inscription(
-            "A name for it",
-            [$"{_selectedPerson?.Name ?? "Somebody"} made a thing the band had no word for.", $"They are calling it {word}."],
-            // Carried even though the chronicle leaves closing words off the page: an
-            // inscription without them is one the overlay cannot be dismissed from, and that is
-            // meant only for a band with nobody left (see InscriptionOverlay.Show).
-            "The word is passed along"));
+        _workshopController.InscriptionRecorded += RecordInscription;
+    }
 
-        _workshop.ReportOutcome($"They are calling it {word}.");
-
+    // Pressed on the pack line, on the selected person's own card or on their detail page.
+    private void OnPackRequested()
+    {
         if (_selectedPerson is { } person)
         {
-            _workshop.Show(WorkshopActions.Carried(_world, person));
-            _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
+            _workshopController.Toggle(person);
         }
     }
 
@@ -940,7 +736,7 @@ public partial class Main : Node3D
         _bandPanel.Visible = false;
         _selectionPanel.ClearSelection();
         _detailPanel.Close();
-        _workshop.Close();
+        _workshopController.Close();
     }
 
     // A successor band arrives into this same world: a fresh crowd is spawned and the prologue
@@ -1075,7 +871,7 @@ public partial class Main : Node3D
     {
         _selectionPanel = new SelectionPanel();
         _selectionPanel.ActionInvoked += OnActionInvoked;
-        _selectionPanel.PackRequested += OpenWorkshop;
+        _selectionPanel.PackRequested += OnPackRequested;
         _selectionPanel.DetailRequested += OpenDetail;
         _selectionPanel.CloseRequested += ClearSelection;
         canvas.AddChild(_selectionPanel);
@@ -1099,7 +895,7 @@ public partial class Main : Node3D
         _detailPanel.VisibilityChanged += () => _detailShield.Visible = _detailPanel.Visible;
         _detailPanel.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         _detailPanel.ActionInvoked += OnActionInvoked;
-        _detailPanel.PackRequested += OpenWorkshop;
+        _detailPanel.PackRequested += OnPackRequested;
         canvas.AddChild(_detailPanel);
     }
 
