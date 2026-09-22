@@ -31,42 +31,9 @@ public partial class Main : Node3D
     private FreeCameraRig _cameraRig = null!;
     private Position _campCenter;
 
-    private FloatingPanel _inspector = null!;
-    private Label _infoLabel = null!;
-    private Label _buildingsLabel = null!;
-    private Label _gravesLabel = null!;
     private SelectionController _selection = null!;
-    private StatusBar _statusBar = null!;
-    private InscriptionOverlay _inscriptionOverlay = null!;
-    private PausePanel _pausePanel = null!;
-    private HelpPanel _helpPanel = null!;
-    private ChroniclePanel _chronicle = null!;
     private WorkshopController _workshopController = null!;
-
-    // Every full-screen page or window that asks for the player's whole attention, tagged with
-    // what that means for it, in one place - so a page added here only has to be added here, and
-    // not hunted down separately everywhere something else already checks the others (which is
-    // how the pause panel twice ended up stackable behind one of these). `HoldsClock` says
-    // whether it stops the world while it is up (see _Process); `BlocksPause` says whether its
-    // being up should stop Space from opening a second window on top of it (see TogglePause). The
-    // pause panel holds the clock but is not its own blocker - TogglePause decides what pressing
-    // Space does to the one already up, not whether it is allowed to be up at all.
-    private IEnumerable<ModalWindow> ModalWindows =>
-    [
-        new ModalWindow(_inscriptionOverlay, HoldsClock: true, BlocksPause: true),
-        new ModalWindow(_pausePanel, HoldsClock: true, BlocksPause: false),
-        new ModalWindow(_helpPanel, HoldsClock: true, BlocksPause: true),
-        new ModalWindow(_workshopController.ModalControl, HoldsClock: true, BlocksPause: true),
-        new ModalWindow(_selection.DetailModalControl, HoldsClock: true, BlocksPause: true),
-        new ModalWindow(_chronicle, HoldsClock: false, BlocksPause: true),
-    ];
-
-    private bool AnyClockHoldingWindowVisible => ModalWindows.Any(window => window.HoldsClock && window.Control.Visible);
-
-    private bool AnyPauseBlockingWindowVisible => ModalWindows.Any(window => window.BlocksPause && window.Control.Visible);
-
-    private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
-
+    private MainUi _mainUi = null!;
     private WorldInputController _worldInput = null!;
     private EndingAnnouncements _endingAnnouncements = new();
     private double _tickAccumulator;
@@ -138,7 +105,7 @@ public partial class Main : Node3D
         _orderCoordinator = new OrderCoordinator(_world, _presenter, _presentation);
         SetUpUi();
         _orderCoordinator.WorldChanged += OnOrderCoordinatorWorldChanged;
-        _orderCoordinator.OrderFailed += _statusBar.Notify;
+        _orderCoordinator.OrderFailed += _mainUi.StatusBar.Notify;
 
         await Building(85, "Gathering the clouds");
         CloudScatter.Scatter(this, _terrain.Half);
@@ -157,7 +124,7 @@ public partial class Main : Node3D
         _loadingScreen = null;
         _loading = false;
 
-        ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
+        _mainUi.ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.Entities.Count(e => e.Category == EntityCategory.Growable)} resource nodes at tick {_world.Clock.CurrentTick}.");
         // Answers "am I running the build I think I am" (a stale process after hot-reload or a
@@ -207,10 +174,10 @@ public partial class Main : Node3D
         // Also every frame: the mask camera tracks the main camera's continuous movement.
         _cloudFogMask.Update();
 
-        // Time stands still while any window that holds the clock is up (see ModalWindows) - an
-        // inscription, a pause the player asked for, the controls page, the workbench, the detail
-        // page. Each is read or worked on instead of played through, not while playing.
-        if (AnyClockHoldingWindowVisible)
+        // Time stands still while any registered modal that holds the clock is up (see MainUi) -
+        // an inscription, a pause the player asked for, the controls page, the workbench, the
+        // detail page. Each is read or worked on instead of played through, not while playing.
+        if (_mainUi.HoldsClock)
         {
             return;
         }
@@ -232,7 +199,7 @@ public partial class Main : Node3D
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
         _orderCoordinator.ResolvePending();
-        _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
+        _mainUi.StatusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
         _selection.Refresh();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
@@ -288,7 +255,7 @@ public partial class Main : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F11 })
         {
-            ToggleFullscreen();
+            MainUi.ToggleFullscreen();
         }
 
         if (!typing && @event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space })
@@ -306,27 +273,11 @@ public partial class Main : Node3D
         {
             _worldInput.CloseContextMenu();
             _workshopController.HandleEscape();
-
-            if (_helpPanel.Visible)
-            {
-                _helpPanel.Dismiss();
-            }
-
+            _mainUi.HandleEscape();
             _selection.CloseDetail();
         }
 
         _worldInput.Handle(@event, GetViewport());
-    }
-
-    // F11 moves between the window and a borderless fullscreen - the whole screen, taskbar
-    // included, with no native Windows chrome (WindowMode.Fullscreen rather than the exclusive
-    // video-mode switch, which is the less forgiving kind on Windows). F alone zooms the camera
-    // (FreeCameraRig), so the key is F11; the controls page lists it under Windows.
-    private static void ToggleFullscreen()
-    {
-        var mode = DisplayServer.WindowGetMode();
-        var inFullscreen = mode is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
-        DisplayServer.WindowSetMode(inFullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
     }
 
     // _UnhandledInput, not _Input: _Input fires before the UI gets the event, so wheel/drag over
@@ -379,23 +330,32 @@ public partial class Main : Node3D
 
     private void SetUpUi()
     {
-        var canvas = new CanvasLayer();
-        AddChild(canvas);
+        _mainUi = new MainUi(this, _world, _presentation);
 
-        // The status bar first: it carries the buttons the windows below hang their own toggles on.
-        SetUpStatusBar(canvas);
-        SetUpInspectorWindow(canvas);
-        SetUpSelectionController(canvas);
-        SetUpChronicle(canvas);
-        SetUpWorkshopController(canvas);
+        SetUpSelectionController(_mainUi.Canvas);
+        // Opposite the inspector, so the two can be open at once without covering each other.
+        _mainUi.AttachChronicle();
+        SetUpWorkshopController(_mainUi.Canvas);
         // Attached rather than built with the rest of selection above: the detail page has to
         // land after the workbench in the canvas so it draws on top of it.
-        _selection.AttachDetailPanel(canvas);
+        _selection.AttachDetailPanel(_mainUi.Canvas);
         _selection.WorkshopRequested += _workshopController.Toggle;
-        SetUpWorldInputController(canvas);
-        SetUpInscriptionOverlay(canvas);
-        SetUpPausePanel(canvas);
-        SetUpHelpPanel(canvas);
+        SetUpWorldInputController(_mainUi.Canvas);
+        // Last: inscriptions and the pause/help pages draw over everything else built above.
+        _mainUi.AttachOverlaysAndPauseHelp();
+        _mainUi.InscriptionOverlay.AnotherBandRequested += OnAnotherBandRequested;
+        // Letting a clock-holding page this type owns go primes the tick accumulator, so the
+        // world starts again on the next frame rather than a full interval later.
+        _mainUi.ClockShouldResume += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+
+        // The workbench and the detail page keep owning their own clock-holding/pause-blocking
+        // registration, since MainUi never reaches into controls it does not itself construct.
+        _mainUi.RegisterModal(_workshopController.ModalControl, holdsClock: true, blocksPause: true);
+        _mainUi.RegisterModal(_selection.DetailModalControl, holdsClock: true, blocksPause: true);
+
+        _mainUi.Inspector.SpawnRequested += OnSpawnButtonPressed;
+        _mainUi.Inspector.ExtinguishRequested += OnExtinguishButtonPressed;
+        _mainUi.Inspector.RevealMapToggled += OnRevealMapToggled;
     }
 
     private void SetUpSelectionController(CanvasLayer canvas)
@@ -405,7 +365,7 @@ public partial class Main : Node3D
         // Letting the detail page go primes the tick accumulator, so the world starts again on
         // the next frame rather than a full interval later - as dismissing the controls page does.
         _selection.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
-        _statusBar.BandRequested += _selection.ToggleBandPanel;
+        _mainUi.StatusBar.BandRequested += _selection.ToggleBandPanel;
     }
 
     // The workbench, opened from the pack line on the selected person's card. Like the pause
@@ -419,25 +379,14 @@ public partial class Main : Node3D
         _workshopController.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
         // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
         // than only into the panel that asked for it.
-        _workshopController.InscriptionRecorded += RecordInscription;
-    }
-
-    // Opposite the inspector, so the two can be open at once without covering each other.
-    private void SetUpChronicle(CanvasLayer canvas)
-    {
-        _chronicle = new ChroniclePanel
-        {
-            Position = new Vector2(GetViewport().GetVisibleRect().Size.X - 476f, 16f),
-        };
-        canvas.AddChild(_chronicle);
-        _statusBar.ChronicleRequested += _chronicle.Toggle;
+        _workshopController.InscriptionRecorded += _mainUi.RecordInscription;
     }
 
     // After the windows, so a menu opened over one of them is on top of it; before the
     // inscription overlay and the pause panel, which are on top of everything.
     private void SetUpWorldInputController(CanvasLayer canvas)
     {
-        _worldInput = new WorldInputController(canvas, _world, _cameraRig, _selection, _orderCoordinator, _statusBar, _presentation);
+        _worldInput = new WorldInputController(canvas, _world, _cameraRig, _selection, _orderCoordinator, _mainUi.StatusBar, _presentation);
         // Presenter is already built (see _Ready) by the time this runs; the two-step handoff
         // exists for the construction cycle - the presenter is itself built with this
         // controller's click callbacks - not because the presenter is unready here.
@@ -445,63 +394,13 @@ public partial class Main : Node3D
         _selection.ActionInvoked += _worldInput.PerformAction;
     }
 
-    // Added after the contextual menu so it draws over everything else on the canvas, the
-    // inspector included.
-    private void SetUpInscriptionOverlay(CanvasLayer canvas)
-    {
-        _inscriptionOverlay = new InscriptionOverlay();
-        // The clock stood still, so the next tick is due the moment the inscription comes down -
-        // a full interval later read as the world taking a second to notice.
-        _inscriptionOverlay.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
-        _inscriptionOverlay.AnotherBandRequested += OnAnotherBandRequested;
-        canvas.AddChild(_inscriptionOverlay);
-    }
-
-    // After the inscription overlay: the two never show at once today (ticking, and with it every
-    // death, is on hold while either is up), but this is the one that should draw on top.
-    private void SetUpPausePanel(CanvasLayer canvas)
-    {
-        _pausePanel = new PausePanel();
-        // The cross on the page is the other half of Space: both let the world go again.
-        _pausePanel.Resumed += TogglePause;
-        canvas.AddChild(_pausePanel);
-    }
-
-    // Last of all, so the controls can be read over whatever else is up. Opened and closed by
-    // the "?" on the status bar or by Escape; like an inscription being dismissed, letting it go
-    // primes the tick accumulator so the world starts again on the next frame rather than a full
-    // interval later.
-    private void SetUpHelpPanel(CanvasLayer canvas)
-    {
-        _helpPanel = new HelpPanel();
-        _helpPanel.Dismissed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
-        canvas.AddChild(_helpPanel);
-        _statusBar.HelpRequested += _helpPanel.Toggle;
-    }
-
     // Space toggles the clock at the player's request - ignored while an inscription holds it,
-    // which is not the player's to override. Unpausing primes the tick accumulator like an
-    // inscription dismissal does (SetUpInscriptionOverlay), so the world resumes next frame.
+    // which is not the player's to override.
     private void TogglePause()
     {
-        // None of these are the player's to override (see ModalWindows): a pause asked for behind
-        // a page nobody can see would only surface once that page comes down, as an extra pause
-        // panel nobody asked to see waiting behind it.
-        if (AnyPauseBlockingWindowVisible)
-        {
-            return;
-        }
-
-        if (_pausePanel.Visible)
-        {
-            _pausePanel.Hide();
-            _tickAccumulator = _pacing.TickIntervalSeconds;
-            return;
-        }
-
         var band = BandArrival.Of(_world);
         var sinceArrival = DurationText.For(_world.Clock.CurrentTick - _bandArrivalTick, _world.Configuration.Rules.TicksPerYear, _world.Configuration.Rules.TicksPerSeason);
-        _pausePanel.Show(band.BandName, sinceArrival, PopulationSummary.Of(band.People, band.Men, band.Women, band.Children));
+        _mainUi.TogglePause(band.BandName, sinceArrival, PopulationSummary.Of(band.People, band.Men, band.Women, band.Children));
     }
 
     // The fate is read off the world every tick and shown the first tick it changes (see
@@ -526,7 +425,7 @@ public partial class Main : Node3D
                 CloseBandWindows();
             }
 
-            ShowInscription(Epitaph.Write(ending), offerAnotherBand: nobodyIsLeft);
+            _mainUi.ShowInscription(Epitaph.Write(ending), offerAnotherBand: nobodyIsLeft);
         }
     }
 
@@ -567,96 +466,12 @@ public partial class Main : Node3D
 
         var arrival = BandArrival.Of(_world);
         _bandArrivalTick = arrival.ArrivalTick;
-        ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
+        _mainUi.ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
 
         var campX = (float)newCamp.X;
         var campZ = (float)newCamp.Y;
         var campHeight = _terrain.SampleHeight(campX, campZ);
         _cameraRig.FocusOn(new Vector3(campX, campHeight, campZ));
-    }
-
-    // Every inscription stops the clock until dismissed (see _Process); its title goes up on
-    // the overlay and the whole of it into the chronicle, where it stays for the session.
-    private void ShowInscription(Inscription inscription, bool offerAnotherBand)
-    {
-        RecordInscription(inscription);
-        _inscriptionOverlay.Show(inscription, offerAnotherBand);
-    }
-
-    // Written down without stopping anything. For a moment the player is already living
-    // through - they have just typed the name themselves - taking the whole screen to tell them
-    // what they did would be ceremony in the way of play. The chronicle keeps it either way,
-    // and that is what outlives the band.
-    private void RecordInscription(Inscription inscription)
-    {
-        _chronicle.Add(inscription);
-        _statusBar.ShowChronicleButton();
-        GD.Print($"Inscription: {inscription.Title}");
-    }
-
-    // Debug only: the world's raw numbers and the levers that move them. What the player is meant
-    // to read and press lives in SelectionPanel; this window keeps the dump, the spawner, the
-    // extinguisher and the map reveal, none of which belong in the game proper (docs/todo/todo.md).
-    //
-    // Shut until the status bar's Inspector button is pressed. It used to open with the game and
-    // sit over the corner the band's roster now claims, which put a debug tool in front of the
-    // player before they had asked for one.
-    private void SetUpInspectorWindow(CanvasLayer canvas)
-    {
-        const float width = 340f;
-
-        var panel = new FloatingPanel("Inspector (debug)")
-        {
-            Position = new Vector2(16, 16),
-            Visible = false,
-            CustomMinimumSize = new Vector2(width, 0),
-            // A Theme resource cascades its DefaultFontSize down to every descendant Control that
-            // doesn't set its own override - unlike AddThemeFontSizeOverride, which only affects
-            // the single Control it's called on.
-            Theme = new Theme { DefaultFontSize = _presentation.InspectorFontSize },
-        };
-        canvas.AddChild(panel);
-        _inspector = panel;
-        _statusBar.InspectorRequested += () => _inspector.Visible = !_inspector.Visible;
-
-        _infoLabel = new Label
-        {
-            Text = "No selection.",
-            CustomMinimumSize = new Vector2(width, 0),
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-        };
-        panel.Body.AddChild(_infoLabel);
-
-        var spawnButton = new Button { Text = "Spawn Person" };
-        spawnButton.Pressed += OnSpawnButtonPressed;
-        panel.Body.AddChild(spawnButton);
-
-        // The quick way to the epitaph and its "Another band comes" offer (docs/todo/todo.md):
-        // the epitaph of a band nobody is left in carries no closing words, so without this the
-        // only way to that screen is playing the band out by hand.
-        var extinguishButton = new Button { Text = "Extinguish Band" };
-        extinguishButton.Pressed += OnExtinguishButtonPressed;
-        panel.Body.AddChild(extinguishButton);
-
-        // A development view, not a gameplay one (see RevealableExploration): the whole map as if
-        // fog of war did not exist.
-        var revealMapToggle = new CheckButton { Text = "Reveal Map" };
-        revealMapToggle.Toggled += OnRevealMapToggled;
-        panel.Body.AddChild(revealMapToggle);
-
-        _buildingsLabel = new Label { Text = "Buildings: none" };
-        panel.Body.AddChild(_buildingsLabel);
-
-        _gravesLabel = new Label { Text = "Graves: none" };
-        panel.Body.AddChild(_gravesLabel);
-    }
-
-    private void SetUpStatusBar(CanvasLayer canvas)
-    {
-        _statusBar = new StatusBar();
-        _statusBar.AddThemeStyleboxOverride("panel", PanelChrome.Background());
-        canvas.AddChild(_statusBar);
-        _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
     }
 
     // Refreshes right away rather than waiting for the next tick: the tick interval is long
@@ -742,13 +557,13 @@ public partial class Main : Node3D
     {
         if (_selection.Grave is { } grave)
         {
-            _infoLabel.Text = InspectorText.ForGrave(grave);
+            _mainUi.Inspector.ShowInfo(InspectorText.ForGrave(grave));
             return;
         }
 
         if (_selection.Person is not { } person)
         {
-            _infoLabel.Text = "No selection.";
+            _mainUi.Inspector.ShowInfo("No selection.");
             return;
         }
 
@@ -764,7 +579,7 @@ public partial class Main : Node3D
             : "empty";
         var carriedWeight = person.Inventory.TotalWeight(_world.Configuration.ItemCatalog);
         var maxCarryWeight = _world.MaxCarryWeightFor(person);
-        _infoLabel.Text =
+        _mainUi.Inspector.ShowInfo(
             $"{person.Id}  {person.Name}{status}\n" +
             $"Position: {person.Position}\n" +
             $"Age: {AgeText(person)} ({_world.LifeStageOf(person)}, {person.Sex})\n" +
@@ -774,15 +589,15 @@ public partial class Main : Node3D
             $"Known techniques: {techniques}\n" +
             $"Closest to: {BondsText(person)}\n" +
             $"Carrying: {carriedWeight}/{maxCarryWeight}\n" +
-            $"Inventory: {inventory}";
+            $"Inventory: {inventory}");
     }
 
     private void RefreshBuildingsLabel()
     {
         var buildings = _world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
-        _buildingsLabel.Text = "Buildings: " + (buildings.Count > 0
+        _mainUi.Inspector.ShowBuildings("Buildings: " + (buildings.Count > 0
             ? string.Join(", ", buildings.Select(BuildingSummary))
-            : "none");
+            : "none"));
     }
 
     private string AgeText(Person person) =>
@@ -790,7 +605,7 @@ public partial class Main : Node3D
 
     private void RefreshGravesLabel()
     {
-        _gravesLabel.Text = $"Graves: {_world.Graves.Count}";
+        _mainUi.Inspector.ShowGraves($"Graves: {_world.Graves.Count}");
     }
 
     private static string BuildingSummary(Entity building)
