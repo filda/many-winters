@@ -29,20 +29,15 @@ public partial class Main : Node3D
     private CloudFogMask _cloudFogMask = null!;
     private TerrainRenderer _terrain = null!;
     private FreeCameraRig _cameraRig = null!;
-    private Position _campCenter;
 
     private SelectionController _selection = null!;
     private WorkshopController _workshopController = null!;
     private MainUi _mainUi = null!;
     private WorldInputController _worldInput = null!;
-    private EndingAnnouncements _endingAnnouncements = new();
+    private BandContinuityController _continuity = null!;
     private double _tickAccumulator;
     private OcclusionFader _occlusionFader = null!;
     private OrderCoordinator _orderCoordinator = null!;
-
-    // Captured in _Ready, the one moment BandArrival.Of really means "just arrived"; TogglePause
-    // calls BandArrival.Of again later only for its live population counts.
-    private long _bandArrivalTick;
 
     // Above the game's own UI canvas (SetUpUi), which is built three quarters of the way through
     // the load: both sit on the default layer otherwise, and the status bar - added to the tree
@@ -85,7 +80,7 @@ public partial class Main : Node3D
 
         await Building(45, "Hanging the sky");
         _exploration = new RevealableExploration(_world.Exploration);
-        _campCenter = map.CampCenter;
+        var campCenter = map.CampCenter;
         GetViewport().PhysicsObjectPicking = true;
         SetUpLighting();
         SetUpSky();
@@ -94,7 +89,7 @@ public partial class Main : Node3D
         SetUpTerrain();
 
         await Building(70, "Placing the camera");
-        SetUpCamera();
+        SetUpCamera(campCenter);
 
         await Building(75, "Drawing the pages");
         // Built ahead of the UI rather than with the rest of the band below: SetUpUi constructs
@@ -114,17 +109,16 @@ public partial class Main : Node3D
         await Building(90, "Setting out the band");
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
         _groundClouds = new GroundClouds(this, _fogOfWar, _terrain.Half, _terrain.SampleHeight);
+        _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _workshopController);
 
         await Building(100, "The band arrives");
-        var arrival = BandArrival.Of(_world);
-        _bandArrivalTick = arrival.ArrivalTick;
 
         _loadingCanvas.QueueFree();
         _loadingCanvas = null;
         _loadingScreen = null;
         _loading = false;
 
-        _mainUi.ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
+        _continuity.ShowInitialArrival();
 
         GD.Print($"Main ready. World has {_world.People.Count} people and {_world.Entities.Count(e => e.Category == EntityCategory.Growable)} resource nodes at tick {_world.Clock.CurrentTick}.");
         // Answers "am I running the build I think I am" (a stale process after hot-reload or a
@@ -203,7 +197,7 @@ public partial class Main : Node3D
         _selection.Refresh();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
-        AnnounceEndingIfAny();
+        _continuity.AnnounceEndingIfAny();
 
         foreach (var person in _world.People)
         {
@@ -314,10 +308,10 @@ public partial class Main : Node3D
         _terrain = TerrainSetup.Create(this, OnGroundInputEvent);
     }
 
-    private void SetUpCamera()
+    private void SetUpCamera(Position campCenter)
     {
-        var campX = (float)_campCenter.X;
-        var campZ = (float)_campCenter.Y;
+        var campX = (float)campCenter.X;
+        var campZ = (float)campCenter.Y;
         var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
         _cameraRig = new FreeCameraRig(
             this,
@@ -343,7 +337,6 @@ public partial class Main : Node3D
         SetUpWorldInputController(_mainUi.Canvas);
         // Last: inscriptions and the pause/help pages draw over everything else built above.
         _mainUi.AttachOverlaysAndPauseHelp();
-        _mainUi.InscriptionOverlay.AnotherBandRequested += OnAnotherBandRequested;
         // Letting a clock-holding page this type owns go primes the tick accumulator, so the
         // world starts again on the next frame rather than a full interval later.
         _mainUi.ClockShouldResume += () => _tickAccumulator = _pacing.TickIntervalSeconds;
@@ -377,9 +370,6 @@ public partial class Main : Node3D
         // Letting the workbench go primes the tick accumulator, so the world starts again on the
         // next frame rather than a full interval later - as dismissing the controls page does.
         _workshopController.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
-        // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
-        // than only into the panel that asked for it.
-        _workshopController.InscriptionRecorded += _mainUi.RecordInscription;
     }
 
     // After the windows, so a menu opened over one of them is on top of it; before the
@@ -399,79 +389,8 @@ public partial class Main : Node3D
     private void TogglePause()
     {
         var band = BandArrival.Of(_world);
-        var sinceArrival = DurationText.For(_world.Clock.CurrentTick - _bandArrivalTick, _world.Configuration.Rules.TicksPerYear, _world.Configuration.Rules.TicksPerSeason);
+        var sinceArrival = DurationText.For(_world.Clock.CurrentTick - _continuity.ArrivalTick, _world.Configuration.Rules.TicksPerYear, _world.Configuration.Rules.TicksPerSeason);
         _mainUi.TogglePause(band.BandName, sinceArrival, PopulationSummary.Of(band.People, band.Men, band.Women, band.Children));
-    }
-
-    // The fate is read off the world every tick and shown the first tick it changes (see
-    // EndingAnnouncements): once when the last man or woman dies, once more when the last
-    // person does.
-    private void AnnounceEndingIfAny()
-    {
-        if (!_endingAnnouncements.ShouldAnnounce(BandEnding.FateOf(_world.People)))
-        {
-            return;
-        }
-
-        if (BandEnding.Of(_world) is { } ending)
-        {
-            var nobodyIsLeft = ending.Fate == BandFate.Ended;
-
-            // The roster and the selection are about the dead, and the world under this epitaph
-            // waits for a successor band: put the old band's windows away now, the way that
-            // band's arrival would have (OnAnotherBandRequested), not only then.
-            if (nobodyIsLeft)
-            {
-                CloseBandWindows();
-            }
-
-            _mainUi.ShowInscription(Epitaph.Write(ending), offerAnotherBand: nobodyIsLeft);
-        }
-    }
-
-    // Every window that shows something about whoever is selected or was, closed together so a
-    // future one is not the one somebody forgets to add here - which is exactly how the detail
-    // page got left open through an ending it was never told about.
-    private void CloseBandWindows()
-    {
-        _selection.CloseForBandEnd();
-        _workshopController.Close();
-    }
-
-    // A successor band arrives into this same world: a fresh crowd is spawned and the prologue
-    // takes their place on screen. The old band's dead and graves stay where they are.
-    private void OnAnotherBandRequested()
-    {
-        // Put away the old band's windows - the roster and selection are about dead people.
-        CloseBandWindows();
-
-        // The new band has not walked this land yet - fog clears around their new camp.
-        _world.Exploration.Reset();
-
-        var idRng = new Random(_world.Clock.CurrentTick.GetHashCode());
-        var newCamp = MapLoader.SpawnNewBand(_world, idRng, _campCenter);
-        _campCenter = newCamp;
-
-        // So the new band's fate changes are announced independently of the old band's.
-        _endingAnnouncements = new EndingAnnouncements();
-
-        // Brief pre-roll so the new band is not standing still behind the prologue.
-        _world.Advance(IdleTask.MaxPauseTicks + 1);
-
-        // _Process is blocked while the inscription is up, so refresh the fog here rather than
-        // waiting for it.
-        _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
-        _fogOfWar.Refresh();
-        _groundClouds.Refresh();
-
-        var arrival = BandArrival.Of(_world);
-        _bandArrivalTick = arrival.ArrivalTick;
-        _mainUi.ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
-
-        var campX = (float)newCamp.X;
-        var campZ = (float)newCamp.Y;
-        var campHeight = _terrain.SampleHeight(campX, campZ);
-        _cameraRig.FocusOn(new Vector3(campX, campHeight, campZ));
     }
 
     // Refreshes right away rather than waiting for the next tick: the tick interval is long
@@ -511,8 +430,8 @@ public partial class Main : Node3D
 
         return FreePositionSearch.Find(
             () => new Position(
-                _campCenter.X + ((GD.Randf() - 0.5f) * spread),
-                _campCenter.Y + ((GD.Randf() - 0.5f) * spread)),
+                _continuity.CampCenter.X + ((GD.Randf() - 0.5f) * spread),
+                _continuity.CampCenter.Y + ((GD.Randf() - 0.5f) * spread)),
             candidate => !_world.People.Any(p => WorldState.Distance(p.Position, candidate) < minDistance),
             maxAttempts: 20);
     }

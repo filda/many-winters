@@ -1,5 +1,4 @@
 using Godot;
-using ManyWinters.Core.Continuity;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Ui;
@@ -157,24 +156,5 @@ internal sealed class MainUi
         var mode = DisplayServer.WindowGetMode();
         var inFullscreen = mode is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
         DisplayServer.WindowSetMode(inFullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
-    }
-
-    // Every inscription stops the clock until dismissed (see Main._Process); its title goes up
-    // on the overlay and the whole of it into the chronicle, where it stays for the session.
-    public void ShowInscription(Inscription inscription, bool offerAnotherBand)
-    {
-        RecordInscription(inscription);
-        InscriptionOverlay.Show(inscription, offerAnotherBand);
-    }
-
-    // Written down without stopping anything. For a moment the player is already living
-    // through - they have just typed the name themselves - taking the whole screen to tell them
-    // what they did would be ceremony in the way of play. The chronicle keeps it either way, and
-    // that is what outlives the band.
-    public void RecordInscription(Inscription inscription)
-    {
-        Chronicle.Add(inscription);
-        StatusBar.ShowChronicleButton();
-        GD.Print($"Inscription: {inscription.Title}");
     }
 }
