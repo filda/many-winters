@@ -67,7 +67,7 @@ public partial class Main : Node3D
 
     private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
 
-    private ContextMenu _contextMenu = null!;
+    private WorldInputController _worldInput = null!;
     private EndingAnnouncements _endingAnnouncements = new();
     private double _tickAccumulator;
     private OcclusionFader _occlusionFader = null!;
@@ -76,16 +76,6 @@ public partial class Main : Node3D
     // Captured in _Ready, the one moment BandArrival.Of really means "just arrived"; TogglePause
     // calls BandArrival.Of again later only for its live population counts.
     private long _bandArrivalTick;
-
-    // Telling a right-click apart from the right-drag that turns the camera, and what the press
-    // landed on until the button comes up (see HandleRightButton). The world's views report the
-    // press; only the release decides whether a menu opens.
-    private readonly RightClickGesture _rightClick = new();
-    private Func<Person, TargetMenu>? _pointedAt;
-
-    // The one thing the game says out loud about an order nobody can carry out. Every order the
-    // player gives goes through Acting(), so it is said in exactly one way.
-    private const string NobodySelected = "Select someone first, then tell them what to do.";
 
     // Above the game's own UI canvas (SetUpUi), which is built three quarters of the way through
     // the load: both sit on the default layer otherwise, and the status bar - added to the tree
@@ -314,7 +304,7 @@ public partial class Main : Node3D
         // the controls page swallows the clicks that would open a menu, so only one can be up.
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
-            _contextMenu.Close();
+            _worldInput.CloseContextMenu();
             _workshopController.HandleEscape();
 
             if (_helpPanel.Visible)
@@ -325,25 +315,7 @@ public partial class Main : Node3D
             _selection.CloseDetail();
         }
 
-        HandleRightButton(@event);
-
-        // Ahead of Godot's physics picking (which runs later, from unhandled input) so it wins even
-        // when the pick would land on something opaque in front of a person - see
-        // PresentationSettings.PersonClickScreenRadius.
-        if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
-            && GetViewport().GuiGetHoveredControl() is null)
-        {
-            // A click out in the world puts the menu away, as any menu closes when the player
-            // looks elsewhere. Only out in the world: over the UI the press has to reach whatever
-            // it landed on, and a button of the menu's own only fires when it comes back up.
-            _contextMenu.Close();
-
-            if (FindNearestPersonOnScreen(mouseButton.Position) is { } person)
-            {
-                OnPersonClicked(person, MouseButton.Left);
-                GetViewport().SetInputAsHandled();
-            }
-        }
+        _worldInput.Handle(@event, GetViewport());
     }
 
     // F11 moves between the window and a borderless fullscreen - the whole screen, taskbar
@@ -355,92 +327,6 @@ public partial class Main : Node3D
         var mode = DisplayServer.WindowGetMode();
         var inFullscreen = mode is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
         DisplayServer.WindowSetMode(inFullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
-    }
-
-    // The right button does two jobs: dragged it turns the camera (FreeCameraRig), pressed and
-    // released in one spot it asks what may be done with whatever is under the cursor. So the
-    // menu waits for the release (RightClickGesture), and what the cursor was over is recorded on
-    // the press - the only half of it a view ever sees, since Godot delivers presses to colliders
-    // through physics picking, which runs after this.
-    private void HandleRightButton(InputEvent @event)
-    {
-        switch (@event)
-        {
-            case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } pressed:
-                _pointedAt = null;
-                _contextMenu.Close();
-                _rightClick.Press(pressed.Position);
-                break;
-            case InputEventMouseMotion motion:
-                _rightClick.Moved(motion.Position);
-                break;
-            case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } released:
-                if (_rightClick.Release())
-                {
-                    ShowContextMenu(released.Position);
-                }
-
-                break;
-        }
-    }
-
-    // Opens the menu for whatever the press landed on. An empty one is not opened at all: the one
-    // target with nothing to offer is the selected person themselves, whose own card is already on
-    // screen (see TargetActions).
-    private void ShowContextMenu(Vector2 screenPosition)
-    {
-        if (_pointedAt is not { } menuFor || Acting() is not { } person)
-        {
-            return;
-        }
-
-        var menu = menuFor(person);
-        if (menu.Offers.Count > 0)
-        {
-            _contextMenu.Open(menu.Heading, menu.Offers, screenPosition);
-        }
-    }
-
-    // Whoever an order is for. Every order the player gives needs somebody to carry it out, and
-    // this is the one place that says so when there is nobody.
-    private Person? Acting()
-    {
-        if (_selection.Person is { } person)
-        {
-            return person;
-        }
-
-        _statusBar.Notify(NobodySelected);
-        return null;
-    }
-
-    // The already-selected person is never a candidate: re-selecting is a no-op, and the radius
-    // around them swallowed every "step over there" click on the ground at their feet. Excluded,
-    // the click falls through to picking; their own opaque pixels still re-select them.
-    private Person? FindNearestPersonOnScreen(Vector2 screenPosition)
-    {
-        var camera = _cameraRig.Camera;
-        Person? nearest = null;
-        var nearestDistance = float.MaxValue;
-
-        foreach (var person in _world.People)
-        {
-            if (person == _selection.Person
-                || _presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
-                || camera.IsPositionBehind(personGlobalPosition))
-            {
-                continue;
-            }
-
-            var distance = camera.UnprojectPosition(personGlobalPosition).DistanceTo(screenPosition);
-            if (distance <= _presentation.PersonClickScreenRadius && distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearest = person;
-            }
-        }
-
-        return nearest;
     }
 
     // _UnhandledInput, not _Input: _Input fires before the UI gets the event, so wheel/drag over
@@ -456,12 +342,7 @@ public partial class Main : Node3D
             return;
         }
 
-        if (GetViewport().GuiGetHoveredControl() is not null)
-        {
-            return;
-        }
-
-        _cameraRig.HandleMouseInput(@event);
+        _worldInput.HandleUnhandled(@event, GetViewport());
     }
 
     private void SetUpLighting()
@@ -511,7 +392,7 @@ public partial class Main : Node3D
         // land after the workbench in the canvas so it draws on top of it.
         _selection.AttachDetailPanel(canvas);
         _selection.WorkshopRequested += _workshopController.Toggle;
-        SetUpContextMenu(canvas);
+        SetUpWorldInputController(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
         SetUpHelpPanel(canvas);
@@ -520,7 +401,6 @@ public partial class Main : Node3D
     private void SetUpSelectionController(CanvasLayer canvas)
     {
         _selection = new SelectionController(canvas, _world, _presenter, _cameraRig, _presentation);
-        _selection.ActionInvoked += OnActionInvoked;
         _selection.Refreshed += RefreshInfoLabel;
         // Letting the detail page go primes the tick accumulator, so the world starts again on
         // the next frame rather than a full interval later - as dismissing the controls page does.
@@ -555,11 +435,14 @@ public partial class Main : Node3D
 
     // After the windows, so a menu opened over one of them is on top of it; before the
     // inscription overlay and the pause panel, which are on top of everything.
-    private void SetUpContextMenu(CanvasLayer canvas)
+    private void SetUpWorldInputController(CanvasLayer canvas)
     {
-        _contextMenu = new ContextMenu();
-        _contextMenu.ActionInvoked += OnActionInvoked;
-        canvas.AddChild(_contextMenu);
+        _worldInput = new WorldInputController(canvas, _world, _cameraRig, _selection, _orderCoordinator, _statusBar, _presentation);
+        // Presenter is already built (see _Ready) by the time this runs; the two-step handoff
+        // exists for the construction cycle - the presenter is itself built with this
+        // controller's click callbacks - not because the presenter is unready here.
+        _worldInput.AttachPresenter(_presenter);
+        _selection.ActionInvoked += _worldInput.PerformAction;
     }
 
     // Added after the contextual menu so it draws over everything else on the canvas, the
@@ -797,19 +680,6 @@ public partial class Main : Node3D
         _world.Execute(new ExtinguishBandCommand());
     }
 
-    // A line pressed on the selected person's card or on the contextual menu. Both draw offers
-    // for whoever is selected, so that is who carries it out.
-    private void OnActionInvoked(ActionOffer offer)
-    {
-        if (_selection.Person is not { } person)
-        {
-            return;
-        }
-
-        _contextMenu.Close();
-        _orderCoordinator.Perform(person, offer);
-    }
-
     // What every caller of OrderCoordinator.Perform used to refresh by hand once it had executed
     // or queued the offer.
     private void OnOrderCoordinatorWorldChanged()
@@ -846,121 +716,25 @@ public partial class Main : Node3D
         return bonds.Count > 0 ? string.Join(", ", bonds) : "none";
     }
 
-    private void OnPersonClicked(Person person, MouseButton button)
-    {
-        if (button == MouseButton.Right)
-        {
-            _pointedAt = actor => TargetActions.For(_world, actor, person);
-            return;
-        }
+    // Passed to WorldPresenter/TerrainSetup as click callbacks before WorldInputController can
+    // exist (it is built inside SetUpUi, from SelectionController and OrderCoordinator - see
+    // _Ready), so these forward instead of being the controller's own methods directly. Each
+    // reads _worldInput lazily at call time, long after _Ready has finished building it.
+    private void OnPersonClicked(Person person, MouseButton button) => _worldInput.OnPersonClicked(person, button);
 
-        _selection.Select(person);
-    }
+    private void OnGraveSelected(Grave grave) => _worldInput.OnGraveSelected(grave);
 
-    private void OnGraveSelected(Grave grave) => _selection.Select(grave);
+    private void OnResourceNodeClicked(Entity node, MouseButton button) => _worldInput.OnResourceNodeClicked(node, button);
 
-    // A left click on a resource is the one shortcut kept from before there was a menu: "gather
-    // that" is the only thing anybody means by pointing at a bush, and it is how the game is
-    // played. Everything else aimed at a target is asked for by name, on the right button.
-    //
-    // Depleting a node to zero keeps its view - the plant is still there, fruitless until
-    // RegenPerTick refills it. Only IsAlive turning false (felled or withered) removes it.
-    private void OnResourceNodeClicked(Entity node, MouseButton button)
-    {
-        if (button == MouseButton.Right)
-        {
-            _pointedAt = actor => TargetActions.For(_world, actor, node);
-            return;
-        }
+    private void OnItemPileClicked(Entity pile, MouseButton button) => _worldInput.OnItemPileClicked(pile, button);
 
-        if (Acting() is { } person)
-        {
-            _orderCoordinator.Perform(person, TargetActions.Gather(_world, person, node));
-        }
-    }
+    private void OnBuildingClicked(Entity building, MouseButton button) => _worldInput.OnBuildingClicked(building, button);
 
-    // A left click on a pile is the one shortcut kept, the same as a resource's Gather: "pick
-    // that up" is the only thing anybody means by pointing at it.
-    private void OnItemPileClicked(Entity pile, MouseButton button)
-    {
-        if (button == MouseButton.Right)
-        {
-            _pointedAt = actor => TargetActions.For(_world, actor, pile);
-            return;
-        }
+    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
+        _worldInput.OnMissedClick(camera, @event, position, normal, shapeIdx);
 
-        if (Acting() is { } person)
-        {
-            _orderCoordinator.Perform(person, TargetActions.PickUp(_world, person, pile));
-        }
-    }
-
-    // Either button opens the store's menu: a hut has no one obvious thing to do with it, so
-    // putting something in, taking something out and mending it are equally the point.
-    private void OnBuildingClicked(Entity building, MouseButton button)
-    {
-        _pointedAt = actor => TargetActions.For(_world, actor, building);
-
-        if (button == MouseButton.Left)
-        {
-            ShowContextMenu(GetViewport().GetMousePosition());
-        }
-    }
-
-    // The view has already tried HoverRescue.TryClickElsewhere (a full re-cast of the ray past
-    // everything ruled out) before forwarding here, so this genuinely is a ground click.
-    //
-    // The position handed over is the ray's hit on the view's collision box - up in the air on a
-    // tree-sized box's front face, tens of meters off the ground under the cursor (see
-    // GroundPick) - so only the screen position is reused and the ground re-derived. A click
-    // that finds no ground (sky past the terrain's edge) is dropped rather than guessed.
-    private void OnMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
-    {
-        if (camera is not Camera3D camera3D
-            || @event is not InputEventMouseButton { Pressed: true } mouseButton)
-        {
-            return;
-        }
-
-        if (GroundPick.FindGround(camera3D, mouseButton.Position) is { } groundPosition)
-        {
-            OnGroundClicked(groundPosition, mouseButton.ButtonIndex);
-        }
-    }
-
-    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx)
-    {
-        if (@event is InputEventMouseButton { Pressed: true } mouseButton)
-        {
-            OnGroundClicked(position, mouseButton.ButtonIndex);
-        }
-    }
-
-    // Left means walk there; right asks what else could be done on that spot, which is where
-    // building belongs - it needs a place chosen rather than a thing pointed at.
-    //
-    // Reached straight from the terrain's own collider as well as from a view that declined the
-    // click, so the wheel has to be turned away here too (see OrderButtons).
-    private void OnGroundClicked(Vector3 groundPosition, MouseButton button)
-    {
-        if (!OrderButtons.Includes(button))
-        {
-            return;
-        }
-
-        var ground = WorldSpace.ToSimulation(groundPosition);
-
-        if (button == MouseButton.Right)
-        {
-            _pointedAt = actor => TargetActions.For(_world, actor, ground);
-            return;
-        }
-
-        if (button == MouseButton.Left && Acting() is { } person)
-        {
-            _orderCoordinator.Perform(person, TargetActions.WalkTo(_world, person, ground));
-        }
-    }
+    private void OnGroundInputEvent(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
+        _worldInput.OnGroundInputEvent(camera, @event, position, normal, shapeIdx);
 
     // The debug inspector's raw dump of whoever is selected - kept apart from the player-facing
     // panels, which are SelectionController's own to refresh.
