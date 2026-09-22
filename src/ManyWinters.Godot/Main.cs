@@ -16,8 +16,6 @@ namespace ManyWinters.Godot;
 
 public partial class Main : Node3D
 {
-    private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
-
     // Every tunable number this scene runs on lives in these two, not in constants here - what
     // is a rule of the world itself belongs in SimulationRules (via WorldConfiguration) instead.
     private readonly SimulationPacing _pacing = SimulationPacing.Default;
@@ -37,17 +35,13 @@ public partial class Main : Node3D
     private Label _infoLabel = null!;
     private Label _buildingsLabel = null!;
     private Label _gravesLabel = null!;
-    private SelectionPanel _selectionPanel = null!;
-    private PersonDetailPanel _detailPanel = null!;
+    private SelectionController _selection = null!;
     private StatusBar _statusBar = null!;
     private InscriptionOverlay _inscriptionOverlay = null!;
     private PausePanel _pausePanel = null!;
     private HelpPanel _helpPanel = null!;
     private ChroniclePanel _chronicle = null!;
     private WorkshopController _workshopController = null!;
-
-    // The same, for the detail page (SetUpDetailPanel).
-    private Control _detailShield = null!;
 
     // Every full-screen page or window that asks for the player's whole attention, tagged with
     // what that means for it, in one place - so a page added here only has to be added here, and
@@ -63,7 +57,7 @@ public partial class Main : Node3D
         new ModalWindow(_pausePanel, HoldsClock: true, BlocksPause: false),
         new ModalWindow(_helpPanel, HoldsClock: true, BlocksPause: true),
         new ModalWindow(_workshopController.ModalControl, HoldsClock: true, BlocksPause: true),
-        new ModalWindow(_detailPanel, HoldsClock: true, BlocksPause: true),
+        new ModalWindow(_selection.DetailModalControl, HoldsClock: true, BlocksPause: true),
         new ModalWindow(_chronicle, HoldsClock: false, BlocksPause: true),
     ];
 
@@ -73,14 +67,8 @@ public partial class Main : Node3D
 
     private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
 
-    private BandPanel _bandPanel = null!;
     private ContextMenu _contextMenu = null!;
     private EndingAnnouncements _endingAnnouncements = new();
-    private TextureRect _selectionMarkerOverlay = null!;
-    // The Person itself, not an id: commands and labels want the object and PersonView hands it
-    // over on click, so nothing is looked up between "clicked" and "acted on".
-    private Person? _selectedPerson;
-    private Grave? _selectedGrave;
     private double _tickAccumulator;
     private OcclusionFader _occlusionFader = null!;
     private OrderCoordinator _orderCoordinator = null!;
@@ -219,8 +207,10 @@ public partial class Main : Node3D
         _cameraRig.HandleInput((float)delta);
         // Every frame, not per tick: the camera and the selected person's interpolated position
         // move continuously between ticks, so what stands in the way changes continuously too.
-        _occlusionFader.Update(_selectedPerson);
-        UpdateSelectionMarkerOverlay();
+        _occlusionFader.Update(_selection.Person);
+        // Main._Process still drives this directly - moving it under selection's own refresh
+        // waits for Plan 8's frame-loop extraction.
+        _selection.UpdateMarker();
         // Also every frame: hover is taken on mouse movement but can be lost without any - a
         // person can walk out from under a resting cursor (see HoverArbiter).
         _presenter.RevalidateHover();
@@ -242,7 +232,7 @@ public partial class Main : Node3D
         }
 
         _tickAccumulator -= _pacing.TickIntervalSeconds;
-        if (_selectedPerson is { } selectedPerson)
+        if (_selection.Person is { } selectedPerson)
         {
             _world.Execute(new GrantIdleGraceCommand(selectedPerson, _pacing.SelectedPersonIdleGraceTicks));
         }
@@ -253,7 +243,7 @@ public partial class Main : Node3D
         _groundClouds.Refresh();
         _orderCoordinator.ResolvePending();
         _statusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
-        RefreshSelection();
+        _selection.Refresh();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
         AnnounceEndingIfAny();
@@ -332,7 +322,7 @@ public partial class Main : Node3D
                 _helpPanel.Dismiss();
             }
 
-            _detailPanel.Close();
+            _selection.CloseDetail();
         }
 
         HandleRightButton(@event);
@@ -415,7 +405,7 @@ public partial class Main : Node3D
     // this is the one place that says so when there is nobody.
     private Person? Acting()
     {
-        if (_selectedPerson is { } person)
+        if (_selection.Person is { } person)
         {
             return person;
         }
@@ -435,7 +425,7 @@ public partial class Main : Node3D
 
         foreach (var person in _world.People)
         {
-            if (person == _selectedPerson
+            if (person == _selection.Person
                 || _presenter.GetPersonGlobalPosition(person.Id) is not { } personGlobalPosition
                 || camera.IsPositionBehind(personGlobalPosition))
             {
@@ -472,35 +462,6 @@ public partial class Main : Node3D
         }
 
         _cameraRig.HandleMouseInput(@event);
-    }
-
-    // A 2D overlay, not a 3D billboard (see PresentationSettings.SelectionMarkerScreenSize).
-    // Camera3D.UnprojectPosition/IsPositionBehind do the projection; this anchors a Control on it.
-    private void UpdateSelectionMarkerOverlay()
-    {
-        if (_selectedPerson is not { } person
-            || _presenter.GetPersonGlobalPosition(person.Id) is not { } personPosition
-            || _presenter.GetPersonHeadHeightOffset(person.Id) is not { } headHeightOffset)
-        {
-            _selectionMarkerOverlay.Visible = false;
-            return;
-        }
-
-        var camera = _cameraRig.Camera;
-        var headPosition = personPosition + new Vector3(0, headHeightOffset, 0);
-        if (camera.IsPositionBehind(headPosition))
-        {
-            _selectionMarkerOverlay.Visible = false;
-            return;
-        }
-
-        // SelectionMarkerScreenGap is screen pixels, so it applies to the projected point, not to
-        // headPosition before projecting.
-        var screenPosition = camera.UnprojectPosition(headPosition);
-        _selectionMarkerOverlay.Position = new Vector2(
-            screenPosition.X - (_selectionMarkerOverlay.Size.X / 2f),
-            screenPosition.Y - _presentation.SelectionMarkerScreenGap - _selectionMarkerOverlay.Size.Y);
-        _selectionMarkerOverlay.Visible = true;
     }
 
     private void SetUpLighting()
@@ -543,16 +504,28 @@ public partial class Main : Node3D
         // The status bar first: it carries the buttons the windows below hang their own toggles on.
         SetUpStatusBar(canvas);
         SetUpInspectorWindow(canvas);
-        SetUpSelectionMarker(canvas);
-        SetUpSelectionPanel(canvas);
-        SetUpBandPanel(canvas);
+        SetUpSelectionController(canvas);
         SetUpChronicle(canvas);
         SetUpWorkshopController(canvas);
-        SetUpDetailPanel(canvas);
+        // Attached rather than built with the rest of selection above: the detail page has to
+        // land after the workbench in the canvas so it draws on top of it.
+        _selection.AttachDetailPanel(canvas);
+        _selection.WorkshopRequested += _workshopController.Toggle;
         SetUpContextMenu(canvas);
         SetUpInscriptionOverlay(canvas);
         SetUpPausePanel(canvas);
         SetUpHelpPanel(canvas);
+    }
+
+    private void SetUpSelectionController(CanvasLayer canvas)
+    {
+        _selection = new SelectionController(canvas, _world, _presenter, _cameraRig, _presentation);
+        _selection.ActionInvoked += OnActionInvoked;
+        _selection.Refreshed += RefreshInfoLabel;
+        // Letting the detail page go primes the tick accumulator, so the world starts again on
+        // the next frame rather than a full interval later - as dismissing the controls page does.
+        _selection.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
+        _statusBar.BandRequested += _selection.ToggleBandPanel;
     }
 
     // The workbench, opened from the pack line on the selected person's card. Like the pause
@@ -567,59 +540,6 @@ public partial class Main : Node3D
         // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
         // than only into the panel that asked for it.
         _workshopController.InscriptionRecorded += RecordInscription;
-    }
-
-    // Pressed on the pack line, on the selected person's own card or on their detail page.
-    private void OnPackRequested()
-    {
-        if (_selectedPerson is { } person)
-        {
-            _workshopController.Toggle(person);
-        }
-    }
-
-    private void SetUpBandPanel(CanvasLayer canvas)
-    {
-        _bandPanel = new BandPanel();
-        _bandPanel.PersonChosen += GoTo;
-        canvas.AddChild(_bandPanel);
-        _statusBar.BandRequested += ToggleBandPanel;
-    }
-
-    // Placed on the way open rather than once at setup, so it always comes back where the player
-    // expects it however far they dragged it last time: mirrored across the screen from the
-    // selection panel, same inset from its own edge (see BandPanel), the band on the left and
-    // whoever is picked out of it on the right.
-    //
-    // Filled on the way open as well as on every tick: the clock can be standing still (a pause,
-    // an inscription), and an empty roster is no answer to "where is everybody".
-    private void ToggleBandPanel()
-    {
-        _bandPanel.Visible = !_bandPanel.Visible;
-        _bandPanel.Position = new Vector2(BandPanel.Margin, BandPanel.Margin);
-        RefreshBandPanel();
-    }
-
-    private void RefreshBandPanel()
-    {
-        if (_bandPanel.Visible)
-        {
-            _bandPanel.Update(BandRoster.Of(_world));
-        }
-    }
-
-    // Pressing a name on the roster: select the person and take the view to them. Selecting alone
-    // would leave the player looking at the same empty forest with a marker somewhere off screen.
-    private void GoTo(Person person)
-    {
-        _selectedPerson = person;
-        _selectedGrave = null;
-        RefreshSelection();
-
-        if (_presenter.GetPersonGlobalPosition(person.Id) is { } position)
-        {
-            _cameraRig.FocusOn(position);
-        }
     }
 
     // Opposite the inspector, so the two can be open at once without covering each other.
@@ -721,7 +641,6 @@ public partial class Main : Node3D
             if (nobodyIsLeft)
             {
                 CloseBandWindows();
-                _selectedPerson = null;
             }
 
             ShowInscription(Epitaph.Write(ending), offerAnotherBand: nobodyIsLeft);
@@ -733,9 +652,7 @@ public partial class Main : Node3D
     // page got left open through an ending it was never told about.
     private void CloseBandWindows()
     {
-        _bandPanel.Visible = false;
-        _selectionPanel.ClearSelection();
-        _detailPanel.Close();
+        _selection.CloseForBandEnd();
         _workshopController.Close();
     }
 
@@ -748,7 +665,6 @@ public partial class Main : Node3D
 
         // The new band has not walked this land yet - fog clears around their new camp.
         _world.Exploration.Reset();
-        _selectedPerson = null;
 
         var idRng = new Random(_world.Clock.CurrentTick.GetHashCode());
         var newCamp = MapLoader.SpawnNewBand(_world, idRng, _campCenter);
@@ -793,20 +709,6 @@ public partial class Main : Node3D
         _chronicle.Add(inscription);
         _statusBar.ShowChronicleButton();
         GD.Print($"Inscription: {inscription.Title}");
-    }
-
-    private void SetUpSelectionMarker(CanvasLayer canvas)
-    {
-        _selectionMarkerOverlay = new TextureRect
-        {
-            Texture = ResourceLoader.Load<Texture2D>(SelectionMarkerTexturePath),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspect,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            Size = new Vector2(_presentation.SelectionMarkerScreenSize, _presentation.SelectionMarkerScreenSize),
-            Visible = false,
-        };
-        canvas.AddChild(_selectionMarkerOverlay);
     }
 
     // Debug only: the world's raw numbers and the levers that move them. What the player is meant
@@ -866,50 +768,6 @@ public partial class Main : Node3D
         panel.Body.AddChild(_gravesLabel);
     }
 
-    // The player's panel, against the opposite edge from the debug inspector so both can be open.
-    private void SetUpSelectionPanel(CanvasLayer canvas)
-    {
-        _selectionPanel = new SelectionPanel();
-        _selectionPanel.ActionInvoked += OnActionInvoked;
-        _selectionPanel.PackRequested += OnPackRequested;
-        _selectionPanel.DetailRequested += OpenDetail;
-        _selectionPanel.CloseRequested += ClearSelection;
-        canvas.AddChild(_selectionPanel);
-    }
-
-    // The full page, opened from the name on the selected person's card. Like the workbench it
-    // holds the clock while it is up (see _Process) and shields everything under it from the
-    // click that would otherwise land on the world or another window through it - reading or
-    // acting on somebody here is meant to have the player's whole attention, the same as working
-    // something over is.
-    private void SetUpDetailPanel(CanvasLayer canvas)
-    {
-        // Laid in before the page, so it sits under it and over everything added earlier - the
-        // world, the status bar, the roster, the selected person's card, the workbench. Same
-        // shape as WorkshopPanel's own shield, and for the same reason.
-        _detailShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        _detailShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        canvas.AddChild(_detailShield);
-
-        _detailPanel = new PersonDetailPanel();
-        _detailPanel.VisibilityChanged += () => _detailShield.Visible = _detailPanel.Visible;
-        _detailPanel.Closed += () => _tickAccumulator = _pacing.TickIntervalSeconds;
-        _detailPanel.ActionInvoked += OnActionInvoked;
-        _detailPanel.PackRequested += OnPackRequested;
-        canvas.AddChild(_detailPanel);
-    }
-
-    // The player asked to see the selected person's full page.
-    private void OpenDetail()
-    {
-        if (_selectedPerson is not { } person)
-        {
-            return;
-        }
-
-        _detailPanel.Open(SelectionCard.For(_world, person), PersonActions.For(_world, person));
-    }
-
     private void SetUpStatusBar(CanvasLayer canvas)
     {
         _statusBar = new StatusBar();
@@ -943,7 +801,7 @@ public partial class Main : Node3D
     // for whoever is selected, so that is who carries it out.
     private void OnActionInvoked(ActionOffer offer)
     {
-        if (_selectedPerson is not { } person)
+        if (_selection.Person is not { } person)
         {
             return;
         }
@@ -956,7 +814,7 @@ public partial class Main : Node3D
     // or queued the offer.
     private void OnOrderCoordinatorWorldChanged()
     {
-        RefreshSelection();
+        _selection.Refresh();
         RefreshBuildingsLabel();
         RefreshGravesLabel();
     }
@@ -996,26 +854,10 @@ public partial class Main : Node3D
             return;
         }
 
-        _selectedPerson = person;
-        _selectedGrave = null;
-        RefreshSelection();
+        _selection.Select(person);
     }
 
-    // The player put their own card away with the cross in its corner: nobody is selected any
-    // more, so the card comes down with the selection rather than on its own.
-    private void ClearSelection()
-    {
-        _selectedPerson = null;
-        _selectedGrave = null;
-        RefreshSelection();
-    }
-
-    private void OnGraveSelected(Grave grave)
-    {
-        _selectedGrave = grave;
-        _selectedPerson = null;
-        RefreshSelection();
-    }
+    private void OnGraveSelected(Grave grave) => _selection.Select(grave);
 
     // A left click on a resource is the one shortcut kept from before there was a menu: "gather
     // that" is the only thing anybody means by pointing at a bush, and it is how the game is
@@ -1120,51 +962,17 @@ public partial class Main : Node3D
         }
     }
 
-    // Everything on screen that is about people: the player's panel for whoever is selected,
-    // behind it the debug inspector's raw dump of the same person, and the band's roster, whose
-    // lines go stale on exactly the same occasions.
-    private void RefreshSelection()
-    {
-        RefreshInfoLabel();
-        RefreshBandPanel();
-
-        if (_selectedGrave is { } grave)
-        {
-            _selectionPanel.ShowGrave(InspectorText.ForGraveRecord(grave, _world.Configuration.SkillCatalog));
-            _detailPanel.Close();
-            return;
-        }
-
-        if (_selectedPerson is { } person)
-        {
-            var card = SelectionCard.For(_world, person);
-            var offers = PersonActions.For(_world, person);
-            _selectionPanel.ShowPerson(card, offers);
-
-            // Only while it is open, and on the same person it was opened for - the summary card
-            // it reads from is rebuilt every refresh, and the page left open behind it should
-            // read as true as the card does rather than freezing on the moment it was opened.
-            if (_detailPanel.Visible)
-            {
-                _detailPanel.Show(card, offers);
-            }
-
-            return;
-        }
-
-        _selectionPanel.ClearSelection();
-        _detailPanel.Close();
-    }
-
+    // The debug inspector's raw dump of whoever is selected - kept apart from the player-facing
+    // panels, which are SelectionController's own to refresh.
     private void RefreshInfoLabel()
     {
-        if (_selectedGrave is { } grave)
+        if (_selection.Grave is { } grave)
         {
             _infoLabel.Text = InspectorText.ForGrave(grave);
             return;
         }
 
-        if (_selectedPerson is not { } person)
+        if (_selection.Person is not { } person)
         {
             _infoLabel.Text = "No selection.";
             return;
