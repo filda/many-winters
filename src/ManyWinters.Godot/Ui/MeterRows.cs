@@ -20,7 +20,14 @@ internal sealed class MeterRows(VBoxContainer host, int barHeight, int fontSize)
 
         for (var i = 0; i < _rows.Count; i++)
         {
-            _rows[i].Apply(i < readings.Count ? readings[i] : null);
+            if (i < readings.Count)
+            {
+                _rows[i].Show(readings[i]);
+            }
+            else
+            {
+                _rows[i].Hide();
+            }
         }
     }
 
@@ -41,17 +48,15 @@ internal sealed class MeterRows(VBoxContainer host, int barHeight, int fontSize)
     // One measure's caption and bar, kept between refreshes and given new numbers.
     private sealed class Row(VBoxContainer container, Label caption, ProgressBar bar)
     {
-        public void Apply(MeterReading? reading)
+        public void Show(MeterReading reading)
         {
-            container.Visible = reading is not null;
-            if (reading is not { } shown)
-            {
-                return;
-            }
+            container.Visible = true;
 
-            caption.Text = shown.Label;
-            bar.Value = shown.Fraction;
-            bar.AddThemeStyleboxOverride("fill", PanelChrome.Filled(shown.Fill));
+            caption.Text = reading.Label;
+            bar.Value = reading.Fraction;
+            bar.AddThemeStyleboxOverride("fill", PanelChrome.Filled(reading.Fill));
         }
+
+        public void Hide() => container.Visible = false;
     }
 }

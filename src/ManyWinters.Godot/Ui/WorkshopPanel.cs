@@ -228,7 +228,14 @@ public partial class WorkshopPanel : FloatingPanel
 
         for (var i = 0; i < _tiles.Count; i++)
         {
-            _tiles[i].Apply(i < carried.Count ? carried[i] : null, i < carried.Count && _picked.Contains(carried[i]));
+            if (i < carried.Count)
+            {
+                _tiles[i].Show(carried[i], _picked.Contains(carried[i]));
+            }
+            else
+            {
+                _tiles[i].Hide();
+            }
         }
 
         // Said only once something has actually been picked - stated up front, before the player
@@ -390,29 +397,31 @@ public partial class WorkshopPanel : FloatingPanel
     {
         public WorkshopEntry? Entry { get; private set; }
 
-        public void Apply(WorkshopEntry? entry, bool picked)
+        public void Show(WorkshopEntry entry, bool picked)
         {
             Entry = entry;
-            button.Visible = entry is not null;
-            if (entry is not { } shown)
-            {
-                return;
-            }
+            button.Visible = true;
 
             // The name is what the cursor asks for. On the tile it would be a caption under a
             // picture of the same thing, said twice.
-            button.TooltipText = shown.Label;
+            button.TooltipText = entry.Label;
 
-            var texture = IconFor(shown.Target);
+            var texture = IconFor(entry.Target);
             icon.Texture = texture;
             icon.Visible = texture is not null;
             undrawn.Visible = texture is null;
 
             // One of a thing is what a picture of it already says.
-            count.Text = shown.Count > 1 ? $"×{shown.Count}" : string.Empty;
-            count.Visible = shown.Count > 1;
+            count.Text = entry.Count > 1 ? $"×{entry.Count}" : string.Empty;
+            count.Visible = entry.Count > 1;
 
             button.SetPressedNoSignal(picked);
+        }
+
+        public void Hide()
+        {
+            Entry = null;
+            button.Visible = false;
         }
     }
 }

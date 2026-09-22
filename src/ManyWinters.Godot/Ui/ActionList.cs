@@ -35,7 +35,14 @@ internal partial class ActionList : VBoxContainer
 
         for (var i = 0; i < _rows.Count; i++)
         {
-            _rows[i].Apply(i < offers.Count ? offers[i] : null);
+            if (i < offers.Count)
+            {
+                _rows[i].Show(offers[i]);
+            }
+            else
+            {
+                _rows[i].Hide();
+            }
         }
     }
 
@@ -70,21 +77,23 @@ internal partial class ActionList : VBoxContainer
     {
         public ActionOffer? Offer { get; private set; }
 
-        public void Apply(ActionOffer? offer)
+        public void Show(ActionOffer offer)
         {
             Offer = offer;
-            container.Visible = offer is not null;
-            if (offer is not { } shown)
-            {
-                return;
-            }
+            container.Visible = true;
 
-            button.Text = shown.Label;
-            button.Disabled = !shown.IsAvailable;
+            button.Text = offer.Label;
+            button.Disabled = !offer.IsAvailable;
 
-            var text = ActionBlockerText.For(shown);
+            var text = ActionBlockerText.For(offer);
             reason.Text = text;
             reason.Visible = text.Length > 0;
+        }
+
+        public void Hide()
+        {
+            Offer = null;
+            container.Visible = false;
         }
     }
 }
