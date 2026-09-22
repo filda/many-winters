@@ -26,6 +26,24 @@ public class WorkshopActionsTests
         Assert.Equal(["Wood", "plant fibre cord"], carried.Select(entry => entry.Label));
     }
 
+    // Two of each tier, so each tier's own alphabetical order is exercised rather than trivially
+    // true of a single entry - stock always ahead of worked things, but each sorted within itself.
+    [Fact]
+    public void EachTierIsListedInItsOwnStableOrder()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 3);
+        person.Inventory.Add(TestWorld.Apple, 1);
+        var stick = new Assembly.Part(new MaterialId("wood"), new FormId("stick"), Quality: 1f, Volume: 2f);
+        person.Inventory.AddAssembly(Cord());
+        person.Inventory.AddAssembly(stick);
+
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Equal(["Apple", "Wood", "plant fibre cord", "wood stick"], carried.Select(entry => entry.Label));
+    }
+
     // The bench draws the thing rather than naming it, so how many are held is a field of its own
     // to mark the picture with, not something spelled into the name.
     [Fact]
@@ -64,6 +82,20 @@ public class WorkshopActionsTests
         Assert.Equal("Make axe", craft.Label);
         Assert.True(craft.IsAvailable);
         Assert.IsType<MakeCommand>(craft.Command);
+    }
+
+    // Two things makeable at once are listed in a stable alphabetical order, not whichever order
+    // the catalog happens to declare them in.
+    [Fact]
+    public void TwoThingsMakeableAtOnceAreListedInAStableOrder()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, TestWorld.ChiselInputAmount);
+
+        var labels = WorkshopActions.Recipes(world, person).Select(offer => offer.Label);
+
+        Assert.Equal(["Make axe", "Make chisel"], labels);
     }
 
     // Carrying some of the material but not enough is the same as carrying none of it: the
@@ -209,6 +241,7 @@ public class WorkshopActionsTests
         var offer = WorkshopActions.Attempt(world, person, pair);
 
         Assert.NotNull(offer);
+        Assert.Equal("Make", offer.Value.Label);
         Assert.IsType<BindCommand>(offer.Value.Command);
         Assert.True(offer.Value.IsAvailable);
     }

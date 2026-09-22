@@ -132,6 +132,23 @@ public class SelectionCardTests
         Assert.Equal(fed, SelectionCard.HungerFill(person, threshold + 10f));
     }
 
+    // Pinned to the exact colour the halfway point works out to, so the distance travelled is
+    // measured against what is left above the threshold - not, say, the whole span above zero.
+    [Fact]
+    public void TheColourAtHalfwayBetweenThresholdAndDeathIsExactlyTheMidpointTint()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var threshold = person.MaxHunger / 2f;
+        person.Needs.Hunger = 3f * person.MaxHunger / 4f;
+
+        var fill = SelectionCard.HungerFill(person, threshold);
+
+        Assert.Equal(0.68f, fill.R, 4);
+        Assert.Equal(0.38f, fill.G, 4);
+        Assert.Equal(0.15f, fill.B, 4);
+    }
+
     [Fact]
     public void TheFedBarDeepensAllTheWayToTheHungerThatKills()
     {
@@ -150,6 +167,23 @@ public class SelectionCardTests
 
         Assert.True(worse.R > hungry.R || worse.G < hungry.G);
         Assert.True(starving.G < worse.G);
+    }
+
+    // A threshold set right at the maximum leaves no distance left to travel: the bar must still
+    // read fully starving rather than dividing by that empty distance.
+    [Fact]
+    public void AThresholdRightAtTheMaximumStillReadsFullyStarving()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Needs.Hunger = person.MaxHunger;
+
+        var fill = SelectionCard.HungerFill(person, person.MaxHunger);
+
+        Assert.Equal(SelectionCard.HungerFill(person, 0f), fill);
+        Assert.Equal(
+            SelectionCard.HungerFill(person, person.MaxHunger - 1f),
+            fill);
     }
 
     // Named the way the player met it - the skill's own name, never the technique id the debug
@@ -202,6 +236,23 @@ public class SelectionCardTests
         person.CauseOfDeath = DeathCause.Hunger;
 
         Assert.Equal($"Died at {LifeStages.AdultAgeYears} winters of hunger.", SelectionCard.For(world, person).Death);
+    }
+
+    // The age at death is fixed the moment they died, not whatever the clock reads when the
+    // player happens to look - a grave visited a year later must not report a year older.
+    [Fact]
+    public void TheAgeAtDeathStaysFixedAsTheWorldMovesOn()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.IsAlive = false;
+        person.DeathTick = world.Clock.CurrentTick;
+        person.CauseOfDeath = DeathCause.Hunger;
+
+        var atDeath = SelectionCard.For(world, person).Death;
+        world.Advance(world.Configuration.Rules.TicksPerYear * 3);
+
+        Assert.Equal(atDeath, SelectionCard.For(world, person).Death);
     }
 
     [Fact]

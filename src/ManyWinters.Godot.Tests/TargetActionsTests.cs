@@ -264,6 +264,8 @@ public class TargetActionsTests
 
         Assert.Equal(ava, Assert.IsType<BirthCommand>(pointedAtHim).Mother);
         Assert.Equal(ava, Assert.IsType<BirthCommand>(pointedAtHer).Mother);
+        Assert.Equal(bran, Assert.IsType<BirthCommand>(pointedAtHim).Father);
+        Assert.Equal(bran, Assert.IsType<BirthCommand>(pointedAtHer).Father);
     }
 
     [Fact]
@@ -328,6 +330,37 @@ public class TargetActionsTests
 
         Assert.Equal("Storage Hut", menu.Heading);
         Assert.Equal(["Put in wood", "Take out apple", "Mend"], Labels(menu));
+    }
+
+    // Both tiers merge into one alphabetical list rather than stock always leading, so a store's
+    // lines never reshuffle between openings whichever tier a thing happens to belong to.
+    [Fact]
+    public void StockAndMadeThingsToPutInAreMergedIntoOneAlphabeticalList()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        ava.Inventory.Add(TestWorld.Apple, 2);
+        ava.Inventory.AddAssembly(new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f));
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        var menu = TargetActions.For(world, ava, hut);
+
+        Assert.Equal(["Put in apple", "Put in plant fibre cord", "Put in wood", "Mend"], Labels(menu));
+    }
+
+    // Dropped or deposited down to nothing is the same as never having carried it - the line
+    // must not linger showing an offer to put away zero.
+    [Fact]
+    public void HavingNoneOfAKindLeftIsNotOfferedForPuttingIn()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        ava.Inventory.Add(TestWorld.Wood, -4);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        Assert.Equal(["Mend"], Labels(TargetActions.For(world, ava, hut)));
     }
 
     [Fact]
@@ -448,7 +481,8 @@ public class TargetActionsTests
 
         var menu = TargetActions.For(world, ava, Camp);
 
-        Assert.Equal(["Walk here", "Build storage hut"], Labels(menu));
+        // Alphabetically, alongside every other building the same wood could go towards.
+        Assert.Equal(["Walk here", "Build hearth", "Build storage hut"], Labels(menu));
         Assert.Equal(ActionBlocker.MissingMaterials, Labelled(menu, "Build storage hut").Blocker);
     }
 

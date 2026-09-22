@@ -41,6 +41,9 @@ internal sealed class RightClickGesture
     {
         var wasClick = _pressed && !_dragged;
         _pressed = false;
+        // Stryker disable once Boolean: _dragged is only ever read guarded by "_pressed &&"
+        // above, and Press() resets it before any later read - whatever it is reset to here is
+        // never observed.
         _dragged = false;
         return wasClick;
     }

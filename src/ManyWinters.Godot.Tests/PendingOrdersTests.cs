@@ -33,6 +33,8 @@ public class PendingOrdersTests
         orders.Add(person, TargetActions.Gather(world, person, AddNode(world, FarAway)));
 
         Assert.Empty(orders.Ready(world));
+        // Still walking is not the order's end - it must not be reported as failed.
+        Assert.Empty(orders.Failed);
     }
 
     [Fact]

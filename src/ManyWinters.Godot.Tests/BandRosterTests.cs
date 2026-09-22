@@ -100,6 +100,24 @@ public class BandRosterTests
         Assert.Equal(["Ava", "Mira", "Zora"], Names(world));
     }
 
+    // Two people can share a name - a namesake child - so the order has to be settled by id even
+    // then, rather than leaving it to happenstance.
+    [Fact]
+    public void NamesakesAreOrderedById()
+    {
+        var world = TestWorld.Create();
+        var first = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var second = TestWorld.AddAdult(world, "Ava", new Position(1, 0));
+        var expected = new[] { first, second }.OrderBy(person => person.Id.Value).ToList();
+
+        var namesakes = BandRoster.Of(world).People
+            .Where(entry => entry.Person.Name == "Ava")
+            .Select(entry => entry.Person)
+            .ToList();
+
+        Assert.Equal(expected, namesakes);
+    }
+
     // Named after its eldest, as the band is named everywhere else - but as the band the player
     // commands, not as a later band reading its graves will know it.
     [Fact]

@@ -1,3 +1,4 @@
+using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
@@ -87,6 +88,33 @@ public class PaperWeatheringTests
         }
 
         return data;
+    }
+
+    // Which way the hatching leans is worked out here too, off the same seed, so a name known to
+    // land on each side of the coin pins down which value of Pick means "rising" - a test that
+    // merely saw both values across many names, as above, would not notice them swapped.
+    [Theory]
+    [MemberData(nameof(ManyNames))]
+    public void HatchRisingMatchesTheFourthSaltedDraw(string name)
+    {
+        Assert.Equal(ExpectedHatchRising(name), PaperWeathering.Of(name).HatchRising);
+    }
+
+    private static bool ExpectedHatchRising(string name) => Pick(SeedOf(name), salt: 4, count: 2) == 0;
+
+    private static int Pick(int seed, int salt, int count) => (int)((uint)Mixed(seed, salt) % (uint)count);
+
+    private static int Mixed(int seed, int salt) => SeedHash.Avalanche(unchecked(((uint)seed * 0x9E3779B1u) + (uint)salt));
+
+    private static int SeedOf(string panel)
+    {
+        var hash = 2166136261u;
+        foreach (var letter in panel)
+        {
+            hash = unchecked((hash ^ letter) * 16777619u);
+        }
+
+        return SeedHash.Avalanche(hash);
     }
 
     // The game's own pages, and enough made-up ones that the ranges are read off more than a

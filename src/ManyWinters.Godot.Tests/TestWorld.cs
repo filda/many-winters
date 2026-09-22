@@ -15,6 +15,9 @@ internal static class TestWorld
 {
     internal static readonly ItemKindId Wood = new("wood");
     internal static readonly ItemKindId Apple = new("apple");
+    // A second edible kind, so tests can tell the food carried first from the food carried
+    // second rather than only ever offering one candidate to choose between.
+    internal static readonly ItemKindId Berry = new("berry");
     internal static readonly ItemKindId Grass = new("grass");
     private static readonly ItemKindId Axe = new("axe");
     internal static readonly ItemKindId Stone = new("stone");
@@ -31,6 +34,17 @@ internal static class TestWorld
 
     private static readonly EntityKindId StorageHut = new("storage_hut");
     private static readonly ItemKindId StorageHutItem = new("storage_hut");
+
+    // A second thing too big to carry, so a spot on the ground can be offered more than one
+    // building at once and their order put to the test - "hearth" sorts before "storage_hut".
+    private static readonly ItemKindId Hearth = new("hearth");
+    private const int HearthInputAmount = 10;
+
+    // A second small thing the bench can make, wanting more wood than the axe does, so a person
+    // carrying enough for both can be offered them in a stable order - "axe" sorts before
+    // "chisel".
+    private static readonly ItemKindId Chisel = new("chisel");
+    internal const int ChiselInputAmount = 8;
 
     internal const int GrassPerCord = 3;
     internal static readonly FormId Cord = new("cord");
@@ -69,8 +83,11 @@ internal static class TestWorld
             [
                 new ItemDefinition(Wood, "Wood", new MaterialId("wood"), new FormId("stick"), 2f),
                 new ItemDefinition(Apple, "Apple", new MaterialId("apple"), new FormId("whole"), 1f, 1f),
+                new ItemDefinition(Berry, "Berry", new MaterialId("apple"), new FormId("whole"), 0.2f, 1f),
                 new ItemDefinition(Axe, "Axe", new MaterialId("stone"), new FormId("wedge"), 2.5f),
+                new ItemDefinition(Chisel, "Chisel", new MaterialId("stone"), new FormId("wedge"), 1f),
                 new ItemDefinition(StorageHutItem, "Storage Hut", new MaterialId("wood"), new FormId("shelter"), StorageHutVolume),
+                new ItemDefinition(Hearth, "Hearth", new MaterialId("stone"), new FormId("shelter"), StorageHutVolume),
                 new ItemDefinition(Grass, "Grass", new MaterialId("plant_fibre"), new FormId("fibre"), 5f,
                     Transitions: [new FormTransition(TwistCommand.Verb, Cord, GrassPerCord)]),
                 new ItemDefinition(Stone, "Stone", new MaterialId("stone"), new FormId("lump"), 1f,
@@ -96,7 +113,9 @@ internal static class TestWorld
             ]),
             new RecipeCatalog([
                 new RecipeDefinition(Axe, Wood, AxeInputAmount),
+                new RecipeDefinition(Chisel, Wood, ChiselInputAmount),
                 new RecipeDefinition(StorageHutItem, Wood, StorageHutInputAmount),
+                new RecipeDefinition(Hearth, Wood, HearthInputAmount),
             ]),
             materials,
             forms,

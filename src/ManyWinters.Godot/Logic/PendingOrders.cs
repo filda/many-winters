@@ -40,6 +40,9 @@ internal sealed class PendingOrders
     // where the person was standing when the player gave the order.
     internal IReadOnlyList<ActionOffer> Ready(WorldState world)
     {
+        // Stryker disable once Block: an empty-block mutant here is equivalent - the loop below
+        // does nothing over an empty dictionary either way, and Failed ends up [] regardless.
+        // This is purely the fast path for the common case of nobody walking anywhere.
         if (_orders.Count == 0)
         {
             Failed = [];
@@ -54,6 +57,10 @@ internal sealed class PendingOrders
         {
             if (!person.IsAlive)
             {
+                // Stryker disable once Statement: dropping this Remove is equivalent - a dead
+                // person fails the IsAlive check and continues past every later tick too, so
+                // nothing Ready() or Failed ever report differs. It only spares the dictionary a
+                // stale entry.
                 _orders.Remove(person);
                 continue;
             }

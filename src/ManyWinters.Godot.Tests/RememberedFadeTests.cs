@@ -43,6 +43,33 @@ public class RememberedFadeTests
         Assert.False(fade.IsFading);
     }
 
+    // A place already walked away from was never in sight to fade out of - it snaps straight to
+    // fully in view, not to fully remembered.
+    [Fact]
+    public void SnappingToNotRememberedArrivesFullyInSight()
+    {
+        var fade = new RememberedFade();
+
+        fade.Snap(false);
+
+        Assert.False(fade.IsRemembered);
+        Assert.Equal(0f, fade.Progress);
+        Assert.False(fade.IsFading);
+    }
+
+    // Coming back into sight still has fading to do while any of the memory tint remains, not
+    // only while fading further away from it.
+    [Fact]
+    public void ComingBackIntoSightStillHasFurtherToGoWhileTintRemains()
+    {
+        var fade = new RememberedFade();
+        fade.Snap(true);
+
+        fade.Retarget(false);
+
+        Assert.True(fade.IsFading);
+    }
+
     [Fact]
     public void AFullyRememberedLayerShowsTheTintMultipliedIntoItsOwnColour()
     {

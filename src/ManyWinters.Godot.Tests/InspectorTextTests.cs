@@ -152,6 +152,20 @@ public class InspectorTextTests
         Assert.Contains("of old age", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.OldAge)), StringComparison.Ordinal);
     }
 
+    // ForDeath directly, rather than only through ForGrave/ForGraveRecord which both build the
+    // same sentence: an unrecorded cause must add nothing at all, not even a stray word.
+    [Fact]
+    public void ForDeathWithNoRecordedCauseAddsNothing()
+    {
+        Assert.Equal("Died at 5 winters.", InspectorText.ForDeath(5, null));
+    }
+
+    [Fact]
+    public void ForDeathAtOneWinterIsSingular()
+    {
+        Assert.Equal("Died at 1 winter.", InspectorText.ForDeath(1, null));
+    }
+
     [Fact]
     public void AGraveWithNoKnowledgeSaysSoRatherThanTrailingOff()
     {
@@ -202,6 +216,18 @@ public class InspectorTextTests
         skills.Restore(new SkillTypeId("foraging"), 2.5f);
 
         Assert.Equal("foraging: 2.5", InspectorText.ForSkills(skills));
+    }
+
+    // Two skills together, so the alphabetical order, the ", " separator and the one-decimal
+    // rounding are all exercised at once rather than trivially true of a single entry.
+    [Fact]
+    public void SeveralSkillsAreListedInAStableOrderRoundedToOneDecimal()
+    {
+        var skills = new Skills();
+        skills.Restore(new SkillTypeId("woodcutting"), 3.678f);
+        skills.Restore(new SkillTypeId("foraging"), 1.234f);
+
+        Assert.Equal("foraging: 1.2, woodcutting: 3.7", InspectorText.ForSkills(skills));
     }
 
     [Fact]
@@ -274,8 +300,20 @@ public class InspectorTextTests
         var record = InspectorText.ForGraveRecord(grave, world.Configuration.SkillCatalog);
 
         Assert.Contains("Ava. Died at 30 winters of hunger.", record, StringComparison.Ordinal);
+        Assert.Contains("Child of Orla and Hesk", record, StringComparison.Ordinal);
+        Assert.Contains("Knew: Foraging", record, StringComparison.Ordinal);
         Assert.DoesNotContain(grave.Id.ToString(), record, StringComparison.Ordinal);
         Assert.DoesNotContain("Position", record, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AGraveRecordSaysNothingWasKnownRatherThanTrailingOff()
+    {
+        var world = TestWorld.Create();
+
+        var record = InspectorText.ForGraveRecord(NewGrave(techniques: []), world.Configuration.SkillCatalog);
+
+        Assert.Contains("Knew: nothing", record, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -295,6 +333,17 @@ public class InspectorTextTests
         var techniques = new HashSet<TechniqueId> { TestWorld.BasicForaging, new("efficient_foraging") };
 
         Assert.Equal(["Foraging (practised)"], InspectorText.ForKnowledge(techniques, world.Configuration.SkillCatalog));
+    }
+
+    // Two known skills, so the alphabetical order is exercised rather than trivially true of a
+    // single entry.
+    [Fact]
+    public void SeveralKnownSkillsAreListedInAStableOrder()
+    {
+        var world = TestWorld.Create();
+        var techniques = new HashSet<TechniqueId> { TestWorld.BasicTeaching, TestWorld.BasicForaging };
+
+        Assert.Equal(["Foraging", "Teaching"], InspectorText.ForKnowledge(techniques, world.Configuration.SkillCatalog));
     }
 
     // Empty rather than worded: "nothing yet" of the living and "nothing" of the dead are
@@ -353,6 +402,24 @@ public class InspectorTextTests
 
         Assert.Equal(
             "Wood x3, plant fibre cord",
+            InspectorText.ForCarried(inventory, world));
+    }
+
+    // Two counted kinds and two worked things together, so both tiers' alphabetical order is
+    // exercised rather than trivially true of a single entry each.
+    [Fact]
+    public void CarriedStockAndWorkedThingsAreEachListedInAStableOrder()
+    {
+        var world = TestWorld.Create();
+        var inventory = new Inventory();
+        inventory.Add(TestWorld.Wood, 3);
+        inventory.Add(TestWorld.Apple, 1);
+        var stick = new Assembly.Part(new MaterialId("wood"), new FormId("stick"), Quality: 1f, Volume: 2f);
+        inventory.AddAssembly(new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, Quality: 0.5f, Volume: 15f));
+        inventory.AddAssembly(stick);
+
+        Assert.Equal(
+            "Apple x1, Wood x3, plant fibre cord, wood stick",
             InspectorText.ForCarried(inventory, world));
     }
 

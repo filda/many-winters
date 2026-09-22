@@ -85,6 +85,10 @@ internal static class WorkshopActions
     // the ground instead, by pointing at it.
     internal static IReadOnlyList<ActionOffer> Recipes(WorldState world, Person person) =>
         world.Configuration.RecipeCatalog.Definitions
+            // Stryker disable once Equality: a cheap pre-filter only - IsAvailable below asks
+            // the command itself whether enough is actually carried, so >0 and >=0 admit the
+            // same offers into the final list either way, having none of the input is never
+            // "enough" to make it available.
             .Where(recipe => person.Inventory.Get(recipe.InputItem) > 0)
             .Where(recipe => PersonActions.FitsInInventory(world, person, recipe.Output))
             .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal)

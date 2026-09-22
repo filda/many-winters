@@ -97,6 +97,35 @@ public class PersonActionsTests
         Assert.IsType<EatCommand>(eat.Command);
     }
 
+    // Carrying two edible kinds, Eat has to pick one rather than offer a choice - alphabetically,
+    // so which one is eaten is settled the same way every time rather than by insertion order.
+    [Fact]
+    public void EatingWithSeveralFoodsCarriedPicksTheFirstByName()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Needs.Hunger = 50f;
+        person.Inventory.Add(TestWorld.Apple, 5);
+        person.Inventory.Add(TestWorld.Berry, 5);
+
+        var eat = Assert.IsType<EatCommand>(OfType<EatCommand>(world, person).Command);
+
+        Assert.Equal(TestWorld.Apple, eat.FoodItem);
+    }
+
+    // Dropped down to nothing is the same as never having carried it - the line must not linger
+    // offering to put away "0" of something gone.
+    [Fact]
+    public void HavingNoneOfAKindLeftIsNotOfferedForDropping()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Apple, 5);
+        person.Inventory.Add(TestWorld.Apple, -5);
+
+        Assert.DoesNotContain(PersonActions.For(world, person), offer => offer.Command is DropCommand);
+    }
+
     [Fact]
     public void AFullPersonIsToldTheyAreNotHungryRatherThanThatTheyLackFood()
     {
