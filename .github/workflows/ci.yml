@@ -83,10 +83,10 @@ jobs:
   # The windowed, screenshot-driven E2E suite, run against a plain editor launch of the project
   # rather than a full release export - no export templates, no publish. It needs its own Windows
   # build: it drives a real window (PrintWindow/PostMessage), which build-test's ubuntu output
-  # cannot serve. It is a hard gate on the release - publish waits on this job, so a red E2E cuts
-  # no release even when both exports are green. It runs only when shipped code changed (the same
-  # check-game-changes signal that cuts a release): a docs- or tests-only change can't break what
-  # it checks, and it does not run on pull requests, where there is no release for it to gate.
+  # cannot serve. It is a hard gate on the release: both exports and publish wait on it, so a red
+  # E2E neither builds the artifacts nor cuts a release. It runs only when shipped code changed
+  # (the same check-game-changes signal that cuts a release) - a docs- or tests-only change can't
+  # break what it checks, and it does not run on pull requests, where there is no release to gate.
   e2e-windows:
     needs: [build-test, check-game-changes]
     if: needs.check-game-changes.outputs.changed == 'true'
@@ -233,7 +233,7 @@ jobs:
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
 
   release-windows:
-    needs: [build-test, version]
+    needs: [build-test, e2e-windows, version]
     runs-on: windows-latest
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -458,7 +458,7 @@ jobs:
           retention-days: 1
 
   release-linux:
-    needs: [build-test, version]
+    needs: [build-test, e2e-windows, version]
     runs-on: ubuntu-26.04
     env:
       GODOT_RELEASE: 4.7.1-stable
