@@ -105,6 +105,7 @@ public sealed record GraveSaveData(
     double PositionY,
     bool IsMarked,
     string? Name,
+    Sex? Sex,
     int? AgeAtDeath,
     DeathCause? CauseOfDeath,
     string? MotherName,

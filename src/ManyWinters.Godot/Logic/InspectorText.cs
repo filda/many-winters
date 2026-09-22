@@ -155,7 +155,7 @@ internal static class InspectorText
 
         return
             $"{grave.Name}. {ForDeath(grave.AgeAtDeath ?? 0, grave.CauseOfDeath)}\n" +
-            $"{ForParents(grave.MotherName, grave.FatherName)}" +
+            $"{ForParents(grave.Sex, grave.MotherName, grave.FatherName)}" +
             $"Knew: {(knew.Count > 0 ? string.Join(", ", knew) : "nothing")}";
     }
 
@@ -179,18 +179,25 @@ internal static class InspectorText
             $"{grave.Id}\n" +
             $"Position: {grave.Position}\n" +
             $"{grave.Name}, died at age {grave.AgeAtDeath} winter{(grave.AgeAtDeath == 1 ? "" : "s")}{causeText}\n" +
-            $"{ForParents(grave.MotherName, grave.FatherName)}" +
+            $"{ForParents(grave.Sex, grave.MotherName, grave.FatherName)}" +
             $"Known techniques: {techniques}";
     }
 
-    internal static string ForParents(string? motherName, string? fatherName)
+    internal static string ForParents(Sex? sex, string? motherName, string? fatherName)
     {
         if (motherName is null && fatherName is null)
         {
             return string.Empty;
         }
 
+        var childWord = sex switch
+        {
+            Sex.Male => "Son",
+            Sex.Female => "Daughter",
+            _ => "Child",
+        };
+
         var parents = string.Join(" and ", new[] { motherName, fatherName }.Where(name => name is not null));
-        return $"Child of {parents}\n";
+        return $"{childWord} of {parents}\n";
     }
 }

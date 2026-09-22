@@ -56,6 +56,7 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
             Position = Deceased.Position,
             IsMarked = isMarked,
             Name = isMarked ? Deceased.Name : null,
+            Sex = isMarked ? Deceased.Sex : null,
             AgeAtDeath = isMarked ? ageAtDeath : null,
             CauseOfDeath = isMarked ? Deceased.CauseOfDeath : null,
             MotherName = isMarked ? Deceased.Mother.Name : null,

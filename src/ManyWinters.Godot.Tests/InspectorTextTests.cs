@@ -30,6 +30,7 @@ public class InspectorTextTests
             Position = new Position(1, 2),
             IsMarked = isMarked,
             Name = "Ava",
+            Sex = Sex.Female,
             AgeAtDeath = ageAtDeath,
             CauseOfDeath = causeOfDeath,
             MotherName = motherName,
@@ -93,7 +94,7 @@ public class InspectorTextTests
 
         Assert.StartsWith($"{grave.Id}\nPosition: {grave.Position}\n", text, StringComparison.Ordinal);
         Assert.Contains("Ava, died at age 7 winters of old age", text, StringComparison.Ordinal);
-        Assert.Contains("Child of Orla and Hesk", text, StringComparison.Ordinal);
+        Assert.Contains("Daughter of Orla and Hesk", text, StringComparison.Ordinal);
         Assert.Contains("Known techniques: basic_foraging", text, StringComparison.Ordinal);
     }
 
@@ -175,16 +176,22 @@ public class InspectorTextTests
     [Fact]
     public void SomeoneWhoseParentsAreBothUnknownGetsNoParentLineAtAll()
     {
-        Assert.Equal(string.Empty, InspectorText.ForParents(null, null));
+        Assert.Equal(string.Empty, InspectorText.ForParents(null, null, null));
     }
 
     [Theory]
-    [InlineData("Orla", null, "Child of Orla\n")]
-    [InlineData(null, "Hesk", "Child of Hesk\n")]
-    [InlineData("Orla", "Hesk", "Child of Orla and Hesk\n")]
+    [InlineData("Orla", null, "Daughter of Orla\n")]
+    [InlineData(null, "Hesk", "Daughter of Hesk\n")]
+    [InlineData("Orla", "Hesk", "Daughter of Orla and Hesk\n")]
     public void OneRememberedParentIsNamedWithoutADanglingAnd(string? mother, string? father, string expected)
     {
-        Assert.Equal(expected, InspectorText.ForParents(mother, father));
+        Assert.Equal(expected, InspectorText.ForParents(Sex.Female, mother, father));
+    }
+
+    [Fact]
+    public void ASonReadsSonRatherThanDaughter()
+    {
+        Assert.Equal("Son of Orla and Hesk\n", InspectorText.ForParents(Sex.Male, "Orla", "Hesk"));
     }
 
     // The three lists a person's card and the debug dump both show. Each has an empty form, and
@@ -300,7 +307,7 @@ public class InspectorTextTests
         var record = InspectorText.ForGraveRecord(grave, world.Configuration.SkillCatalog);
 
         Assert.Contains("Ava. Died at 30 winters of hunger.", record, StringComparison.Ordinal);
-        Assert.Contains("Child of Orla and Hesk", record, StringComparison.Ordinal);
+        Assert.Contains("Daughter of Orla and Hesk", record, StringComparison.Ordinal);
         Assert.Contains("Knew: Foraging", record, StringComparison.Ordinal);
         Assert.DoesNotContain(grave.Id.ToString(), record, StringComparison.Ordinal);
         Assert.DoesNotContain("Position", record, StringComparison.Ordinal);

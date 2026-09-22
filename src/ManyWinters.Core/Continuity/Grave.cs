@@ -17,6 +17,8 @@ public sealed class Grave
 
     public string? Name { get; init; }
 
+    public Sex? Sex { get; init; }
+
     public int? AgeAtDeath { get; init; }
 
     public DeathCause? CauseOfDeath { get; init; }

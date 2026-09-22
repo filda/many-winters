@@ -49,7 +49,7 @@ internal sealed record SelectionCard(
         return new SelectionCard(
             person.Name,
             person.IsAlive ? InspectorText.ForAgeAndSex(age, person.Sex) : "deceased",
-            InspectorText.ForParents(NameOrNull(person.Mother), NameOrNull(person.Father)).TrimEnd('\n'),
+            InspectorText.ForParents(person.Sex, NameOrNull(person.Mother), NameOrNull(person.Father)).TrimEnd('\n'),
             // The one sentence a body can still tell the player. The living have no death to report.
             person.IsAlive
                 ? string.Empty

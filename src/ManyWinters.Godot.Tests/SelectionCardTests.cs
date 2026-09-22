@@ -53,7 +53,7 @@ public class SelectionCardTests
         var father = TestWorld.AddAdult(world, "Doran", new Position(0, 0), Sex.Male);
         var child = TestWorld.AddChildOf(world, "Bran", mother, father);
 
-        Assert.Equal("Child of Sela and Doran", SelectionCard.For(world, child).Parents);
+        Assert.Equal("Son of Sela and Doran", SelectionCard.For(world, child).Parents);
     }
 
     // Person.Mother and Father are never null - an unremembered parent is Person.Unknown, and the
