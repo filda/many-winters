@@ -1,0 +1,13 @@
+{
+  "stryker-config": {
+    "mutate": ["**/World/*.cs"],
+    "reporters": ["html", "progress"],
+    "concurrency": 2,
+    "additional-timeout": 60000,
+    "thresholds": {
+      "high": 100,
+      "low": 100,
+      "break": 95
+    }
+  }
+}

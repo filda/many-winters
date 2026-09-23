@@ -51,9 +51,15 @@ jobs:
           - name: core-continuity-3
             working-directory: src/ManyWinters.Tests
             args: --project ManyWinters.Core.csproj --config-file stryker-config-core-continuity-3.json
-          - name: core-other
+          - name: core-other-1
             working-directory: src/ManyWinters.Tests
-            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other.json
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other-1.json
+          - name: core-other-2
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other-2.json
+          - name: core-other-3
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other-3.json
           - name: simulation-runner
             working-directory: src/ManyWinters.Tests
             args: --project ManyWinters.Tools.SimulationRunner.csproj

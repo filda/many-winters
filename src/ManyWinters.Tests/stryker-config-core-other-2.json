@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "mutate": ["**/*.cs", "!**/Continuity/*.cs", "!**/Program.cs"],
+    "mutate": ["**/Commands/*.cs"],
     "reporters": ["html", "progress"],
     "concurrency": 2,
     "additional-timeout": 60000,
