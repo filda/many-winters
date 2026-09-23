@@ -16,7 +16,7 @@ internal readonly record struct MeterReading(string Label, float Value, float Ma
 
 // Everything the selection panel says about the person who is selected, worked out in one place
 // so the panel is left with nothing but drawing. The debug inspector keeps its own raw dump
-// (positions, ids, fatigue); this is the player's view of the same person.
+// (positions, ids, raw needs); this is the player's view of the same person.
 internal sealed record SelectionCard(
     string Name,
     string Beside,
@@ -26,8 +26,15 @@ internal sealed record SelectionCard(
     IReadOnlyList<MeterReading> Meters,
     string Carried,
     string KnowledgeLabel,
-    IReadOnlyList<string> Knowledge)
+    IReadOnlyList<string> Knowledge,
+    PersonLook Look,
+    bool IsAlive,
+    MeterReading? Fatigue)
 {
+    // Nothing in the rules caps fatigue yet; the same hundred hunger is measured against, so the
+    // bar has something to fill towards until the simulation says what tired is.
+    private const float FatigueScale = 100f;
+
     // A belly with nothing wrong with it, someone who has begun looking for food of their own
     // accord, and someone near the end of it. The bar walks from the first to the last as hunger
     // rises, so the colour changes at the moment the person's own behaviour does.
@@ -56,10 +63,8 @@ internal sealed record SelectionCard(
                 : InspectorText.ForDeath((int)world.AgeInYearsAt(person, person.DeathTick ?? world.Clock.CurrentTick), person.CauseOfDeath),
             // Nobody dead is doing anything, and "At rest" under a corpse reads as a joke.
             person.IsAlive ? InspectorText.ForWork(person, world.Configuration.ResourceCatalog) : string.Empty,
-            // Fatigue is deliberately absent: nothing in the simulation moves it yet, and a bar
-            // that is always empty teaches the player the wrong thing about what matters. Hunger
-            // goes the same way once someone is dead - it has stopped mattering. What is on the
-            // body still does, because it can be taken.
+            // Hunger stops mattering once someone is dead. What is on the body still does,
+            // because it can be taken.
             person.IsAlive
                 ?
                 [
@@ -69,7 +74,16 @@ internal sealed record SelectionCard(
                 : [carrying],
             InspectorText.ForCarried(person.Inventory, world),
             person.IsAlive ? "Knows" : "Knew",
-            InspectorText.ForKnowledge(person.KnownTechniques, world.Configuration.SkillCatalog));
+            InspectorText.ForKnowledge(person.KnownTechniques, world.Configuration.SkillCatalog),
+            // Standing even for the dead: a portrait is of who they were, not of the body on the
+            // ground - the page drains it of colour instead.
+            PersonLook.For(person.Id.Seed, person.Sex, lyingDown: false),
+            person.IsAlive,
+            // The person's page only, not the summary card: nothing in the simulation moves
+            // fatigue yet, and the narrow strip down the edge has no room for a bar that says
+            // nothing. It fills as they tire, the way the load bar fills as the pack does. The dead
+            // are past tiring.
+            person.IsAlive ? new MeterReading("Fatigue", person.Needs.Fatigue, FatigueScale, Load) : null);
     }
 
     // How full they are, not how hungry: the bar drains as hunger rises. The band's roster draws

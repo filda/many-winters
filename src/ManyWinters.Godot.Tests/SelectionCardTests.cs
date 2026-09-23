@@ -67,8 +67,8 @@ public class SelectionCardTests
         Assert.Equal(string.Empty, SelectionCard.For(world, person).Parents);
     }
 
-    // Fatigue exists on Person but nothing in the simulation moves it, so a bar for it would sit
-    // empty forever and teach the player it does not matter - which is not the intended lesson.
+    // Fatigue exists on Person but nothing in the simulation moves it, so the narrow summary card
+    // leaves it out; only the person's own page has room for it.
     [Fact]
     public void OnlyTheMeasuresThatActuallyMoveAreShown()
     {
@@ -78,6 +78,30 @@ public class SelectionCardTests
         var labels = SelectionCard.For(world, person).Meters.Select(meter => meter.Label).ToList();
 
         Assert.Equal(["Fed", "Carrying"], labels);
+    }
+
+    // Fills as they tire, the way the load bar fills as the pack does.
+    [Fact]
+    public void TheFatigueBarFillsAsTheyTire()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+
+        Assert.Equal(0f, SelectionCard.For(world, person).Fatigue!.Value.Fraction);
+
+        person.Needs.Fatigue = 50f;
+
+        Assert.Equal(0.5f, SelectionCard.For(world, person).Fatigue!.Value.Fraction, 3);
+    }
+
+    [Fact]
+    public void TheDeadArePastTiring()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.IsAlive = false;
+
+        Assert.Null(SelectionCard.For(world, person).Fatigue);
     }
 
     // The bar shows how full they are, not how hungry: it drains as hunger rises, so an empty bar

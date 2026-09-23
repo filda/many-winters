@@ -22,6 +22,11 @@ public partial class PersonDetailPanel : PaperPanel
     // Between the name and the age beside it - a word's worth, not a column gap.
     private const int HeadingSpacing = 8;
 
+    // Big enough to tell one face from another, small enough to leave the column beside it room
+    // for a meter.
+    private const float PortraitSize = 104f;
+
+    private PersonPortrait _portrait = null!;
     private Label _beside = null!;
     private Label _parents = null!;
     private Label _death = null!;
@@ -63,12 +68,6 @@ public partial class PersonDetailPanel : PaperPanel
         // was given, less the page's own padding, fixes that.
         Body.CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0);
 
-        _parents = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
-        Body.AddChild(_parents);
-
-        _death = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
-        Body.AddChild(_death);
-
         _meters = new VBoxContainer();
         _meters.AddThemeConstantOverride("separation", SectionSpacing);
         Body.AddChild(_meters);
@@ -80,9 +79,6 @@ public partial class PersonDetailPanel : PaperPanel
         _carried.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
         _carried.Pressed += () => PackRequested?.Invoke();
         Body.AddChild(_carried);
-
-        _task = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
-        Body.AddChild(_task);
 
         Body.AddChild(PanelChrome.Rule());
 
@@ -99,23 +95,45 @@ public partial class PersonDetailPanel : PaperPanel
         _knowledge.AddChild(_knowledgeHeading);
     }
 
-    // Age and sex on the name's own line, in quieter type, the same as on the summary card - a
-    // line of their own under it spent a whole row of the page on two words.
+    // The page opens the way a page about somebody does: their likeness in the top left corner and
+    // who they are beside it - the name with age and sex on its own line, in quieter type, the same
+    // as on the summary card, then whose child they are and how they died, then what they are
+    // doing, where a page about somebody would name their trade. The portrait is part of the head
+    // rather than of the body under it, so the name sits level with the top of the face.
     protected override Control Heading(Label titleLabel)
     {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", HeadingSpacing);
+        var head = new HBoxContainer();
+        head.AddThemeConstantOverride("separation", SectionSpacing);
+
+        _portrait = new PersonPortrait(PortraitSize);
+        head.AddChild(_portrait);
+
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        head.AddChild(column);
+
+        var nameLine = new HBoxContainer();
+        nameLine.AddThemeConstantOverride("separation", HeadingSpacing);
+        column.AddChild(nameLine);
 
         titleLabel.AutowrapMode = TextServer.AutowrapMode.Off;
         titleLabel.VerticalAlignment = VerticalAlignment.Bottom;
-        row.AddChild(titleLabel);
+        nameLine.AddChild(titleLabel);
 
         _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         _beside.AutowrapMode = TextServer.AutowrapMode.Off;
         _beside.VerticalAlignment = VerticalAlignment.Bottom;
-        row.AddChild(_beside);
+        nameLine.AddChild(_beside);
 
-        return row;
+        _parents = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
+        column.AddChild(_parents);
+
+        _death = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
+        column.AddChild(_death);
+
+        _task = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
+        column.AddChild(_task);
+
+        return head;
     }
 
     // Opened fresh for whoever the card belongs to.
@@ -131,15 +149,16 @@ public partial class PersonDetailPanel : PaperPanel
     {
         SetTitle(card.Name);
         _beside.Text = card.Beside;
+        _portrait.Show(card.Look, card.IsAlive);
         _parents.Text = card.Parents;
         _parents.Visible = card.Parents.Length > 0;
         _death.Text = card.Death;
         _death.Visible = card.Death.Length > 0;
         _carried.Text = $"Pack: {card.Carried}";
-        _task.Text = $"Doing: {card.Task}";
+        _task.Text = card.Task;
         _task.Visible = card.Task.Length > 0;
 
-        _meterRows.Sync(card.Meters);
+        _meterRows.Sync(card.Fatigue is { } fatigue ? [.. card.Meters, fatigue] : card.Meters);
         _actions.Show(offers);
         SyncKnowledge(card.KnowledgeLabel, card.Knowledge);
     }

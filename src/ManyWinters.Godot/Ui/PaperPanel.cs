@@ -94,10 +94,18 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
         // the current selection rather than on the window as a whole (WorkshopPanel).
         BuildTitleBarExtras(_titleBar);
 
+        // Centred on the first line of the title bar rather than on the whole of it, so a heading
+        // that runs to several lines (PersonDetailPanel's portrait) keeps the cross in the corner.
+        var crossLine = new CenterContainer
+        {
+            CustomMinimumSize = new Vector2(0, TitleBarHeight),
+            SizeFlagsVertical = SizeFlags.ShrinkBegin,
+        };
+        _titleBar.AddChild(crossLine);
+
         var cross = PanelChrome.CloseCross(InscriptionFont.DarkInk);
-        cross.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         cross.Pressed += OnCloseRequested;
-        _titleBar.AddChild(cross);
+        crossLine.AddChild(cross);
 
         _scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         outer.AddChild(_scroll);

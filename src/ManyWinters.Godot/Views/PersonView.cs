@@ -45,78 +45,18 @@ internal partial class PersonView : SpriteEntityView
     // mid-bounce.
     private const float StepSettleSeconds = 0.25f;
 
-    private const string BodyMaleTexturePath = "res://Content/people/person_body_male.png";
-    private const string BodyFemaleTexturePath = "res://Content/people/person_body_female.png";
-    private const string BodyMaleDeadTexturePath = "res://Content/people/person_body_male_dead.png";
-    private const string BodyFemaleDeadTexturePath = "res://Content/people/person_body_female_dead.png";
-
-    // Layered on the body, paper-doll style: clothing first, hair on top, each an independent
-    // seeded pick recoloured at runtime, so body x clothing x hair x colours come from a handful
-    // of images. Each "_dead" entry is the same layer laid on its side (generate_sprites.py's
-    // _lay_down), index-matched so SetAlive swaps to the *same* hairstyle/clothing lying down.
-    private static readonly string[] HairTexturePaths =
-    [
-        "res://Content/people/hair_short.png",
-        "res://Content/people/hair_long.png",
-        "res://Content/people/hair_tied.png",
-    ];
-
-    private static readonly string[] HairDeadTexturePaths =
-    [
-        "res://Content/people/hair_short_dead.png",
-        "res://Content/people/hair_long_dead.png",
-        "res://Content/people/hair_tied_dead.png",
-    ];
-
-    private static readonly string[] ClothingTexturePaths =
-    [
-        "res://Content/people/clothing_robe.png",
-        "res://Content/people/clothing_tunic.png",
-        "res://Content/people/clothing_cloak.png",
-    ];
-
-    private static readonly string[] ClothingDeadTexturePaths =
-    [
-        "res://Content/people/clothing_robe_dead.png",
-        "res://Content/people/clothing_tunic_dead.png",
-        "res://Content/people/clothing_cloak_dead.png",
-    ];
-
-    private static readonly Color[] HairColorOptions =
-    [
-        new(0.22f, 0.16f, 0.11f),
-        new(0.32f, 0.22f, 0.14f),
-        new(0.45f, 0.40f, 0.34f),
-    ];
-
-    private static readonly Color[] ClothingColorOptions =
-    [
-        new(0.34f, 0.24f, 0.16f),
-        new(0.33f, 0.36f, 0.42f),
-        new(0.47f, 0.27f, 0.15f),
-        new(0.40f, 0.36f, 0.20f),
-    ];
-
     private static readonly Color AliveColor = new(0.9f, 0.7f, 0.5f);
-
-    // Dead keeps this person's own body/clothing/hair, drained of colour, rather than a shared
-    // generic corpse. Modulate can only multiply, not desaturate, but a muted grey darkens the
-    // multi-toned body enough to read as lifeless without a shader.
-    private static readonly Color DeadTint = new(0.5f, 0.5f, 0.52f);
 
     private readonly Person _person;
     private readonly Action<Person, MouseButton> _onClicked;
-    private readonly string _aliveTexturePath;
-    private readonly string _deadTexturePath;
-    private string _clothingAliveTexturePath = null!;
-    private string _clothingDeadTexturePath = null!;
-    private string _hairAliveTexturePath = null!;
-    private string _hairDeadTexturePath = null!;
+
+    // The same layers twice, standing and laid on their side, so SetAlive swaps to the *same*
+    // hairstyle/clothing lying down.
+    private readonly PersonLook _standing;
+    private readonly PersonLook _lying;
     private SpriteLayer _body = null!;
     private SpriteLayer _clothing = null!;
     private SpriteLayer _hair = null!;
-    private Color _clothingColor;
-    private Color _hairColor;
 
     // The body layer's alive colour, so SetAlive can put it back: normally white, but a missing
     // texture leaves the fallback colour here.
@@ -143,11 +83,8 @@ internal partial class PersonView : SpriteEntityView
     {
         _person = person;
         _onClicked = onClicked;
-        // Its own salt, distinct from the hairstyle/clothing picks in Build, so gender is not
-        // correlated with them.
-        var isMale = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 4, 2) == 0;
-        _aliveTexturePath = isMale ? BodyMaleTexturePath : BodyFemaleTexturePath;
-        _deadTexturePath = isMale ? BodyMaleDeadTexturePath : BodyFemaleDeadTexturePath;
+        _standing = PersonLook.For(_person.Id.Seed, _person.Sex, lyingDown: false);
+        _lying = PersonLook.For(_person.Id.Seed, _person.Sex, lyingDown: true);
     }
 
     protected override void Build()
@@ -163,28 +100,20 @@ internal partial class PersonView : SpriteEntityView
 
         SetUpGroundShadow(ShadowDiameter);
 
-        var body = BillboardSprite.Create(_aliveTexturePath, Height, AliveColor);
+        var body = BillboardSprite.Create(_standing.Body, Height, AliveColor);
         _aliveBodyModulate = body.Modulate;
-        _body = Register(body, _aliveTexturePath);
+        _body = Register(body, _standing.Body);
 
         // AlphaCutMode.Disabled, not the default OpaquePrepass: an overlay at the body's exact
         // position and depth needs ordinary alpha blending to composite cleanly, since
         // OpaquePrepass has no defined order between two billboards at one depth.
-        var clothingIndex = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 5, ClothingTexturePaths.Length);
-        _clothingAliveTexturePath = ClothingTexturePaths[clothingIndex];
-        _clothingDeadTexturePath = ClothingDeadTexturePaths[clothingIndex];
-        _clothingColor = ClothingColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 6, ClothingColorOptions.Length)];
-        var clothing = BillboardSprite.Create(_clothingAliveTexturePath, Height, _clothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
-        clothing.Modulate = SpriteTint.ModulateFor(_clothingColor);
-        _clothing = Register(clothing, _clothingAliveTexturePath);
+        var clothing = BillboardSprite.Create(_standing.Clothing, Height, _standing.ClothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
+        clothing.Modulate = SpriteTint.ModulateFor(_standing.ClothingColor);
+        _clothing = Register(clothing, _standing.Clothing);
 
-        var hairIndex = EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 7, HairTexturePaths.Length);
-        _hairAliveTexturePath = HairTexturePaths[hairIndex];
-        _hairDeadTexturePath = HairDeadTexturePaths[hairIndex];
-        _hairColor = HairColorOptions[EntityVisualVariation.IndexFor(_person.Id.Seed, salt: 8, HairColorOptions.Length)];
-        var hair = BillboardSprite.Create(_hairAliveTexturePath, Height, _hairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
-        hair.Modulate = SpriteTint.ModulateFor(_hairColor);
-        _hair = Register(hair, _hairAliveTexturePath);
+        var hair = BillboardSprite.Create(_standing.Hair, Height, _standing.HairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
+        hair.Modulate = SpriteTint.ModulateFor(_standing.HairColor);
+        _hair = Register(hair, _standing.Hair);
     }
 
     // The walk cycle runs whether or not anything is fading, so processing never switches off.
@@ -279,9 +208,10 @@ internal partial class PersonView : SpriteEntityView
         // Each layer swaps to its own lying-down variant (generate_sprites.py's _lay_down) - the
         // same hairstyle/clothing this person had standing. Retexture carries the new base
         // colour, since BillboardSprite.Apply resets Modulate to white.
-        Retexture(_body, isAlive ? _aliveTexturePath : _deadTexturePath, isAlive ? _aliveBodyModulate : DeadTint, AliveColor);
-        Retexture(_clothing, isAlive ? _clothingAliveTexturePath : _clothingDeadTexturePath, isAlive ? SpriteTint.ModulateFor(_clothingColor) : DeadTint, _clothingColor);
-        Retexture(_hair, isAlive ? _hairAliveTexturePath : _hairDeadTexturePath, isAlive ? SpriteTint.ModulateFor(_hairColor) : DeadTint, _hairColor);
+        var look = isAlive ? _standing : _lying;
+        Retexture(_body, look.Body, isAlive ? _aliveBodyModulate : PersonLook.DeadTint, AliveColor);
+        Retexture(_clothing, look.Clothing, isAlive ? SpriteTint.ModulateFor(look.ClothingColor) : PersonLook.DeadTint, look.ClothingColor);
+        Retexture(_hair, look.Hair, isAlive ? SpriteTint.ModulateFor(look.HairColor) : PersonLook.DeadTint, look.HairColor);
 
         // Re-painted from the updated base colours even mid-fade, so the fog tint composes with
         // the new ones at once.
