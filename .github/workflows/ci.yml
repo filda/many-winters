@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Lets a run be forced regardless of check-game-changes, e.g. to exercise release-windows
+  # and its E2E step without waiting for an unrelated push to touch src/ManyWinters.Godot.
+  workflow_dispatch:
 
 # Ubuntu runners are pinned rather than `ubuntu-latest`: that label starts moving to Ubuntu
 # 26.04 on 2026-10-19 and warns on every job until it does. 26.04 was rehearsed first - the
@@ -111,7 +114,7 @@ jobs:
   # Only pushes that touch the shipped game are worth a new build. Changes to tests,
   # tools, art scripts or docs still run the full CI above, they just don't cut a release.
   check-game-changes:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-26.04
     outputs:
       changed: ${{ steps.filter.outputs.changed }}
@@ -123,6 +126,12 @@ jobs:
       - name: Check whether shipped files changed
         id: filter
         run: |
+          # A manual run always builds - that's the point of forcing one.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           before="${{ github.event.before }}"
           # New branch, force-push or rewritten history: don't be clever, just build.
           if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
