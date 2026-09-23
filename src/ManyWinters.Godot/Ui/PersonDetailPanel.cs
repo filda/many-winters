@@ -19,6 +19,9 @@ public partial class PersonDetailPanel : PaperPanel
     private const int MeterHeight = 8;
     private const int SectionSpacing = 10;
 
+    // Between the name and the age beside it - a word's worth, not a column gap.
+    private const int HeadingSpacing = 8;
+
     private Label _beside = null!;
     private Label _parents = null!;
     private Label _death = null!;
@@ -60,9 +63,6 @@ public partial class PersonDetailPanel : PaperPanel
         // was given, less the page's own padding, fixes that.
         Body.CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0);
 
-        _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
-        Body.AddChild(_beside);
-
         _parents = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         Body.AddChild(_parents);
 
@@ -97,6 +97,25 @@ public partial class PersonDetailPanel : PaperPanel
 
         _knowledgeHeading = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         _knowledge.AddChild(_knowledgeHeading);
+    }
+
+    // Age and sex on the name's own line, in quieter type, the same as on the summary card - a
+    // line of their own under it spent a whole row of the page on two words.
+    protected override Control Heading(Label titleLabel)
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", HeadingSpacing);
+
+        titleLabel.AutowrapMode = TextServer.AutowrapMode.Off;
+        titleLabel.VerticalAlignment = VerticalAlignment.Bottom;
+        row.AddChild(titleLabel);
+
+        _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
+        _beside.AutowrapMode = TextServer.AutowrapMode.Off;
+        _beside.VerticalAlignment = VerticalAlignment.Bottom;
+        row.AddChild(_beside);
+
+        return row;
     }
 
     // Opened fresh for whoever the card belongs to.
