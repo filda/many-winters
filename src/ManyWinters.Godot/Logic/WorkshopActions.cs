@@ -83,12 +83,10 @@ internal static class WorkshopActions
     // the material is not this bench's business to explain - and only for a recipe whose output
     // actually fits in the pack; one heavy enough to need placing (a storage hut) is offered from
     // the ground instead, by pointing at it.
-    internal static IReadOnlyList<ActionOffer> Recipes(WorldState world, Person person) =>
-        world.Configuration.RecipeCatalog.Definitions
-            // Stryker disable once Equality: a cheap pre-filter only - IsAvailable below asks
-            // the command itself whether enough is actually carried, so >0 and >=0 admit the
-            // same offers into the final list either way, having none of the input is never
-            // "enough" to make it available.
+    internal static IReadOnlyList<ActionOffer> Recipes(WorldState world, Person person)
+    {
+        // Stryker disable once Equality: a cheap pre-filter only, IsAvailable below asks the command itself whether enough is actually carried, so >0 and >=0 admit the same offers either way
+        return world.Configuration.RecipeCatalog.Definitions
             .Where(recipe => person.Inventory.Get(recipe.InputItem) > 0)
             .Where(recipe => PersonActions.FitsInInventory(world, person, recipe.Output))
             .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal)
@@ -98,6 +96,7 @@ internal static class WorkshopActions
                 world))
             .Where(offer => offer.IsAvailable)
             .ToList();
+    }
 
     // Eating out of the pack without leaving the bench for the card - offered only for a single
     // pick that is actually food, the same restriction the card's own Eat carries. Not offered

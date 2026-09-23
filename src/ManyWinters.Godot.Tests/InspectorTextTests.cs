@@ -168,6 +168,12 @@ public class InspectorTextTests
     }
 
     [Fact]
+    public void ForDeathNamesTheCauseWhenOneIsRecorded()
+    {
+        Assert.Equal("Died at 5 winters of old age.", InspectorText.ForDeath(5, DeathCause.OldAge));
+    }
+
+    [Fact]
     public void AGraveWithNoKnowledgeSaysSoRatherThanTrailingOff()
     {
         Assert.Contains("Known techniques: none", InspectorText.ForGrave(NewGrave(techniques: [])), StringComparison.Ordinal);
@@ -321,6 +327,19 @@ public class InspectorTextTests
         var record = InspectorText.ForGraveRecord(NewGrave(techniques: []), world.Configuration.SkillCatalog);
 
         Assert.Contains("Knew: nothing", record, StringComparison.Ordinal);
+    }
+
+    // One technique never exercises the ", " separator between the grave record's known
+    // things; two does.
+    [Fact]
+    public void AGraveRecordListsSeveralKnownThingsSeparately()
+    {
+        var world = TestWorld.Create();
+        var grave = NewGrave(techniques: [TestWorld.BasicForaging, TestWorld.BasicTeaching]);
+
+        var record = InspectorText.ForGraveRecord(grave, world.Configuration.SkillCatalog);
+
+        Assert.Contains("Knew: Foraging, Teaching", record, StringComparison.Ordinal);
     }
 
     [Fact]
