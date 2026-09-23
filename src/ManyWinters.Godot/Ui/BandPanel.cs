@@ -98,14 +98,7 @@ internal partial class BandPanel : FloatingPanel
 
         for (var i = 0; i < _rows.Count; i++)
         {
-            if (i < entries.Count)
-            {
-                _rows[i].Show(entries[i]);
-            }
-            else
-            {
-                _rows[i].Hide();
-            }
+            _rows[i].Apply(i < entries.Count ? entries[i] : null);
         }
     }
 
@@ -175,21 +168,19 @@ internal partial class BandPanel : FloatingPanel
     {
         public RosterEntry? Entry { get; private set; }
 
-        public void Show(RosterEntry entry)
+        public void Apply(RosterEntry? entry)
         {
             Entry = entry;
-            container.Visible = true;
+            container.Visible = entry is not null;
+            if (entry is not { } shown)
+            {
+                return;
+            }
 
-            heading.Text = entry.Heading;
-            task.Text = entry.Task;
-            fed.Value = entry.Fed.Fraction;
-            fed.AddThemeStyleboxOverride("fill", PanelChrome.Filled(entry.Fed.Fill));
-        }
-
-        public void Hide()
-        {
-            Entry = null;
-            container.Visible = false;
+            heading.Text = shown.Heading;
+            task.Text = shown.Task;
+            fed.Value = shown.Fed.Fraction;
+            fed.AddThemeStyleboxOverride("fill", PanelChrome.Filled(shown.Fed.Fill));
         }
     }
 }

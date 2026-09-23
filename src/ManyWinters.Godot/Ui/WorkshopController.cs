@@ -166,44 +166,21 @@ internal sealed class WorkshopController
         }
 
         var offer = WorkshopActions.Attempt(_world, person, _workshop.Picked);
-        var words = WorkshopActions.WordsFor(_world, person, _workshop.Picked);
-        if (offer is { } shownOffer)
-        {
-            _workshop.ShowOffer(shownOffer, RefusalFor(offer), words);
-        }
-        else
-        {
-            _workshop.ClearOffer(RefusalFor(offer), words);
-        }
-
-        if (WorkshopActions.Eat(_world, person, _workshop.Picked) is { } eatOffer)
-        {
-            _workshop.ShowEat(eatOffer);
-        }
-        else
-        {
-            _workshop.HideEat();
-        }
-
-        if (WorkshopActions.Drop(_world, person, _workshop.Picked) is { } dropOffer)
-        {
-            _workshop.ShowDrop(dropOffer);
-        }
-        else
-        {
-            _workshop.HideDrop();
-        }
+        _workshop.Offer(offer, RefusalFor(offer), WorkshopActions.WordsFor(_world, person, _workshop.Picked));
+        _workshop.OfferItemActions(
+            WorkshopActions.Eat(_world, person, _workshop.Picked),
+            WorkshopActions.Drop(_world, person, _workshop.Picked));
     }
 
     // Nothing is said about a pick that leads nowhere until the player has picked something: an
     // empty workbench that already says "nothing comes of it" is answering a question nobody
     // asked.
-    private string RefusalFor(ActionOffer? offer) => (offer, _workshop.Picked.Count) switch
+    private string? RefusalFor(ActionOffer? offer) => (offer, _workshop.Picked.Count) switch
     {
-        (null, 0) => string.Empty,
+        (null, 0) => null,
         (null, _) => NothingComesOfIt[Random.Shared.Next(NothingComesOfIt.Length)],
         ({ IsAvailable: false }, _) => ActionBlockerText.For(offer.Value),
-        _ => string.Empty,
+        _ => null,
     };
 
     private void OnAttempt()
@@ -239,15 +216,7 @@ internal sealed class WorkshopController
         if (made is not null && !_world.Vocabulary.HasAWordFor(made))
         {
             _justMade = made;
-            var description = InspectorText.ForWorkedThing(made, _world);
-            if (WorkshopPanel.IconFor(new CarriedThing.Worked(made)) is { } icon)
-            {
-                _namingPanel.Open(description, icon);
-            }
-            else
-            {
-                _namingPanel.Open(description);
-            }
+            _namingPanel.Open(InspectorText.ForWorkedThing(made, _world), WorkshopPanel.IconFor(new CarriedThing.Worked(made)));
         }
     }
 

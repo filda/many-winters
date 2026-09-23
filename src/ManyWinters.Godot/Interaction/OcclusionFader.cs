@@ -20,24 +20,9 @@ internal sealed class OcclusionFader(
     private Vector3? _lastTargetPosition;
     private const float RecomputeDistanceSquaredThreshold = 0.0001f;
 
-    // What the occlusion sight line runs to when somebody is selected: their own position (and
-    // the node to exclude, since it sits at the target itself), or, if they have not entered the
-    // world yet this frame, the same fallback as no selection.
-    public void UpdateForSelection(Person person)
+    public void Update(Person? selectedPerson)
     {
-        var (targetPosition, selectedPersonNode) = presenter.GetPersonGlobalPosition(person.Id) is { } personPosition
-            ? (personPosition, presenter.GetPersonNode(person.Id))
-            : (cameraRig.RigGlobalPosition, null);
-
-        Update(targetPosition, selectedPersonNode);
-    }
-
-    // What the sight line runs to when nobody is selected: the camera's own orbit/pan target, so
-    // nothing gets to block the view indefinitely just because no one is selected.
-    public void UpdateWithNoSelection() => Update(cameraRig.RigGlobalPosition, null);
-
-    private void Update(Vector3 targetPosition, Node? selectedPersonNode)
-    {
+        var (targetPosition, selectedPersonNode) = ResolveOcclusionTarget(selectedPerson);
         var cameraPosition = cameraRig.CameraGlobalPosition;
 
         if (_lastCameraPosition is { } lastCameraPosition
@@ -78,6 +63,19 @@ internal sealed class OcclusionFader(
                 SetSpriteAlpha(sprite, 1f);
             }
         }
+    }
+
+    // What the occlusion sight line runs to: the selected person if any (and the node to exclude,
+    // since it sits at the target itself), else the camera's own orbit/pan target so nothing gets
+    // to block the view indefinitely just because no one is selected.
+    private (Vector3 TargetPosition, Node? SelectedPersonNode) ResolveOcclusionTarget(Person? selectedPerson)
+    {
+        if (selectedPerson is { } person && presenter.GetPersonGlobalPosition(person.Id) is { } personPosition)
+        {
+            return (personPosition, presenter.GetPersonNode(person.Id));
+        }
+
+        return (cameraRig.RigGlobalPosition, null);
     }
 
     // Walks BillboardSprite.LiveSprites rather than the scene tree: a per-frame FindChildren over

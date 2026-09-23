@@ -41,10 +41,10 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     private readonly List<SpriteLayer> _layers = new();
     private readonly RememberedFade _remembered = new();
 
-    // Null for a view that never lights up (a grave): passing no hover arbiter keeps it
-    // transparent to HoverRescue, so the cursor still finds whatever stands behind it.
+    // Null for a view that never lights up (a grave, a building). Null _onMissedClick too means
+    // nothing can be clicked, and the view gets no collision shape or ray picking.
     private readonly HoverArbiter? _hover;
-    private readonly InputEventEventHandler _onMissedClick;
+    private readonly InputEventEventHandler? _onMissedClick;
 
     private CollisionShape3D? _collisionShape;
     private bool _isHovered;
@@ -54,20 +54,14 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // measured against it.
     protected float NominalHeight { get; }
 
-    // For a view that lights up on hover and answers to clicks (a person, a resource, a
-    // building).
-    protected SpriteEntityView(float nominalHeight, HoverArbiter hover, InputEventEventHandler onMissedClick)
-        : this(nominalHeight, onMissedClick)
-    {
-        _hover = hover;
-    }
-
-    // For a view that answers to clicks but never lights up (GraveView).
-    protected SpriteEntityView(float nominalHeight, InputEventEventHandler onMissedClick)
+    protected SpriteEntityView(float nominalHeight, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
     {
         NominalHeight = nominalHeight;
+        _hover = hover;
         _onMissedClick = onMissedClick;
     }
+
+    private bool IsPickable => _onMissedClick is not null;
 
     // Sealed so the order - build the layers, measure them, paint them - is settled once here.
     // Views build themselves in Build().
@@ -75,12 +69,19 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     {
         Build();
 
-        InputRayPickable = true;
-        RefreshCollisionShape();
-        // No MouseExited subscription: Godot only sends it to the collider its own picking
-        // chose, which leaves sprites lit forever. Losing hover is settled once a frame by
-        // IsStillUnderCursor.
-        InputEvent += OnInputEvent;
+        if (IsPickable)
+        {
+            InputRayPickable = true;
+            RefreshCollisionShape();
+            // No MouseExited subscription: Godot only sends it to the collider its own picking
+            // chose, which leaves sprites lit forever. Losing hover is settled once a frame by
+            // IsStillUnderCursor.
+            InputEvent += OnInputEvent;
+        }
+        else
+        {
+            InputRayPickable = false;
+        }
 
         // Process frames only while something moves - a fade in flight or a self-animating view.
         // Thousands of resource nodes sit still nearly all of the time.
@@ -214,6 +215,11 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // lies down, wider and shorter).
     protected void RefreshCollisionShape()
     {
+        if (!IsPickable)
+        {
+            return;
+        }
+
         if (_collisionShape is null)
         {
             _collisionShape = new CollisionShape3D { Shape = new BoxShape3D() };
@@ -325,16 +331,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     {
         foreach (var layer in _layers)
         {
-            if (!layer.Picks)
-            {
-                continue;
-            }
-
-            var opaque = PixelHitAnchor is { } anchor
-                ? SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, layer.Sprite, layer.TexturePath, anchor)
-                : SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, layer.Sprite, layer.TexturePath);
-
-            if (opaque)
+            if (layer.Picks && SpritePixelHit.IsOpaqueAtScreen(camera, screenPosition, layer.Sprite, layer.TexturePath, PixelHitAnchor))
             {
                 return true;
             }
@@ -373,7 +370,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
                 if (!TryClickAt(camera3D, position, mouseEvent.ButtonIndex)
                     && !HoverRescue.TryClickElsewhere(this, camera3D, position, mouseEvent.ButtonIndex))
                 {
-                    _onMissedClick.Invoke(camera, @event, position, normal, shapeIdx);
+                    _onMissedClick?.Invoke(camera, @event, position, normal, shapeIdx);
                 }
 
                 break;

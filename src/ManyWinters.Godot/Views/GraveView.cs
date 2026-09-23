@@ -23,7 +23,7 @@ internal partial class GraveView : SpriteEntityView
     private readonly Action<Grave> _onSelected;
 
     public GraveView(Grave grave, Action<Grave> onSelected, InputEventEventHandler onMissedClick)
-        : base(Size, onMissedClick)
+        : base(Size, hover: null, onMissedClick)
     {
         _grave = grave;
         _onSelected = onSelected;
