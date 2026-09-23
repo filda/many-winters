@@ -55,6 +55,10 @@ public sealed class GameWindow : IDisposable
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Godot", "app_userdata", "ManyWinters Godot", "logs", "godot.log");
 
+        IntPtr lastHandle = IntPtr.Zero;
+        var lastTitle = "";
+        var lastLogReady = false;
+
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
@@ -74,17 +78,22 @@ public sealed class GameWindow : IDisposable
                 throw new InvalidOperationException($"Game process exited early{(exitCode is { } code ? $" with code {code}" : "")}. Check {logPath}.");
             }
 
-            if (probe.MainWindowHandle != IntPtr.Zero && LogShowsMainReady(logPath))
+            lastHandle = probe.MainWindowHandle;
+            lastTitle = probe.MainWindowTitle;
+            lastLogReady = LogShowsMainReady(logPath);
+            if (lastHandle != IntPtr.Zero && lastLogReady)
             {
-                return new GameWindow(process, probe.MainWindowHandle);
+                return new GameWindow(process, lastHandle);
             }
 
             await Task.Delay(200);
         }
 
+        var diagnostics = $"handle={lastHandle} title='{lastTitle}' logReady={lastLogReady} "
+            + $"logExists={File.Exists(logPath)} logLength={(File.Exists(logPath) ? new FileInfo(logPath).Length : -1)}";
         process.Kill(entireProcessTree: true);
         process.Dispose();
-        throw new TimeoutException($"Game did not report ready within {timeout}. Check {logPath}.");
+        throw new TimeoutException($"Game did not report ready within {timeout} ({diagnostics}). Check {logPath}.");
     }
 
     private static Process? SafeGetProcessById(int id)
@@ -140,11 +149,16 @@ public sealed class GameWindow : IDisposable
     {
         try
         {
-            return StartBreakingAwayFromAnyRestrictiveJob(fileName, workingDirectory, arguments);
+            var process = StartBreakingAwayFromAnyRestrictiveJob(fileName, workingDirectory, arguments);
+            Console.Error.WriteLine($"[GameWindow] launched '{fileName}' via CREATE_BREAKAWAY_FROM_JOB, pid {process.Id}.");
+            return process;
         }
         catch (InvalidOperationException ex) when (ex.InnerException is Win32Exception { NativeErrorCode: 5 })
         {
-            return StartViaScheduledTask(fileName, arguments);
+            Console.Error.WriteLine($"[GameWindow] CREATE_BREAKAWAY_FROM_JOB denied for '{fileName}', falling back to Task Scheduler.");
+            var process = StartViaScheduledTask(fileName, arguments);
+            Console.Error.WriteLine($"[GameWindow] found game window via Task Scheduler, pid {process.Id}, title '{process.MainWindowTitle}'.");
+            return process;
         }
     }
 
