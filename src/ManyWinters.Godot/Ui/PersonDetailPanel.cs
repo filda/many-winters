@@ -12,11 +12,10 @@ namespace ManyWinters.Godot.Ui;
 // Holds the clock while it is up, the same way the workbench does: the player asked for the
 // whole screen to read this, not to keep half an eye on a world still moving behind it. The owner
 // holds the clock for whichever of the two is visible.
-public partial class PersonDetailPanel : FloatingPanel
+public partial class PersonDetailPanel : PaperPanel
 {
     private const float Width = 360f;
     private const int BodyFontSize = 15;
-    private const int TitleFontSize = 18;
     private const int MeterHeight = 8;
     private const int SectionSpacing = 10;
 
@@ -42,10 +41,10 @@ public partial class PersonDetailPanel : FloatingPanel
     internal event Action<ActionOffer>? ActionInvoked;
 
     public PersonDetailPanel()
-        : base(string.Empty, onPaper: true, titleFontSize: TitleFontSize)
+        : base(string.Empty)
     {
         CustomMinimumSize = new Vector2(Width, 0);
-        KeepCentred = true;
+        Placement = PanelPlacement.Centred;
         Visible = false;
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }

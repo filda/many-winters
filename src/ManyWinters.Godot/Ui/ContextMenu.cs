@@ -23,7 +23,7 @@ internal partial class ContextMenu : PanelContainer
     // panel reads as a panel that has landed in the wrong place.
     private const float Width = 230f;
 
-    private const int HeadingFontSize = 17;
+    private const int HeadingFontSize = 22;
     private const int BodyFontSize = 15;
     private const int SectionSpacing = 6;
 

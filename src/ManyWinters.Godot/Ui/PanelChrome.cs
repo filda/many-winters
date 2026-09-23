@@ -101,8 +101,7 @@ public static class PanelChrome
         return theme;
     }
 
-    // How much room the cross in a panel's corner takes - and how much empty space the other end
-    // of a head needs to keep what is between them centred.
+    // How much room the cross in a panel's corner takes.
     private const int CrossSize = 20;
 
     private const int CrossFontSize = 16;
@@ -131,24 +130,6 @@ public static class PanelChrome
         cross.AddThemeColorOverride("font_hover_color", ink);
         cross.AddThemeColorOverride("font_pressed_color", ink);
         return cross;
-    }
-
-    // A page's head: the title it was given, centred, with the way out in the corner beside it -
-    // and the same width of empty space on the other side, or the title would sit a cross off
-    // centre. For the full-screen pages, which have no title bar to hang a cross on.
-    public static HBoxContainer Head(Label title, Action closed)
-    {
-        var head = new HBoxContainer();
-        head.AddChild(new Control { CustomMinimumSize = new Vector2(CrossSize, 0) });
-
-        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-        head.AddChild(title);
-
-        var cross = CloseCross(InscriptionFont.DarkInk);
-        cross.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
-        cross.Pressed += () => closed();
-        head.AddChild(cross);
-        return head;
     }
 
     // The way out in the card's own top right corner, for a page whose head is not the first
@@ -198,7 +179,7 @@ public static class PanelChrome
     // them, the same diagonal stroke the sprites are drawn with. Both faint - past a certain
     // strength this stops being paper and becomes wallpaper, and the ink has to fight it.
     //
-    // `of` is what the page is called (the window's title, "pause", "menu"): every panel is cut
+    // `of` is which page this is (the panel's type, "pause", "menu"): every panel is cut
     // from the same sheet, and the name is what decides how this one aged, so two pages open side
     // by side are not the same stain twice.
     //

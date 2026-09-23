@@ -13,13 +13,13 @@ namespace ManyWinters.Godot.Ui;
 // Raises what the player pressed rather than acting on it: composition code decides what
 // spawning, extinguishing, or revealing the map actually does to the world.
 //
-// A FloatingPanel subclass, not a plain object wrapping one: its body is built in this type's
-// own _Ready, the same as every other panel, so it works whether Body is filled in immediately
-// (added straight to an already-live tree) or only once its own ancestor chain - MainUi included
-// - reaches the tree.
-internal sealed partial class InspectorPanel : FloatingPanel
+// A frame of its own rather than a PaperPanel: it is a tool, not part of the game, so it keeps the
+// engine's look on the dark card and none of the page's behaviour - it is not dragged and its body
+// does not scroll.
+internal sealed partial class InspectorPanel : PanelContainer
 {
     private const float Width = 340f;
+    private const float TitleBarHeight = 28f;
 
     private readonly int _fontSize;
     private Label _infoLabel = null!;
@@ -31,7 +31,6 @@ internal sealed partial class InspectorPanel : FloatingPanel
     public event Action<bool>? RevealMapToggled;
 
     public InspectorPanel(PresentationSettings presentation)
-        : base("Inspector (debug)")
     {
         _fontSize = presentation.InspectorFontSize;
         Position = new Vector2(16, 16);
@@ -45,7 +44,20 @@ internal sealed partial class InspectorPanel : FloatingPanel
         // doesn't set its own override - unlike AddThemeFontSizeOverride, which only affects the
         // single Control it's called on.
         Theme = new Theme { DefaultFontSize = _fontSize };
-        base._Ready();
+        MouseFilter = MouseFilterEnum.Stop;
+        AddThemeStyleboxOverride("panel", PanelChrome.Background());
+
+        var body = new VBoxContainer();
+        AddChild(body);
+
+        var titleBar = new HBoxContainer { CustomMinimumSize = new Vector2(0, TitleBarHeight) };
+        body.AddChild(titleBar);
+        titleBar.AddChild(new Label { Text = "Inspector (debug)", SizeFlagsHorizontal = SizeFlags.ExpandFill });
+
+        var cross = PanelChrome.CloseCross(InscriptionFont.Ink);
+        cross.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        cross.Pressed += () => Visible = false;
+        titleBar.AddChild(cross);
 
         _infoLabel = new Label
         {
@@ -53,31 +65,35 @@ internal sealed partial class InspectorPanel : FloatingPanel
             CustomMinimumSize = new Vector2(Width, 0),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        Body.AddChild(_infoLabel);
+        body.AddChild(_infoLabel);
 
         var spawnButton = new Button { Text = "Spawn Person" };
         spawnButton.Pressed += () => SpawnRequested?.Invoke();
-        Body.AddChild(spawnButton);
+        body.AddChild(spawnButton);
 
         // The quick way to the epitaph and its "Another band comes" offer (docs/todo/todo.md):
         // the epitaph of a band nobody is left in carries no closing words, so without this the
         // only way to that screen is playing the band out by hand.
         var extinguishButton = new Button { Text = "Extinguish Band" };
         extinguishButton.Pressed += () => ExtinguishRequested?.Invoke();
-        Body.AddChild(extinguishButton);
+        body.AddChild(extinguishButton);
 
         // A development view, not a gameplay one (see RevealableExploration): the whole map as if
         // fog of war did not exist.
         var revealMapToggle = new CheckButton { Text = "Reveal Map" };
         revealMapToggle.Toggled += toggledOn => RevealMapToggled?.Invoke(toggledOn);
-        Body.AddChild(revealMapToggle);
+        body.AddChild(revealMapToggle);
 
         _buildingsLabel = new Label { Text = "Buildings: none" };
-        Body.AddChild(_buildingsLabel);
+        body.AddChild(_buildingsLabel);
 
         _gravesLabel = new Label { Text = "Graves: none" };
-        Body.AddChild(_gravesLabel);
+        body.AddChild(_gravesLabel);
     }
+
+    // Back down to what the dump needs now: a Control nobody lays out keeps the largest size it
+    // was ever given, and the dump shrinks as often as it grows.
+    public override void _Process(double delta) => ResetSize();
 
     public void ShowInfo(string text) => _infoLabel.Text = text;
 

@@ -8,7 +8,7 @@ namespace ManyWinters.Godot.Ui;
 //
 // Time already stands still for this, the same clock the workshop underneath is holding: nothing
 // here starts or stops it, it only asks a question of the player while the world waits.
-public partial class NamingPanel : FloatingPanel
+public partial class NamingPanel : PaperPanel
 {
     private const float Width = 320f;
     private const int BodyFontSize = 15;
@@ -19,13 +19,13 @@ public partial class NamingPanel : FloatingPanel
     private LineEdit _name = null!;
 
     public NamingPanel()
-        : base("Nobody has a word for this", onPaper: true)
+        : base("Nobody has a word for this")
     {
         CustomMinimumSize = new Vector2(Width, 0);
         // Centred the same way the workshop is, and added after it - the two land on the same
         // spot, which is what reads as one page laid on top of the other rather than a second
         // window somewhere else on the screen.
-        KeepCentred = true;
+        Placement = PanelPlacement.Centred;
         Visible = false;
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }

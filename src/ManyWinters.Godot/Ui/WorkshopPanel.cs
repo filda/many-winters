@@ -19,7 +19,7 @@ namespace ManyWinters.Godot.Ui;
 // Time stands still while this is open, the way it does for the pause page - tinkering is meant
 // to be unhurried, not something to rush before the world moves on. Main holds the clock for
 // whichever of those is visible.
-public partial class WorkshopPanel : FloatingPanel
+public partial class WorkshopPanel : PaperPanel
 {
     // Wider than the cards that sit beside the world: this one is the workbench itself, in the
     // middle of the screen, and what a thing is made of runs long enough that a narrow column
@@ -29,7 +29,6 @@ public partial class WorkshopPanel : FloatingPanel
     private const float Width = 640f;
     private const float BodyHeight = 280f;
     private const int BodyFontSize = 15;
-    private const int TitleFontSize = 22;
     private const int SectionSpacing = 6;
 
     // The pack sits to the left of the recipe list rather than spanning the whole bench, which is
@@ -75,12 +74,12 @@ public partial class WorkshopPanel : FloatingPanel
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
     public WorkshopPanel()
-        : base("Workshop", onPaper: true, titleFontSize: TitleFontSize, fixedBodyHeight: BodyHeight)
+        : base("Workshop", fixedBodyHeight: BodyHeight)
     {
         CustomMinimumSize = new Vector2(Width, 0);
         // The bench is what the player is doing, not a card beside the world: it holds the middle
         // of the screen, and keeps it when the window goes fullscreen and back.
-        KeepCentred = true;
+        Placement = PanelPlacement.Centred;
         Visible = false;
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }

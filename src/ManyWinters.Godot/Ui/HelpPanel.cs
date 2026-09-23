@@ -8,13 +8,12 @@ namespace ManyWinters.Godot.Ui;
 // of headed lines instead: they fit on the smallest window the game opens in without a scrollbar,
 // and the eye finds a key without reading a wall of prose.
 //
-// Like the pause panel it holds the clock while it is up, so nobody starves behind it, and it
-// swallows clicks into the world for the same reason - an order given to a stopped world would
-// land the moment it starts again. The camera keeps working: the point of a controls page is to
-// try them.
-public partial class HelpPanel : Control
+// Like the pause panel it holds the clock while it is up, so nobody starves behind it, and the
+// shield MainUi lays under it swallows clicks into the world for the same reason - an order given
+// to a stopped world would land the moment it starts again. The camera keeps working: the point of
+// a controls page is to try them.
+public partial class HelpPanel : PaperPanel
 {
-    private const int TitleFontSize = 44;
     private const int HeadingFontSize = 20;
     private const int BodyFontSize = 17;
     private const int ButtonFontSize = 18;
@@ -59,55 +58,40 @@ public partial class HelpPanel : Control
         ]),
     ];
 
-    // "Back to the land" was pressed, or Escape: the page comes down.
+    // "Back to the land" was pressed, the cross, or Escape: the page comes down.
     public event Action? Dismissed;
 
-    public override void _Ready()
+    public HelpPanel()
+        : base("How this is played")
     {
-        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        MouseFilter = MouseFilterEnum.Stop;
+        Placement = PanelPlacement.Centred;
         Visible = false;
         // PaperButtons rather than plain BodyTheme: the way back at the foot of the page is the
         // one button here, and a filled box under it would read as an application dialog pasted
         // onto the page. As a line it lights under the cursor like everything pressable on paper.
         Theme = PanelChrome.PaperButtons(ButtonFontSize);
+    }
 
-        var centre = new CenterContainer();
-        centre.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(centre);
-
-        var panel = new PanelContainer();
-        panel.AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
-        centre.AddChild(panel);
-        panel.AddChild(PanelChrome.Grain("help"));
-
-        var padding = new MarginContainer();
-        foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
-        {
-            padding.AddThemeConstantOverride(side, PanelChrome.PaperPadding);
-        }
-
-        panel.AddChild(padding);
-
-        var page = new VBoxContainer();
-        page.AddThemeConstantOverride("separation", Spacing);
-        padding.AddChild(page);
-
-        page.AddChild(PanelChrome.Head(InscriptionFont.PaperTitleLabel("How this is played", TitleFontSize), Dismiss));
+    public override void _Ready()
+    {
+        base._Ready();
+        Body.AddThemeConstantOverride("separation", Spacing);
 
         var columns = new HBoxContainer();
         columns.AddThemeConstantOverride("separation", ColumnGap);
-        page.AddChild(columns);
+        Body.AddChild(columns);
         columns.AddChild(Column(LeftColumn));
         columns.AddChild(Column(RightColumn));
 
         var away = new CenterContainer();
-        page.AddChild(away);
+        Body.AddChild(away);
 
         var back = new Button { Text = "Back to the land" };
         back.Pressed += Dismiss;
         away.AddChild(back);
     }
+
+    protected override void OnCloseRequested() => Dismiss();
 
     public void Toggle()
     {

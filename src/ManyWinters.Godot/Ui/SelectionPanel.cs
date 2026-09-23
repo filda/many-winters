@@ -7,24 +7,20 @@ namespace ManyWinters.Godot.Ui;
 // Docked to the right edge rather than floating, because it is open for most of the game and a
 // window the player has to keep shoving aside is one they end up closing.
 //
-// Set in the game's own face (InscriptionFont) on paper (PanelChrome.Parchment): the game reads
-// as a chronicle, so what the player holds is a page rather than a smoked-glass overlay. That
-// inverts the ink - dark on pale here, where the panels over the world are light on dark. The
-// debug inspector deliberately keeps the engine's default look, because it is a tool; this is
-// part of the game.
+// The same page as every other panel the player holds (PaperPanel), only docked rather than
+// placed: the person's name is the page's title, in the same face and size as any other title.
 //
 // It holds no opinions of its own - what an action is called, whether it can run and why not all
 // arrive as ActionOffer, and the person's own card as SelectionCard. This class draws them and
 // reports which one was pressed; the column of actions itself is the same control the contextual
 // menu draws.
-internal partial class SelectionPanel : PanelContainer
+internal partial class SelectionPanel : PaperPanel
 {
     // Internal, because the band's roster is the same page on the other edge of the screen and
     // mirrors both.
     internal const float Width = 300f;
     internal const float Margin = 16f;
 
-    private const int NameFontSize = 28;
     private const int BodyFontSize = 15;
     private const int MeterHeight = 8;
     private const int SectionSpacing = 10;
@@ -32,13 +28,12 @@ internal partial class SelectionPanel : PanelContainer
     // Between the name and the age beside it - a word's worth, not a column gap.
     private const int HeadingSpacing = 8;
 
-    // The whole line is one button - a Button is no container, so it is told how tall the name's
-    // own face makes a line.
-    private const int HeadingHeight = NameFontSize + 8;
+    // The whole line is one button - a Button is no container, so it is told how tall the title
+    // face makes a line.
+    private const int HeadingHeight = TitleFontSize + 8;
 
     private Button _heading = null!;
     private TextureRect _detailIcon = null!;
-    private Label _name = null!;
     private Label _beside = null!;
     private Label _parents = null!;
     private Label _task = null!;
@@ -48,7 +43,6 @@ internal partial class SelectionPanel : PanelContainer
     private Label _death = null!;
     private VBoxContainer _personBody = null!;
     private Label _graveRecord = null!;
-    private VBoxContainer _column = null!;
 
     private MeterRows _meterRows = null!;
 
@@ -67,18 +61,14 @@ internal partial class SelectionPanel : PanelContainer
     // Main that lets it go - this card only says the player asked for it.
     internal event Action? CloseRequested;
 
-    public override void _Ready()
+    public SelectionPanel()
+        : base(string.Empty)
     {
-        MouseFilter = MouseFilterEnum.Stop;
+        Placement = PanelPlacement.Docked;
         Visible = false;
-        AddThemeStyleboxOverride("panel", PanelChrome.Parchment());
-        // Added first, so every label and button that follows sits on top of the grain.
-        AddChild(PanelChrome.Grain("detail"));
         Theme = PanelChrome.PaperButtons(BodyFontSize);
 
-        // Hugs its content. Nothing is recomputed per frame - a height that chases the content
-        // every frame is a height that flickers - and the card is short now that everything
-        // aimed at the world has left for the contextual menu.
+        // Pinned to the right edge at a fixed width, hugging its content downwards.
         AnchorLeft = 1f;
         AnchorRight = 1f;
         AnchorTop = 0f;
@@ -86,96 +76,26 @@ internal partial class SelectionPanel : PanelContainer
         OffsetLeft = -(Width + Margin);
         OffsetRight = -Margin;
         OffsetTop = Margin;
+    }
 
-        // The padding lives here rather than in the StyleBox, so the grain above reaches the paper's
-        // own edge instead of stopping at a clean frame.
-        var padding = new MarginContainer();
-        foreach (var side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
-        {
-            padding.AddThemeConstantOverride(side, PanelChrome.PaperPadding);
-        }
-
-        AddChild(padding);
+    public override void _Ready()
+    {
+        base._Ready();
+        Body.AddThemeConstantOverride("separation", SectionSpacing);
 
         // Width less the padding on both sides: the panel is anchored to a fixed width, and a
-        // column that asks for the whole of it pushes the card off the right edge of the screen.
-        _column = new VBoxContainer { CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0) };
-        _column.AddThemeConstantOverride("separation", SectionSpacing);
-        padding.AddChild(_column);
-
-        // Name and the two facts that introduce a person on one line, the way anyone would be
-        // introduced: the title face for what is theirs, quieter type for the rest.
-        var heading = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
-        heading.AddThemeConstantOverride("separation", HeadingSpacing);
-        _column.AddChild(heading);
-
-        // The whole line is the button, the same way a row of the band's own roster is - the
-        // highlight the player already reads there says the same thing here: this name opens
-        // something too. Both texts ride on the button's rect rather than being laid out by it
-        // (a Button is no container), so a margin holds them where a button's own caption would
-        // sit.
-        _heading = new Button
-        {
-            Text = string.Empty,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, HeadingHeight),
-        };
-        _heading.Pressed += () => DetailRequested?.Invoke();
-        heading.AddChild(_heading);
-
-        var headingPadding = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-        headingPadding.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        headingPadding.AddThemeConstantOverride("margin_left", PanelChrome.FilledPadding);
-        headingPadding.AddThemeConstantOverride("margin_right", PanelChrome.FilledPadding);
-        _heading.AddChild(headingPadding);
-
-        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", HeadingSpacing);
-        headingPadding.AddChild(row);
-
-        // The title face, as on an inscription or a grave: a person's name is the one part of
-        // this card that is theirs rather than ours.
-        _name = InscriptionFont.TitleLabel(string.Empty, NameFontSize, InscriptionFont.DarkInk);
-        _name.AutowrapMode = TextServer.AutowrapMode.Off;
-        _name.VerticalAlignment = VerticalAlignment.Bottom;
-        _name.MouseFilter = MouseFilterEnum.Ignore;
-        row.AddChild(_name);
-
-        _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
-        _beside.AutowrapMode = TextServer.AutowrapMode.Off;
-        _beside.VerticalAlignment = VerticalAlignment.Bottom;
-        _beside.MouseFilter = MouseFilterEnum.Ignore;
-        row.AddChild(_beside);
-
-        // Pushes the icon below to the far end of the line, clear of a long name.
-        row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
-
-        // A magnifying glass, the plain shape for "look closer": a hint that the line opens a
-        // page, not a second way in of its own. Takes no mouse itself, so hovering it is hovering
-        // the button underneath - the whole line lights up together rather than the icon alone.
-        _detailIcon = new TextureRect
-        {
-            Texture = DetailGlass(),
-            CustomMinimumSize = new Vector2(DetailIconSize, DetailIconSize),
-            MouseFilter = MouseFilterEnum.Ignore,
-            StretchMode = TextureRect.StretchModeEnum.KeepCentered,
-        };
-        row.AddChild(_detailIcon);
-
-        var cross = PanelChrome.CloseCross(InscriptionFont.DarkInk);
-        cross.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-        cross.Pressed += () => CloseRequested?.Invoke();
-        heading.AddChild(cross);
+        // body that asks for the whole of it pushes the card off the right edge of the screen.
+        Body.CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0);
 
         _parents = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
-        _column.AddChild(_parents);
+        Body.AddChild(_parents);
 
         _death = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
-        _column.AddChild(_death);
+        Body.AddChild(_death);
 
         _personBody = new VBoxContainer();
         _personBody.AddThemeConstantOverride("separation", SectionSpacing);
-        _column.AddChild(_personBody);
+        Body.AddChild(_personBody);
 
         _meters = new VBoxContainer();
         _personBody.AddChild(_meters);
@@ -200,7 +120,65 @@ internal partial class SelectionPanel : PanelContainer
 
         _graveRecord = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _graveRecord.Visible = false;
-        _column.AddChild(_graveRecord);
+        Body.AddChild(_graveRecord);
+    }
+
+    // Main holds the selection, so the cross only says the player asked for it to go.
+    protected override void OnCloseRequested() => CloseRequested?.Invoke();
+
+    // The name and the two facts that introduce a person on one line, the way anyone would be
+    // introduced: the title for what is theirs, quieter type for the rest.
+    //
+    // The whole line is the button, the same way a row of the band's own roster is - the
+    // highlight the player already reads there says the same thing here: this name opens
+    // something too. Both texts ride on the button's rect rather than being laid out by it (a
+    // Button is no container), so a margin holds them where a button's own caption would sit.
+    protected override Control Heading(Label titleLabel)
+    {
+        _heading = new Button
+        {
+            Text = string.Empty,
+            CustomMinimumSize = new Vector2(0, HeadingHeight),
+        };
+        _heading.Pressed += () => DetailRequested?.Invoke();
+
+        var headingPadding = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        headingPadding.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        headingPadding.AddThemeConstantOverride("margin_left", PanelChrome.FilledPadding);
+        headingPadding.AddThemeConstantOverride("margin_right", PanelChrome.FilledPadding);
+        _heading.AddChild(headingPadding);
+
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", HeadingSpacing);
+        headingPadding.AddChild(row);
+
+        titleLabel.AutowrapMode = TextServer.AutowrapMode.Off;
+        titleLabel.VerticalAlignment = VerticalAlignment.Bottom;
+        titleLabel.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(titleLabel);
+
+        _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
+        _beside.AutowrapMode = TextServer.AutowrapMode.Off;
+        _beside.VerticalAlignment = VerticalAlignment.Bottom;
+        _beside.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(_beside);
+
+        // Pushes the icon below to the far end of the line, clear of a long name.
+        row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
+
+        // A magnifying glass, the plain shape for "look closer": a hint that the line opens a
+        // page, not a second way in of its own. Takes no mouse itself, so hovering it is hovering
+        // the button underneath - the whole line lights up together rather than the icon alone.
+        _detailIcon = new TextureRect
+        {
+            Texture = DetailGlass(),
+            CustomMinimumSize = new Vector2(DetailIconSize, DetailIconSize),
+            MouseFilter = MouseFilterEnum.Ignore,
+            StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+        };
+        row.AddChild(_detailIcon);
+
+        return _heading;
     }
 
     internal void ShowPerson(SelectionCard card, IReadOnlyList<ActionOffer> offers)
@@ -211,7 +189,7 @@ internal partial class SelectionPanel : PanelContainer
         _heading.Disabled = false;
         _detailIcon.Visible = true;
 
-        _name.Text = card.Name;
+        SetTitle(card.Name);
         _beside.Text = card.Beside;
         _parents.Text = card.Parents;
         _parents.Visible = card.Parents.Length > 0;
@@ -235,7 +213,7 @@ internal partial class SelectionPanel : PanelContainer
         _heading.Disabled = true;
         _detailIcon.Visible = false;
 
-        _name.Text = "Grave";
+        SetTitle("Grave");
         _beside.Text = string.Empty;
         _parents.Visible = false;
         _death.Visible = false;

@@ -84,7 +84,7 @@ internal sealed class WorkshopController
 
         _person = person;
 
-        // It puts itself in the middle of the screen and stays there (FloatingPanel.KeepCentred):
+        // It puts itself in the middle of the screen and stays there (PanelPlacement.Centred):
         // the world stands still while this is open, so it is the thing being done rather than a
         // card to read beside it.
         _workshop.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));

@@ -120,7 +120,7 @@ internal sealed partial class MainUi : CanvasLayer
         AddChild(workshopPanel);
 
         // Added after the workshop, so it lands on top of it rather than beside it - both are
-        // centred on the same spot (NamingPanel.KeepCentred), which is what makes the one read as
+        // centred on the same spot (PanelPlacement.Centred), which is what makes the one read as
         // a page laid over the other.
         var namingPanel = new NamingPanel();
         AddChild(namingPanel);
@@ -172,6 +172,13 @@ internal sealed partial class MainUi : CanvasLayer
         // by the "?" on the status bar or by Escape; like an inscription being dismissed,
         // letting it go primes the tick accumulator so the world starts again on the next frame
         // rather than a full interval later.
+        // The shield under it swallows clicks anywhere on screen, not just over the page, the
+        // same as the workbench's does.
+        var helpShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        helpShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        AddChild(helpShield);
+
+        _helpPanel.VisibilityChanged += () => helpShield.Visible = _helpPanel.Visible;
         _helpPanel.Dismissed += () => ClockShouldResume?.Invoke();
         AddChild(_helpPanel);
         StatusBar.HelpRequested += _helpPanel.Toggle;

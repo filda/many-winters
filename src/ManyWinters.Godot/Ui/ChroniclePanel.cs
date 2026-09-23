@@ -6,10 +6,10 @@ namespace ManyWinters.Godot.Ui;
 // Where inscriptions go once shown, in order and whole - the overlay carries only the title.
 // The session-only first form of the chronicle in docs/chronicles-and-memory-architecture.md;
 // the real one will be a view over graves and written records.
-public partial class ChroniclePanel : FloatingPanel
+public partial class ChroniclePanel : PaperPanel
 {
     private const float Width = 460f;
-    private const int TitleFontSize = 26;
+    private const int EntryTitleFontSize = 26;
     private const int LineFontSize = 16;
     private const int ChromeFontSize = 15;
     private const int LineSpacing = 4;
@@ -25,7 +25,7 @@ public partial class ChroniclePanel : FloatingPanel
     private const float TextWidth = Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth;
 
     public ChroniclePanel()
-        : base("Chronicle", onPaper: true)
+        : base("Chronicle")
     {
         CustomMinimumSize = new Vector2(Width, 0);
         Visible = false;
@@ -42,7 +42,7 @@ public partial class ChroniclePanel : FloatingPanel
     {
         var entry = new VBoxContainer { CustomMinimumSize = new Vector2(TextWidth, 0) };
         entry.AddThemeConstantOverride("separation", LineSpacing);
-        entry.AddChild(InscriptionFont.TitleLabel(inscription.Title, TitleFontSize, InscriptionFont.DarkInk));
+        entry.AddChild(InscriptionFont.TitleLabel(inscription.Title, EntryTitleFontSize, InscriptionFont.DarkInk));
         foreach (var line in inscription.Lines)
         {
             entry.AddChild(InscriptionFont.BodyLabel(line, LineFontSize, InscriptionFont.DarkInk));

@@ -20,14 +20,14 @@ namespace ManyWinters.Godot.Ui;
 //
 // It holds no opinions of its own - the title, the count, the headings and the hunger readings all
 // arrive as a BandRoster. This class draws them and reports which line was pressed.
-internal partial class BandPanel : FloatingPanel
+internal partial class BandPanel : PaperPanel
 {
     // The same page on the other side of the screen, so both numbers come from the panel it
     // mirrors rather than being kept in step by hand.
     private const float Width = SelectionPanel.Width;
     internal const float Margin = SelectionPanel.Margin;
 
-    // Room for the scrollbar FloatingPanel grows once the band outgrows the screen: without it a
+    // Room for the scrollbar PaperPanel grows once the band outgrows the screen: without it a
     // wrapped label's minimum width is one character.
     private const int ScrollbarWidth = 16;
     private const float TextWidth = Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth;
@@ -57,7 +57,7 @@ internal partial class BandPanel : FloatingPanel
     internal event Action<Person>? PersonChosen;
 
     public BandPanel()
-        : base("Band", onPaper: true)
+        : base("Band")
     {
         CustomMinimumSize = new Vector2(Width, 0);
         Visible = false;
