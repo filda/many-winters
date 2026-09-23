@@ -48,10 +48,10 @@ jobs:
         run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=Format
 
   # One job on purpose: Build runs once and Test and InspectCode consume it from the shared
-  # working directory. It runs only after line-endings and format pass: both are cheap, and gating
-  # the build on them means a failing lint check skips the expensive build instead of running it
-  # in parallel. The E2E suite does not run here - it drives a real window and validates the
-  # exported build, so it lives in release-windows on Windows.
+  # working directory. The E2E target used to sit in here too, but on ubuntu it can only ever
+  # skip itself (Windows only), so it lives in e2e-windows, where it actually runs. It runs only
+  # after line-endings and format pass: both are cheap, and gating the build on them means a
+  # failing lint check skips the expensive build instead of running it in parallel.
   build-test:
     needs: [line-endings, format]
     runs-on: ubuntu-26.04
@@ -79,6 +79,87 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: build-reports
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The windowed, screenshot-driven E2E suite, run against a plain editor launch of the project
+  # rather than a full release export - no export templates, no publish. It needs its own Windows
+  # build: it drives a real window (PrintWindow/PostMessage), which build-test's ubuntu output
+  # cannot serve. It is a hard gate on the release: both exports and publish wait on it, so a red
+  # E2E neither builds the artifacts nor cuts a release. It runs only when shipped code changed
+  # (the same check-game-changes signal that cuts a release) - a docs- or tests-only change can't
+  # break what it checks, and it does not run on pull requests, where there is no release to gate.
+  e2e-windows:
+    needs: [build-test, check-game-changes]
+    if: needs.check-game-changes.outputs.changed == 'true'
+    runs-on: windows-latest
+    env:
+      GODOT_RELEASE: 4.7.1-stable
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: Cache Godot editor
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: tools/godot
+          key: godot-editor-${{ env.GODOT_RELEASE }}-mono-win64-v1
+
+      - name: Download Godot editor
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          $ErrorActionPreference = "Stop"
+          $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_RELEASE"
+          New-Item -ItemType Directory -Force tools/godot | Out-Null
+          Invoke-WebRequest "$base/Godot_v${env:GODOT_RELEASE}_mono_win64.zip" -OutFile godot.zip
+          Expand-Archive godot.zip -DestinationPath tools/godot
+
+      - name: Locate Godot
+        run: |
+          # The console wrapper, same reasoning as release-windows: it doesn't swallow stderr.
+          $godot = (Get-ChildItem tools/godot -Recurse -Filter "Godot_v*_win64_console.exe" |
+            Select-Object -First 1).FullName
+          if (-not $godot) { throw "Godot console binary not found under tools/godot" }
+          "MW_GODOT_EXE=$godot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore editor plugins
+        run: |
+          # See the equivalent step in release-windows for why the exit code is ignored here.
+          & $env:MW_GODOT_EXE --headless --path src/ManyWinters.Godot -s plug.gd install
+          "gd-plug exit code: $LASTEXITCODE"
+          if (-not (Test-Path src/ManyWinters.Godot/addons/beckett/plugin.cfg)) {
+            throw "gd-plug did not install Beckett into src/ManyWinters.Godot/addons"
+          }
+          exit 0
+
+      - name: Import assets
+        run: |
+          # First headless run builds the .godot/ import cache; a non-zero exit here is normal.
+          & $env:MW_GODOT_EXE --headless --path src/ManyWinters.Godot --import
+          "import exit code: $LASTEXITCODE"
+          exit 0
+
+      - name: Cake Frosting E2E
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=E2E
+
+      - name: Upload E2E diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-diffs
           path: artifacts/
           if-no-files-found: ignore
           retention-days: 7
@@ -161,7 +242,7 @@ jobs:
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
 
   release-windows:
-    needs: [build-test, version]
+    needs: [build-test, e2e-windows, version]
     runs-on: windows-latest
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -371,26 +452,6 @@ jobs:
             throw "The exported build logged $($errs.Count) error(s) on startup"
           }
 
-      # The windowed E2E suite drives the real exported game (not an editor launch): it boots
-      # ManyWinters.exe, renders the golden paths and compares them to baselines. It subsumes the
-      # headless smoke test above (which only proves the build boots) and is the release gate - a
-      # red E2E fails this job, so publish cuts no release. It lives here because it needs a real
-      # window (PrintWindow/PostMessage), which is why the Linux release keeps only the smoke test.
-      - name: E2E the exported build
-        env:
-          MW_E2E_GAME_EXE: "${{ github.workspace }}/build/ManyWinters/ManyWinters.exe"
-        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=E2E
-
-      # The E2E writes failing golden-path comparisons to artifacts/e2e-diffs; keep them on failure.
-      - name: Upload E2E diff artifacts
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: e2e-diffs
-          path: artifacts/
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Package zip
         run: |
           $ErrorActionPreference = "Stop"
@@ -406,7 +467,7 @@ jobs:
           retention-days: 1
 
   release-linux:
-    needs: [build-test, version]
+    needs: [build-test, e2e-windows, version]
     runs-on: ubuntu-26.04
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -572,7 +633,7 @@ jobs:
           retention-days: 1
 
   publish:
-    needs: [version, release-windows, release-linux]
+    needs: [version, release-windows, release-linux, e2e-windows]
     runs-on: ubuntu-26.04
     permissions:
       contents: write
