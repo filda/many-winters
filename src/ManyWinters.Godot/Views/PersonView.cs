@@ -100,18 +100,21 @@ internal partial class PersonView : SpriteEntityView
 
         SetUpGroundShadow(ShadowDiameter);
 
-        var body = BillboardSprite.Create(_standing.Body, Height, AliveColor);
+        // Every layer is excluded from the occlusion fade: a person is too small to hide much, and
+        // a ghosted one reads as a bug - with nobody selected the fade aims at the camera's own
+        // target, so at the start whoever stood in front of the band turned see-through.
+        var body = BillboardSprite.Create(_standing.Body, Height, AliveColor, excludeFromOcclusionFade: true);
         _aliveBodyModulate = body.Modulate;
         _body = Register(body, _standing.Body);
 
         // AlphaCutMode.Disabled, not the default OpaquePrepass: an overlay at the body's exact
         // position and depth needs ordinary alpha blending to composite cleanly, since
         // OpaquePrepass has no defined order between two billboards at one depth.
-        var clothing = BillboardSprite.Create(_standing.Clothing, Height, _standing.ClothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1);
+        var clothing = BillboardSprite.Create(_standing.Clothing, Height, _standing.ClothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1, excludeFromOcclusionFade: true);
         clothing.Modulate = SpriteTint.ModulateFor(_standing.ClothingColor);
         _clothing = Register(clothing, _standing.Clothing);
 
-        var hair = BillboardSprite.Create(_standing.Hair, Height, _standing.HairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2);
+        var hair = BillboardSprite.Create(_standing.Hair, Height, _standing.HairColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 2, excludeFromOcclusionFade: true);
         hair.Modulate = SpriteTint.ModulateFor(_standing.HairColor);
         _hair = Register(hair, _standing.Hair);
     }
@@ -138,6 +141,17 @@ internal partial class PersonView : SpriteEntityView
     // ticks, at whatever speed matches how far the tick actually moved them.
     protected override void OnProcess(double delta)
     {
+        if (DeterministicPresentation.Enabled)
+        {
+            // Frozen for a reproducible capture: hold the tick target and a neutral pose, skipping
+            // the real-time walk/idle bob that would otherwise shift every person frame to frame.
+            Position = _targetPosition;
+            _stepOffset = Vector3.Zero;
+            _idleWeight = 0f;
+            ApplyPose();
+            return;
+        }
+
         Position = Position.MoveToward(_targetPosition, _interpolationSpeed * (float)delta);
         var seconds = (float)delta;
 

@@ -96,6 +96,14 @@ public partial class StatusBar : PanelContainer
         }
 
         _sincePerformanceRefresh = 0;
+
+        // The live counters vary run to run and machine to machine, so a pixel baseline can't
+        // include them; leave the label blank for a deterministic capture.
+        if (DeterministicPresentation.Enabled)
+        {
+            return;
+        }
+
         // Objects counts what the renderer drew after frustum culling - what the camera sees,
         // not what exists.
         var objects = Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame);

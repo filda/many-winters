@@ -15,7 +15,7 @@ public static class BillboardSprite
     // when its owning view is freed.
     private static readonly HashSet<Sprite3D> _liveSprites = new();
 
-    // Tree trunk and branch layers (ResourceNodeView) never fade under occlusion yet remain in
+    // Tree trunk and branch layers (ResourceNodeView) and people (PersonView) never fade under occlusion yet remain in
     // LiveSprites: its contract is "every billboard that exists", not "every fadeable one".
     private static readonly HashSet<Sprite3D> _excludedFromOcclusionFade = new();
 
