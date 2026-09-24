@@ -35,7 +35,6 @@ internal partial class SelectionPanel : PaperPanel
     private Button _heading = null!;
     private TextureRect _detailIcon = null!;
     private Label _beside = null!;
-    private Label _parents = null!;
     private Label _task = null!;
     private VBoxContainer _meters = null!;
     private ActionList _actions = null!;
@@ -86,9 +85,6 @@ internal partial class SelectionPanel : PaperPanel
         // Width less the padding on both sides: the panel is anchored to a fixed width, and a
         // body that asks for the whole of it pushes the card off the right edge of the screen.
         Body.CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0);
-
-        _parents = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
-        Body.AddChild(_parents);
 
         _death = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         Body.AddChild(_death);
@@ -173,7 +169,13 @@ internal partial class SelectionPanel : PaperPanel
         };
         row.AddChild(_detailIcon);
 
-        return _heading;
+        // Pulled out to the left by the box's own padding, so the name starts flush with the lines
+        // under it while the highlight still has room around it - the same as the pack line. Not on
+        // the right, where the cross sits beside it.
+        var flush = new MarginContainer();
+        flush.AddThemeConstantOverride("margin_left", -PanelChrome.FilledPadding);
+        flush.AddChild(_heading);
+        return flush;
     }
 
     internal void ShowPerson(SelectionCard card, IReadOnlyList<ActionOffer> offers)
@@ -186,8 +188,6 @@ internal partial class SelectionPanel : PaperPanel
 
         SetTitle(card.Name);
         _beside.Text = card.Beside;
-        _parents.Text = card.Parents;
-        _parents.Visible = card.Parents.Length > 0;
         _death.Text = card.Death;
         _death.Visible = card.Death.Length > 0;
         _carried.Show(card.Carried);
@@ -210,7 +210,6 @@ internal partial class SelectionPanel : PaperPanel
 
         SetTitle("Grave");
         _beside.Text = string.Empty;
-        _parents.Visible = false;
         _death.Visible = false;
         _graveRecord.Text = record;
     }
