@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -16,14 +17,31 @@ namespace ManyWinters.Tools.E2EHarness;
 public sealed class GameWindow : IDisposable
 {
     private readonly Process _process;
+    private readonly string? _launcherScriptPath;
 
-    private GameWindow(Process process, IntPtr handle)
+    private GameWindow(Process process, IntPtr handle, string? launcherScriptPath)
     {
         _process = process;
         Handle = handle;
+        _launcherScriptPath = launcherScriptPath;
     }
 
     public IntPtr Handle { get; }
+
+    /// <summary>The game process plus the Task Scheduler launcher script that started it, kept so
+    /// cleanup can remove the script once the game (the script's last command) has exited.</summary>
+    private readonly struct GameLaunch
+    {
+        public GameLaunch(Process process, string? launcherScriptPath)
+        {
+            Process = process;
+            LauncherScriptPath = launcherScriptPath;
+        }
+
+        public Process Process { get; }
+
+        public string? LauncherScriptPath { get; }
+    }
 
     /// <summary>
     /// Starts the game and waits for it to report ready. Honors <c>MW_GODOT_EXE</c> (falling
@@ -33,7 +51,8 @@ public sealed class GameWindow : IDisposable
     public static async Task<GameWindow> LaunchAsync(string godotProjectPath, TimeSpan timeout)
     {
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
-        var process = Start(godotExe, "--path", godotProjectPath);
+        var launch = Start(godotExe, "--path", godotProjectPath);
+        var process = launch.Process;
 
         var logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -59,6 +78,7 @@ public sealed class GameWindow : IDisposable
             {
                 var exitCode = probe?.HasExited == true ? probe.ExitCode : (int?)null;
                 process.Dispose();
+                DeleteLauncherScript(launch.LauncherScriptPath);
                 throw new InvalidOperationException($"Game process exited early{(exitCode is { } code ? $" with code {code}" : "")}. Check {logPath}.");
             }
 
@@ -67,7 +87,7 @@ public sealed class GameWindow : IDisposable
             lastLogReady = LogShowsMainReady(logPath);
             if (lastHandle != IntPtr.Zero && lastLogReady)
             {
-                return new GameWindow(process, lastHandle);
+                return new GameWindow(process, lastHandle, launch.LauncherScriptPath);
             }
 
             await Task.Delay(200);
@@ -77,6 +97,7 @@ public sealed class GameWindow : IDisposable
             + $"logExists={File.Exists(logPath)} logLength={(File.Exists(logPath) ? new FileInfo(logPath).Length : -1)}";
         process.Kill(entireProcessTree: true);
         process.Dispose();
+        DeleteLauncherScript(launch.LauncherScriptPath);
         throw new TimeoutException($"Game did not report ready within {timeout} ({diagnostics}). Check {logPath}.");
     }
 
@@ -129,20 +150,20 @@ public sealed class GameWindow : IDisposable
     /// that schtasks doesn't hand back the child's PID, so that path has to find the window by
     /// title instead (the same way ScreenshotTask.FindWindow does).
     /// </summary>
-    private static Process Start(string fileName, params string[] arguments)
+    private static GameLaunch Start(string fileName, params string[] arguments)
     {
         try
         {
             var process = StartBreakingAwayFromAnyRestrictiveJob(fileName, arguments);
             Console.Error.WriteLine($"[GameWindow] launched '{fileName}' via CREATE_BREAKAWAY_FROM_JOB, pid {process.Id}.");
-            return process;
+            return new GameLaunch(process, null);
         }
         catch (InvalidOperationException ex) when (ex.InnerException is Win32Exception { NativeErrorCode: 5 })
         {
             Console.Error.WriteLine($"[GameWindow] CREATE_BREAKAWAY_FROM_JOB denied for '{fileName}', falling back to Task Scheduler.");
-            var process = StartViaScheduledTask(fileName, arguments);
+            var (process, launcherScriptPath) = StartViaScheduledTask(fileName, arguments);
             Console.Error.WriteLine($"[GameWindow] found game window via Task Scheduler, pid {process.Id}, title '{process.MainWindowTitle}'.");
-            return process;
+            return new GameLaunch(process, launcherScriptPath);
         }
     }
 
@@ -177,22 +198,31 @@ public sealed class GameWindow : IDisposable
         return Process.GetProcessById(processInformation.DwProcessId);
     }
 
-    private static Process StartViaScheduledTask(string fileName, string[] arguments)
+    private static (Process Process, string LauncherScriptPath) StartViaScheduledTask(string fileName, string[] arguments)
     {
         var taskName = "ManyWintersE2E-" + Guid.NewGuid().ToString("N");
-        var action = Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument)));
 
-        RunSchtasks("/Create", "/TN", taskName, "/TR", action, "/SC", "ONCE", "/ST", "00:00", "/F");
+        // schtasks caps the task's command line (/TR) at 261 characters, which a fully-qualified
+        // game binary plus project path can exceed (a WinGet-installed godot sits under a long
+        // per-package directory). Hand the task a short-lived batch file instead: the task's
+        // command is just the batch path, and the batch carries the real, possibly long, command.
+        var launcherScriptPath = Path.Combine(Path.GetTempPath(), "ManyWintersE2E-" + Guid.NewGuid().ToString("N") + ".cmd");
+        File.WriteAllText(
+            launcherScriptPath,
+            Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument))) + Environment.NewLine);
+
+        RunSchtasks("/Create", "/TN", taskName, "/TR", Quote(launcherScriptPath), "/SC", "ONCE", "/ST", "00:00", "/F");
         try
         {
             RunSchtasks("/Run", "/TN", taskName);
-            return FindWindowByTitle(TimeSpan.FromSeconds(15));
+            var process = FindWindowByTitle(TimeSpan.FromSeconds(15));
+            return (process, launcherScriptPath);
         }
         finally
         {
-            // Best-effort: the task's job is done once it's launched the process, and a leaked
-            // one-off task next to hundreds of others is exactly the kind of thing nobody notices
-            // until it's a mess, but a failure to delete it must not mask the real result above.
+            // Best-effort: a leaked one-off task next to hundreds of others is exactly the kind of
+            // thing nobody notices until it's a mess, but a failure to delete it must not mask the
+            // real result above.
             try
             {
                 RunSchtasks("/Delete", "/TN", taskName, "/F");
@@ -200,6 +230,11 @@ public sealed class GameWindow : IDisposable
             catch (InvalidOperationException)
             {
             }
+
+            // The batch is released once the game (its last command) exits; delete it here for the
+            // no-game case. The success path deletes it again from cleanup after killing the game,
+            // by which point the file is free.
+            DeleteLauncherScript(launcherScriptPath);
         }
     }
 
@@ -251,14 +286,72 @@ public sealed class GameWindow : IDisposable
 
     private static string Quote(string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
 
+    /// <summary>Best-effort removal of a Task Scheduler launcher script. A failure must not mask
+    /// the real test result; a leftover script in the temp dir is harmless and the OS reaps it.</summary>
+    private static void DeleteLauncherScript(string? path)
+    {
+        if (path is null)
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+        }
+    }
+
     public void Dispose()
     {
-        if (!_process.HasExited)
+        KillProcessTree();
+        _process.Dispose();
+        DeleteLauncherScript(_launcherScriptPath);
+    }
+
+    /// <summary>
+    /// Terminates the game and its children. <c>Process.Kill(entireProcessTree: true)</c> cannot
+    /// always kill a game the Task Scheduler fallback placed in the task's own job, and a leftover
+    /// godot wedges the runner's end-of-job cleanup (the CI job hangs for minutes), so a forced
+    /// <c>taskkill</c> by PID is the backstop. Best effort throughout: a failure here must not mask
+    /// the real test result, so nothing in here throws.
+    /// </summary>
+    private void KillProcessTree()
+    {
+        if (_process.HasExited)
+        {
+            return;
+        }
+
+        try
         {
             _process.Kill(entireProcessTree: true);
         }
+        catch
+        {
+            // The game is in a job we can't re-parent for a tree kill; taskkill below still works.
+        }
 
-        _process.Dispose();
+        try
+        {
+            if (!_process.HasExited)
+            {
+                var startInfo = new ProcessStartInfo("taskkill.exe") { RedirectStandardError = true, UseShellExecute = false };
+                startInfo.ArgumentList.Add("/F");
+                startInfo.ArgumentList.Add("/T");
+                startInfo.ArgumentList.Add("/PID");
+                startInfo.ArgumentList.Add(_process.Id.ToString(CultureInfo.InvariantCulture));
+                using var taskkill = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start taskkill.exe.");
+                taskkill.StandardError.ReadToEnd();
+                taskkill.WaitForExit(5000);
+            }
+        }
+        catch
+        {
+            // Best effort: never let cleanup throw and mask the real test result.
+        }
     }
 
     private static class NativeMethods

@@ -29,4 +29,14 @@
     <ProjectReference Include="..\ManyWinters.Tools\E2EHarness\ManyWinters.Tools.E2EHarness.csproj" />
   </ItemGroup>
 
+  <!--
+    The six E2E classes each launch their own godot under the same window title, so they must run
+    one at a time: in parallel, FindWindowByTitle returns whichever instance it sees first and each
+    test would drive and kill a random other test's game. xunit runs test classes in parallel by
+    default, so pin them serial here.
+  -->
+  <ItemGroup>
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
