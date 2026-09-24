@@ -1,12 +1,14 @@
 {
   "stryker-config": {
     "mutate": [
-      "**/Continuity/BandName.cs",
-      "**/Continuity/BandFate.cs",
-      "**/Continuity/Grave.cs",
-      "**/Continuity/GraveId.cs",
-      "**/Continuity/Inscription.cs",
-      "**/Continuity/NumberWords.cs"
+      "**/*.cs",
+      "!**/Continuity/*.cs",
+      "!**/Program.cs",
+      "!**/World/*.cs",
+      "!**/Commands/*.cs",
+      "!**/Maps/*.cs",
+      "!**/Population/*.cs",
+      "!**/Persistence/*.cs"
     ],
     "reporters": ["html", "progress"],
     "concurrency": 4,

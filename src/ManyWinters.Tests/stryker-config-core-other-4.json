@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "mutate": ["**/Continuity/Epitaph.cs"],
+    "mutate": ["**/Maps/*.cs", "**/Population/*.cs", "**/Persistence/*.cs"],
     "reporters": ["html", "progress"],
     "concurrency": 4,
     "additional-timeout": 60000,

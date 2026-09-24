@@ -35,6 +35,10 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.changed == 'true'
     runs-on: ubuntu-26.04
+    # Legs are sized to stay well clear of GitHub's 6h hard job cap; a leg that still
+    # hangs fails fast and visibly instead of dying silently to a runner-shutdown
+    # signal an hour or more later.
+    timeout-minutes: 90
     strategy:
       # One job per suite instead of five sequential runs in one job, so a stuck or
       # cancelled suite doesn't take the others down with it and each gets its own
@@ -60,6 +64,12 @@ jobs:
           - name: core-other-3
             working-directory: src/ManyWinters.Tests
             args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other-3.json
+          - name: core-other-4
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other-4.json
+          - name: core-other-5
+            working-directory: src/ManyWinters.Tests
+            args: --project ManyWinters.Core.csproj --config-file stryker-config-core-other-5.json
           - name: simulation-runner
             working-directory: src/ManyWinters.Tests
             args: --project ManyWinters.Tools.SimulationRunner.csproj
