@@ -69,7 +69,6 @@ public partial class PersonDetailPanel : PaperPanel
         Body.CustomMinimumSize = new Vector2(Width - (PanelChrome.PaperPadding * 2), 0);
 
         _meters = new VBoxContainer();
-        _meters.AddThemeConstantOverride("separation", SectionSpacing);
         Body.AddChild(_meters);
         _meterRows = new MeterRows(_meters, MeterHeight, BodyFontSize);
 
