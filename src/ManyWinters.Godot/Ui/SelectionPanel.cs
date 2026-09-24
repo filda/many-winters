@@ -39,7 +39,7 @@ internal partial class SelectionPanel : PaperPanel
     private Label _task = null!;
     private VBoxContainer _meters = null!;
     private ActionList _actions = null!;
-    private Button _carried = null!;
+    private PackLine _carried = null!;
     private Label _death = null!;
     private VBoxContainer _personBody = null!;
     private Label _graveRecord = null!;
@@ -101,13 +101,8 @@ internal partial class SelectionPanel : PaperPanel
         _personBody.AddChild(_meters);
         _meterRows = new MeterRows(_meters, MeterHeight, BodyFontSize);
 
-        // A button, not a line of text: the pack is the way into the workshop, where what is in
-        // it can be worked. Left-aligned and quiet, so it still reads as part of the card rather
-        // than as a control shouting to be pressed.
-        _carried = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
-        _carried.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
-        _carried.Pressed += () => PackRequested?.Invoke();
-        _personBody.AddChild(_carried);
+        _carried = new PackLine(BodyFontSize, () => PackRequested?.Invoke());
+        _personBody.AddChild(_carried.Root);
 
         _task = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _personBody.AddChild(_task);
@@ -195,7 +190,7 @@ internal partial class SelectionPanel : PaperPanel
         _parents.Visible = card.Parents.Length > 0;
         _death.Text = card.Death;
         _death.Visible = card.Death.Length > 0;
-        _carried.Text = $"Pack: {card.Carried}";
+        _carried.Show(card.Carried);
         _task.Text = $"Doing: {card.Task}";
         _task.Visible = card.Task.Length > 0;
 

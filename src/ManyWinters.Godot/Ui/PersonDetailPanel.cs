@@ -31,7 +31,7 @@ public partial class PersonDetailPanel : PaperPanel
     private Label _parents = null!;
     private Label _death = null!;
     private Label _task = null!;
-    private Button _carried = null!;
+    private PackLine _carried = null!;
     private ActionList _actions = null!;
     private VBoxContainer _meters = null!;
     private MeterRows _meterRows = null!;
@@ -72,12 +72,8 @@ public partial class PersonDetailPanel : PaperPanel
         Body.AddChild(_meters);
         _meterRows = new MeterRows(_meters, MeterHeight, BodyFontSize);
 
-        // A button, not a line of text: the pack is the way into the workshop, where what is in
-        // it can be worked.
-        _carried = new Button { Alignment = HorizontalAlignment.Left, Flat = true };
-        _carried.AddThemeColorOverride("font_color", InscriptionFont.FadedDarkInk);
-        _carried.Pressed += () => PackRequested?.Invoke();
-        Body.AddChild(_carried);
+        _carried = new PackLine(BodyFontSize, () => PackRequested?.Invoke());
+        Body.AddChild(_carried.Root);
 
         Body.AddChild(PanelChrome.Rule());
 
@@ -153,7 +149,7 @@ public partial class PersonDetailPanel : PaperPanel
         _parents.Visible = card.Parents.Length > 0;
         _death.Text = card.Death;
         _death.Visible = card.Death.Length > 0;
-        _carried.Text = $"Pack: {card.Carried}";
+        _carried.Show(card.Carried);
         _task.Text = card.Task;
         _task.Visible = card.Task.Length > 0;
 
