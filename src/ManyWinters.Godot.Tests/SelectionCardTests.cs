@@ -24,15 +24,15 @@ public class SelectionCardTests
         Assert.Equal("At rest", card.Task);
     }
 
-    // Age and sex go beside the name, where a person is introduced rather than described; the life
-    // stage is not repeated, because the age already says it.
+    // Age and sex go beside the name, where a person is introduced rather than described, as the
+    // one phrase the band would use for them rather than a count of winters.
     [Fact]
     public void AgeAndSexStandBesideTheName()
     {
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
 
-        Assert.Equal($"{LifeStages.AdultAgeYears} winters, female", SelectionCard.For(world, person).Beside);
+        Assert.Equal("woman", SelectionCard.For(world, person).Beside);
     }
 
     [Fact]

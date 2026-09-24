@@ -49,13 +49,12 @@ internal sealed record SelectionCard(
     internal static SelectionCard For(WorldState world, Person person)
     {
         var rules = world.Configuration.Rules;
-        var age = DurationText.For(world.Clock.CurrentTick - person.BirthTick, rules.TicksPerYear, rules.TicksPerSeason);
 
         var carrying = new MeterReading("Carrying", person.Inventory.TotalWeight(world.Configuration.ItemCatalog), world.MaxCarryWeightFor(person), Load);
 
         return new SelectionCard(
             person.Name,
-            person.IsAlive ? InspectorText.ForAgeAndSex(age, person.Sex) : "deceased",
+            person.IsAlive ? InspectorText.ForAgeAndSex(world.AgeInYears(person), rules.MaxLifespanYears, person.Sex) : "deceased",
             InspectorText.ForParents(person.Sex, NameOrNull(person.Mother), NameOrNull(person.Father)).TrimEnd('\n'),
             // The one sentence a body can still tell the player. The living have no death to report.
             person.IsAlive

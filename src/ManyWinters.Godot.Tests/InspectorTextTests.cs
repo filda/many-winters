@@ -153,6 +153,33 @@ public class InspectorTextTests
         Assert.Contains("of old age", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.OldAge)), StringComparison.Ordinal);
     }
 
+    // Every winter of the default ten-winter life, so a moved threshold shows up here as the word
+    // that changed rather than as a card that quietly reads differently.
+    [Theory]
+    [InlineData(0, "baby girl", "baby boy")]
+    [InlineData(1, "girl", "boy")]
+    [InlineData(2, "girl", "boy")]
+    [InlineData(3, "young woman", "young man")]
+    [InlineData(4, "woman", "man")]
+    [InlineData(6, "woman", "man")]
+    [InlineData(7, "old woman", "old man")]
+    [InlineData(8, "old woman", "old man")]
+    [InlineData(9, "aged woman", "aged man")]
+    [InlineData(12, "aged woman", "aged man")]
+    public void AnAgeReadsAsWhoTheyAreAtThatPartOfALife(long ageInYears, string female, string male)
+    {
+        Assert.Equal(female, InspectorText.ForAgeAndSex(ageInYears, maxLifespanYears: 10, Sex.Female));
+        Assert.Equal(male, InspectorText.ForAgeAndSex(ageInYears, maxLifespanYears: 10, Sex.Male));
+    }
+
+    // "Aged" is an elder's last winter, not anybody's: in a world too short to grow old in, a
+    // child in the final winter of their life is still a child.
+    [Fact]
+    public void OnlyAnElderIsCalledAged()
+    {
+        Assert.Equal("young man", InspectorText.ForAgeAndSex(LifeStages.AdultAgeYears - 1, maxLifespanYears: LifeStages.AdultAgeYears, Sex.Male));
+    }
+
     // ForDeath directly, rather than only through ForGrave/ForGraveRecord which both build the
     // same sentence: an unrecorded cause must add nothing at all, not even a stray word.
     [Fact]

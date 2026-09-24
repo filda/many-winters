@@ -1,8 +1,9 @@
 namespace ManyWinters.Godot.Logic;
 
 // A span of ticks in the units the game counts time in: winters where there have been any, else
-// seasons. A person's age reads by the same rule as the time since a band arrived, so both ask
-// here rather than each rounding its own way.
+// seasons. The debug inspector's age reads by the same rule as the time since a band arrived, so
+// both ask here rather than each rounding its own way; the player's card says the age in words
+// (InspectorText.ForAgeAndSex).
 internal static class DurationText
 {
     internal static string For(long elapsedTicks, long ticksPerYear, long ticksPerSeason)

@@ -33,10 +33,25 @@ internal static class InspectorText
         _ => "At rest",
     };
 
-    // How a person is introduced: age first, then sex, both in lower case so the phrase reads as
-    // a description rather than a heading. Beside the name on the selection card, under it on
-    // the band's roster.
-    internal static string ForAgeAndSex(string age, Sex sex) => $"{age}, {sex}".ToLowerInvariant();
+    // How a person is introduced beside their name: who they are as the band would say it - "girl",
+    // "old man" - not a count of winters and a sex, which read like a form. The exact winters stay
+    // on the roster and in the debug inspector. The simulation's four stages, with two more at
+    // their edges that change nothing but the words: "young" for the last winter before a child is
+    // grown, "aged" for an elder in the last winter they will see.
+    internal static string ForAgeAndSex(long ageInYears, long maxLifespanYears, Sex sex)
+    {
+        var (woman, man) = LifeStages.For(ageInYears) switch
+        {
+            LifeStage.Infant => ("baby girl", "baby boy"),
+            LifeStage.Child when ageInYears >= LifeStages.AdultAgeYears - 1 => ("young woman", "young man"),
+            LifeStage.Child => ("girl", "boy"),
+            LifeStage.Adult => ("woman", "man"),
+            LifeStage.Elder when ageInYears >= maxLifespanYears - 1 => ("aged woman", "aged man"),
+            _ => ("old woman", "old man"),
+        };
+
+        return sex == Sex.Female ? woman : man;
+    }
 
     // The three lists the selection panel and the debug inspector both show. Each reads "none"
     // or "empty" when there is nothing rather than leaving a bare label, and each is sorted, so
