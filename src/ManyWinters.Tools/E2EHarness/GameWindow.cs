@@ -1,10 +1,7 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Text;
 
 namespace ManyWinters.Tools.E2EHarness;
 
@@ -50,6 +47,12 @@ public sealed class GameWindow : IDisposable
     /// </summary>
     public static async Task<GameWindow> LaunchAsync(string godotProjectPath, TimeSpan timeout)
     {
+        // The E2E always wants a reproducible frame, so the game runs with its real-time
+        // presentation (person idle bob, live status-bar counters) frozen; see
+        // DeterministicPresentation. Set on this process so a breakaway launch inherits it; the
+        // Task Scheduler path bakes the same variable into its launcher script.
+        Environment.SetEnvironmentVariable("MW_E2E_DETERMINISTIC", "1");
+
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
         var launch = Start(godotExe, "--path", godotProjectPath);
         var process = launch.Process;
@@ -66,13 +69,11 @@ public sealed class GameWindow : IDisposable
         while (DateTime.UtcNow < deadline)
         {
             // A fresh Process.GetProcessById each poll, not process.Refresh() on the object we
-            // already hold: under `dotnet test`, testhost.exe runs inside a Windows Job Object
-            // with UI restrictions (JOB_OBJECT_UILIMIT_HANDLES) that hides windows created by its
-            // own children from itself specifically - confirmed by "Get-Process -Id <that pid>"
-            // from an unrelated PowerShell session seeing the real MainWindowHandle immediately,
-            // while this same check from inside testhost.exe never did, cached or not. Starting
-            // the game with CREATE_BREAKAWAY_FROM_JOB (see StartBreakingAwayFromAnyRestrictiveJob)
-            // is what actually fixes it; this fresh-probe habit is cheap insurance on top of that.
+            // already hold: the game's window handle is not set until a frame or two after the
+            // window exists, so re-probing each poll catches the moment it appears. The game is
+            // launched via the Task Scheduler (see Start) - a fresh process tree with no calling
+            // job - so its window is ordinary and visible to this host, not hidden by a job's
+            // UI restriction.
             using var probe = SafeGetProcessById(process.Id);
             if (probe is null || probe.HasExited)
             {
@@ -87,6 +88,10 @@ public sealed class GameWindow : IDisposable
             lastLogReady = LogShowsMainReady(logPath);
             if (lastHandle != IntPtr.Zero && lastLogReady)
             {
+                // The loading page is freed with QueueFree (deferred to end-of-frame) and "Main
+                // ready." prints in that same frame, so the first frames after the log can still
+                // show it; let a few frames settle so the capture is the world, not the page.
+                await Task.Delay(500);
                 return new GameWindow(process, lastHandle, launch.LauncherScriptPath);
             }
 
@@ -95,7 +100,7 @@ public sealed class GameWindow : IDisposable
 
         var diagnostics = $"handle={lastHandle} title='{lastTitle}' logReady={lastLogReady} "
             + $"logExists={File.Exists(logPath)} logLength={(File.Exists(logPath) ? new FileInfo(logPath).Length : -1)}";
-        process.Kill(entireProcessTree: true);
+        KillProcessRobust(process);
         process.Dispose();
         DeleteLauncherScript(launch.LauncherScriptPath);
         throw new TimeoutException($"Game did not report ready within {timeout} ({diagnostics}). Check {logPath}.");
@@ -152,50 +157,15 @@ public sealed class GameWindow : IDisposable
     /// </summary>
     private static GameLaunch Start(string fileName, params string[] arguments)
     {
-        try
-        {
-            var process = StartBreakingAwayFromAnyRestrictiveJob(fileName, arguments);
-            Console.Error.WriteLine($"[GameWindow] launched '{fileName}' via CREATE_BREAKAWAY_FROM_JOB, pid {process.Id}.");
-            return new GameLaunch(process, null);
-        }
-        catch (InvalidOperationException ex) when (ex.InnerException is Win32Exception { NativeErrorCode: 5 })
-        {
-            Console.Error.WriteLine($"[GameWindow] CREATE_BREAKAWAY_FROM_JOB denied for '{fileName}', falling back to Task Scheduler.");
-            var (process, launcherScriptPath) = StartViaScheduledTask(fileName, arguments);
-            Console.Error.WriteLine($"[GameWindow] found game window via Task Scheduler, pid {process.Id}, title '{process.MainWindowTitle}'.");
-            return new GameLaunch(process, launcherScriptPath);
-        }
-    }
-
-    private static Process StartBreakingAwayFromAnyRestrictiveJob(string fileName, string[] arguments)
-    {
-        const uint createBreakawayFromJob = 0x0100_0000;
-
-        var commandLineText = new StringBuilder(Quote(fileName));
-        foreach (var argument in arguments)
-        {
-            commandLineText.Append(' ').Append(Quote(argument));
-        }
-
-        // CreateProcess can write back into this buffer, so it has to be a real mutable array,
-        // not a string - CA1838 flags StringBuilder here for the same reason.
-        var commandLineBuffer = new char[commandLineText.Length + 1];
-        commandLineText.CopyTo(0, commandLineBuffer, 0, commandLineText.Length);
-
-        var startupInfo = new NativeMethods.StartupInfo { Cb = Marshal.SizeOf<NativeMethods.StartupInfo>() };
-        if (!NativeMethods.CreateProcess(
-                null, commandLineBuffer, IntPtr.Zero, IntPtr.Zero, false, createBreakawayFromJob,
-                IntPtr.Zero, null, ref startupInfo, out var processInformation))
-        {
-            var error = Marshal.GetLastWin32Error();
-            throw new InvalidOperationException(
-                $"CreateProcess('{fileName}', CREATE_BREAKAWAY_FROM_JOB) failed with Win32 error {error}.",
-                new Win32Exception(error));
-        }
-
-        NativeMethods.CloseHandle(processInformation.HThread);
-        NativeMethods.CloseHandle(processInformation.HProcess);
-        return Process.GetProcessById(processInformation.DwProcessId);
+        // Always launch via the Task Scheduler: a fresh process tree with no calling job gives the
+        // game an ordinary, visible window the test host can find and drive. The
+        // CREATE_BREAKAWAY_FROM_JOB alternative is denied by VSTest's job on the runner (Win32 5),
+        // and on a dev machine where it is allowed the game's window comes up invisible to the test
+        // host anyway (MainWindowHandle 0) - the scheduler path is the only one that reliably yields
+        // a drivable window.
+        var (process, launcherScriptPath) = StartViaScheduledTask(fileName, arguments);
+        Console.Error.WriteLine($"[GameWindow] launched via Task Scheduler, pid {process.Id}, title '{process.MainWindowTitle}'.");
+        return new GameLaunch(process, launcherScriptPath);
     }
 
     private static (Process Process, string LauncherScriptPath) StartViaScheduledTask(string fileName, string[] arguments)
@@ -209,7 +179,10 @@ public sealed class GameWindow : IDisposable
         var launcherScriptPath = Path.Combine(Path.GetTempPath(), "ManyWintersE2E-" + Guid.NewGuid().ToString("N") + ".cmd");
         File.WriteAllText(
             launcherScriptPath,
-            Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument))) + Environment.NewLine);
+            // The task scheduler runs in its own environment, not this process's, so the variable
+            // LaunchAsync set here never reaches the game through this path - bake it in.
+            "SET MW_E2E_DETERMINISTIC=1" + Environment.NewLine
+            + Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument))) + Environment.NewLine);
 
         RunSchtasks("/Create", "/TN", taskName, "/TR", Quote(launcherScriptPath), "/SC", "ONCE", "/ST", "00:00", "/F");
         try
@@ -306,7 +279,7 @@ public sealed class GameWindow : IDisposable
 
     public void Dispose()
     {
-        KillProcessTree();
+        KillProcessRobust(_process);
         _process.Dispose();
         DeleteLauncherScript(_launcherScriptPath);
     }
@@ -318,16 +291,16 @@ public sealed class GameWindow : IDisposable
     /// <c>taskkill</c> by PID is the backstop. Best effort throughout: a failure here must not mask
     /// the real test result, so nothing in here throws.
     /// </summary>
-    private void KillProcessTree()
+    private static void KillProcessRobust(Process process)
     {
-        if (_process.HasExited)
+        if (process.HasExited)
         {
             return;
         }
 
         try
         {
-            _process.Kill(entireProcessTree: true);
+            process.Kill(entireProcessTree: true);
         }
         catch
         {
@@ -336,13 +309,13 @@ public sealed class GameWindow : IDisposable
 
         try
         {
-            if (!_process.HasExited)
+            if (!process.HasExited)
             {
                 var startInfo = new ProcessStartInfo("taskkill.exe") { RedirectStandardError = true, UseShellExecute = false };
                 startInfo.ArgumentList.Add("/F");
                 startInfo.ArgumentList.Add("/T");
                 startInfo.ArgumentList.Add("/PID");
-                startInfo.ArgumentList.Add(_process.Id.ToString(CultureInfo.InvariantCulture));
+                startInfo.ArgumentList.Add(process.Id.ToString(CultureInfo.InvariantCulture));
                 using var taskkill = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start taskkill.exe.");
                 taskkill.StandardError.ReadToEnd();
                 taskkill.WaitForExit(5000);
@@ -352,57 +325,5 @@ public sealed class GameWindow : IDisposable
         {
             // Best effort: never let cleanup throw and mask the real test result.
         }
-    }
-
-    private static class NativeMethods
-    {
-        [StructLayout(LayoutKind.Sequential)]
-        public struct StartupInfo
-        {
-            public int Cb;
-            public IntPtr LpReserved;
-            public IntPtr LpDesktop;
-            public IntPtr LpTitle;
-            public int DwX;
-            public int DwY;
-            public int DwXSize;
-            public int DwYSize;
-            public int DwXCountChars;
-            public int DwYCountChars;
-            public int DwFillAttribute;
-            public int DwFlags;
-            public short WShowWindow;
-            public short CbReserved2;
-            public IntPtr LpReserved2;
-            public IntPtr HStdInput;
-            public IntPtr HStdOutput;
-            public IntPtr HStdError;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct ProcessInformation
-        {
-            public IntPtr HProcess;
-            public IntPtr HThread;
-            public int DwProcessId;
-            public int DwThreadId;
-        }
-
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        public static extern bool CreateProcess(
-            string? lpApplicationName,
-            [In, Out] char[] lpCommandLine,
-            IntPtr lpProcessAttributes,
-            IntPtr lpThreadAttributes,
-            bool bInheritHandles,
-            uint dwCreationFlags,
-            IntPtr lpEnvironment,
-            string? lpCurrentDirectory,
-            ref StartupInfo lpStartupInfo,
-            out ProcessInformation lpProcessInformation);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CloseHandle(IntPtr hObject);
     }
 }

@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Threading;
 using ManyWinters.Tools.E2EHarness;
 
 namespace ManyWinters.E2E.Tests;
@@ -16,7 +17,11 @@ public sealed class GameFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _window = await GameWindow.LaunchAsync(GodotProjectPath(), TimeSpan.FromSeconds(30));
+        // 60 s, not 30: the presenter builds a view for every resource node (thousands), so a
+        // cold boot - first run after a build, or a loaded machine - can exceed 30 s before
+        // "Main ready." lands. A timeout here also kills the game, so a too-tight value wastes a
+        // whole slow boot.
+        _window = await GameWindow.LaunchAsync(GodotProjectPath(), TimeSpan.FromSeconds(60));
     }
 
     public Task DisposeAsync()
@@ -30,6 +35,16 @@ public sealed class GameFixture : IAsyncLifetime
     /// <summary>Holds a Win32 virtual-key code down for <paramref name="holdDuration"/> before releasing it — long enough for a held-key game action (e.g. camera tilt) to move, not just register.</summary>
     public void KeyPress(int virtualKeyCode, TimeSpan? holdDuration = null) => WindowInput.KeyPress(Handle, virtualKeyCode, holdDuration);
 
+    // The Win32 virtual-key code for F12 - the game's "advance one tick" key (see Main._Input).
+    private const int VkF12 = 0x7B;
+
+    /// <summary>Steps the frozen deterministic simulation forward exactly one tick (the game's
+    /// "advance one tick" key), so an order placed during the freeze - a craft, a building - is
+    /// resolved once and the frame settles at the next fixed tick. Under the deterministic
+    /// presentation the world otherwise holds at the boot tick; in normal play the key is ignored
+    /// and the simulation ticks on its own.</summary>
+    public void AdvanceOneTick() => KeyPress(VkF12);
+
     public Bitmap Screenshot() => WindowCapture.Capture(Handle);
 
     /// <summary>The window's current client-area size, for computing click targets that scale with the window instead of hardcoding pixels.</summary>
@@ -37,6 +52,34 @@ public sealed class GameFixture : IAsyncLifetime
     {
         using var screenshot = Screenshot();
         return screenshot.Size;
+    }
+
+    // The prologue inscription's "closing words" button, which dismisses it. Every test boots into
+    // the same deterministic world (the band name is seed-derived and fixed), so the button always
+    // renders at the same place and this is a calibration, not a guess. Measured off a recorded
+    // boot frame (the parchment slip under the title), not derived by hand.
+    private const int PrologueClosingX = 568;
+    private const int PrologueClosingY = 362;
+
+    /// <summary>Dismisses the prologue inscription (the "closing words" button) so clicks reach the
+    /// world. The dismissal primes the tick accumulator, so the world resumes on the next frame and
+    /// is settled at its first live tick; the rest of the tick interval (one second) is well clear
+    /// of the follow-on input, so the frame the test captures is a fixed tick, not a moving one.</summary>
+    public void DismissPrologue()
+    {
+        Click(PrologueClosingX, PrologueClosingY);
+        Thread.Sleep(600);
+    }
+
+    /// <summary>Writes the current frame to artifacts/e2e-debug/{name}.png for inspection - never
+    /// asserted. The calibration aid: click targets are read off a real run's frame, not derived.
+    /// Mirrors the on-failure dumps AssertMatchesBaseline already writes to artifacts/e2e-diffs.</summary>
+    public void SaveDebugShot(string name)
+    {
+        using var shot = Screenshot();
+        var directory = Path.Combine(FindRepoRoot(), "artifacts", "e2e-debug");
+        Directory.CreateDirectory(directory);
+        shot.Save(Path.Combine(directory, name + ".png"), ImageFormat.Png);
     }
 
     /// <summary>

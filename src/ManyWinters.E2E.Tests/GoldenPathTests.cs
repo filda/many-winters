@@ -17,11 +17,14 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
     [Fact]
     public void ClickingAnEntityOpensItsInspector()
     {
-        // Main._Ready seats FreeCameraRig on the band's own camp position (campX/campZ), so the
-        // window's centre is where a person or camp entity sits right after boot — no coordinate
-        // to calibrate for this one specifically.
-        var size = _game.WindowSize();
-        _game.Click(size.Width / 2, size.Height / 2);
+        _game.DismissPrologue();
+
+        // A person standing in the camp, at the deterministic boot tick (the band is seeded and
+        // the world is frozen at that tick under the deterministic presentation). Calibrated off
+        // a recorded frame - the world's centre is open ground between people at this tick, not a
+        // person, so the click targets a body, not the middle of the camp.
+        _game.Click(760, 345);
+        _game.SaveDebugShot("entity-after-click");
         _game.AssertMatchesBaseline("entity-selected");
     }
 }
@@ -31,9 +34,12 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
 /// what they're carrying.</summary>
 public sealed class CraftingUiTests : IClassFixture<GameFixture>
 {
-    // TODO(calibrate): the selection panel's "Workshop" action button, once a person is selected.
-    private const int WorkshopButtonX = 400;
-    private const int WorkshopButtonY = 300;
+    // The selection panel's "Pack" line (the sack row, the whole line is a button) opens the
+    // workbench (SelectionController.OnPackRequested -> WorkshopRequested). The panel is docked
+    // to the right edge at a fixed width (SelectionPanel.Width); the line sits below the two
+    // meters. Calibrated off the crafting-selection debug shot at the deterministic boot tick.
+    private const int WorkshopButtonX = 1000;
+    private const int WorkshopButtonY = 107;
 
     // TODO(calibrate): WorkshopPanel's "Make" button (WorkshopIcons.Make(), WorkshopPanel.cs).
     private const int MakeButtonX = 640;
@@ -46,9 +52,12 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     [Fact]
     public void CraftingAnItemUpdatesInventoryDisplay()
     {
+        _game.DismissPrologue();
         var size = _game.WindowSize();
         _game.Click(size.Width / 2, size.Height / 2); // select the person at camp
+        _game.SaveDebugShot("crafting-selection");
         _game.Click(WorkshopButtonX, WorkshopButtonY); // open their Workshop panel
+        _game.SaveDebugShot("crafting-workshop");
         _game.AssertMatchesBaseline("workshop-open");
 
         _game.Click(MakeButtonX, MakeButtonY); // attempt the offered recipe
@@ -132,6 +141,7 @@ public sealed class BillboardRenderingTests : IClassFixture<GameFixture>
     [Fact]
     public void TiltedCameraKeepsBillboardSpriteGrounded()
     {
+        _game.DismissPrologue();
         _game.KeyPress(VkPageUp, TimeSpan.FromSeconds(2));
         _game.AssertMatchesBaseline("camera-tilted-billboard-grounded");
     }
