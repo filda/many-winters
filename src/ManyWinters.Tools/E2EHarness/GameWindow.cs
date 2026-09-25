@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace ManyWinters.Tools.E2EHarness;
@@ -16,6 +18,11 @@ public sealed class GameWindow : IDisposable
     // Godot passes everything after this separator on to the game as its own user arguments
     // (OS.GetCmdlineUserArgs) - the channel the session's modes ride on (see LaunchAsync).
     private const string UserArgsSeparator = "++";
+
+    // The client-area size the suite's click targets and pixel baselines are calibrated for:
+    // Godot's default window (the project pins no [display] section of its own). The game is
+    // asked for it on the command line, and VerifyClientSize holds the suite to it.
+    private static readonly Size ExpectedClientSize = new(1152, 648);
 
     private readonly Process _process;
     private readonly string? _launcherScriptPath;
@@ -56,9 +63,14 @@ public sealed class GameWindow : IDisposable
         // by the tests, the log following every input, and nothing on screen moving on real time -
         // so a captured frame is identical run to run and can be pixel-compared against a
         // committed baseline. Nothing is set in the environment: a mode asked for on the command
-        // line applies to exactly this launch and nothing inherits it by accident.
+        // line applies to exactly this launch and nothing inherits it by accident. The window is
+        // asked for its exact calibrated size the same way (see VerifyClientSize).
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
-        var launch = Start(godotExe, "--path", godotProjectPath, UserArgsSeparator, "hold-clock", "verbose", "still");
+        var launch = Start(
+            godotExe,
+            "--path", godotProjectPath,
+            "--resolution", $"{ExpectedClientSize.Width}x{ExpectedClientSize.Height}",
+            UserArgsSeparator, "hold-clock", "verbose", "still");
         var process = launch.Process;
 
         var logPath = Path.Combine(
@@ -96,6 +108,7 @@ public sealed class GameWindow : IDisposable
                 // ready." prints in that same frame, so the first frames after the log can still
                 // show it; let a few frames settle so the capture is the world, not the page.
                 await Task.Delay(500);
+                VerifyClientSize(lastHandle);
                 return new GameWindow(process, lastHandle, launch.LauncherScriptPath);
             }
 
@@ -120,6 +133,36 @@ public sealed class GameWindow : IDisposable
         {
             return null; // already gone
         }
+    }
+
+    /// <summary>
+    /// The game is asked for its window on the command line (--resolution), but the OS can still
+    /// have the last word: a screen smaller than the window shrinks it silently, and the only
+    /// symptom downstream is every capture differing from every baseline. So the size is verified
+    /// against the OS's own answer the moment the window is drivable, and a mismatch stops the
+    /// suite here, with the numbers that show who shrank what.
+    /// </summary>
+    private static void VerifyClientSize(IntPtr windowHandle)
+    {
+        var client = WindowCapture.ClientSize(windowHandle);
+        if (client == ExpectedClientSize)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"The game window's client area is {client.Width}x{client.Height}, not the expected "
+            + $"{ExpectedClientSize.Width}x{ExpectedClientSize.Height} the click targets and pixel "
+            + $"baselines are calibrated for. A screen smaller than the requested window shrinks it "
+            + $"without a word (primary screen: {NativeMethods.GetSystemMetrics(0)}x"
+            + $"{NativeMethods.GetSystemMetrics(1)}).");
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        public static extern int GetSystemMetrics(int index);
     }
 
     /// <summary>

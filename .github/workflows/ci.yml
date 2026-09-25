@@ -152,6 +152,17 @@ jobs:
           "import exit code: $LASTEXITCODE"
           exit 0
 
+      - name: Set display resolution
+        run: |
+          # The suite asks the game for a 1152x648 window and verifies it got exactly that: a
+          # screen smaller than the window shrinks it silently, and every capture then differs
+          # from every baseline (observed 2026-09-25: the runner's default display clipped the
+          # window to a 1028-wide client area). The display on these VMs is the basic display
+          # driver, whose resolution Set-DisplayResolution - a Server cmdlet - can change.
+          Set-DisplayResolution -Width 1920 -Height 1080 -Force
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+
       - name: Cake Frosting E2E
         run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=E2E
 

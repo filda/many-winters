@@ -47,6 +47,19 @@ public static class WindowCapture
         return bitmap;
     }
 
+    /// <summary>The window's client-area size as the OS has it right now — the truth about what
+    /// the captures and the click coordinates address, whatever size the game asked for at
+    /// launch.</summary>
+    internal static Size ClientSize(IntPtr windowHandle)
+    {
+        if (!NativeMethods.GetClientRect(windowHandle, out var rect))
+        {
+            throw new InvalidOperationException("GetClientRect failed.");
+        }
+
+        return new Size(rect.Right - rect.Left, rect.Bottom - rect.Top);
+    }
+
     private static class NativeMethods
     {
         [StructLayout(LayoutKind.Sequential)]
