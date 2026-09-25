@@ -57,10 +57,19 @@ public static class WindowInput
     /// <summary>Sends a key-down/up pair for a Win32 virtual-key code (see winuser.h VK_*).</summary>
     public static void KeyPress(IntPtr windowHandle, int virtualKeyCode, TimeSpan? pressDuration = null)
     {
-        Post(windowHandle, WmKeyDown, (IntPtr)virtualKeyCode, IntPtr.Zero);
+        KeyDown(windowHandle, virtualKeyCode);
         Thread.Sleep(pressDuration ?? TimeSpan.FromMilliseconds(50));
-        Post(windowHandle, WmKeyUp, (IntPtr)virtualKeyCode, IntPtr.Zero);
+        KeyUp(windowHandle, virtualKeyCode);
     }
+
+    /// <summary>Presses a key down and leaves it down until KeyUp - for holds a test wants to
+    /// end on a condition rather than on a timer (see GameFixture.HoldKeyUntilLog).</summary>
+    public static void KeyDown(IntPtr windowHandle, int virtualKeyCode) =>
+        Post(windowHandle, WmKeyDown, (IntPtr)virtualKeyCode, IntPtr.Zero);
+
+    /// <summary>Releases a key pressed down by KeyDown.</summary>
+    public static void KeyUp(IntPtr windowHandle, int virtualKeyCode) =>
+        Post(windowHandle, WmKeyUp, (IntPtr)virtualKeyCode, IntPtr.Zero);
 
     // WM_MOUSEMOVE/WM_LBUTTON* lParam packs client coordinates as (y << 16) | x (MAKELPARAM).
     private static IntPtr MakeLParam(int x, int y) => (IntPtr)((y << 16) | (x & 0xFFFF));

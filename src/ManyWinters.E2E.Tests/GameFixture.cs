@@ -53,6 +53,26 @@ public sealed class GameFixture : IAsyncLifetime
     /// normal play the clock runs and the key is ignored.</summary>
     public void AdvanceOneTick() => KeyPress(VkF12);
 
+    /// <summary>Presses a key down and holds it until the game's log gains a line containing
+    /// <paramref name="text"/>, then releases it - returning that line, or null once
+    /// <paramref name="timeout"/> has passed. The release always happens, timeout or not. A
+    /// fixed-length hold cannot be made reliable on a machine whose frames are slower than the
+    /// hold: a key-down and its key-up can then be pumped in the same frame, and the game never
+    /// sees the key held at all. Waiting for the effect ends the hold by construction only once
+    /// the effect exists.</summary>
+    public string? HoldKeyUntilLog(int virtualKeyCode, string text, TimeSpan timeout)
+    {
+        WindowInput.KeyDown(Handle, virtualKeyCode);
+        try
+        {
+            return WaitForGameLog(text, timeout);
+        }
+        finally
+        {
+            WindowInput.KeyUp(Handle, virtualKeyCode);
+        }
+    }
+
     public Bitmap Screenshot() => WindowCapture.Capture(Handle);
 
     // The prologue inscription's "closing words" button, which dismisses it. Every test boots into

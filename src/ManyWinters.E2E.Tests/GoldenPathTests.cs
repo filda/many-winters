@@ -296,9 +296,9 @@ public sealed class BillboardRenderingTests : IClassFixture<GameFixture>
 {
     // Win32 VK_PRIOR (Page Up) — FreeCameraRig.HandleInput reads Key.Pageup while held and steps
     // _tiltDegrees toward MaxTiltDegrees (70°) at TiltSpeedDegreesPerSecond (45°/s). The tilt
-    // needs ~1.3s of the game's own time to cross the full 12–70° range; the hold is four seconds
-    // so a machine that is slow to deliver the key-down still leaves the game well over the time
-    // it needs. The limit's own log line says when it got there.
+    // needs ~1.3s of the game's own time to cross the full 12–70° range - game time, not wall
+    // time: on a software renderer a frame can outlast any fixed hold, so the key is held until
+    // the limit's own log line says it got there.
     private const int VkPageUp = 0x21;
 
     private readonly GameFixture _game;
@@ -311,9 +311,9 @@ public sealed class BillboardRenderingTests : IClassFixture<GameFixture>
         _game.DismissPrologue();
         _game.SaveDebugShot("billboard-at-rest");
 
-        _game.KeyPress(VkPageUp, TimeSpan.FromSeconds(4));
+        var tilted = _game.HoldKeyUntilLog(VkPageUp, "Camera tilted to", TimeSpan.FromSeconds(60));
 
-        Assert.NotNull(_game.WaitForGameLog("Camera tilted to", TimeSpan.FromSeconds(4)));
+        Assert.NotNull(tilted);
         _game.SaveDebugShot("billboard-tilted");
     }
 }
