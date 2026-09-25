@@ -101,6 +101,14 @@ internal sealed class SimulationLoop(
         }
 
         GD.Print($"Tick {world.Clock.CurrentTick}: {world.People.Count(p => p.IsAlive)} of {world.People.Count} people alive.");
+
+        // A verbose session follows the game from its log alone, so each tick also says what the
+        // renderer drew - the one honest answer to whether the world reached the screen at all.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Draw: {Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame):0} objects, "
+                + $"{Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame):0} calls.");
+        }
     }
 
     // What letting a clock-holding page go is supposed to do: the world resumes on the very next

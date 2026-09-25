@@ -202,7 +202,19 @@ public sealed partial class FreeCameraRig : Node3D
 
         if (tiltDirection != 0f)
         {
+            var before = _tiltDegrees;
             _tiltDegrees = CameraMotion.Tilted(_tiltDegrees, tiltDirection * TiltSpeedDegreesPerSecond * delta, MinTiltDegrees, MaxTiltDegrees);
+
+            // A verbose session follows the game from its log alone; the tilt says when it has
+            // gone all the way up or down - the step that crossed the limit and was clamped onto
+            // it - which is as far as a held key can ever drive it. Range comparisons, not
+            // equality: the clamped value is checked by where it landed, not what it equals.
+            if (LaunchOptions.Verbose
+                && (before < MaxTiltDegrees && _tiltDegrees >= MaxTiltDegrees
+                    || before > MinTiltDegrees && _tiltDegrees <= MinTiltDegrees))
+            {
+                GD.Print($"Camera tilted to {_tiltDegrees:0} degrees.");
+            }
         }
 
         // Unconditional: UpdateCamera also re-checks the camera's ground clearance, and while that

@@ -89,6 +89,13 @@ internal sealed class SelectionController
         _person = person;
         _grave = null;
         Refresh();
+
+        // A verbose session follows the game from its log alone; the card coming up for the
+        // person just picked says so.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Card shown for {person.Name}.");
+        }
     }
 
     public void Select(Grave grave)

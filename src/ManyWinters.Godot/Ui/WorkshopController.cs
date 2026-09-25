@@ -1,3 +1,4 @@
+using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Materials;
@@ -88,6 +89,14 @@ internal sealed class WorkshopController
         // the world stands still while this is open, so it is the thing being done rather than a
         // card to read beside it.
         _workshop.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));
+
+        // A verbose session follows the game from its log alone; the bench coming up says so, and
+        // for whom.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Workshop opened for {person.Name}.");
+        }
+
         RefreshOffer();
     }
 

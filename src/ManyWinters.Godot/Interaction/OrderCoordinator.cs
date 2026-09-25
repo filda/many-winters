@@ -74,6 +74,13 @@ internal sealed class OrderCoordinator(
     {
         foreach (var offer in _pendingOrders.Ready(world))
         {
+            // A verbose session follows the game from its log alone; the tick that fires a
+            // pending order says so.
+            if (LaunchOptions.Verbose)
+            {
+                GD.Print($"Resolved '{offer.Label}'.");
+            }
+
             Execute(offer.Command);
         }
 

@@ -355,6 +355,13 @@ public sealed partial class WorldPresenter : Node3D
 
     private void CreateBuildingView(Entity building)
     {
+        // A verbose session follows the game from its log alone; a building's view appearing is
+        // the moment the built thing reaches the screen, and where it landed.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Building view created for {building.Kind} at {building.Position}.");
+        }
+
         var view = new BuildingView(building, _hover, RaiseBuildingClicked, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),

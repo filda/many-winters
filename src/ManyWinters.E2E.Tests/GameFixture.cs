@@ -55,13 +55,6 @@ public sealed class GameFixture : IAsyncLifetime
 
     public Bitmap Screenshot() => WindowCapture.Capture(Handle);
 
-    /// <summary>The window's current client-area size, for computing click targets that scale with the window instead of hardcoding pixels.</summary>
-    public Size WindowSize()
-    {
-        using var screenshot = Screenshot();
-        return screenshot.Size;
-    }
-
     // The prologue inscription's "closing words" button, which dismisses it. Every test boots into
     // the same deterministic world (the band name is seed-derived and fixed), so the button always
     // renders at the same place and this is a calibration, not a guess. Measured off a recorded
@@ -80,7 +73,7 @@ public sealed class GameFixture : IAsyncLifetime
     public void DismissPrologue()
     {
         Click(PrologueClosingX, PrologueClosingY);
-        if (!WaitForGameLog("Inscription dismissed", TimeSpan.FromSeconds(2)))
+        if (WaitForGameLog("Inscription dismissed", TimeSpan.FromSeconds(2)) is null)
         {
             Click(PrologueClosingX, PrologueClosingY);
             WaitForGameLog("Inscription dismissed", TimeSpan.FromSeconds(2));
@@ -89,11 +82,13 @@ public sealed class GameFixture : IAsyncLifetime
         Thread.Sleep(600);
     }
 
-    /// <summary>Waits until the game's log gains a line containing <paramref name="text"/> — the
-    /// game's own witness that a posted click did what it meant, since nothing else can read the
-    /// game's state from outside. Scans only lines written since the last match, so two waits for
-    /// the same kind of line cannot both match the first one.</summary>
-    public bool WaitForGameLog(string text, TimeSpan timeout)
+    /// <summary>Waits until the game's log gains a line containing <paramref name="text"/> and
+    /// returns that line, or null once <paramref name="timeout"/> has passed. The game's own log
+    /// is the one honest witness of what a posted click did - nothing outside the process can
+    /// read its state - so what the suite asserts, it asserts on these lines. Scans only lines
+    /// written since the last match, so two waits for the same kind of line cannot both match
+    /// the first one.</summary>
+    public string? WaitForGameLog(string text, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
@@ -110,14 +105,14 @@ public sealed class GameFixture : IAsyncLifetime
                 {
                     var endOfLine = rest.IndexOf('\n', match);
                     _gameLogOffset += endOfLine >= 0 ? endOfLine + 1 : rest.Length;
-                    return true;
+                    return rest[match..(endOfLine >= 0 ? endOfLine : rest.Length)].TrimEnd('\r');
                 }
             }
 
             Thread.Sleep(100);
         }
 
-        return false;
+        return null;
     }
 
     private static string GameLogPath() => Path.Combine(
@@ -131,58 +126,14 @@ public sealed class GameFixture : IAsyncLifetime
     public static void Settle(int milliseconds) => Thread.Sleep(milliseconds);
 
     /// <summary>Writes the current frame to artifacts/e2e-debug/{name}.png for inspection - never
-    /// asserted. The calibration aid: click targets are read off a real run's frame, not derived.
-    /// Mirrors the on-failure dumps AssertMatchesBaseline already writes to artifacts/e2e-diffs.</summary>
+    /// asserted. What the suite claims, it claims through the game's own log; the frames are for
+    /// the human reviewing a failure or a change.</summary>
     public void SaveDebugShot(string name)
     {
         using var shot = Screenshot();
         var directory = Path.Combine(FindRepoRoot(), "artifacts", "e2e-debug");
         Directory.CreateDirectory(directory);
         shot.Save(Path.Combine(directory, name + ".png"), ImageFormat.Png);
-    }
-
-    /// <summary>
-    /// Compares against src/ManyWinters.E2E.Tests/Baselines/{name}.png. Set
-    /// <c>MW_E2E_UPDATE_BASELINES=1</c> to (re-)record it instead of asserting, for a first run
-    /// or a deliberate visual change — review the written PNG before committing it, the same way
-    /// a code change gets reviewed rather than just accepted because the tool produced it.
-    /// </summary>
-    public void AssertMatchesBaseline(string name, double toleranceFraction = 0.01)
-    {
-        var baselinePath = Path.Combine(FindRepoRoot(), "src", "ManyWinters.E2E.Tests", "Baselines", name + ".png");
-        using var actual = Screenshot();
-
-        if (Environment.GetEnvironmentVariable("MW_E2E_UPDATE_BASELINES") == "1")
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(baselinePath)!);
-            actual.Save(baselinePath, ImageFormat.Png);
-            return;
-        }
-
-        if (!File.Exists(baselinePath))
-        {
-            throw new InvalidOperationException(
-                $"No baseline at {baselinePath}. Run once with MW_E2E_UPDATE_BASELINES=1, review the PNG, then commit it.");
-        }
-
-        using var baseline = new Bitmap(baselinePath);
-        var result = ImageDiff.Compare(actual, baseline, toleranceFraction);
-        if (result.Matches)
-        {
-            return;
-        }
-
-        using (result.DiffImage)
-        {
-            var diffDirectory = Path.Combine(FindRepoRoot(), "artifacts", "e2e-diffs");
-            Directory.CreateDirectory(diffDirectory);
-            actual.Save(Path.Combine(diffDirectory, name + ".actual.png"), ImageFormat.Png);
-            result.DiffImage?.Save(Path.Combine(diffDirectory, name + ".diff.png"), ImageFormat.Png);
-
-            Assert.Fail(
-                $"{name}: {result.DifferentPixelFraction:P2} of pixels differ from the baseline (tolerance {toleranceFraction:P2}). "
-                + $"See {diffDirectory}.");
-        }
     }
 
     private IntPtr Handle => _window?.Handle ?? throw new InvalidOperationException("GameFixture not initialized.");
