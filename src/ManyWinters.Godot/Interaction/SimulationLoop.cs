@@ -31,9 +31,12 @@ internal sealed class SimulationLoop(
     {
         // Time stands still while any registered modal holds the clock (see MainUi) - an
         // inscription, a pause the player asked for, the controls page, the workbench, the
-        // detail page. Each is read or worked on instead of played through, not while playing.
-        // Not calling Advance at all is what keeps a held clock from consuming accumulated time.
-        if (ui.HoldsClock)
+        // detail page - and, under the deterministic E2E presentation, the clock is held at the
+        // boot tick entirely so a captured frame is a fixed tick; the suite steps it on purpose
+        // with the "advance one tick" key (see Main._Input) instead of letting the wall clock
+        // decide. Not calling Advance at all is what keeps a held clock from consuming
+        // accumulated time.
+        if (ui.HoldsClock || DeterministicPresentation.SimulationFrozen)
         {
             return;
         }
@@ -43,6 +46,18 @@ internal sealed class SimulationLoop(
             return;
         }
 
+        TickOnce();
+    }
+
+    // One simulation tick: the world advances, and everything that has to stay in step with it -
+    // exploration/fog/clouds, pending orders, the status-bar clock, selection and debug
+    // summaries, band-ending announcements, and each person's and resource's new state - is
+    // pushed to the views. Called by Update when the accumulator is full, and directly by the
+    // "advance one tick" key (see Main._Input) while the deterministic simulation is frozen, so
+    // an order placed during the freeze is resolved exactly once and the frame settles at the
+    // next fixed tick.
+    public void TickOnce()
+    {
         if (selection.Person is { } selectedPerson)
         {
             world.Execute(new GrantIdleGraceCommand(selectedPerson, pacing.SelectedPersonIdleGraceTicks));

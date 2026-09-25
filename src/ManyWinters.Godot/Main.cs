@@ -206,6 +206,19 @@ public partial class Main : Node3D
             GetViewport().SetInputAsHandled();
         }
 
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F12 })
+        {
+            // The deterministic E2E suite's "advance one tick" key: with the simulation frozen at
+            // the boot tick, this steps the world forward exactly one tick - the same single step
+            // the accumulator owes after a held clock is let go - so an order placed during the
+            // freeze (a craft, a building) is resolved and the frame settles at the next fixed
+            // tick. Normal play (the simulation unfrozen) ignores it.
+            if (DeterministicPresentation.SimulationFrozen)
+            {
+                _simulationLoop.TickOnce();
+            }
+        }
+
         // Nothing else answers to Escape, and a menu or a page that can only be dismissed by
         // clicking one particular thing is one the player fights. Both, not one or the other:
         // the controls page swallows the clicks that would open a menu, so only one can be up.

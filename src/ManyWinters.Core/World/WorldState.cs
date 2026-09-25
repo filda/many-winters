@@ -202,10 +202,13 @@ public sealed class WorldState(WorldConfiguration configuration)
                 }
 
                 // Every tick a gather order is active, not once on arrival: GatherTask only
-                // walks, the harvest happens here, and GatherCommand no-ops while out of reach.
+                // walks, the harvest happens here, and both commands no-op while out of reach.
                 if (person.Tasks.Current is GatherTask activeGather)
                 {
-                    new GatherCommand(person, activeGather.Target).Execute(this);
+                    ICommand take = activeGather.Target.Category == EntityCategory.Pile
+                        ? new EatFromPileCommand(person, activeGather.Target)
+                        : new GatherCommand(person, activeGather.Target);
+                    take.Execute(this);
                 }
 
                 // An infant at its mother's side is fed and not hungry; the cost lands on her
@@ -297,7 +300,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         IdleTask => true,
         // FollowTask never completes, so this is what notices an infant has been weaned.
         FollowTask => true,
-        GatherTask gather => !IsWorthGathering(person, gather.Target) || NeedsToSeekFoodUrgently(person),
+        GatherTask gather => !IsWorthTakingFrom(person, gather.Target) || NeedsToSeekFoodUrgently(person),
         _ => false,
     };
 
@@ -324,6 +327,17 @@ public sealed class WorldState(WorldConfiguration configuration)
         entity.Growth is { IsAlive: true, RemainingAmount: > 0f } growth
         && GatherCommand.CanTakeAnythingFrom(this, person, Configuration.ResourceCatalog.Get(entity.Kind), growth.RemainingAmount);
 
+    // A pile is only ever a GatherTask target for a meal, so once the meal is eaten there is
+    // nothing left to stand beside it for.
+    private bool IsWorthTakingFrom(Person person, Entity entity) =>
+        entity.Category == EntityCategory.Pile
+            ? IsFoodPile(entity) && IsHungryEnoughToEat(person)
+            : IsWorthGathering(person, entity);
+
+    private bool IsFoodPile(Entity entity) =>
+        entity is { Category: EntityCategory.Pile, StaticAmount: > 0 }
+        && Configuration.ItemCatalog.HungerRestoredPerUnitFor(EatFromPileCommand.FoodOf(entity)) > 0f;
+
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
     // (IdleTask) is the fallback. Hunger wins over a known skill.
     private PersonTask DecideIdleTask(Person person)
@@ -341,11 +355,13 @@ public sealed class WorldState(WorldConfiguration configuration)
         // the general search below.
         if (NeedsToSeekFoodUrgently(person))
         {
-            // A food resource this person never learned to gather is as unreachable as none.
+            // A food resource this person never learned to gather is as unreachable as none, but
+            // food somebody put down needs no skill to take (see EatFromPileCommand). Nearest wins.
             var foodNode = FindNearestGatherableEntity(person, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
-            if (foodNode is not null)
+            var food = NearerOf(person, foodNode, FindNearestFoodPile(person));
+            if (food is not null)
             {
-                return new GatherTask(foodNode, reachDistance);
+                return new GatherTask(food, reachDistance);
             }
         }
 
@@ -403,6 +419,19 @@ public sealed class WorldState(WorldConfiguration configuration)
 
         return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
     }
+
+    private Entity? FindNearestFoodPile(Person person) =>
+        _entities
+            .Where(IsFoodPile)
+            .Where(pile => Distance(person.Position, pile.Position) <= Configuration.Rules.IdleSearchRadius)
+            .MinBy(pile => Distance(person.Position, pile.Position));
+
+    private static Entity? NearerOf(Person person, Entity? a, Entity? b) => (a, b) switch
+    {
+        (null, _) => b,
+        (_, null) => a,
+        _ => Distance(person.Position, a.Position) <= Distance(person.Position, b.Position) ? a : b,
+    };
 
     // What people standing together say to each other about the stuff of the world. Talk, not
     // instruction: nobody needs to know how to teach to mention that a stone shatters, which is

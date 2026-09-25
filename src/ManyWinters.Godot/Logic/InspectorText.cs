@@ -27,6 +27,8 @@ internal static class InspectorText
     internal static string ForWork(Person person, ResourceCatalog resources) => person.Tasks.Current switch
     {
         MoveTask => "Walking",
+        // A pile's kind is an item, not a resource; the only reason to walk to one is a meal.
+        GatherTask { Target.Category: EntityCategory.Pile } => "Going for food",
         GatherTask gather => $"Gathering {resources.Get(gather.Target.Kind).DisplayName.ToLowerInvariant()}",
         FollowTask follow => $"Keeping up with {follow.Target.Name}",
         // "Idle" is a scheduler's word for a person standing in a field.

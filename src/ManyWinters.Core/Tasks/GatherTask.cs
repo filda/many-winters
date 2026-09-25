@@ -3,9 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Tasks;
 
-// Autonomous "go gather from this resource" order from WorldState's idle AI (DecideIdleTask).
-// Only walks there; harvesting is GatherCommand at WorldState level, since PersonTask.Advance
-// sees only the Person. Never completes - WorldState.Advance re-evaluates it every tick.
+// Autonomous "go gather from this resource" order from WorldState's idle AI (DecideIdleTask),
+// or "go eat from this pile" for a hungry person. Only walks there; the taking is GatherCommand
+// or EatFromPileCommand at WorldState level, since PersonTask.Advance sees only the Person. Never completes - WorldState.Advance re-evaluates it every tick.
 // `reachDistance` is SimulationRules.MaxInteractionDistance, passed in as Advance has no world.
 public sealed class GatherTask(Entity target, float reachDistance) : PersonTask
 {

@@ -319,6 +319,25 @@ public class InspectorTextTests
         Assert.Equal("Gathering apple", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));
     }
 
+    // A pile's kind is an item, which the resource catalog does not know; asking it would throw.
+    [Fact]
+    public void SomebodyHeadingForAPileOfFoodIsGoingForFood()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var pile = new Entity
+        {
+            Kind = new EntityKindId("apple"),
+            Category = EntityCategory.Pile,
+            Position = new Position(5, 0),
+            StaticAmount = 3,
+        };
+        world.AddEntity(pile);
+        person.Tasks.Interrupt(new GatherTask(pile, world.Configuration.Rules.MaxInteractionDistance));
+
+        Assert.Equal("Going for food", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));
+    }
+
     // "Idle" is a scheduler's word; the player is looking at somebody standing in a field.
     [Fact]
     public void SomebodyWithNothingToDoIsAtRest()

@@ -386,6 +386,88 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void AdvanceHasAHungryPersonWhoOnlyKnowsEatingWalkToAPileOfFoodAndEatFromIt()
+    {
+        // Somebody who never learned to pick still recognises food on the ground, so a band
+        // can live off what one picker puts down.
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 60f;
+        var pile = world.SpawnItemPile(TestCatalogs.AppleItem, new Position(10, 0), 200);
+
+        world.Advance(1);
+        Assert.Same(pile, Assert.IsType<GatherTask>(person.Tasks.Current).Target);
+
+        world.Advance(100);
+
+        Assert.True(pile.StaticAmount < 200, "Never ate from the pile.");
+        Assert.True(person.Needs.Hunger < 60f, $"Still at hunger {person.Needs.Hunger}.");
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.AppleItem));
+    }
+
+    [Fact]
+    public void AdvanceLetsAPersonWalkAwayFromAPileOfFoodOnceFed()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 60f;
+        world.SpawnItemPile(TestCatalogs.AppleItem, new Position(0, 0), 200);
+
+        // One tick to decide, one to eat, one to notice there is nothing left to stay for.
+        world.Advance(3);
+
+        Assert.IsNotType<GatherTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotSendAHungryPersonToAPileOfSomethingInedible()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 60f;
+        world.SpawnItemPile(TestCatalogs.WoodItem, new Position(5, 0), 20);
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Fact]
+    public void AdvanceDoesNotSendSomebodyWhoNeverLearnedToEatToAPileOfFood()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Needs.Hunger = 60f;
+        world.SpawnItemPile(TestCatalogs.AppleItem, new Position(5, 0), 20);
+
+        world.Advance(1);
+
+        Assert.IsType<IdleTask>(person.Tasks.Current);
+    }
+
+    [Theory]
+    // Pile nearer than the tree, then the tree nearer than the pile.
+    [InlineData(3, 8, true)]
+    [InlineData(8, 3, false)]
+    public void AdvanceSendsAHungryPickerToWhicheverFoodIsNearerPileOrTree(double pileX, double treeX, bool expectThePile)
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.Needs.Hunger = 60f;
+        var pile = world.SpawnItemPile(TestCatalogs.AppleItem, new Position(pileX, 0), 20);
+        var tree = world.SpawnResourceNode(TestCatalogs.Apple, new Position(treeX, 0), 100f);
+
+        world.Advance(1);
+
+        Assert.Same(expectThePile ? pile : tree, Assert.IsType<GatherTask>(person.Tasks.Current).Target);
+    }
+
+    [Fact]
     public void AdvanceEatsFromInventoryWhenHungryEvenWhileOnAPlayerIssuedTask()
     {
         var world = TestCatalogs.CreateWorld();
