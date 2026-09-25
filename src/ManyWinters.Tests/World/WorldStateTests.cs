@@ -389,12 +389,13 @@ public class WorldStateTests
     public void AdvanceHasAHungryPersonWhoOnlyKnowsEatingWalkToAPileOfFoodAndEatFromIt()
     {
         // Somebody who never learned to pick still recognises food on the ground, so a band
-        // can live off what one picker puts down.
+        // can live off what one picker puts down. Close enough that the walk ends below the
+        // lowest MaxHunger an id can draw, or some ids starve on the way.
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         person.Needs.Hunger = 60f;
-        var pile = world.SpawnItemPile(TestCatalogs.AppleItem, new Position(10, 0), 200);
+        var pile = world.SpawnItemPile(TestCatalogs.AppleItem, new Position(5, 0), 200);
 
         world.Advance(1);
         Assert.Same(pile, Assert.IsType<GatherTask>(person.Tasks.Current).Target);
