@@ -44,6 +44,11 @@ public sealed record PresentationSettings
     // doesn't overlap the node's - a visual standoff, hence here and not among the world's rules.
     public float ApproachDistance { get; } = 1.2f;
 
+    // Same standoff as ApproachDistance, scaled down for SimulationRules.PileReachDistance (1f):
+    // a pile sits underfoot, so the ordinary approach distance would leave the walk short of
+    // reach and the order stuck (EatFromPileCommand, PickUpItemCommand).
+    public float PileApproachDistance { get; } = 0.6f;
+
     // The starting band spans roughly 8x4 units centered on the camp (MapLoader.LoadDefault), so
     // a close zoom fills the frame with it instead of a handful of specks in an empty field.
     public float InitialZoomDistance { get; init; } = 10f;

@@ -164,6 +164,11 @@ public sealed record SimulationRules
     // every proximity check goes through WorldState.IsWithinReach.
     public float MaxInteractionDistance { get; init; } = 2f;
 
+    // Metres within which a person can take from a ground pile (EatFromPileCommand,
+    // PickUpItemCommand). Tighter than MaxInteractionDistance: unlike a tree or a building, a
+    // pile sits underfoot, and the shared reach read as picking it up from too far away.
+    public float PileReachDistance { get; } = 1f;
+
     // Half-width of a person's footprint for collisions, in metres. Smaller than the rendered
     // sprite: it only needs to keep people from visibly overlapping.
     public float PersonCollisionRadius { get; } = 0.35f;

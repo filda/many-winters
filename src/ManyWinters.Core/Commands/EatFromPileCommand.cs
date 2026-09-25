@@ -22,7 +22,7 @@ public sealed record EatFromPileCommand(Person Person, Entity Pile) : ICommand
             return ActionBlocker.TargetIsGone;
         }
 
-        return world.IsWithinReach(Person.Position, Pile.Position)
+        return WorldState.Distance(Person.Position, Pile.Position) <= world.Configuration.Rules.PileReachDistance
             ? EatCommand.EatingBlocker(world, Person, FoodOf(Pile), amount)
             : ActionBlocker.TooFar;
     }

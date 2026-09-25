@@ -361,7 +361,11 @@ public sealed class WorldState(WorldConfiguration configuration)
             var food = NearerOf(person, foodNode, FindNearestFoodPile(person));
             if (food is not null)
             {
-                return new GatherTask(food, reachDistance);
+                // A pile is taken from at the tighter PileReachDistance (EatFromPileCommand,
+                // PickUpItemCommand), so the walk has to end there too, or the person would stop
+                // at the wider tree/building reach and never get close enough to take anything.
+                var reach = food.Category == EntityCategory.Pile ? Configuration.Rules.PileReachDistance : reachDistance;
+                return new GatherTask(food, reach);
             }
         }
 

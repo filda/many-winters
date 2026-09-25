@@ -20,7 +20,7 @@ public sealed record PickUpItemCommand(Person Person, Entity Pile) : ICommand
             return ActionBlocker.TargetIsGone;
         }
 
-        return world.IsWithinReach(Person.Position, Pile.Position)
+        return WorldState.Distance(Person.Position, Pile.Position) <= world.Configuration.Rules.PileReachDistance
             ? ActionBlocker.None
             : ActionBlocker.TooFar;
     }

@@ -55,8 +55,13 @@ internal sealed class OrderCoordinator(
 
         if (offer.NeedsWalkingTo && offer.Target is { } target)
         {
+            // A pile is taken from at the tighter PileReachDistance (see SimulationRules), so the
+            // walk has to stop closer too, or the order would arrive out of reach and never fire.
+            var approachDistance = offer.Command is EatFromPileCommand or PickUpItemCommand
+                ? presentation.PileApproachDistance
+                : presentation.ApproachDistance;
             _pendingOrders.Add(person, offer);
-            world.Execute(new MoveCommand(person, Position.Approach(person.Position, target, presentation.ApproachDistance)));
+            world.Execute(new MoveCommand(person, Position.Approach(person.Position, target, approachDistance)));
         }
         else
         {
