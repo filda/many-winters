@@ -66,6 +66,7 @@ public sealed class GameWindow : IDisposable
         // line applies to exactly this launch and nothing inherits it by accident. The window is
         // asked for its exact calibrated size the same way (see VerifyClientSize).
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
+        KillLeftoverGames();
         var launch = Start(
             godotExe,
             "--path", godotProjectPath,
@@ -132,6 +133,49 @@ public sealed class GameWindow : IDisposable
         catch (ArgumentException)
         {
             return null; // already gone
+        }
+    }
+
+    private static bool IsGameWindow(Process candidate) =>
+        candidate.MainWindowHandle != IntPtr.Zero
+        && candidate.MainWindowTitle.StartsWith("ManyWinters Godot", StringComparison.Ordinal)
+        && !candidate.MainWindowTitle.Contains("- Godot Engine", StringComparison.Ordinal);
+
+    private static bool AnyGameWindow()
+    {
+        var leftovers = Process.GetProcesses().Where(IsGameWindow).ToList();
+        foreach (var leftover in leftovers)
+        {
+            leftover.Dispose();
+        }
+
+        return leftovers.Count > 0;
+    }
+
+    /// <summary>
+    /// A game instance left behind by an earlier run - one whose test host died between its launch
+    /// and its cleanup - carries the same window title the title search matches on. Left in place,
+    /// every test attaches to it, drives it, and measures a stranger; the size check refuses it,
+    /// but only after the run has already gone sideways. While the suite runs, it owns this
+    /// machine's game windows: any leftover is removed before a new one is launched.
+    /// </summary>
+    private static void KillLeftoverGames()
+    {
+        foreach (var candidate in Process.GetProcesses())
+        {
+            if (IsGameWindow(candidate))
+            {
+                Console.Error.WriteLine($"[GameWindow] killing leftover game, pid {candidate.Id}.");
+                KillProcessRobust(candidate);
+            }
+
+            candidate.Dispose();
+        }
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTime.UtcNow < deadline && AnyGameWindow())
+        {
+            Thread.Sleep(100);
         }
     }
 
