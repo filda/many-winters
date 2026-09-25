@@ -87,12 +87,13 @@ jobs:
   # rather than a full release export - no export templates, no publish. It needs its own Windows
   # build: it drives a real window (PrintWindow/PostMessage), which build-test's ubuntu output
   # cannot serve. It is a hard gate on the release: both exports and publish wait on it, so a red
-  # E2E neither builds the artifacts nor cuts a release. It runs only when shipped code changed
-  # (the same check-game-changes signal that cuts a release) - a docs- or tests-only change can't
-  # break what it checks, and it does not run on pull requests, where there is no release to gate.
+  # E2E neither builds the artifacts nor cuts a release. It runs when shipped code changed or when
+  # the E2E suite or its harness did (check-game-changes' `e2e` signal) - a docs- or unit-test-only
+  # change can't break what it checks, and it does not run on pull requests, where there is no
+  # release to gate.
   e2e-windows:
     needs: [build-test, check-game-changes]
-    if: needs.check-game-changes.outputs.changed == 'true'
+    if: needs.check-game-changes.outputs.e2e == 'true'
     runs-on: windows-latest
     env:
       GODOT_RELEASE: 4.7.1-stable
@@ -166,11 +167,11 @@ jobs:
       - name: Cake Frosting E2E
         run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=E2E
 
-      - name: Upload E2E diff artifacts
+      - name: Upload E2E artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-diffs
+          name: e2e-artifacts
           path: artifacts/
           if-no-files-found: ignore
           retention-days: 7
@@ -205,11 +206,14 @@ jobs:
 
   # Only pushes that touch the shipped game are worth a new build. Changes to tests,
   # tools, art scripts or docs still run the full CI above, they just don't cut a release.
+  # `e2e` is wider than `changed`: a change to the E2E suite or its harness has to run E2E
+  # too, but it is not a reason to cut a release.
   check-game-changes:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-26.04
     outputs:
       changed: ${{ steps.filter.outputs.changed }}
+      e2e: ${{ steps.filter.outputs.e2e }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -221,6 +225,7 @@ jobs:
           # A manual run always builds - that's the point of forcing one.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -228,13 +233,20 @@ jobs:
           # New branch, force-push or rewritten history: don't be clever, just build.
           if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$before^{commit}" 2>/dev/null; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if git diff --name-only "$before" "${{ github.sha }}" \
-            | grep -qE '^(src/ManyWinters\.(Core|Godot)/|Directory\.Build\.props$|ManyWinters\.sln$|\.github/workflows/)'; then
+          files="$(git diff --name-only "$before" "${{ github.sha }}")"
+          if echo "$files" | grep -qE '^(src/ManyWinters\.(Core|Godot)/|Directory\.Build\.props$|ManyWinters\.sln$|\.github/workflows/)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          if echo "$files" | grep -qE '^src/ManyWinters\.(E2E\.Tests|Tools/E2EHarness)/'; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
           fi
 
   version:

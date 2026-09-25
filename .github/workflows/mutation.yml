@@ -82,6 +82,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # --with-baseline needs a git ref to diff against, and its target can only be set
+      # via this CLI committish (the JSON "baseline"/"since" config keys don't drive it,
+      # and are mutually exclusive with each other anyway) - checkout can leave HEAD
+      # detached without a local "main" branch, so make sure one exists.
+      - name: Ensure local main ref for Stryker baseline diff
+        run: git rev-parse --verify main >/dev/null 2>&1 || git branch main ${{ github.sha }}
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
@@ -93,9 +100,28 @@ jobs:
       - name: Restore solution
         run: dotnet restore ManyWinters.sln
 
+      # Baseline persists mutant results across nightly runs so unchanged files are
+      # skipped instead of fully re-tested - the actual fix for the multi-hour legs.
+      # Keyed with a unique suffix so the save step always succeeds (cache keys are
+      # immutable); restore-keys falls back to the most recent matching entry.
+      - name: Restore Stryker baseline (${{ matrix.name }})
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ matrix.working-directory }}/StrykerOutput/baseline
+          key: stryker-baseline-${{ matrix.name }}-${{ github.run_id }}
+          restore-keys: |
+            stryker-baseline-${{ matrix.name }}-
+
       - name: Run Stryker.NET (${{ matrix.name }})
         working-directory: ${{ matrix.working-directory }}
-        run: dotnet tool run dotnet-stryker ${{ matrix.args }}
+        run: dotnet tool run dotnet-stryker ${{ matrix.args }} --with-baseline:main --version main
+
+      - name: Save Stryker baseline (${{ matrix.name }})
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ matrix.working-directory }}/StrykerOutput/baseline
+          key: stryker-baseline-${{ matrix.name }}-${{ github.run_id }}
 
       - name: Upload mutation report
         if: always()
