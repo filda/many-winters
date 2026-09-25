@@ -208,12 +208,12 @@ public partial class Main : Node3D
 
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F12 })
         {
-            // The deterministic E2E suite's "advance one tick" key: with the simulation frozen at
-            // the boot tick, this steps the world forward exactly one tick - the same single step
-            // the accumulator owes after a held clock is let go - so an order placed during the
-            // freeze (a craft, a building) is resolved and the frame settles at the next fixed
-            // tick. Normal play (the simulation unfrozen) ignores it.
-            if (DeterministicPresentation.SimulationFrozen)
+            // The "advance one tick" key for a session launched with the clock held: the world
+            // stands still and this steps it exactly one tick - the same single step the
+            // accumulator owes after a held clock is let go - so whatever was ordered while the
+            // clock stood is resolved once and the frame settles at the next fixed tick. Normal
+            // play (the clock running) ignores it.
+            if (LaunchOptions.ClockHeld)
             {
                 _simulationLoop.TickOnce();
             }

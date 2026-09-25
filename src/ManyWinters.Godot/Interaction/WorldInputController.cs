@@ -56,6 +56,7 @@ internal sealed class WorldInputController
 
         _contextMenu = contextMenu;
         _contextMenu.ActionInvoked += PerformAction;
+        _contextMenu.OpenRequested += ShowContextMenu;
 
         presenter.PersonClicked += OnPersonClicked;
         presenter.ResourceNodeClicked += OnResourceNodeClicked;
@@ -100,6 +101,12 @@ internal sealed class WorldInputController
 
             if (FindNearestPersonOnScreen(mouseButton.Position) is { } person)
             {
+                // A verbose session follows the game from its log alone, so a selection says so.
+                if (LaunchOptions.Verbose)
+                {
+                    GD.Print($"Selected {person.Name}.");
+                }
+
                 OnPersonClicked(person, MouseButton.Left);
                 viewport.SetInputAsHandled();
             }
@@ -235,7 +242,7 @@ internal sealed class WorldInputController
             case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } released:
                 if (_rightClick.Release())
                 {
-                    ShowContextMenu(released.Position);
+                    _contextMenu.RequestOpen(released.Position);
                 }
 
                 break;

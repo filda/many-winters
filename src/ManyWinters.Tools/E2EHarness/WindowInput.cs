@@ -19,9 +19,12 @@ public static class WindowInput
     private const uint WmMouseMove = 0x0200;
     private const uint WmLButtonDown = 0x0201;
     private const uint WmLButtonUp = 0x0202;
+    private const uint WmRButtonDown = 0x0204;
+    private const uint WmRButtonUp = 0x0205;
     private const uint WmKeyDown = 0x0100;
     private const uint WmKeyUp = 0x0101;
     private static readonly IntPtr MkLButton = (IntPtr)0x0001;
+    private static readonly IntPtr MkRButton = (IntPtr)0x0002;
 
     /// <summary>Sends a move, then a button-down/up pair, at client-area coordinates.</summary>
     public static void Click(IntPtr windowHandle, int clientX, int clientY, TimeSpan? pressDuration = null)
@@ -36,6 +39,19 @@ public static class WindowInput
         Post(windowHandle, WmLButtonDown, MkLButton, lParam);
         Thread.Sleep(pressDuration ?? TimeSpan.FromMilliseconds(50));
         Post(windowHandle, WmLButtonUp, IntPtr.Zero, lParam);
+    }
+
+    /// <summary>Sends a right-button press and release at one spot — the gesture the game reads
+    /// as "what may be done here" (RightClickGesture: pressed and released in one spot, dragged
+    /// it would turn the camera instead).</summary>
+    public static void RightClick(IntPtr windowHandle, int clientX, int clientY, TimeSpan? pressDuration = null)
+    {
+        var lParam = MakeLParam(clientX, clientY);
+
+        Post(windowHandle, WmMouseMove, IntPtr.Zero, lParam);
+        Post(windowHandle, WmRButtonDown, MkRButton, lParam);
+        Thread.Sleep(pressDuration ?? TimeSpan.FromMilliseconds(50));
+        Post(windowHandle, WmRButtonUp, IntPtr.Zero, lParam);
     }
 
     /// <summary>Sends a key-down/up pair for a Win32 virtual-key code (see winuser.h VK_*).</summary>

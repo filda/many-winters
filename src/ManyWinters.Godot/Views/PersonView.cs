@@ -141,10 +141,10 @@ internal partial class PersonView : SpriteEntityView
     // ticks, at whatever speed matches how far the tick actually moved them.
     protected override void OnProcess(double delta)
     {
-        if (DeterministicPresentation.Enabled)
+        if (LaunchOptions.Still)
         {
-            // Frozen for a reproducible capture: hold the tick target and a neutral pose, skipping
-            // the real-time walk/idle bob that would otherwise shift every person frame to frame.
+            // A still session: hold the tick target and a neutral pose, skipping the real-time
+            // walk/idle bob that would otherwise shift every person frame to frame.
             Position = _targetPosition;
             _stepOffset = Vector3.Zero;
             _idleWeight = 0f;

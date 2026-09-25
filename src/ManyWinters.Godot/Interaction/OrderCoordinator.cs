@@ -1,3 +1,4 @@
+using Godot;
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Population;
@@ -34,6 +35,13 @@ internal sealed class OrderCoordinator(
         if (!offer.IsAvailable)
         {
             return;
+        }
+
+        // A verbose session follows the game from its log alone, so every order says what it
+        // turned into.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Order by {person.Name}: {offer.Label}.");
         }
 
         // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): being directed is how

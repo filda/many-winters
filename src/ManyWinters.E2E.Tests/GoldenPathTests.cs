@@ -20,10 +20,19 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
         _game.DismissPrologue();
 
         // A person standing in the camp, at the deterministic boot tick (the band is seeded and
-        // the world is frozen at that tick under the deterministic presentation). Calibrated off
+        // the world stands at that tick with the clock held). Calibrated off
         // a recorded frame - the world's centre is open ground between people at this tick, not a
-        // person, so the click targets a body, not the middle of the camp.
+        // person, so the click targets a body, not the middle of the camp. A posted click can be
+        // swallowed on a stuttering machine, so the selection is verified against the game's log
+        // ("Selected …") and the click retried; a repeated click that misses re-selects nobody
+        // and orders nothing.
         _game.Click(760, 345);
+        if (!_game.WaitForGameLog("Selected ", TimeSpan.FromSeconds(2)))
+        {
+            _game.Click(760, 345);
+            _game.WaitForGameLog("Selected ", TimeSpan.FromSeconds(2));
+        }
+
         _game.SaveDebugShot("entity-after-click");
         _game.AssertMatchesBaseline("entity-selected");
     }
@@ -34,16 +43,27 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
 /// what they're carrying.</summary>
 public sealed class CraftingUiTests : IClassFixture<GameFixture>
 {
-    // The selection panel's "Pack" line (the sack row, the whole line is a button) opens the
-    // workbench (SelectionController.OnPackRequested -> WorkshopRequested). The panel is docked
-    // to the right edge at a fixed width (SelectionPanel.Width); the line sits below the two
-    // meters. Calibrated off the crafting-selection debug shot at the deterministic boot tick.
-    private const int WorkshopButtonX = 1000;
-    private const int WorkshopButtonY = 107;
+    // Nobody carries anything at the deterministic boot tick, and the workshop works on what is
+    // carried (WorkshopActions.Carried) - so the test first orders the selected person to gather
+    // the wood pile in the camp (a left click on a node with somebody selected, see
+    // WorldInputController.OnResourceNodeClicked) and steps the frozen clock until the pack line
+    // shows the haul: Wood x20 from tick 18 on, unchanged through the last step.
+    private const int GatherTargetX = 575;
+    private const int GatherTargetY = 437;
+    private const int GatherTicks = 30;
 
-    // TODO(calibrate): WorkshopPanel's "Make" button (WorkshopIcons.Make(), WorkshopPanel.cs).
-    private const int MakeButtonX = 640;
-    private const int MakeButtonY = 500;
+    // The selection panel's "Pack" line (the whole line is a button) opens the workbench. The
+    // panel is docked to the right edge (SelectionPanel.Width 300 + Margin 16); the line sits
+    // below the two meters - title bar 30 + padding 14 + the two meter rows + spacing puts it at
+    // y 122..149 regardless of what the pack line says.
+    private const int PackLineX = 986;
+    private const int PackLineY = 135;
+
+    // The "Make basket" recipe line in the centred workbench's recipe column (the recipes are
+    // the offers the person can actually carry out; basket and warm clothing both come off 20
+    // wood). Clicking the line runs the recipe the same way the person's own card does.
+    private const int RecipeX = 640;
+    private const int RecipeY = 239;
 
     private readonly GameFixture _game;
 
@@ -53,14 +73,36 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     public void CraftingAnItemUpdatesInventoryDisplay()
     {
         _game.DismissPrologue();
-        var size = _game.WindowSize();
-        _game.Click(size.Width / 2, size.Height / 2); // select the person at camp
-        _game.SaveDebugShot("crafting-selection");
-        _game.Click(WorkshopButtonX, WorkshopButtonY); // open their Workshop panel
+
+        // Select the person calibrated for EntityInspection and send them gathering, verified
+        // against the game's log ("Order by …: Gather."): a swallowed click would leave the pack
+        // empty and the workbench without a recipe. Re-clicking is safe - a repeated selection
+        // falls through to the ground and the repeated gather order replaces whatever that walk
+        // started, landing at the wood pile either way.
+        _game.Click(760, 345); // select the person
+        _game.Click(GatherTargetX, GatherTargetY); // send them gathering
+        if (!_game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4)))
+        {
+            _game.Click(760, 345);
+            _game.Click(GatherTargetX, GatherTargetY);
+            _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
+        }
+
+        for (var i = 0; i < GatherTicks; i++)
+        {
+            _game.AdvanceOneTick();
+        }
+
+        GameFixture.Settle(800); // the last tick's frame, not the one before it
+
+        _game.Click(PackLineX, PackLineY); // open their Workshop panel
+        GameFixture.Settle(400);
         _game.SaveDebugShot("crafting-workshop");
         _game.AssertMatchesBaseline("workshop-open");
 
-        _game.Click(MakeButtonX, MakeButtonY); // attempt the offered recipe
+        _game.Click(RecipeX, RecipeY); // run the offered recipe
+        GameFixture.Settle(400);
+        _game.SaveDebugShot("crafting-crafted");
         _game.AssertMatchesBaseline("workshop-crafted");
     }
 }
@@ -69,12 +111,28 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
 /// at the position clicked, not just record it in world state.</summary>
 public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
 {
-    // TODO(calibrate): the context menu's "Build" entry that appears on a right-click
-    // (see Ui/ContextMenu.cs), and the ground point to place at afterwards.
-    private const int BuildMenuEntryX = 400;
-    private const int BuildMenuEntryY = 300;
-    private const int PlacementGroundX = 500;
-    private const int PlacementGroundY = 400;
+    // The store is built out of wood, and nobody carries anything at the boot tick - the same
+    // gather-first setup as CraftingUiTests (the wood pile in the camp, thirty frozen-clock
+    // steps, then a settled frame).
+    private const int GatherTargetX = 575;
+    private const int GatherTargetY = 437;
+    private const int GatherTicks = 30;
+
+    // The open ground the store is asked for on and placed at: the context menu opens exactly at
+    // the right-click point (ContextMenu.Open), so the menu's lines are offsets from here.
+    private const int GroundX = 500;
+    private const int GroundY = 500;
+
+    // The "Build storage hut" line under "Walk here": the menu opens at the right-click point and
+    // is pushed back on screen (its bottom would cross the margin), which puts the second row at
+    // y 574..602 regardless. Calibrated off the menu's row rects in the game's log.
+    private const int BuildEntryX = 616;
+    private const int BuildEntryY = 588;
+
+    // TODO(calibrate): how many frozen-clock steps the walk there plus the build itself take.
+    // Measured: the order resolves on the first tick after it is placed (the build spot sits
+    // beside the wood pile the person was sent to), so 40 is all margin.
+    private const int BuildTicks = 40;
 
     private readonly GameFixture _game;
 
@@ -83,8 +141,52 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
     [Fact]
     public void PlacingABuildingRendersItAtThePosition()
     {
-        _game.Click(BuildMenuEntryX, BuildMenuEntryY);
-        _game.Click(PlacementGroundX, PlacementGroundY);
+        _game.DismissPrologue();
+
+        // The same gather-first setup as CraftingUiTests, with the same guarded re-clicks.
+        _game.Click(760, 345); // select the person calibrated for EntityInspection
+        _game.Click(GatherTargetX, GatherTargetY); // send them gathering
+        if (!_game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4)))
+        {
+            _game.Click(760, 345);
+            _game.Click(GatherTargetX, GatherTargetY);
+            _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
+        }
+
+        for (var i = 0; i < GatherTicks; i++)
+        {
+            _game.AdvanceOneTick();
+        }
+
+        GameFixture.Settle(800);
+
+        // The menu is confirmed open ("Menu This spot …") before anything is pressed on it: the
+        // pressed line carries the order, and a click aimed at a menu that never opened would
+        // land on the ground as a walk instead.
+        _game.RightClick(GroundX, GroundY); // "This spot": Walk here / Build …
+        if (!_game.WaitForGameLog("Menu This spot", TimeSpan.FromSeconds(4)))
+        {
+            _game.RightClick(GroundX, GroundY);
+            _game.WaitForGameLog("Menu This spot", TimeSpan.FromSeconds(4));
+        }
+
+        GameFixture.Settle(400);
+        _game.SaveDebugShot("building-menu");
+
+        _game.Click(BuildEntryX, BuildEntryY); // place the store at the pointed ground
+        if (!_game.WaitForGameLog(": Build", TimeSpan.FromSeconds(4)))
+        {
+            _game.Click(BuildEntryX, BuildEntryY);
+            _game.WaitForGameLog(": Build", TimeSpan.FromSeconds(4));
+        }
+
+        for (var i = 0; i < BuildTicks; i++)
+        {
+            _game.AdvanceOneTick();
+        }
+
+        GameFixture.Settle(800);
+        _game.SaveDebugShot("building-placed-debug");
         _game.AssertMatchesBaseline("building-placed");
     }
 }
@@ -94,19 +196,23 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
 /// is playing a band out to its last death by hand.</summary>
 public sealed class ExtinctionTransitionTests : IClassFixture<GameFixture>
 {
-    // TODO(calibrate): StatusBar is a fixed 48px bottom bar with buttons packed against its
-    // right edge (Band, Inspector, then the 28px "?" Help button); InspectorPanel's panel opens
-    // at a fixed Position (16, 16) with "Spawn Person" then "Extinguish Band" stacked under it.
-    // These offsets need a real run to nail down precisely.
-    private const int InspectorButtonX = -80; // relative to window width, see below
-    private const int InspectorButtonY = -24; // relative to window height
-    private const int ExtinguishButtonX = 40;
-    private const int ExtinguishButtonY = 100;
+    // StatusBar packs its buttons against the right edge of its fixed 48px bottom bar; "Inspector"
+    // sits left of the tick readout and the "?" help button. Calibrated off the button rect in the
+    // game's log (Ui/StatusBar.cs).
+    private const int InspectorButtonX = 863;
+    private const int InspectorButtonY = 625;
 
-    // TODO(calibrate): whatever button EndingAnnouncements/InscriptionOverlay shows for
-    // "Another band comes" once the epitaph is up.
-    private const int AnotherBandComesX = 640;
-    private const int AnotherBandComesY = 400;
+    // InspectorPanel opens at a fixed Position (16, 16); "Extinguish Band" is the second button
+    // under the one-line "No selection." dump. Calibrated off the panel's button rects in the
+    // game's log (Ui/InspectorPanel.cs).
+    private const int ExtinguishButtonX = 198;
+    private const int ExtinguishButtonY = 123;
+
+    // "Another band comes" is the one line the epitaph's overlay offers (InscriptionOverlay): a
+    // centred word-button at the height of the closing words an epitaph with nobody left to go on
+    // for does not carry. Calibrated off the overlay's button rect in the game's log.
+    private const int AnotherBandComesX = 575;
+    private const int AnotherBandComesY = 380;
 
     private readonly GameFixture _game;
 
@@ -115,12 +221,45 @@ public sealed class ExtinctionTransitionTests : IClassFixture<GameFixture>
     [Fact]
     public void LastDeathShowsEndScreenThenAnotherBandComes()
     {
-        var size = _game.WindowSize();
-        _game.Click(size.Width + InspectorButtonX, size.Height + InspectorButtonY); // StatusBar "Inspector"
-        _game.Click(ExtinguishButtonX, ExtinguishButtonY); // InspectorPanel "Extinguish Band"
+        _game.DismissPrologue();
+
+        // The inspector is a toggle, so it is confirmed open against the game's log before
+        // anything is pressed inside it - a retry that could not tell "open" from "closed" would
+        // flip it shut and send the next click to the ground.
+        _game.Click(InspectorButtonX, InspectorButtonY); // open the debug inspector
+        if (!_game.WaitForGameLog("Inspector opened", TimeSpan.FromSeconds(2)))
+        {
+            _game.Click(InspectorButtonX, InspectorButtonY);
+            _game.WaitForGameLog("Inspector opened", TimeSpan.FromSeconds(2));
+        }
+
+        // The ending is announced on the tick after the last death, so the band is extinguished
+        // and the clock stepped once; the epitaph's own inscription line witnesses the click.
+        _game.Click(ExtinguishButtonX, ExtinguishButtonY); // extinguish the band
+        _game.AdvanceOneTick();
+        if (!_game.WaitForGameLog("Inscription:", TimeSpan.FromSeconds(4)))
+        {
+            _game.Click(ExtinguishButtonX, ExtinguishButtonY);
+            _game.AdvanceOneTick();
+            _game.WaitForGameLog("Inscription:", TimeSpan.FromSeconds(4));
+        }
+
+        GameFixture.Settle(800);
+        _game.SaveDebugShot("extinction-epitaph");
         _game.AssertMatchesBaseline("epitaph");
 
+        // A successor band arrives into this world; its prologue's inscription line witnesses
+        // this click the same way. A repeated click is safe while the epitaph is still up, and
+        // the wait-for-log means it is only ever repeated when it was.
         _game.Click(AnotherBandComesX, AnotherBandComesY);
+        if (!_game.WaitForGameLog("Inscription:", TimeSpan.FromSeconds(4)))
+        {
+            _game.Click(AnotherBandComesX, AnotherBandComesY);
+            _game.WaitForGameLog("Inscription:", TimeSpan.FromSeconds(4));
+        }
+
+        GameFixture.Settle(800);
+        _game.SaveDebugShot("extinction-another-band");
         _game.AssertMatchesBaseline("another-band-comes");
     }
 }

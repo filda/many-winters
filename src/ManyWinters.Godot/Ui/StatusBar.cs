@@ -97,9 +97,9 @@ public partial class StatusBar : PanelContainer
 
         _sincePerformanceRefresh = 0;
 
-        // The live counters vary run to run and machine to machine, so a pixel baseline can't
-        // include them; leave the label blank for a deterministic capture.
-        if (DeterministicPresentation.Enabled)
+        // The live counters vary second to second, so a still session keeps them blank rather
+        // than letting a frame captured twice differ in its own corner.
+        if (LaunchOptions.Still)
         {
             return;
         }

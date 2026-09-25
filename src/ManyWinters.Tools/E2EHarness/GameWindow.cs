@@ -13,6 +13,10 @@ namespace ManyWinters.Tools.E2EHarness;
 [SupportedOSPlatform("windows")]
 public sealed class GameWindow : IDisposable
 {
+    // Godot passes everything after this separator on to the game as its own user arguments
+    // (OS.GetCmdlineUserArgs) - the channel the session's modes ride on (see LaunchAsync).
+    private const string UserArgsSeparator = "++";
+
     private readonly Process _process;
     private readonly string? _launcherScriptPath;
 
@@ -47,14 +51,14 @@ public sealed class GameWindow : IDisposable
     /// </summary>
     public static async Task<GameWindow> LaunchAsync(string godotProjectPath, TimeSpan timeout)
     {
-        // The E2E always wants a reproducible frame, so the game runs with its real-time
-        // presentation (person idle bob, live status-bar counters) frozen; see
-        // DeterministicPresentation. Set on this process so a breakaway launch inherits it; the
-        // Task Scheduler path bakes the same variable into its launcher script.
-        Environment.SetEnvironmentVariable("MW_E2E_DETERMINISTIC", "1");
-
+        // The session the tests need is requested on the game's own command line, in terms the
+        // game itself defines (see ManyWinters.Godot/LaunchOptions.cs): the clock held and stepped
+        // by the tests, the log following every input, and nothing on screen moving on real time -
+        // so a captured frame is identical run to run and can be pixel-compared against a
+        // committed baseline. Nothing is set in the environment: a mode asked for on the command
+        // line applies to exactly this launch and nothing inherits it by accident.
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
-        var launch = Start(godotExe, "--path", godotProjectPath);
+        var launch = Start(godotExe, "--path", godotProjectPath, UserArgsSeparator, "hold-clock", "verbose", "still");
         var process = launch.Process;
 
         var logPath = Path.Combine(
@@ -179,10 +183,10 @@ public sealed class GameWindow : IDisposable
         var launcherScriptPath = Path.Combine(Path.GetTempPath(), "ManyWintersE2E-" + Guid.NewGuid().ToString("N") + ".cmd");
         File.WriteAllText(
             launcherScriptPath,
-            // The task scheduler runs in its own environment, not this process's, so the variable
-            // LaunchAsync set here never reaches the game through this path - bake it in.
-            "SET MW_E2E_DETERMINISTIC=1" + Environment.NewLine
-            + Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument))) + Environment.NewLine);
+            // The scheduler runs in its own environment, not this process's, so anything the game
+            // needs has to travel on the command line itself - which is where the session's modes
+            // ride anyway (see LaunchAsync).
+            Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument))) + Environment.NewLine);
 
         RunSchtasks("/Create", "/TN", taskName, "/TR", Quote(launcherScriptPath), "/SC", "ONCE", "/ST", "00:00", "/F");
         try

@@ -31,12 +31,11 @@ internal sealed class SimulationLoop(
     {
         // Time stands still while any registered modal holds the clock (see MainUi) - an
         // inscription, a pause the player asked for, the controls page, the workbench, the
-        // detail page - and, under the deterministic E2E presentation, the clock is held at the
-        // boot tick entirely so a captured frame is a fixed tick; the suite steps it on purpose
-        // with the "advance one tick" key (see Main._Input) instead of letting the wall clock
-        // decide. Not calling Advance at all is what keeps a held clock from consuming
-        // accumulated time.
-        if (ui.HoldsClock || DeterministicPresentation.SimulationFrozen)
+        // detail page - and, in a session launched with the clock held, for as long as the
+        // session runs; the world is stepped on purpose with the "advance one tick" key (see
+        // Main._Input) instead of letting the wall clock decide. Not calling Advance at all is
+        // what keeps a held clock from consuming accumulated time.
+        if (ui.HoldsClock || LaunchOptions.ClockHeld)
         {
             return;
         }

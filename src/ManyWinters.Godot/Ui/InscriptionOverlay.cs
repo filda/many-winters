@@ -71,6 +71,13 @@ public partial class InscriptionOverlay : Control
         _closing.Pressed += () =>
         {
             Visible = false;
+            // A verbose session follows the game from its log alone, so the way on says when it
+            // was taken.
+            if (LaunchOptions.Verbose)
+            {
+                GD.Print("Inscription dismissed.");
+            }
+
             Dismissed?.Invoke();
         };
         column.AddChild(_closing);

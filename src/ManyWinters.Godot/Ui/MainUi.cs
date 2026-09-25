@@ -76,7 +76,16 @@ internal sealed partial class MainUi : CanvasLayer
 
         Inspector = new InspectorPanel(presentation);
         AddChild(Inspector);
-        StatusBar.InspectorRequested += () => Inspector.Visible = !Inspector.Visible;
+        StatusBar.InspectorRequested += () =>
+        {
+            Inspector.Visible = !Inspector.Visible;
+            // A verbose session follows the game from its log alone, and a toggle has no state
+            // the log could infer from anything else.
+            if (LaunchOptions.Verbose)
+            {
+                GD.Print($"Inspector {(Inspector.Visible ? "opened" : "closed")}.");
+            }
+        };
 
         // The player's own read of who is selected: the marker over their head, the card, and
         // the band's roster - built next so they sit above the status bar and under everything

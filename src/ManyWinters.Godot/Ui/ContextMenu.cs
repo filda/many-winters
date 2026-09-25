@@ -37,6 +37,10 @@ internal partial class ContextMenu : PanelContainer
     // executing one means for the rest of the game.
     internal event Action<ActionOffer>? ActionInvoked;
 
+    // An open was asked for at a spot, once whatever is under that spot has been decided. The
+    // owner subscribes; the menu still knows nothing about targets.
+    internal event Action<Vector2>? OpenRequested;
+
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
@@ -72,6 +76,12 @@ internal partial class ContextMenu : PanelContainer
 
     internal void Open(string heading, IReadOnlyList<ActionOffer> offers, Vector2 screenPosition)
     {
+        // A verbose session follows the game from its log alone, so a menu coming up says so.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Menu {heading} with {offers.Count} offers.");
+        }
+
         _heading.Text = heading;
         _actions.Show(offers);
         Position = screenPosition;
@@ -79,6 +89,17 @@ internal partial class ContextMenu : PanelContainer
     }
 
     internal void Close() => Visible = false;
+
+    // Asks for the menu to be opened at a spot - deferred to the end of the frame rather than
+    // answered here. What may be done at the spot is decided by the press that opened the
+    // request, and that decision is delivered to the owner by physics picking, which runs after
+    // _Input - so a press and release handled within one frame would otherwise ask for a menu
+    // before anything had been pointed at. Deferring lets the frame's picking land first; the
+    // deferred call is flushed after the physics step of the same frame.
+    internal void RequestOpen(Vector2 screenPosition) =>
+        CallDeferred(MethodName.RaiseOpenRequested, screenPosition);
+
+    private void RaiseOpenRequested(Vector2 screenPosition) => OpenRequested?.Invoke(screenPosition);
 
     // Pushed back inside the screen from here rather than at Open: the menu's height is whatever
     // the actions on it add up to, and the engine only knows that once it has laid them out.
