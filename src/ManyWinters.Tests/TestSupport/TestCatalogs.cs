@@ -139,6 +139,11 @@ public static class TestCatalogs
     private const float FoodDensity = 1f;
     private const float HideInsulation = 1f;
 
+    // Mirrors grass.json's own hungerRestoredPerUnit (docs/todo/fauna-plan.md, step 0d): the
+    // item's own nutrition, harmless to a human whose diet has no plant_fibre entry at all, is
+    // what makes a deer's diet (above) able to restore hunger from it.
+    private const float GrassHungerRestoredPerUnit = 0.5f;
+
     private const float FoodVolume = 1f;
     private const float WoodVolume = 2f;
     private const float StoneVolume = 1f;
@@ -214,7 +219,50 @@ public static class TestCatalogs
 
     private static readonly SpeciesDefinition HumanSpecies = new(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet);
 
-    private static SpeciesCatalog CreateSpeciesCatalog(SpeciesDefinition humanSpecies) => new(new[] { humanSpecies });
+    // Mirrors Content/species/deer/deer.json (docs/todo/fauna-plan.md, phase 1a): only defined
+    // when a test opts into it (CreateConfigurationWithDeer), so every test that doesn't care
+    // about animals keeps seeing exactly the human-only catalog it always has.
+    private const long DeerWeaningAgeYears = 1;
+    private const long DeerAdultAgeYears = 2;
+    private const long DeerElderAgeYears = 6;
+    private const long DeerMaxLifespanYears = 8;
+
+    public static readonly LifeCycle DeerLifeCycle = new(DeerWeaningAgeYears, DeerAdultAgeYears, DeerElderAgeYears, DeerMaxLifespanYears);
+
+    private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> DeerDiet =
+    [
+        new(PlantFibreMaterial, 1f),
+        new(AppleMaterial, 1f),
+    ];
+
+    public const float DeerCollisionRadius = 0.6f;
+    public const int DeerHerdMinSize = 6;
+    public const int DeerHerdMaxSize = 10;
+    private const float DeerHerdHomeRadius = 15f;
+    private const float DeerHerdDriftMetresPerSeason = 20f;
+
+    // Mirrors deer.json's breeding block (docs/todo/fauna-plan.md, phase 1b, "mnozeni"): mates in
+    // Mild (Spring and Autumn in the shipped calendar - SeasonParameters.Default), carries for two
+    // seasons, and must be under 40 hunger to count as eligible.
+    private const long DeerGestationTicks = 150;
+    private const float DeerConceptionChancePerTick = 0.02f;
+    private const float DeerSatietyHungerBelow = 40f;
+
+    public static readonly SpeciesId DeerSpeciesId = new("deer");
+
+    private static readonly SpeciesDefinition DeerSpecies = new(
+        DeerSpeciesId,
+        "Deer",
+        DeerLifeCycle,
+        DeerDiet,
+        InnateTechniques: [BasicEating, BasicForaging],
+        CanCarry: false,
+        CollisionRadius: DeerCollisionRadius,
+        Herd: new SpeciesDefinition.HerdDefinition(DeerHerdMinSize, DeerHerdMaxSize, DeerHerdHomeRadius, DeerHerdDriftMetresPerSeason),
+        Breeding: new SpeciesDefinition.BreedingDefinition(Climate.Mild, DeerGestationTicks, DeerConceptionChancePerTick, DeerSatietyHungerBelow));
+
+    private static SpeciesCatalog CreateSpeciesCatalog(SpeciesDefinition humanSpecies, SpeciesDefinition? deerSpecies = null) =>
+        deerSpecies is null ? new([humanSpecies]) : new([humanSpecies, deerSpecies]);
 
     private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
 
@@ -307,7 +355,7 @@ public static class TestCatalogs
         new ItemDefinition(PearItem, "Pear", PearMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
         new ItemDefinition(MushroomItem, "Mushroom", MushroomMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
         new ItemDefinition(PotatoItem, "Potato", PotatoMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
-        new ItemDefinition(GrassItem, "Grass", PlantFibreMaterial, Fibre, GrassVolume, Transitions: [new FormTransition(TwistVerb, Cord, GrassPerCord)]),
+        new ItemDefinition(GrassItem, "Grass", PlantFibreMaterial, Fibre, GrassVolume, GrassHungerRestoredPerUnit, Transitions: [new FormTransition(TwistVerb, Cord, GrassPerCord)]),
         new ItemDefinition(StoneItem, "Stone", StoneMaterial, Lump, StoneVolume, Transitions: [new FormTransition(KnapVerb, Wedge, StonePerWedge)]),
         new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),
@@ -353,4 +401,17 @@ public static class TestCatalogs
     // to prove EatCommand actually consults it (docs/todo/fauna-plan.md, step 0d).
     public static WorldConfiguration CreateConfigurationWithSpecies(SpeciesDefinition humanSpecies) =>
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(humanSpecies) };
+
+    // For tests about Animal/HomeRange/SpawnAnimalCommand and MapLoader's starting herds
+    // (docs/todo/fauna-plan.md, phase 1a): the human catalog plus the one deer species above.
+    public static WorldConfiguration CreateConfigurationWithDeer() =>
+        CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies) };
+
+    public static WorldState CreateWorldWithDeer() => new(CreateConfigurationWithDeer());
+
+    // For tests about WorldState.BreedAnimals (docs/todo/fauna-plan.md, phase 1b, "mnozeni") that
+    // need a chance, gestation or satiety threshold other than the shipped deer.json's, so a
+    // condition can be proven with a handful of ticks instead of replaying the real numbers.
+    public static WorldConfiguration CreateConfigurationWithDeerBreeding(SpeciesDefinition.BreedingDefinition breeding) =>
+        CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies with { Breeding = breeding }) };
 }

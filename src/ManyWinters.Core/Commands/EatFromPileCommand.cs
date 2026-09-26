@@ -8,11 +8,11 @@ namespace ManyWinters.Core.Commands;
 // eating at the source. Taking from a pile needs no skill (see PickUpItemCommand), so knowing
 // how to eat is enough: a band can live off what one picker brings back. Only what the meal
 // needs comes off the pile, and the rest stays there for the next hungry person.
-public sealed record EatFromPileCommand(Person Person, Entity Pile) : ICommand
+public sealed record EatFromPileCommand(Creature Actor, Entity Pile) : ICommand
 {
     public ActionBlocker Blocker(WorldState world)
     {
-        if (!Person.IsAlive)
+        if (!Actor.IsAlive)
         {
             return ActionBlocker.ActorIsDead;
         }
@@ -22,8 +22,8 @@ public sealed record EatFromPileCommand(Person Person, Entity Pile) : ICommand
             return ActionBlocker.TargetIsGone;
         }
 
-        return WorldState.Distance(Person.Position, Pile.Position) <= world.Configuration.Rules.PileReachDistance
-            ? EatCommand.EatingBlocker(world, Person, FoodOf(Pile), amount)
+        return WorldState.Distance(Actor.Position, Pile.Position) <= world.Configuration.Rules.PileReachDistance
+            ? EatCommand.EatingBlocker(world, Actor, FoodOf(Pile), amount)
             : ActionBlocker.TooFar;
     }
 
@@ -34,7 +34,7 @@ public sealed record EatFromPileCommand(Person Person, Entity Pile) : ICommand
             return;
         }
 
-        Pile.StaticAmount -= EatCommand.Eat(world, Person, FoodOf(Pile), Pile.StaticAmount!.Value);
+        Pile.StaticAmount -= EatCommand.Eat(world, Actor, FoodOf(Pile), Pile.StaticAmount!.Value);
         if (Pile.StaticAmount <= 0)
         {
             world.RemoveEntity(Pile);

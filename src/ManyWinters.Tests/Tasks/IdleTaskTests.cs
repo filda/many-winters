@@ -231,6 +231,54 @@ public class IdleTaskTests
     }
 
     [Fact]
+    public void WithAHomeWanderingStaysWithinTheHomesRadiusOfItsAnchorRatherThanTheDefaultBand()
+    {
+        // A radius (6) outside IdleTask's own default 3..8 band, so this could not pass by
+        // accident of the no-home behaviour.
+        var home = new HomeRange(new Position(100, 100)) { Radius = 6f, DriftMetresPerSeason = 0f };
+        var person = NewPerson(home.Anchor);
+        var task = new IdleTask(home);
+
+        for (var i = 0; i < 500; i++)
+        {
+            task.Advance(person);
+            Assert.True(WorldState.Distance(home.Anchor, person.Position) <= 6f + 0.01f);
+        }
+    }
+
+    [Fact]
+    public void WithAHomeTheAnchorIsReReadEveryLegSoWanderingFollowsItAsItDrifts()
+    {
+        const long ticksPerSeason = 75;
+        var home = new HomeRange(new Position(0, 0)) { Radius = 5f, DriftMetresPerSeason = 50f };
+        var person = NewPerson(home.Anchor);
+        var task = new IdleTask(home);
+
+        // Establishes which season "now" is (see HomeRange.Advance) without moving anything.
+        home.Advance(0, ticksPerSeason);
+
+        // A few legs near the original anchor, before it has moved anywhere.
+        for (var i = 0; i < 20; i++)
+        {
+            task.Advance(person);
+        }
+
+        // One season turn moves the anchor 50m away - far outside the old wander disk.
+        home.Advance(ticksPerSeason, ticksPerSeason);
+        Assert.True(WorldState.Distance(new Position(0, 0), home.Anchor) > 10f, "The anchor did not actually move.");
+
+        // Plenty of ticks to walk the 50m gap and settle back into its wander radius - each leg
+        // reads home.Anchor fresh (see IdleTask), so it is drawn toward the new anchor rather
+        // than the stale one it started near.
+        for (var i = 0; i < 5000; i++)
+        {
+            task.Advance(person);
+        }
+
+        Assert.True(WorldState.Distance(home.Anchor, person.Position) <= 5f + 0.01f);
+    }
+
+    [Fact]
     public void TheSamePersonWandersTheSameWayFromAFreshTask()
     {
         var start = new Position(3, 4);

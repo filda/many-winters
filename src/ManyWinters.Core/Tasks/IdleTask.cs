@@ -3,9 +3,15 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Tasks;
 
-// A small aimless walk near wherever the person ended up, one leg at a time via an internal
-// MoveTask. Never completes; a real order replaces it via CreatureTaskQueue.Interrupt.
-public sealed class IdleTask : CreatureTask
+// A small aimless walk, one leg at a time via an internal MoveTask. Never completes; a real
+// order replaces it via CreatureTaskQueue.Interrupt.
+//
+// Without a home (every Person today - see Creature.Home): anchored wherever the creature
+// happened to be standing on the first Advance, radius drawn once from its own id. With one
+// (every Animal): anchored on the home range's own drifting Anchor, re-read every leg so the
+// wander follows it, and radius is the home's own (docs/todo/fauna-plan.md, "Co je stado
+// konkretne").
+public sealed class IdleTask(HomeRange? home = null) : CreatureTask
 {
     private const float MinWanderRadius = 3f;
     private const float MaxWanderRadius = 8f;
@@ -20,6 +26,9 @@ public sealed class IdleTask : CreatureTask
     // Seeded from the person, so a wander path is reproducible from a start tick regardless of
     // simulation order.
     private Random? _rng;
+
+    // Only ever set (and read) when home is null - a homed creature's anchor is home.Anchor
+    // itself, read fresh every leg rather than cached here.
     private Position? _anchor;
     private float _wanderRadius;
     private MoveTask? _currentLeg;
@@ -32,9 +41,17 @@ public sealed class IdleTask : CreatureTask
         if (_rng is null)
         {
             _rng = new Random(SeedFor(creature.Id.Seed));
-            _anchor = creature.Position;
-            // Drawn once per person, not per leg: how far this one tends to roam.
-            _wanderRadius = MinWanderRadius + ((float)_rng.NextDouble() * (MaxWanderRadius - MinWanderRadius));
+            if (home is null)
+            {
+                _anchor = creature.Position;
+                // Drawn once per person, not per leg: how far this one tends to roam.
+                _wanderRadius = MinWanderRadius + ((float)_rng.NextDouble() * (MaxWanderRadius - MinWanderRadius));
+            }
+            else
+            {
+                _wanderRadius = home.Radius;
+            }
+
             _pauseTicksRemaining = NextPauseTicks();
         }
 
@@ -46,7 +63,7 @@ public sealed class IdleTask : CreatureTask
                 return;
             }
 
-            _currentLeg = new MoveTask(NextWanderDestination(_anchor!.Value), SpeedPerTick);
+            _currentLeg = new MoveTask(NextWanderDestination(home?.Anchor ?? _anchor!.Value), SpeedPerTick);
         }
 
         _currentLeg.Advance(creature);

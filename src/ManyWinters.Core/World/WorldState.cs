@@ -17,8 +17,10 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private readonly List<Person> _people = new();
     private readonly List<Person> _forebears = new();
+    private readonly List<Animal> _animals = new();
     private readonly List<Entity> _entities = new();
     private readonly List<Grave> _graves = new();
+    private readonly List<HomeRange> _homeRanges = new();
 
     public SimulationClock Clock { get; } = new();
 
@@ -43,13 +45,24 @@ public sealed class WorldState(WorldConfiguration configuration)
     // simulates, draws, counts or clicks them.
     public IReadOnlyList<Person> Forebears => _forebears;
 
+    // The second kind of Creature (docs/todo/fauna-plan.md, phase 1a): simulated in Advance
+    // alongside People, but never a target of the people-only passes (AutoTeachNearbyPeople,
+    // AdvanceAffections, StartFamilies, ...).
+    public IReadOnlyList<Animal> Animals => _animals;
+
     public IReadOnlyList<Entity> Entities => _entities;
 
     public IReadOnlyList<Grave> Graves => _graves;
 
+    // Shared, slowly drifting anchors a herd (or, from step 1b, a band) wanders around - see
+    // HomeRange. Advanced once per tick in Advance.
+    public IReadOnlyList<HomeRange> HomeRanges => _homeRanges;
+
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
     public event Action<Person>? PersonAdded;
+
+    public event Action<Animal>? AnimalAdded;
 
     public event Action<Entity>? EntityAdded;
 
@@ -80,11 +93,22 @@ public sealed class WorldState(WorldConfiguration configuration)
         _forebears.Add(forebear);
     }
 
+    public void AddAnimal(Animal animal)
+    {
+        _animals.Add(animal);
+        AnimalAdded?.Invoke(animal);
+    }
+
     public void AddEntity(Entity entity)
     {
         _entities.Add(entity);
         EntityAdded?.Invoke(entity);
     }
+
+    // No event: a home range is scenery for the simulation, not something the presentation layer
+    // draws on its own (unlike a Person, Entity or Grave) - a phase 2 AnimalView reads it off its
+    // Animal's own Home instead.
+    public void AddHomeRange(HomeRange homeRange) => _homeRanges.Add(homeRange);
 
     public void AddGrave(Grave grave)
     {
@@ -118,16 +142,16 @@ public sealed class WorldState(WorldConfiguration configuration)
     // The one "hungry enough to bother" test, shared by TryAutoEat and GatherCommand's eating at
     // the source. The player's Eat button deliberately bypasses it: being told to eat is not the
     // same as deciding to.
-    public bool IsHungryEnoughToEat(Person person) => person.Needs.Hunger >= Configuration.Rules.HungerEatThreshold;
+    public bool IsHungryEnoughToEat(Creature creature) => creature.Needs.Hunger >= Configuration.Rules.HungerEatThreshold;
 
-    public long AgeInYears(Person person) => AgeInYearsAt(person, Clock.CurrentTick);
+    public long AgeInYears(Creature creature) => AgeInYearsAt(creature, Clock.CurrentTick);
 
     // Age as of some other moment than now - a death tick, say.
-    public long AgeInYearsAt(Person person, long tick) => (tick - person.BirthTick) / Configuration.Rules.TicksPerYear;
+    public long AgeInYearsAt(Creature creature, long tick) => (tick - creature.BirthTick) / Configuration.Rules.TicksPerYear;
 
     public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / Configuration.Rules.TicksPerSeason;
 
-    public LifeStage LifeStageOf(Person person) => LifeCycleOf(person).StageFor(AgeInYears(person));
+    public LifeStage LifeStageOf(Creature creature) => LifeCycleOf(creature).StageFor(AgeInYears(creature));
 
     // Grown enough to have children. Elders count: this is a floor on childhood, not a fertility
     // model - a world whose last two people are old is a story worth telling.
@@ -159,15 +183,15 @@ public sealed class WorldState(WorldConfiguration configuration)
         return nutrition * species.DigestibilityOf(itemCatalog.Get(item).Material);
     }
 
-    // The infant this person is nursing, if any: her own living child, under weaning age and
-    // within reach. A scan of People per person per tick is fine at tens of people.
-    public Person? NursingInfantOf(Person mother)
+    // The infant this creature is nursing, if any: its own living child, under weaning age and
+    // within reach. A scan of every living creature per creature per tick is fine at tens of them.
+    public Creature? NursingInfantOf(Creature mother)
     {
-        foreach (var person in _people)
+        foreach (var creature in AllCreatures())
         {
-            if (IsNursedBy(person, mother))
+            if (IsNursedBy(creature, mother))
             {
-                return person;
+                return creature;
             }
         }
 
@@ -176,16 +200,27 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Reads the same facts as NursingInfantOf independently rather than being told by it, so
     // which of the pair Advance reaches first within a tick cannot change what either gets.
-    public bool IsBeingNursed(Person person) => IsNursedBy(person, person.NursingMother);
+    public bool IsBeingNursed(Creature creature) => IsNursedBy(creature, creature.NursingMother);
 
     // Age-based base plus gear bonuses. Presence, not count, as with InsulationFor: five baskets
-    // are not five times the bonus of one.
-    public float MaxCarryWeightFor(Person person)
+    // are not five times the bonus of one. 0 outright for a species that can't carry anything at
+    // all (docs/todo/fauna-plan.md, step 0d: an animal's CanCarry is false, so it never pockets
+    // what it grazes).
+    public float MaxCarryWeightFor(Creature creature)
     {
-        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), LifeCycleOf(person));
-        var gearBonus = person.Inventory.Counts.Keys.Sum(Configuration.ItemCatalog.CarryCapacityBonusFor);
+        if (!Configuration.SpeciesCatalog.Get(creature.Species).CanCarry)
+        {
+            return 0f;
+        }
+
+        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(creature), LifeCycleOf(creature));
+        var gearBonus = creature.Inventory.Counts.Keys.Sum(Configuration.ItemCatalog.CarryCapacityBonusFor);
         return baseWeight + gearBonus;
     }
+
+    // Every living Person then every living Animal, for the per-creature passes in Advance and
+    // for anything (NursingInfantOf, ResolveCollisions) that has to look across both.
+    private IEnumerable<Creature> AllCreatures() => _people.Cast<Creature>().Concat(_animals);
 
     public void Advance(long ticks)
     {
@@ -204,67 +239,67 @@ public sealed class WorldState(WorldConfiguration configuration)
             var baseHungerMultiplier = seasonParameters.HungerMultiplierFor(climate);
             var regenMultiplier = seasonParameters.RegenMultiplierFor(climate);
 
-            foreach (var person in _people)
+            foreach (var creature in AllCreatures())
             {
-                if (!person.IsAlive)
+                if (!creature.IsAlive)
                 {
                     continue;
                 }
 
-                person.Tasks.Advance(person);
+                creature.Tasks.Advance(creature);
                 // An empty queue means "use a known skill, or seek food if hungry and
                 // empty-handed", falling back to wandering. IdleGraceUntilTick buys a few ticks
                 // of standing still, but never past urgent hunger: the grace is renewed every
                 // tick while a person is selected, so a hungry one would otherwise never set
                 // off for food.
-                var idleGraceHolds = currentTick < person.IdleGraceUntilTick && !NeedsToSeekFoodUrgently(person);
-                if (!idleGraceHolds && ShouldReconsiderIdleTask(person))
+                var idleGraceHolds = currentTick < creature.IdleGraceUntilTick && !NeedsToSeekFoodUrgently(creature);
+                if (!idleGraceHolds && ShouldReconsiderIdleTask(creature))
                 {
-                    var decidedTask = DecideIdleTask(person);
-                    if (!KeepsCurrentTask(person.Tasks.Current, decidedTask))
+                    var decidedTask = DecideIdleTask(creature);
+                    if (!KeepsCurrentTask(creature.Tasks.Current, decidedTask))
                     {
-                        person.Tasks.Interrupt(decidedTask);
+                        creature.Tasks.Interrupt(decidedTask);
                     }
                 }
 
                 // Every tick a gather order is active, not once on arrival: GatherTask only
                 // walks, the harvest happens here, and both commands no-op while out of reach.
-                if (person.Tasks.Current is GatherTask activeGather)
+                if (creature.Tasks.Current is GatherTask activeGather)
                 {
                     ICommand take = activeGather.Target.Category == EntityCategory.Pile
-                        ? new EatFromPileCommand(person, activeGather.Target)
-                        : new GatherCommand(person, activeGather.Target);
+                        ? new EatFromPileCommand(creature, activeGather.Target)
+                        : new GatherCommand(creature, activeGather.Target);
                     take.Execute(this);
                 }
 
                 // An infant at its mother's side is fed and not hungry; the cost lands on her
                 // as NursingHungerMultiplier below. Once she dies or leaves it behind, the
                 // countdown is real.
-                if (IsBeingNursed(person))
+                if (IsBeingNursed(creature))
                 {
-                    person.Needs.Hunger = 0f;
+                    creature.Needs.Hunger = 0f;
                 }
                 else
                 {
-                    var insulation = person.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
+                    var insulation = creature.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
                     var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
-                    if (NursingInfantOf(person) is not null)
+                    if (NursingInfantOf(creature) is not null)
                     {
                         hungerMultiplier *= rules.NursingHungerMultiplier;
                     }
 
-                    person.Needs.Hunger = Math.Min(person.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), person.MaxHunger);
+                    creature.Needs.Hunger = Math.Min(creature.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), creature.MaxHunger);
                 }
 
-                TryAutoEat(person);
+                TryAutoEat(creature);
 
-                var diedOfOldAge = AgeInYearsAt(person, currentTick) >= LifeCycleOf(person).MaxLifespanYears;
+                var diedOfOldAge = AgeInYearsAt(creature, currentTick) >= LifeCycleOf(creature).MaxLifespanYears;
                 // Their own MaxHunger, not the rules'.
-                if (person.Needs.Hunger >= person.MaxHunger || diedOfOldAge)
+                if (creature.Needs.Hunger >= creature.MaxHunger || diedOfOldAge)
                 {
-                    person.IsAlive = false;
-                    person.DeathTick = currentTick;
-                    person.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
+                    creature.IsAlive = false;
+                    creature.DeathTick = currentTick;
+                    creature.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
                 }
             }
 
@@ -274,8 +309,14 @@ public sealed class WorldState(WorldConfiguration configuration)
             DiscoverByFiddling(currentTick);
             AdvanceAffections();
             StartFamilies(currentTick);
+            BreedAnimals(currentTick, climate);
             ResolveCollisions();
             RefreshExploration();
+
+            foreach (var homeRange in _homeRanges)
+            {
+                homeRange.Advance(currentTick, rules.TicksPerSeason);
+            }
 
             foreach (var entity in _entities)
             {
@@ -320,13 +361,13 @@ public sealed class WorldState(WorldConfiguration configuration)
     // left alone. IdleTask always gets a second look. GatherTask only once its target stops
     // being worth working - re-planning every tick would re-approach the same resource forever -
     // or when hunger becomes urgent, so a wood run far from camp can be abandoned for food.
-    private bool ShouldReconsiderIdleTask(Person person) => person.Tasks.Current switch
+    private bool ShouldReconsiderIdleTask(Creature creature) => creature.Tasks.Current switch
     {
         null => true,
         IdleTask => true,
         // FollowTask never completes, so this is what notices an infant has been weaned.
         FollowTask => true,
-        GatherTask gather => !IsWorthTakingFrom(person, gather.Target) || NeedsToSeekFoodUrgently(person),
+        GatherTask gather => !IsWorthTakingFrom(creature, gather.Target) || NeedsToSeekFoodUrgently(creature),
         _ => false,
     };
 
@@ -341,56 +382,59 @@ public sealed class WorldState(WorldConfiguration configuration)
         _ => false,
     };
 
-    private bool NeedsToSeekFoodUrgently(Person person) =>
-        person.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold
-        && KnowsHowToEat(person)
-        && !HasEdibleFood(person);
+    private bool NeedsToSeekFoodUrgently(Creature creature) =>
+        creature.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold
+        && KnowsHowToEat(creature)
+        && !HasEdibleFood(creature);
 
-    private bool KnowsHowToEat(Person person) =>
-        Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating && person.KnownTechniques.Contains(eating.BaseTechnique);
+    private bool KnowsHowToEat(Creature creature) =>
+        Configuration.SkillCatalog.Find(EatCommand.Skill) is { } eating && creature.KnownTechniques.Contains(eating.BaseTechnique);
 
-    private bool IsWorthGathering(Person person, Entity entity) =>
+    private bool IsWorthGathering(Creature creature, Entity entity) =>
         entity.Growth is { IsAlive: true, RemainingAmount: > 0f } growth
-        && GatherCommand.CanTakeAnythingFrom(this, person, Configuration.ResourceCatalog.Get(entity.Kind), growth.RemainingAmount);
+        && GatherCommand.CanTakeAnythingFrom(this, creature, Configuration.ResourceCatalog.Get(entity.Kind), growth.RemainingAmount);
 
     // A pile is only ever a GatherTask target for a meal, so once the meal is eaten there is
     // nothing left to stand beside it for.
-    private bool IsWorthTakingFrom(Person person, Entity entity) =>
+    private bool IsWorthTakingFrom(Creature creature, Entity entity) =>
         entity.Category == EntityCategory.Pile
-            ? IsFoodPile(person, entity) && IsHungryEnoughToEat(person)
-            : IsWorthGathering(person, entity);
+            ? IsFoodPile(creature, entity) && IsHungryEnoughToEat(creature)
+            : IsWorthGathering(creature, entity);
 
-    // Food for a given person about to be sent there, not food in general: a pile of the same
-    // material that person's species cannot digest is not worth the walk.
-    private bool IsFoodPile(Person person, Entity entity) =>
+    // Food for a given creature about to be sent there, not food in general: a pile of the same
+    // material that creature's species cannot digest is not worth the walk.
+    private bool IsFoodPile(Creature creature, Entity entity) =>
         entity is { Category: EntityCategory.Pile, StaticAmount: > 0 }
-        && HungerRestoredPerUnitFor(person, EatFromPileCommand.FoodOf(entity)) > 0f;
+        && HungerRestoredPerUnitFor(creature, EatFromPileCommand.FoodOf(entity)) > 0f;
 
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
-    // (IdleTask) is the fallback. Hunger wins over a known skill.
-    private CreatureTask DecideIdleTask(Person person)
+    // (IdleTask) is the fallback. Hunger wins over a known skill. A search centres on the
+    // creature's own HomeRange anchor when it has one (an animal) rather than on where it
+    // happens to be standing (a person, today - docs/todo/fauna-plan.md, "Co je stado konkretne").
+    private CreatureTask DecideIdleTask(Creature creature)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
+        var searchOrigin = creature.Home?.Anchor ?? creature.Position;
 
         // An infant has no skill and nothing to gather, so it keeps up with its mother instead -
         // that is what feeds it and what keeps it within teaching reach. An orphan falls through
         // and wanders like anybody else; nothing here saves it, and nothing should.
-        if (LifeStageOf(person) == LifeStage.Infant && person.NursingMother is { IsAlive: true } mother)
+        if (LifeStageOf(creature) == LifeStage.Infant && creature.NursingMother is { IsAlive: true } mother)
         {
             return new FollowTask(mother, reachDistance, Configuration.Rules.InfantFollowSpeedPerTick);
         }
         // Without knowing how to eat, gathering food would not help, so this falls through to
         // the general search below.
-        if (NeedsToSeekFoodUrgently(person))
+        if (NeedsToSeekFoodUrgently(creature))
         {
-            // A food resource this person never learned to gather is as unreachable as none, but
-            // food somebody put down needs no skill to take (see EatFromPileCommand). Nearest wins.
-            var foodNode = FindNearestGatherableEntity(person, definition => IsFoodResource(person, definition) && IsKnownSkill(person, definition.Skill));
-            var food = NearerOf(person, foodNode, FindNearestFoodPile(person));
+            // A food resource this creature never learned to gather is as unreachable as none,
+            // but food somebody put down needs no skill to take (see EatFromPileCommand). Nearest wins.
+            var foodNode = FindNearestGatherableEntity(creature, searchOrigin, definition => IsFoodResource(creature, definition) && IsKnownSkill(creature, definition.Skill));
+            var food = NearerOf(searchOrigin, foodNode, FindNearestFoodPile(creature, searchOrigin));
             if (food is not null)
             {
                 // A pile is taken from at the tighter PileReachDistance (EatFromPileCommand,
-                // PickUpItemCommand), so the walk has to end there too, or the person would stop
+                // PickUpItemCommand), so the walk has to end there too, or the creature would stop
                 // at the wider tree/building reach and never get close enough to take anything.
                 var reach = food.Category == EntityCategory.Pile ? Configuration.Rules.PileReachDistance : reachDistance;
                 return new GatherTask(food, reach);
@@ -399,50 +443,97 @@ public sealed class WorldState(WorldConfiguration configuration)
 
         // Nearest wins regardless of which known skill it needs. IsKnownSkill checks the skill's
         // BaseTechnique, since KnownTechniques holds arbitrary techniques rather than skills.
-        var node = FindNearestGatherableEntity(person, definition => IsKnownSkill(person, definition.Skill));
+        var node = FindNearestGatherableEntity(creature, searchOrigin, definition => IsKnownSkill(creature, definition.Skill));
         if (node is not null)
         {
             return new GatherTask(node, reachDistance);
         }
 
-        return new IdleTask();
+        // Null for a creature with no home (every Person today), exactly IdleTask's own default;
+        // an Animal's home range is what its wander legs and radius come from instead.
+        return new IdleTask(creature.Home);
     }
 
-    private bool IsKnownSkill(Person person, SkillTypeId skill)
+    private bool IsKnownSkill(Creature creature, SkillTypeId skill)
     {
         var definition = Configuration.SkillCatalog.Find(skill);
-        return definition is not null && person.KnownTechniques.Contains(definition.BaseTechnique);
+        return definition is not null && creature.KnownTechniques.Contains(definition.BaseTechnique);
     }
 
-    private bool IsNursedBy(Person person, Creature? mother) =>
-        person.IsAlive
+    private bool IsNursedBy(Creature creature, Creature? mother) =>
+        creature.IsAlive
         && mother is { IsAlive: true }
-        && ReferenceEquals(person.NursingMother, mother)
-        && LifeStageOf(person) == LifeStage.Infant
-        && IsWithinReach(person.Position, mother.Position);
+        && ReferenceEquals(creature.NursingMother, mother)
+        && LifeStageOf(creature) == LifeStage.Infant
+        && IsWithinReach(creature.Position, mother.Position);
 
-    // Food for a given person, not food in general: see IsFoodPile.
-    private bool IsFoodResource(Person person, ResourceDefinition definition) =>
-        definition.YieldsItem is { } item && HungerRestoredPerUnitFor(person, item) > 0f;
+    // Food for a given creature, not food in general: see IsFoodPile.
+    private bool IsFoodResource(Creature creature, ResourceDefinition definition) =>
+        definition.YieldsItem is { } item && HungerRestoredPerUnitFor(creature, item) > 0f;
 
-    private bool HasEdibleFood(Person person) =>
-        person.Inventory.Counts.Any(kv => kv.Value > 0 && HungerRestoredPerUnitFor(person, kv.Key) > 0f);
+    private bool HasEdibleFood(Creature creature) =>
+        creature.Inventory.Counts.Any(kv => kv.Value > 0 && HungerRestoredPerUnitFor(creature, kv.Key) > 0f);
 
     // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
-    // the same kind is normally nearby - and so is anything this person could not take from:
-    // nobody walks to a source to gather nothing.
-    private Entity? FindNearestGatherableEntity(Person person, Func<ResourceDefinition, bool> matches)
+    // the same kind is normally nearby - and so is anything this creature could not take from:
+    // nobody walks to a source to gather nothing. `origin` only bounds the *fallback* search's
+    // reach - the creature's own position for a Person, its HomeRange anchor for an Animal with
+    // nothing matching inside its home (see DecideIdleTask) - the *nearest* pick in both tiers is
+    // always nearest-to-the-creature-itself, not to the anchor (see below).
+    //
+    // An animal with a Home searches nearest-to-itself among nodes bounded by its Home (radius
+    // plus a small margin for its own footprint), not nearest-to-the-shared-anchor: the anchor
+    // bounds where the herd may graze, it is not everybody's common destination. Picking nearest
+    // to the anchor instead sent every member of a herd at the single node nearest that one point,
+    // where ResolveCollisions then kept most of them outside MaxInteractionDistance and nobody
+    // ate (found starving the shipped map's herds - see DeerHerdMilestoneTests).
+    //
+    // The in-home tier also only counts a node that can still give this creature a full harvest
+    // (GatherCommand.WouldYieldAFullHarvest), not merely IsWorthGathering's "more than zero left":
+    // a home tuft that regrew to a sliver still "matched" the plain rule, so a herd converged on
+    // its own barely-regrown patch and nibbled it at regen speed forever rather than falling
+    // through to fuller grass a little further out. Only when nothing at home clears that bar
+    // does the search widen to the old IdleSearchRadius tier, at the old any-amount-left rule -
+    // still picking whichever match is nearest to the creature itself (not to the anchor), or a
+    // herd already scattered across its own ground by the first tier would regroup on a single
+    // depleted tuft nearest the anchor the moment it fell through to this one. For a Person (no
+    // Home) `origin` is its own position anyway, so both tiers agree with the old behaviour.
+    private Entity? FindNearestGatherableEntity(Creature creature, Position origin, Func<ResourceDefinition, bool> matches)
+    {
+        if (creature.Home is { } home)
+        {
+            var margin = Configuration.SpeciesCatalog.Get(creature.Species).CollisionRadius * 2f;
+            var nearestAtHome = NearestGatherableEntity(
+                creature,
+                nearestTo: creature.Position,
+                matches,
+                inBounds: entity => Distance(home.Anchor, entity.Position) <= home.Radius + margin && HasAFullHarvestFor(creature, entity));
+            if (nearestAtHome is not null)
+            {
+                return nearestAtHome;
+            }
+        }
+
+        return NearestGatherableEntity(creature, nearestTo: creature.Position, matches, inBounds: entity => Distance(origin, entity.Position) <= Configuration.Rules.IdleSearchRadius);
+    }
+
+    // IsWorthGathering has already confirmed entity.Growth is alive by the time this runs
+    // (NearestGatherableEntity checks it first), so Growth here is never null.
+    private bool HasAFullHarvestFor(Creature creature, Entity entity) =>
+        GatherCommand.WouldYieldAFullHarvest(this, creature, Configuration.ResourceCatalog.Get(entity.Kind), entity.Growth!.RemainingAmount);
+
+    private Entity? NearestGatherableEntity(Creature creature, Position nearestTo, Func<ResourceDefinition, bool> matches, Func<Entity, bool> inBounds)
     {
         Entity? nearest = null;
         var nearestDistance = double.MaxValue;
         foreach (var entity in _entities)
         {
-            if (!IsWorthGathering(person, entity) || !matches(Configuration.ResourceCatalog.Get(entity.Kind)))
+            if (!IsWorthGathering(creature, entity) || !matches(Configuration.ResourceCatalog.Get(entity.Kind)) || !inBounds(entity))
             {
                 continue;
             }
 
-            var distance = Distance(person.Position, entity.Position);
+            var distance = Distance(nearestTo, entity.Position);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
@@ -450,20 +541,20 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
         }
 
-        return nearestDistance <= Configuration.Rules.IdleSearchRadius ? nearest : null;
+        return nearest;
     }
 
-    private Entity? FindNearestFoodPile(Person person) =>
+    private Entity? FindNearestFoodPile(Creature creature, Position origin) =>
         _entities
-            .Where(pile => IsFoodPile(person, pile))
-            .Where(pile => Distance(person.Position, pile.Position) <= Configuration.Rules.IdleSearchRadius)
-            .MinBy(pile => Distance(person.Position, pile.Position));
+            .Where(pile => IsFoodPile(creature, pile))
+            .Where(pile => Distance(origin, pile.Position) <= Configuration.Rules.IdleSearchRadius)
+            .MinBy(pile => Distance(origin, pile.Position));
 
-    private static Entity? NearerOf(Person person, Entity? a, Entity? b) => (a, b) switch
+    private static Entity? NearerOf(Position origin, Entity? a, Entity? b) => (a, b) switch
     {
         (null, _) => b,
         (_, null) => a,
-        _ => Distance(person.Position, a.Position) <= Distance(person.Position, b.Position) ? a : b,
+        _ => Distance(origin, a.Position) <= Distance(origin, b.Position) ? a : b,
     };
 
     // What people standing together say to each other about the stuff of the world. Talk, not
@@ -856,6 +947,86 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
+    // Where fawns come from when nobody asks - the animal counterpart of StartFamilies, but no
+    // pair state: a female's own id and the tick decide everything (docs/todo/fauna-plan.md,
+    // phase 1b, "mnozeni"). Iterates a snapshot of _animals because giving birth adds to it, the
+    // same "a child must not become a candidate on the tick it is born" guard StartFamilies uses.
+    private void BreedAnimals(long currentTick, Climate climate)
+    {
+        var mothers = _animals.Where(animal => animal.IsAlive && animal.Sex == Sex.Female).ToList();
+
+        foreach (var mother in mothers)
+        {
+            if (Configuration.SpeciesCatalog.Get(mother.Species).Breeding is not { } breeding)
+            {
+                continue;
+            }
+
+            if (mother.PregnantSinceTick is { } pregnantSinceTick)
+            {
+                if (currentTick - pregnantSinceTick >= breeding.GestationTicks)
+                {
+                    GiveBirth(mother, currentTick);
+                }
+
+                continue;
+            }
+
+            if (LifeStageOf(mother) != LifeStage.Adult
+                || NursingInfantOf(mother) is not null
+                || mother.Needs.Hunger >= breeding.SatietyHungerBelow
+                || climate != breeding.Climate
+                || !HasAdultMaleOfHerOwnSpeciesAtHome(mother))
+            {
+                continue;
+            }
+
+            if (PassesConceptionRoll(mother, currentTick, breeding.ConceptionChancePerTick))
+            {
+                mother.PregnantSinceTick = currentTick;
+            }
+        }
+    }
+
+    // Same HomeRange reference, not merely nearby - a herd shares one anchor (see Animal.Home),
+    // so "at home" is exactly "in this herd" rather than a distance check.
+    private bool HasAdultMaleOfHerOwnSpeciesAtHome(Animal mother) =>
+        _animals.Any(candidate =>
+            candidate.IsAlive
+            && candidate.Sex == Sex.Male
+            && candidate.Species == mother.Species
+            && ReferenceEquals(candidate.Home, mother.Home)
+            && LifeStageOf(candidate) == LifeStage.Adult);
+
+    // What SpawnAnimalCommand does for a fawn born mid-game rather than drawn by MapLoader: same
+    // position and Home as its mother, her as Mother, sex off its own freshly drawn id, and
+    // whatever the species starts every newborn knowing (SpawnAnimalCommand.Execute).
+    private void GiveBirth(Animal mother, long currentTick)
+    {
+        var id = NewbornIdFor(mother.Id, currentTick);
+        Execute(new SpawnAnimalCommand(id, mother.Species, mother.Position, mother.Home, Creature.SexOf(id), currentTick, mother));
+        mother.PregnantSinceTick = null;
+    }
+
+    // Deterministic from the mother's own id and the tick, as NameForNewborn is from two parents'
+    // ids and the tick - a fawn has only one parent in this rule (see decision 3, "mnozeni": no
+    // pair state), so her id alone is the seed.
+    private static CreatureId NewbornIdFor(CreatureId motherId, long currentTick)
+    {
+        var mixed = unchecked((uint)(motherId.Seed * 2654435761u) ^ ((uint)currentTick * 40503u));
+        return CreatureId.New(new Random(SeedHash.Avalanche(mixed)));
+    }
+
+    // Deterministic from the mother and the tick, as every other roll is.
+    private static bool PassesConceptionRoll(Animal mother, long currentTick, float chance)
+    {
+        var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ ((uint)currentTick * 19349663u));
+
+        // Stryker disable once Equality: NextDouble() returning exactly `chance` has probability
+        // zero, so < and <= are the same roll
+        return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
+    }
+
     // Slow enough that no single generation overwrites the naming tradition it was handed
     // (docs/Procedural Name Generation Plan.md, "Cultural Memory"); the last ~12 births (roughly
     // one generation, SimulationRules.Default) count for the separate NamingTrend on top.
@@ -947,51 +1118,48 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Same behaviour as the player's Eat button: eats through whatever food is on hand until no
     // longer hungry. Runs every tick whatever task is active, even a player-issued one - a
-    // starving person should not wait for a free moment to eat from their own pack.
-    private void TryAutoEat(Person person)
+    // starving creature should not wait for a free moment to eat from their own pack.
+    private void TryAutoEat(Creature creature)
     {
         // A meal, not a nibble: nothing until hunger has built up, then EatCommand eats to zero.
-        if (!IsHungryEnoughToEat(person))
+        if (!IsHungryEnoughToEat(creature))
         {
             return;
         }
 
-        foreach (var kind in person.Inventory.Counts.Keys.ToList())
+        foreach (var kind in creature.Inventory.Counts.Keys.ToList())
         {
             // Stryker disable once Equality,Statement,Block: EatCommand no-ops at zero hunger anyway, so this only saves the remaining calls
-            if (person.Needs.Hunger <= 0f)
+            if (creature.Needs.Hunger <= 0f)
             {
                 break;
             }
 
-            new EatCommand(person, kind).Execute(this);
+            new EatCommand(creature, kind).Execute(this);
         }
     }
 
     // MoveTask/IdleTask aim at a destination with no awareness of what else is there, so this
-    // untangles the overlap afterwards, every tick (O(n^2), as AutoTeachNearbyPeople).
-    // Separations are computed against start-of-tick positions and summed into one clamped push
-    // per person (SimulationRules.MaxCollisionPushPerTick), so discovery order cannot bias the
-    // result.
+    // untangles the overlap afterwards, every tick (O(n^2), as AutoTeachNearbyPeople). Every
+    // living creature, person or animal - a deer and a person are pushed apart using their own
+    // species' radii (SpeciesDefinition.CollisionRadius) rather than one shared constant
+    // (docs/todo/fauna-plan.md, "Pruchody jen pro lidi"). Separations are computed against
+    // start-of-tick positions and summed into one clamped push per creature
+    // (SimulationRules.MaxCollisionPushPerTick), so discovery order cannot bias the result.
     private void ResolveCollisions()
     {
-        var personCollisionRadius = Configuration.Rules.PersonCollisionRadius;
+        var speciesCatalog = Configuration.SpeciesCatalog;
         var maxPushPerTick = Configuration.Rules.MaxCollisionPushPerTick;
         var resourceCatalog = Configuration.ResourceCatalog;
-        var pushes = new (double X, double Y)[_people.Count];
+        var creatures = AllCreatures().Where(creature => creature.IsAlive).ToList();
+        var radii = creatures.Select(creature => speciesCatalog.Get(creature.Species).CollisionRadius).ToList();
+        var pushes = new (double X, double Y)[creatures.Count];
 
-        for (var i = 0; i < _people.Count; i++)
+        for (var i = 0; i < creatures.Count; i++)
         {
-            var a = _people[i];
-            if (!a.IsAlive)
+            for (var j = i + 1; j < creatures.Count; j++)
             {
-                continue;
-            }
-
-            for (var j = i + 1; j < _people.Count; j++)
-            {
-                var b = _people[j];
-                if (!b.IsAlive || !TrySeparation(a.Position, b.Position, personCollisionRadius * 2f, out var pushX, out var pushY))
+                if (!TrySeparation(creatures[i].Position, creatures[j].Position, radii[i] + radii[j], out var pushX, out var pushY))
                 {
                     continue;
                 }
@@ -1001,14 +1169,9 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
         }
 
-        for (var i = 0; i < _people.Count; i++)
+        for (var i = 0; i < creatures.Count; i++)
         {
-            var person = _people[i];
-            if (!person.IsAlive)
-            {
-                continue;
-            }
-
+            var creature = creatures[i];
             var (pushX, pushY) = pushes[i];
             foreach (var entity in _entities)
             {
@@ -1019,7 +1182,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
                 var collisionRadius = resourceCatalog.Get(entity.Kind).CollisionRadius;
                 if (collisionRadius <= 0f
-                    || !TrySeparation(person.Position, entity.Position, personCollisionRadius + collisionRadius, out var nodePushX, out var nodePushY))
+                    || !TrySeparation(creature.Position, entity.Position, radii[i] + collisionRadius, out var nodePushX, out var nodePushY))
                 {
                     continue;
                 }
@@ -1028,11 +1191,11 @@ public sealed class WorldState(WorldConfiguration configuration)
                 pushY += nodePushY;
             }
 
-            ApplyClampedPush(person, pushX, pushY, maxPushPerTick);
+            ApplyClampedPush(creature, pushX, pushY, maxPushPerTick);
         }
     }
 
-    private static void ApplyClampedPush(Person person, double pushX, double pushY, float maxPushPerTick)
+    private static void ApplyClampedPush(Creature creature, double pushX, double pushY, float maxPushPerTick)
     {
         var magnitude = Math.Sqrt((pushX * pushX) + (pushY * pushY));
         // Stryker disable once Equality,Statement,Block: falling through adds a zero push and lands on the same spot
@@ -1048,7 +1211,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             pushY *= scale;
         }
 
-        person.Position = new Position(person.Position.X + pushX, person.Position.Y + pushY);
+        creature.Position = new Position(creature.Position.X + pushX, creature.Position.Y + pushY);
     }
 
     // A true result moves `a` away from `b` by (pushX, pushY); `b` gets the negation, wherever
@@ -1089,7 +1252,11 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     internal void RestoreForebear(Person forebear) => _forebears.Add(forebear);
 
+    internal void RestoreAnimal(Animal animal) => _animals.Add(animal);
+
     internal void RestoreEntity(Entity entity) => _entities.Add(entity);
 
     internal void RestoreGrave(Grave grave) => _graves.Add(grave);
+
+    internal void RestoreHomeRange(HomeRange homeRange) => _homeRanges.Add(homeRange);
 }

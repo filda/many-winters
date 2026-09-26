@@ -1,0 +1,29 @@
+{
+  "id": "deer",
+  "displayName": "Deer",
+  "lifeCycle": {
+    "weaningAgeYears": 1,
+    "adultAgeYears": 2,
+    "elderAgeYears": 6,
+    "maxLifespanYears": 8
+  },
+  "diet": [
+    { "material": "plant_fibre", "digestibility": 1 },
+    { "material": "apple", "digestibility": 1 }
+  ],
+  "innateTechniques": ["basic_eating", "basic_foraging"],
+  "canCarry": false,
+  "collisionRadius": 0.6,
+  "herd": {
+    "minSize": 6,
+    "maxSize": 10,
+    "homeRadius": 15,
+    "driftMetresPerSeason": 20
+  },
+  "breeding": {
+    "climate": "Mild",
+    "gestationTicks": 150,
+    "conceptionChancePerTick": 0.02,
+    "satietyHungerBelow": 40
+  }
+}

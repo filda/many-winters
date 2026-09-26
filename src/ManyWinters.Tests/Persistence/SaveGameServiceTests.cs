@@ -477,4 +477,74 @@ public class SaveGameServiceTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void RoundTripPreservesAnimalsAndTheirHomeRangesWithMothersResolved()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var home = new HomeRange(new Position(10, 20)) { Radius = 15f, DriftMetresPerSeason = 20f };
+        world.AddHomeRange(home);
+        var mother = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(11, 21), home, sex: Sex.Female);
+        mother.Needs.Hunger = 12.5f;
+        mother.Skills.Increase(TestCatalogs.Foraging, 2f);
+        var fawn = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(11, 21), home, sex: Sex.Male, mother: mother);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfigurationWithDeer());
+
+            Assert.Equal(2, restored.Animals.Count);
+            var restoredHome = Assert.Single(restored.HomeRanges);
+            Assert.Equal(home.Id, restoredHome.Id);
+            Assert.Equal(home.Anchor, restoredHome.Anchor);
+            Assert.Equal(home.Radius, restoredHome.Radius);
+            Assert.Equal(home.DriftMetresPerSeason, restoredHome.DriftMetresPerSeason);
+
+            var restoredMother = restored.Animals.Single(a => a.Id == mother.Id);
+            Assert.Equal(TestCatalogs.DeerSpeciesId, restoredMother.Species);
+            Assert.Same(restoredHome, restoredMother.Home);
+            Assert.Equal(mother.Needs.Hunger, restoredMother.Needs.Hunger);
+            Assert.Equal(mother.Skills.Get(TestCatalogs.Foraging), restoredMother.Skills.Get(TestCatalogs.Foraging));
+            Assert.Null(restoredMother.Mother);
+
+            var restoredFawn = restored.Animals.Single(a => a.Id == fawn.Id);
+            Assert.Same(restoredMother, restoredFawn.Mother);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    // Animal.PregnantSinceTick (docs/todo/fauna-plan.md, phase 1b, "mnozeni"): a mother mid-way
+    // through gestation has to still be pregnant, at the same tick, after a reload - a silent
+    // omission here would end every pregnancy in progress the moment somebody saved.
+    [Fact]
+    public void RoundTripPreservesAPregnantAnimal()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var home = new HomeRange(new Position(10, 20)) { Radius = 15f, DriftMetresPerSeason = 20f };
+        world.AddHomeRange(home);
+        var mother = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(11, 21), home, sex: Sex.Female);
+        mother.PregnantSinceTick = 17;
+        var barrenMale = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(12, 22), home, sex: Sex.Male);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfigurationWithDeer());
+
+            var restoredMother = restored.Animals.Single(a => a.Id == mother.Id);
+            var restoredMale = restored.Animals.Single(a => a.Id == barrenMale.Id);
+            Assert.Equal(17, restoredMother.PregnantSinceTick);
+            Assert.Null(restoredMale.PregnantSinceTick);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

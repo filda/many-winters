@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
@@ -51,6 +52,32 @@ public static class WorldStateSpawnExtensions
 
         world.AddPerson(person);
         return person;
+    }
+
+    // Test-only shorthand for SpawnAnimalCommand: builds its own HomeRange (radius 10, no
+    // drift, so a test's assertions about wander bounds don't have to account for it moving too)
+    // unless the test hands in one of its own.
+    public static Animal SpawnAnimal(
+        this WorldState world,
+        SpeciesId species,
+        Position position,
+        HomeRange? home = null,
+        long initialAgeTicks = 0,
+        Sex? sex = null,
+        Animal? mother = null)
+    {
+        var id = CreatureId.New();
+        home ??= new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f };
+        world.Execute(new SpawnAnimalCommand(
+            id,
+            species,
+            position,
+            home,
+            sex ?? Creature.SexOf(id),
+            world.Clock.CurrentTick - initialAgeTicks,
+            mother));
+
+        return world.Animals[^1];
     }
 
     // A dead-before-the-story parent: born and dead before tick 0.

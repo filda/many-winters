@@ -167,10 +167,6 @@ public sealed record SimulationRules
     // pile sits underfoot, and the shared reach read as picking it up from too far away.
     public float PileReachDistance { get; } = 1f;
 
-    // Half-width of a person's footprint for collisions, in metres. Smaller than the rendered
-    // sprite: it only needs to keep people from visibly overlapping.
-    public float PersonCollisionRadius { get; } = 0.35f;
-
     // Cap on how far one tick of collision untangling may move a person, in metres, however
     // many things they overlap at once. Same order as a walking step, so a push never reads as
     // a hijacked walk order; someone deeply stuck clears over a few ticks instead.

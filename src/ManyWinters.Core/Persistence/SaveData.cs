@@ -15,7 +15,11 @@ public sealed record SaveData(
     IReadOnlyList<GraveSaveData> Graves,
     IReadOnlyList<ExplorationCellSaveData> ExploredCells,
     IReadOnlyList<AffectionSaveData> Affections,
-    IReadOnlyList<WordSaveData> Vocabulary);
+    IReadOnlyList<WordSaveData> Vocabulary,
+    // Both added in the same version bump as Animal/HomeRange itself
+    // (docs/todo/fauna-plan.md, phase 1a).
+    IReadOnlyList<AnimalSaveData> Animals,
+    IReadOnlyList<HomeRangeSaveData> HomeRanges);
 
 public sealed record PersonSaveData(
     Guid Id,
@@ -113,3 +117,29 @@ public sealed record GraveSaveData(
     IReadOnlyList<TechniqueId> KnownTechniques);
 
 public sealed record ExplorationCellSaveData(int X, int Y);
+
+// The second kind of Creature (docs/todo/fauna-plan.md, phase 1a). No name, no beliefs, no
+// curiosity - what Animal itself doesn't have. MaxHunger isn't saved for the same reason a
+// Person's isn't (PersonSaveData): it is always redrawn from the id.
+public sealed record AnimalSaveData(
+    Guid Id,
+    SpeciesId Species,
+    double PositionX,
+    double PositionY,
+    bool IsAlive,
+    float Hunger,
+    float Fatigue,
+    IReadOnlyList<SkillLevelSaveData> Skills,
+    IReadOnlyList<TechniqueId> KnownTechniques,
+    long BirthTick,
+    long? DeathTick,
+    DeathCause? CauseOfDeath,
+    Sex Sex,
+    Guid HomeRangeId,
+    // Null for one spawned as an adult (every animal in phase 1a - MapLoader's starting herds);
+    // set once a fawn is born (phase 1b).
+    Guid? MotherId,
+    // Null for a male and for a female not currently carrying (Animal.PregnantSinceTick).
+    long? PregnantSinceTick = null);
+
+public sealed record HomeRangeSaveData(Guid Id, double AnchorX, double AnchorY, float Radius, float DriftMetresPerSeason);

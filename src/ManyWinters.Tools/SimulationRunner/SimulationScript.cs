@@ -113,6 +113,9 @@ public sealed class SimulationScript
                     output.Add($"  {person.Id} {person.Name} at {person.Position}{status}");
                 }
 
+                var aliveAnimals = World.Animals.Count(a => a.IsAlive);
+                output.Add($"{aliveAnimals} of {World.Animals.Count} animals alive.");
+
                 break;
 
             // The inscriptions over a band's beginning and end, so their wording can be read over

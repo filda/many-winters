@@ -104,6 +104,27 @@ public class WorldStateCollisionTests
         AssertPosition(0.5, 0, b.Position);
     }
 
+    // 0.35 (human) + 0.6 (deer, TestCatalogs.DeerCollisionRadius) apart, using each creature's
+    // own species radius (docs/todo/fauna-plan.md, phase 1a) rather than one shared constant.
+    [Fact]
+    public void ADeerAndAPersonStandingTooCloseArePushedApartUsingTheirOwnSpeciesRadii()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), TestCatalogs.AdultAgeTicks);
+        world.Execute(new GrantIdleGraceCommand(person, 1000));
+        var home = new HomeRange(new Position(0.5, 0)) { Radius = 10f, DriftMetresPerSeason = 0f };
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0.5, 0), home);
+
+        // IdleTask's own first tick never moves anyone (its pause floor is 3 ticks - IdleTask),
+        // so only the collision push can change either position here.
+        world.Advance(1);
+
+        var minDistance = PersonRadius + TestCatalogs.DeerCollisionRadius;
+        Assert.True(WorldState.Distance(person.Position, deer.Position) >= minDistance - 1e-4);
+        Assert.NotEqual(new Position(0, 0), person.Position);
+        Assert.NotEqual(new Position(0.5, 0), deer.Position);
+    }
+
     private static WorldState WorldWithPeople(Position first, Position second, out Person a, out Person b)
     {
         var world = TestCatalogs.CreateWorld();

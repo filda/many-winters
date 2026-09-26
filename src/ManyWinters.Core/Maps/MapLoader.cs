@@ -3,6 +3,7 @@ using ManyWinters.Core.Population;
 using ManyWinters.Core.Population.Naming;
 using ManyWinters.Core.World;
 
+
 namespace ManyWinters.Core.Maps;
 
 public static class MapLoader
@@ -138,7 +139,126 @@ public static class MapLoader
 
         ScatterDecorations(world, idRng);
 
+        // Last, on the same idRng the crowd and the decorations already drew from: nothing
+        // spawned above shifts (FamilyMilestoneTests.TheShippedStartingBandHasChildrenOfItsOwn
+        // is brittle to that - docs/todo/fauna-plan.md, "Co je stado konkretne").
+        SpawnAnimalHerds(world, idRng);
+
         return new LoadedMap(world, CampCenter);
+    }
+
+    // How far a starting herd's own home range sits from camp, so grazing deer are never
+    // mistaken for camp's own food scatter (docs/todo/fauna-plan.md, phase 1a).
+    private const double MinHerdDistanceFromCamp = 60;
+    private const int HerdPlacementSeed = 9;
+    private const int HerdCount = 2;
+    // Drawn per herd instead of taking the first candidate that merely clears the distance check:
+    // ScatterDecorations has already run by the time this does, so the actual grass is on the map
+    // to look at - a herd's own patch has to be where the grass is, or it starves regardless of
+    // how well it then forages within it (docs/todo/fauna-plan.md phase 1b - the shipped map's
+    // herds starving even with plenty of grass in the region overall).
+    private const int HerdCenterCandidateCount = 40;
+    private static readonly SpeciesId DeerSpeciesId = new("deer");
+
+    // Two herds of whatever species the content describes as "deer" (silently skipped if none is
+    // defined - a minimal test configuration, say), each with its own drifting HomeRange, spawned
+    // on open ground at least MinHerdDistanceFromCamp from CampCenter.
+    private static void SpawnAnimalHerds(WorldState world, Random idRng)
+    {
+        var speciesCatalog = world.Configuration.SpeciesCatalog;
+        if (speciesCatalog.Find(DeerSpeciesId) is not { Herd: { } herd } species)
+        {
+            return;
+        }
+
+        var rules = world.Configuration.Rules;
+        var rng = new Random(HerdPlacementSeed);
+
+        for (var h = 0; h < HerdCount; h++)
+        {
+            var center = BestHerdCenter(world, rng, herd.HomeRadius);
+            var home = new HomeRange(center)
+            {
+                Id = HomeRangeId.New(idRng),
+                Radius = herd.HomeRadius,
+                DriftMetresPerSeason = herd.DriftMetresPerSeason,
+            };
+            world.AddHomeRange(home);
+
+            var herdSize = herd.MinSize + rng.Next(herd.MaxSize - herd.MinSize + 1);
+            for (var i = 0; i < herdSize; i++)
+            {
+                var id = CreatureId.New(idRng);
+                var position = RandomPositionInDisk(rng, center, herd.HomeRadius);
+
+                // Spread across the species' own adult years, never as young as a fawn (phase 1a
+                // spawns no young - reproduction is phase 1b) and never past its own lifespan.
+                var adultSpanYears = Math.Max(1, species.LifeCycle.MaxLifespanYears - species.LifeCycle.AdultAgeYears);
+                var ageYears = species.LifeCycle.AdultAgeYears + rng.Next((int)adultSpanYears);
+                var birthTick = world.Clock.CurrentTick - (ageYears * rules.TicksPerYear);
+
+                world.Execute(new SpawnAnimalCommand(id, DeerSpeciesId, position, home, Creature.SexOf(id), birthTick));
+            }
+        }
+    }
+
+    // Draws HerdCenterCandidateCount candidates (each still subject to NextHerdCenter's own
+    // distance-from-camp rule) and keeps whichever has the most grass within the species' own
+    // HomeRadius, rather than the first candidate drawn - see HerdCenterCandidateCount. Candidates
+    // are drawn in the same order a single draw always was, so with a candidate count of 1 this
+    // reduces to the old behaviour exactly.
+    private static Position BestHerdCenter(WorldState world, Random rng, float homeRadius)
+    {
+        var best = NextHerdCenter(rng);
+        var bestGrassCount = GrassNodesWithin(world, best, homeRadius);
+
+        for (var i = 1; i < HerdCenterCandidateCount; i++)
+        {
+            var candidate = NextHerdCenter(rng);
+            var grassCount = GrassNodesWithin(world, candidate, homeRadius);
+            if (grassCount > bestGrassCount)
+            {
+                best = candidate;
+                bestGrassCount = grassCount;
+            }
+        }
+
+        return best;
+    }
+
+    private static int GrassNodesWithin(WorldState world, Position center, double radius) =>
+        world.Entities.Count(entity => entity.Kind == GrassKind && WorldState.Distance(center, entity.Position) <= radius);
+
+    // Uniform over the disk's area, as IdleTask's own wander destinations and the crowd scatter.
+    private static Position RandomPositionInDisk(Random rng, Position center, double radius)
+    {
+        var angle = rng.NextDouble() * Math.Tau;
+        var distance = radius * Math.Sqrt(rng.NextDouble());
+        return new Position(center.X + (distance * Math.Cos(angle)), center.Y + (distance * Math.Sin(angle)));
+    }
+
+    // Anywhere on the terrain patch at least MinHerdDistanceFromCamp from CampCenter; the attempt
+    // cap is a give-up guard a real draw turns up well before, given how small a fraction of the
+    // ~1km map that exclusion circle covers.
+    private static Position NextHerdCenter(Random rng)
+    {
+        var limit = TerrainHalfMeters - GroveRadius;
+        var candidate = new Position(0, 0);
+
+        // Stryker disable once Equality,Update: as NextCampPosition's own attempt cap
+        for (var attempt = 0; attempt < MaxCampPlacementAttempts; attempt++)
+        {
+            candidate = new Position(
+                (rng.NextDouble() - 0.5) * 2 * limit,
+                (rng.NextDouble() - 0.5) * 2 * limit);
+
+            if (WorldState.Distance(candidate, CampCenter) >= MinHerdDistanceFromCamp)
+            {
+                return candidate;
+            }
+        }
+
+        return candidate;
     }
 
     // Spawns a successor band into an existing world, picking a new camp 80..250 m from the old

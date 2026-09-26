@@ -3,7 +3,10 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-public sealed record GatherCommand(Person Person, Entity Node) : ICommand
+// Actor is a Creature, not a Person: an animal grazing is the same command as a person gathering
+// (docs/todo/fauna-plan.md, phase 1a) - only its species' known techniques and carry capacity
+// differ, both already read off Creature.
+public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
 {
     private const float BaseHarvestAmount = 20f;
     private const float EfficientHarvestAmount = 40f;
@@ -15,7 +18,7 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
 
     public ActionBlocker Blocker(WorldState world)
     {
-        if (!Person.IsAlive)
+        if (!Actor.IsAlive)
         {
             return ActionBlocker.ActorIsDead;
         }
@@ -31,7 +34,7 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
             return ActionBlocker.NothingLeft;
         }
 
-        if (!world.IsWithinReach(Person.Position, Node.Position))
+        if (!world.IsWithinReach(Actor.Position, Node.Position))
         {
             return ActionBlocker.TooFar;
         }
@@ -39,12 +42,12 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
         var resource = world.Configuration.ResourceCatalog.Get(Node.Kind);
         if (resource.YieldsItem is not null)
         {
-            if (PotentialHarvestUnits(world, Person, resource, growth.RemainingAmount) <= 0)
+            if (PotentialHarvestUnits(world, Actor, resource, growth.RemainingAmount) <= 0)
             {
                 return ActionBlocker.NothingLeft;
             }
 
-            if (!CanTakeAnythingFrom(world, Person, resource, growth.RemainingAmount))
+            if (!CanTakeAnythingFrom(world, Actor, resource, growth.RemainingAmount))
             {
                 return ActionBlocker.InventoryFull;
             }
@@ -54,7 +57,7 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
         // SkillDefinition.BaseTechnique). Asked last, like every knowledge gate
         // (see ActionBlocker.NotLearned).
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
-        return Person.KnownTechniques.Contains(skillDefinition.BaseTechnique)
+        return Actor.KnownTechniques.Contains(skillDefinition.BaseTechnique)
             ? ActionBlocker.None
             : ActionBlocker.NotLearned;
     }
@@ -74,28 +77,28 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
 
         if (resource.YieldsItem is { } item)
         {
-            var availableUnits = PotentialHarvestUnits(world, Person, resource, growth.RemainingAmount);
+            var availableUnits = PotentialHarvestUnits(world, Actor, resource, growth.RemainingAmount);
             // A hungry picker eats as they go before pocketing anything, so a full pack still
             // gets fed; only what's eaten or fits comes off the node. Same hunger test as the
             // autonomous pass (WorldState.IsHungryEnoughToEat), or a picker at a food source
             // would eat one unit every tick and practice forever.
-            var eaten = world.IsHungryEnoughToEat(Person) ? EatCommand.Eat(world, Person, item, availableUnits) : 0;
-            var added = Person.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));
+            var eaten = world.IsHungryEnoughToEat(Actor) ? EatCommand.Eat(world, Actor, item, availableUnits) : 0;
+            var added = Actor.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Actor));
             var taken = eaten + added;
 
             growth.RemainingAmount -= taken;
         }
         else
         {
-            var potentialConsumed = PotentialHarvestAmount(world, Person, resource, growth.RemainingAmount);
+            var potentialConsumed = PotentialHarvestAmount(world, Actor, resource, growth.RemainingAmount);
             growth.RemainingAmount -= potentialConsumed;
-            Person.Needs.Hunger = Math.Max(0f, Person.Needs.Hunger - potentialConsumed);
+            Actor.Needs.Hunger = Math.Max(0f, Actor.Needs.Hunger - potentialConsumed);
         }
 
-        Person.Skills.Increase(skill, SkillGainPerGather);
-        if (Person.Skills.Get(skill) >= DiscoveryThreshold)
+        Actor.Skills.Increase(skill, SkillGainPerGather);
+        if (Actor.Skills.Get(skill) >= DiscoveryThreshold)
         {
-            Person.KnownTechniques.Add(technique);
+            Actor.KnownTechniques.Add(technique);
         }
     }
 
@@ -103,7 +106,7 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
     // part of this question, because a distant useful source is still a good GatherTask target.
     public static bool CanTakeAnythingFrom(
         WorldState world,
-        Person person,
+        Creature actor,
         ResourceDefinition resource,
         float remainingAmount)
     {
@@ -112,44 +115,56 @@ public sealed record GatherCommand(Person Person, Entity Node) : ICommand
             return true;
         }
 
-        var units = PotentialHarvestUnits(world, person, resource, remainingAmount);
+        var units = PotentialHarvestUnits(world, actor, resource, remainingAmount);
         if (units <= 0)
         {
             return false;
         }
 
         var canEatOnTheSpot =
-            world.IsHungryEnoughToEat(person)
-            && EatCommand.EatingBlocker(world, person, item, units) is ActionBlocker.None;
+            world.IsHungryEnoughToEat(actor)
+            && EatCommand.EatingBlocker(world, actor, item, units) is ActionBlocker.None;
 
         return canEatOnTheSpot
-            || person.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
+            || actor.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(actor));
     }
 
     private static int PotentialHarvestUnits(
         WorldState world,
-        Person person,
+        Creature actor,
         ResourceDefinition resource,
         float remainingAmount) =>
-        (int)PotentialHarvestAmount(world, person, resource, remainingAmount);
+        (int)PotentialHarvestAmount(world, actor, resource, remainingAmount);
 
     private static float PotentialHarvestAmount(
         WorldState world,
-        Person person,
+        Creature actor,
         ResourceDefinition resource,
-        float remainingAmount)
+        float remainingAmount) =>
+        Math.Min(remainingAmount, HarvestAmountFor(world, actor, resource));
+
+    // What one gather would take home for this creature, this technique and this season, with no
+    // cap from what the node actually has left - the very thing WouldYieldAFullHarvest asks
+    // remainingAmount against, and PotentialHarvestAmount's own Math.Min caps away.
+    private static float HarvestAmountFor(WorldState world, Creature actor, ResourceDefinition resource)
     {
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
         var technique = skillDefinition.EfficientTechnique;
-        var harvestAmount = person.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
+        var harvestAmount = actor.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
         if (skillDefinition.UsesChoppingScore)
         {
-            harvestAmount += person.Inventory.BestChoppingScore(world.Configuration.ItemCatalog);
+            harvestAmount += actor.Inventory.BestChoppingScore(world.Configuration.ItemCatalog);
         }
 
         var climate = world.Configuration.SeasonParameters.ClimateFor(world.CurrentSeason);
-        harvestAmount *= resource.YieldMultiplierFor(climate);
-
-        return Math.Min(remainingAmount, harvestAmount);
+        return harvestAmount * resource.YieldMultiplierFor(climate);
     }
+
+    // Whether this node currently holds enough to give this creature a full gather rather than a
+    // dwindling nibble - what WorldState.FindNearestGatherableEntity's in-home tier asks instead
+    // of IsWorthGathering's plain "more than zero left", so a herd doesn't converge on whichever
+    // home tuft has barely regrown and nibble it at regen speed forever (docs/todo/fauna-plan.md
+    // phase 1b: the shipped map's herds starving).
+    public static bool WouldYieldAFullHarvest(WorldState world, Creature actor, ResourceDefinition resource, float remainingAmount) =>
+        remainingAmount >= HarvestAmountFor(world, actor, resource);
 }

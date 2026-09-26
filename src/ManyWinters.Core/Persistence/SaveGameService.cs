@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 23;
+    private const int CurrentVersion = 24;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -66,6 +66,12 @@ public static class SaveGameService
             .Select(word => new WordSaveData(word.Key, word.Value))
             .ToList();
 
+        var homeRanges = world.HomeRanges
+            .Select(home => new HomeRangeSaveData(home.Id.Value, home.Anchor.X, home.Anchor.Y, home.Radius, home.DriftMetresPerSeason))
+            .ToList();
+
+        var animals = world.Animals.Select(ToAnimalSaveData).ToList();
+
         return new SaveData(
             CurrentVersion,
             world.Clock.CurrentTick,
@@ -75,8 +81,28 @@ public static class SaveGameService
             graves,
             exploredCells,
             affections,
-            vocabulary);
+            vocabulary,
+            animals,
+            homeRanges);
     }
+
+    private static AnimalSaveData ToAnimalSaveData(Animal animal) => new(
+        animal.Id.Value,
+        animal.Species,
+        animal.Position.X,
+        animal.Position.Y,
+        animal.IsAlive,
+        animal.Needs.Hunger,
+        animal.Needs.Fatigue,
+        animal.Skills.Levels.Select(kv => new SkillLevelSaveData(kv.Key, kv.Value)).ToList(),
+        animal.KnownTechniques.ToList(),
+        animal.BirthTick,
+        animal.DeathTick,
+        animal.CauseOfDeath,
+        animal.Sex,
+        animal.Home.Id.Value,
+        animal.Mother?.Id.Value,
+        animal.PregnantSinceTick);
 
     private static PersonSaveData ToPersonSaveData(Person person) => new(
         person.Id.Value,
@@ -218,7 +244,65 @@ public static class SaveGameService
             world.Affections.Set(new CreatureId(bond.PersonA), new CreatureId(bond.PersonB), bond.Value);
         }
 
+        var homeRangesById = new Dictionary<Guid, HomeRange>();
+        foreach (var homeRangeData in data.HomeRanges)
+        {
+            var homeRange = new HomeRange(new Position(homeRangeData.AnchorX, homeRangeData.AnchorY))
+            {
+                Id = new HomeRangeId(homeRangeData.Id),
+                Radius = homeRangeData.Radius,
+                DriftMetresPerSeason = homeRangeData.DriftMetresPerSeason,
+            };
+            world.RestoreHomeRange(homeRange);
+            homeRangesById[homeRangeData.Id] = homeRange;
+        }
+
+        // A mother always precedes her young in save order (world.Animals is insertion order),
+        // exactly the "parents before children" guarantee RestorePerson relies on above.
+        var animalsById = new Dictionary<Guid, Animal>();
+        foreach (var animalData in data.Animals)
+        {
+            world.RestoreAnimal(RestoreAnimal(animalData, homeRangesById, animalsById, configuration.Rules));
+        }
+
         return world;
+    }
+
+    private static Animal RestoreAnimal(
+        AnimalSaveData animalData,
+        Dictionary<Guid, HomeRange> homeRangesById,
+        Dictionary<Guid, Animal> animalsById,
+        SimulationRules rules)
+    {
+        var id = new CreatureId(animalData.Id);
+        var animal = new Animal(animalData.Species, homeRangesById[animalData.HomeRangeId])
+        {
+            Id = id,
+            Position = new Position(animalData.PositionX, animalData.PositionY),
+            IsAlive = animalData.IsAlive,
+            BirthTick = animalData.BirthTick,
+            DeathTick = animalData.DeathTick,
+            CauseOfDeath = animalData.CauseOfDeath,
+            Sex = animalData.Sex,
+            MaxHunger = rules.MaxHungerFor(id),
+            Mother = animalData.MotherId is { } motherId ? animalsById[motherId] : null,
+            PregnantSinceTick = animalData.PregnantSinceTick,
+        };
+        animal.Needs.Hunger = animalData.Hunger;
+        animal.Needs.Fatigue = animalData.Fatigue;
+
+        foreach (var skillData in animalData.Skills)
+        {
+            animal.Skills.Restore(skillData.Type, skillData.Level);
+        }
+
+        foreach (var technique in animalData.KnownTechniques)
+        {
+            animal.KnownTechniques.Add(technique);
+        }
+
+        animalsById[animalData.Id] = animal;
+        return animal;
     }
 
     private static Person RestorePerson(PersonSaveData personData, Dictionary<Guid, Person> peopleById, SimulationRules rules)

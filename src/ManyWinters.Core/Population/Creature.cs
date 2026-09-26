@@ -65,4 +65,11 @@ public abstract class Creature
     // a species too). Looked up in WorldConfiguration.SpeciesCatalog for the age bands and
     // lifespan that used to be hardcoded constants (WorldState.LifeCycleOf).
     public abstract SpeciesId Species { get; }
+
+    // The shared ground this creature wanders around (WorldState.DecideIdleTask), if it has one.
+    // Null for a Person today - people still wander from wherever they stand (step 1b moves the
+    // starting band onto a shared camp anchor). An Animal always has one (see Animal.Home),
+    // exposed here as a covariant override the same way NursingMother is, so WorldState never
+    // has to ask "is this an Animal" to find it (docs/todo/fauna-plan.md, "Co je stado konkretne").
+    public virtual HomeRange? Home => null;
 }

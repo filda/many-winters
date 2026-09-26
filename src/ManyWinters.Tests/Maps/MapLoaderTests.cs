@@ -487,4 +487,57 @@ public class MapLoaderTests
 
         Assert.Empty(BuildingEntities(map.World));
     }
+
+    // Without a "deer" species described at all (every other test's configuration), nothing
+    // here should spawn - a minimal test world must not crash looking for it.
+    [Fact]
+    public void LoadDefaultWithNoDeerSpeciesSpawnsNoAnimals()
+    {
+        var map = LoadDefault();
+
+        Assert.Empty(map.World.Animals);
+        Assert.Empty(map.World.HomeRanges);
+    }
+
+    [Fact]
+    public void LoadDefaultSpawnsTwoHerdsWithinTheSpeciesSizeRangeAwayFromCampEachWithItsOwnHome()
+    {
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateConfigurationWithDeer());
+        var world = map.World;
+
+        Assert.Equal(2, world.HomeRanges.Count);
+
+        foreach (var home in world.HomeRanges)
+        {
+            Assert.True(WorldState.Distance(home.Anchor, map.CampCenter) >= 60, "A herd's home range sits too close to camp.");
+
+            var herdMembers = world.Animals.Where(animal => ReferenceEquals(animal.Home, home)).ToList();
+            Assert.InRange(herdMembers.Count, TestCatalogs.DeerHerdMinSize, TestCatalogs.DeerHerdMaxSize);
+            Assert.All(herdMembers, animal => Assert.Equal(TestCatalogs.DeerSpeciesId, animal.Species));
+
+            // MapLoader.SpawnAnimalHerds picks the herd's own centre by grass count nearby
+            // (BestHerdCenter), not merely by distance from camp - a herd placed anywhere on open
+            // ground could land somewhere with almost no grass in reach at all
+            // (docs/todo/fauna-plan.md phase 1b, "the shipped map's herds starving").
+            var grassNodesInHome = world.Entities.Count(e => e.Kind.Value == "grass" && WorldState.Distance(home.Anchor, e.Position) <= home.Radius);
+            Assert.True(grassNodesInHome >= 20, $"expected at least 20 grass nodes within the herd's home, found {grassNodesInHome}.");
+        }
+
+        Assert.Equal(world.HomeRanges.Sum(home => world.Animals.Count(animal => ReferenceEquals(animal.Home, home))), world.Animals.Count);
+    }
+
+    // Spawning herds last, off the same idRng, must not shift a single seeded draw the shipped
+    // band or the decoration scatter already made (docs/todo/fauna-plan.md, "Co je stado
+    // konkretne" - the family milestone is brittle to exactly this).
+    [Fact]
+    public void AddingADeerSpeciesDoesNotChangeAnyExistingSpawnPosition()
+    {
+        var withoutDeer = LoadDefault();
+        var withDeer = MapLoader.LoadDefault(TestCatalogs.CreateConfigurationWithDeer());
+
+        Assert.Equal(withoutDeer.World.People.Select(p => p.Position), withDeer.World.People.Select(p => p.Position));
+        Assert.Equal(
+            ResourceNodes(withoutDeer.World).Select(e => e.Position),
+            ResourceNodes(withDeer.World).Select(e => e.Position));
+    }
 }
