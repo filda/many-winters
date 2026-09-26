@@ -1299,6 +1299,47 @@ def bag():
     return c
 
 
+def basket():
+    """A woven wicker vessel: wider at the open rim than at the base (bag is the opposite
+    taper, and cinched shut rather than open), with alternating woven courses instead of
+    bag's sagging seams."""
+    seed = seed_for("basket")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    weave = rgb(0.62, 0.46, 0.24)
+
+    body = poly(jagged_poly(
+        [(17, 26), (47, 26), (49, 36), (42, 54), (22, 54), (15, 36)],
+        rng, amp=0.8, segments_per_edge=3, smooth_passes=1,
+    ))
+    c.fill(body, weave)
+
+    # Woven courses: alternating bands read as over-under wicker rather than one flat sack.
+    for y in (32, 38, 44, 50):
+        band_y = y + rng.uniform(-0.5, 0.5)
+        tone = darken(weave, 0.22) if (y // 6) % 2 == 0 else lighten(weave, 0.12)
+        c.flat(rect(14, band_y, 50, band_y + 1.6) & body, tone)
+
+    # Vertical ribs the courses weave across.
+    for x in (21, 27, 33, 39):
+        rib_x = x + rng.uniform(-0.4, 0.4)
+        c.flat(rect(rib_x, 27, rib_x + 1.1, 53) & body, darken(weave, 0.12))
+
+    rim = poly(jagged_poly([(16, 24), (48, 24), (47, 29), (17, 29)], rng, amp=0.5, segments_per_edge=2))
+    c.fill(rim, darken(weave, 0.08))
+    c.ink(rim & dilate(~body, 1))
+
+    # Small loop handles at the rim, one each side.
+    for side_cx in (18, 46):
+        handle = (ellipse(side_cx, 25, 3.4, 2.6) & ~ellipse(side_cx, 25, 1.8, 1.2)) & ~body
+        c.flat(handle, darken(weave, 0.15))
+        c.ink(handle & dilate(body, 1))
+
+    _ground_shadow_dashes(c, 32, 57, 17, seed + 99)
+    c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
 # Three lobe arrangements per fruit-tree canopy (main, left, right, top - each (cx, cy, rx,
 # ry)): the same four-ellipse formula keeps the silhouette readable as one kind of tree, but
 # the proportions genuinely differ per variant, not just the hatch noise.
@@ -2027,6 +2068,7 @@ SPRITES = {
     "wedge": wedge,
     "cord": cord,
     "bag": bag,
+    "basket": basket,
     "tree_stump": tree_stump,
     "fallen_log": fallen_log,
     "selection_marker": selection_marker,
