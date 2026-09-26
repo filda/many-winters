@@ -5,9 +5,9 @@ namespace ManyWinters.Core.Tasks;
 
 // Autonomous "go gather from this resource" order from WorldState's idle AI (DecideIdleTask),
 // or "go eat from this pile" for a hungry person. Only walks there; the taking is GatherCommand
-// or EatFromPileCommand at WorldState level, since PersonTask.Advance sees only the Person. Never completes - WorldState.Advance re-evaluates it every tick.
+// or EatFromPileCommand at WorldState level, since CreatureTask.Advance sees only the Creature. Never completes - WorldState.Advance re-evaluates it every tick.
 // `reachDistance` is SimulationRules.MaxInteractionDistance, passed in as Advance has no world.
-public sealed class GatherTask(Entity target, float reachDistance) : PersonTask
+public sealed class GatherTask(Entity target, float reachDistance) : CreatureTask
 {
     private const float SpeedPerTick = 0.3f;
 
@@ -25,9 +25,9 @@ public sealed class GatherTask(Entity target, float reachDistance) : PersonTask
 
     public override bool IsComplete => false;
 
-    public override void Advance(Person person)
+    public override void Advance(Creature creature)
     {
-        if (WorldState.Distance(person.Position, Target.Position) <= ReachDistance)
+        if (WorldState.Distance(creature.Position, Target.Position) <= ReachDistance)
         {
             _move = null;
             return;
@@ -37,9 +37,9 @@ public sealed class GatherTask(Entity target, float reachDistance) : PersonTask
         // IdleTask's _anchor). The walk always ends at the reach check above, never at the
         // standoff point, since the standoff is shorter than ReachDistance.
         // Stryker disable once Assignment: same straight line to a resource that never moves, so recomputing walks the same route
-        _approachPosition ??= Position.Approach(person.Position, Target.Position, ReachDistance * ApproachFractionOfReach);
+        _approachPosition ??= Position.Approach(creature.Position, Target.Position, ReachDistance * ApproachFractionOfReach);
         // Stryker disable once Assignment: the reach check above always ends the leg first, so a rebuilt MoveTask steps identically
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);
-        _move.Advance(person);
+        _move.Advance(creature);
     }
 }

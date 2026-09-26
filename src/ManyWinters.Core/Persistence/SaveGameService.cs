@@ -215,7 +215,7 @@ public static class SaveGameService
 
         foreach (var bond in data.Affections)
         {
-            world.Affections.Set(new PersonId(bond.PersonA), new PersonId(bond.PersonB), bond.Value);
+            world.Affections.Set(new CreatureId(bond.PersonA), new CreatureId(bond.PersonB), bond.Value);
         }
 
         return world;
@@ -223,7 +223,7 @@ public static class SaveGameService
 
     private static Person RestorePerson(PersonSaveData personData, Dictionary<Guid, Person> peopleById, SimulationRules rules)
     {
-        var id = new PersonId(personData.Id);
+        var id = new CreatureId(personData.Id);
         var person = new Person
         {
             Id = id,

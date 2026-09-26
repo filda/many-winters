@@ -416,6 +416,9 @@ per outcome, which is what makes the item roster grow by hand. The axe went in s
 with it the worst of the mismatch the placeholders showed: what is left (bag, basket, warm
 clothing, storage hut) is still visibly at odds with its materials, the warm clothing being hide
 but made out of wood. Each goes the way the axe went, when the verbs that would make it exist.
+Hide gets its source, and the warm clothing its correct recipe, under the fauna plan
+(`docs/todo/fauna-plan.md`, phases 3 and 4), along with meat, bone and sinew as materials -
+not planned again here.
 
 Already replaced, and no longer to be planned for: `SkillDefinition.Tool` /
 `ToolHarvestBonus` (the whitelist saying "this item kind is the tool for this skill") went in
@@ -948,7 +951,8 @@ left behind a comment.
    showed that overstated it.*
 
 Steps 1-3 can be done without touching discovery at all, and on their own they retire the
-tool whitelist.
+tool whitelist. Animal materials (meat, hide with a source, bone, sinew) and the butchering
+verb are scheduled by `docs/todo/fauna-plan.md`, not here.
 
 ---
 

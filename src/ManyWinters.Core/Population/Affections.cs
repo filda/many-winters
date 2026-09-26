@@ -11,20 +11,20 @@ public sealed class Affections
     private readonly Dictionary<(Guid Lower, Guid Higher), float> _byPair = new();
 
     // Every pair the world knows about, in no particular order - for saving.
-    public IEnumerable<(PersonId A, PersonId B, float Value)> All =>
-        _byPair.Select(entry => (new PersonId(entry.Key.Lower), new PersonId(entry.Key.Higher), entry.Value));
+    public IEnumerable<(CreatureId A, CreatureId B, float Value)> All =>
+        _byPair.Select(entry => (new CreatureId(entry.Key.Lower), new CreatureId(entry.Key.Higher), entry.Value));
 
-    public float Between(PersonId a, PersonId b) => _byPair.GetValueOrDefault(PairOf(a, b));
+    public float Between(CreatureId a, CreatureId b) => _byPair.GetValueOrDefault(PairOf(a, b));
 
     // Everyone this person has any bond with, strongest first. Pairs that never met are absent
     // rather than zero, so this is the short list of people who matter to them.
-    public IEnumerable<(PersonId Other, float Value)> For(PersonId person) =>
+    public IEnumerable<(CreatureId Other, float Value)> For(CreatureId person) =>
         _byPair
             .Where(entry => entry.Key.Lower == person.Value || entry.Key.Higher == person.Value)
-            .Select(entry => (Other: new PersonId(entry.Key.Lower == person.Value ? entry.Key.Higher : entry.Key.Lower), entry.Value))
+            .Select(entry => (Other: new CreatureId(entry.Key.Lower == person.Value ? entry.Key.Higher : entry.Key.Lower), entry.Value))
             .OrderByDescending(bond => bond.Value);
 
-    public void Set(PersonId a, PersonId b, float value)
+    public void Set(CreatureId a, CreatureId b, float value)
     {
         if (a == b)
         {
@@ -36,7 +36,7 @@ public sealed class Affections
 
     // Moves a bond by `delta` within [0, max]. A bond that falls to nothing is dropped, not kept
     // at zero, so All and For stay the short list of pairs that ever met.
-    public void Change(PersonId a, PersonId b, float delta, float max)
+    public void Change(CreatureId a, CreatureId b, float delta, float max)
     {
         var value = Math.Clamp(Between(a, b) + delta, 0f, max);
         if (value <= 0f)
@@ -49,6 +49,6 @@ public sealed class Affections
     }
 
     // One key per unordered pair, so Between(a, b) and Between(b, a) reach the same entry.
-    private static (Guid Lower, Guid Higher) PairOf(PersonId a, PersonId b) =>
+    private static (Guid Lower, Guid Higher) PairOf(CreatureId a, CreatureId b) =>
         a.Value.CompareTo(b.Value) <= 0 ? (a.Value, b.Value) : (b.Value, a.Value);
 }

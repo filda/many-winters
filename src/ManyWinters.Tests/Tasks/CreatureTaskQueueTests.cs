@@ -4,17 +4,17 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
-public class PersonTaskQueueTests
+public class CreatureTaskQueueTests
 {
-    private sealed class CompletableTask : PersonTask
+    private sealed class CompletableTask : CreatureTask
     {
         public bool Completed { get; set; }
 
-        public Person? AdvancedWith { get; private set; }
+        public Creature? AdvancedWith { get; private set; }
 
         public override bool IsComplete => Completed;
 
-        public override void Advance(Person person) => AdvancedWith = person;
+        public override void Advance(Creature creature) => AdvancedWith = creature;
     }
 
     private static Person NewPerson() => new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
@@ -22,7 +22,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void NewQueueHasNoCurrentTask()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
 
         Assert.Null(queue.Current);
     }
@@ -30,7 +30,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceIfCompleteOnEmptyQueueLeavesCurrentNull()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
 
         queue.AdvanceIfComplete();
 
@@ -40,7 +40,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceIfCompletePullsNextTaskWhenNoneIsCurrent()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var task = new IdleTask();
         queue.Enqueue(task);
 
@@ -52,7 +52,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceIfCompleteKeepsCurrentTaskWhileIncomplete()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var task = new CompletableTask();
         queue.Enqueue(task);
         queue.AdvanceIfComplete();
@@ -65,7 +65,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceIfCompleteMovesToNextTaskOnceCurrentIsComplete()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var first = new CompletableTask();
         var second = new IdleTask();
         queue.Enqueue(first);
@@ -81,7 +81,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void InterruptSetsTheGivenTaskAsCurrentImmediately()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var task = new IdleTask();
 
         queue.Interrupt(task);
@@ -92,7 +92,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void InterruptReplacesWhicheverTaskWasAlreadyCurrent()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var first = new IdleTask();
         queue.Enqueue(first);
         queue.AdvanceIfComplete();
@@ -106,7 +106,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void InterruptDiscardsAnyPendingTasks()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var stalePending = new CompletableTask { Completed = true };
         queue.Enqueue(stalePending);
         var interrupting = new CompletableTask { Completed = true };
@@ -120,7 +120,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceInvokesTheCurrentTasksAdvanceWithTheGivenPerson()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var task = new CompletableTask();
         queue.Interrupt(task);
         var person = NewPerson();
@@ -133,7 +133,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceMovesToTheNextTaskOnceTheCurrentOneCompletes()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
         var first = new CompletableTask { Completed = true };
         var second = new IdleTask();
         queue.Interrupt(first);
@@ -147,7 +147,7 @@ public class PersonTaskQueueTests
     [Fact]
     public void AdvanceOnAnEmptyQueueDoesNotThrow()
     {
-        var queue = new PersonTaskQueue();
+        var queue = new CreatureTaskQueue();
 
         queue.Advance(NewPerson());
     }

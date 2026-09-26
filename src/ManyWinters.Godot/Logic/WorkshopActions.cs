@@ -103,7 +103,7 @@ internal static class WorkshopActions
     // for a made thing at all: nothing worked ever eats.
     internal static ActionOffer? Eat(WorldState world, Person person, IReadOnlyList<WorkshopEntry> picked) =>
         picked.Count == 1 && picked[0].Target is CarriedThing.Stock stock
-            && world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(stock.Kind) > 0f
+            && world.HungerRestoredPerUnitFor(person, stock.Kind) > 0f
             ? ActionOffer.For("Eat", new EatCommand(person, stock.Kind), world, EatCommand.Skill)
             : null;
 

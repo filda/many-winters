@@ -17,7 +17,9 @@ internal static class InspectorText
     {
         MoveTask move => $"Walking to {move.Destination}",
         GatherTask gather => $"Gathering {gather.Target.Kind}",
-        FollowTask follow => $"Keeping up with {follow.Target.Name}",
+        // Target is a Creature (docs/todo/fauna-plan.md, step 0b); only a Person is ever named here
+        // today, since only a person's infant follows a mother.
+        FollowTask { Target: Person target } => $"Keeping up with {target.Name}",
         _ => "Idle",
     };
 
@@ -30,7 +32,7 @@ internal static class InspectorText
         // A pile's kind is an item, not a resource; the only reason to walk to one is a meal.
         GatherTask { Target.Category: EntityCategory.Pile } => "Going for food",
         GatherTask gather => $"Gathering {resources.Get(gather.Target.Kind).DisplayName.ToLowerInvariant()}",
-        FollowTask follow => $"Keeping up with {follow.Target.Name}",
+        FollowTask { Target: Person target } => $"Keeping up with {target.Name}",
         // "Idle" is a scheduler's word for a person standing in a field.
         _ => "At rest",
     };
@@ -40,15 +42,15 @@ internal static class InspectorText
     // on the roster and in the debug inspector. The simulation's four stages, with two more at
     // their edges that change nothing but the words: "young" for the last winter before a child is
     // grown, "aged" for an elder in the last winter they will see.
-    internal static string ForAgeAndSex(long ageInYears, long maxLifespanYears, Sex sex)
+    internal static string ForAgeAndSex(long ageInYears, LifeCycle lifeCycle, Sex sex)
     {
-        var (woman, man) = LifeStages.For(ageInYears) switch
+        var (woman, man) = lifeCycle.StageFor(ageInYears) switch
         {
             LifeStage.Infant => ("baby girl", "baby boy"),
-            LifeStage.Child when ageInYears >= LifeStages.AdultAgeYears - 1 => ("young woman", "young man"),
+            LifeStage.Child when ageInYears >= lifeCycle.AdultAgeYears - 1 => ("young woman", "young man"),
             LifeStage.Child => ("girl", "boy"),
             LifeStage.Adult => ("woman", "man"),
-            LifeStage.Elder when ageInYears >= maxLifespanYears - 1 => ("aged woman", "aged man"),
+            LifeStage.Elder when ageInYears >= lifeCycle.MaxLifespanYears - 1 => ("aged woman", "aged man"),
             _ => ("old woman", "old man"),
         };
 

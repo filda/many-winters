@@ -57,12 +57,13 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
             return ActionBlocker.ActorIsDead;
         }
 
-        // This is what keeps the division in Eat from being by zero - an item nobody described
-        // restores nothing at all (see ItemCatalog.HungerRestoredPerUnitFor).
+        // This is what keeps the division in Eat from being by zero - an item nobody described,
+        // or one this person's species cannot digest, restores nothing at all (see
+        // WorldState.HungerRestoredPerUnitFor).
         // Stryker disable once Equality: with < instead, a zero rate divides to infinity, which
         // converts to a negative unit count that the caller then refuses anyway - the same
         // answer by a worse route, and not one worth writing a test around
-        if (world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(food) <= 0f)
+        if (world.HungerRestoredPerUnitFor(person, food) <= 0f)
         {
             return ActionBlocker.NotEdible;
         }
@@ -100,7 +101,7 @@ public sealed record EatCommand(Person Person, ItemKindId FoodItem) : ICommand
         }
 
         var skillDefinition = world.Configuration.SkillCatalog.Get(Skill);
-        var restoredPerUnit = world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(food);
+        var restoredPerUnit = world.HungerRestoredPerUnitFor(person, food);
         if (person.KnownTechniques.Contains(skillDefinition.EfficientTechnique))
         {
             restoredPerUnit *= EfficientHungerRestoredMultiplier;

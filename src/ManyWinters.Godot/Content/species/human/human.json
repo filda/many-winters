@@ -1,0 +1,16 @@
+{
+  "id": "human",
+  "displayName": "Human",
+  "lifeCycle": {
+    "weaningAgeYears": 1,
+    "adultAgeYears": 4,
+    "elderAgeYears": 7,
+    "maxLifespanYears": 10
+  },
+  "diet": [
+    { "material": "apple", "digestibility": 1 },
+    { "material": "pear", "digestibility": 1 },
+    { "material": "mushroom", "digestibility": 1 },
+    { "material": "potato", "digestibility": 1 }
+  ]
+}

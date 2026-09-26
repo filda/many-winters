@@ -1,6 +1,7 @@
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.TestSupport;
@@ -190,6 +191,31 @@ public static class TestCatalogs
     // care about age spawn people already at the adult baseline.
     public static readonly long AdultAgeTicks = SimulationRules.Default.TicksPerYear * 4;
 
+    // Mirrors Content/species/human/human.json (docs/todo/fauna-plan.md, step 0c): the same
+    // numbers LifeStages and SimulationRules.MaxLifespanYears used to hardcode, now the one
+    // species every test world defines.
+    public const long WeaningAgeYears = 1;
+    public const long AdultAgeYears = 4;
+    public const long ElderAgeYears = 7;
+    private const long HumanMaxLifespanYears = 10;
+
+    public static readonly LifeCycle HumanLifeCycle = new(WeaningAgeYears, AdultAgeYears, ElderAgeYears, HumanMaxLifespanYears);
+
+    // Mirrors Content/species/human/human.json's diet (docs/todo/fauna-plan.md, step 0d): every
+    // material whose item has a HungerRestoredPerUnit above zero here, all at digestibility 1 -
+    // exactly what is edible today, so no test's behaviour changes.
+    private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet =
+    [
+        new(AppleMaterial, 1f),
+        new(PearMaterial, 1f),
+        new(MushroomMaterial, 1f),
+        new(PotatoMaterial, 1f),
+    ];
+
+    private static readonly SpeciesDefinition HumanSpecies = new(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet);
+
+    private static SpeciesCatalog CreateSpeciesCatalog(SpeciesDefinition humanSpecies) => new(new[] { humanSpecies });
+
     private static IReadOnlyList<ClimateYield> ColdFoodYield => [new ClimateYield(Climate.Cold, ColdFoodYieldMultiplier)];
 
     private static ResourceCatalog CreateResourceCatalog() => new(new[]
@@ -294,6 +320,7 @@ public static class TestCatalogs
         var forms = CreateFormCatalog();
 
         return new(
+            CreateSpeciesCatalog(HumanSpecies),
             CreateResourceCatalog(),
             CreateSkillCatalog(),
             CreateRecipeCatalog(),
@@ -313,4 +340,17 @@ public static class TestCatalogs
         CreateConfiguration() with { Rules = SimulationRules.Default with { MaxHungerVariation = 0f } };
 
     public static WorldState CreateWorldWithoutHungerVariation() => new(CreateConfigurationWithoutHungerVariation());
+
+    // For tests that shrink a lifespan to make old age arrive after a handful of ticks instead of
+    // ten winters (WorldStateTests' ShortLifeRules used to do this via SimulationRules.MaxLifespanYears,
+    // which moved onto the species' own LifeCycle in step 0c). Keeps the standard diet - only the
+    // life cycle differs.
+    public static WorldConfiguration CreateConfigurationWithLifeCycle(LifeCycle humanLifeCycle) =>
+        CreateConfigurationWithSpecies(HumanSpecies with { LifeCycle = humanLifeCycle });
+
+    // For tests that need a human species with a diet (or anything else about the species) other
+    // than the standard one - e.g. a species that cannot digest the apple's material at all,
+    // to prove EatCommand actually consults it (docs/todo/fauna-plan.md, step 0d).
+    public static WorldConfiguration CreateConfigurationWithSpecies(SpeciesDefinition humanSpecies) =>
+        CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(humanSpecies) };
 }

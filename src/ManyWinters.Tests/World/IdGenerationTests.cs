@@ -50,15 +50,15 @@ public class IdGenerationTests
     [Fact]
     public void NewIdsAreDistinctAndNeverEmpty()
     {
-        Assert.NotEqual(PersonId.New(), PersonId.New());
+        Assert.NotEqual(CreatureId.New(), CreatureId.New());
         Assert.NotEqual(EntityId.New(), EntityId.New());
-        Assert.NotEqual(Guid.Empty, PersonId.New().Value);
+        Assert.NotEqual(Guid.Empty, CreatureId.New().Value);
     }
 
     [Fact]
     public void SeededIdsFollowTheirGenerator()
     {
-        Assert.Equal(PersonId.New(new Random(5)), PersonId.New(new Random(5)));
-        Assert.Equal(EntityId.New(new Random(5)).Value, PersonId.New(new Random(5)).Value);
+        Assert.Equal(CreatureId.New(new Random(5)), CreatureId.New(new Random(5)));
+        Assert.Equal(EntityId.New(new Random(5)).Value, CreatureId.New(new Random(5)).Value);
     }
 }

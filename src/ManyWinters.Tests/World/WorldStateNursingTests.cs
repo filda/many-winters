@@ -9,7 +9,7 @@ namespace ManyWinters.Tests.World;
 // and what happens the moment its mother is no longer there to do either.
 public class WorldStateNursingTests
 {
-    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears;
+    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
 
     private static Person SpawnMother(WorldState world, Position position) =>
         world.SpawnPerson("Sela", position, initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
@@ -100,7 +100,7 @@ public class WorldStateNursingTests
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
         var mother = SpawnMother(world, new Position(0, 0));
-        var child = SpawnInfant(world, mother, new Position(0, 0), ageTicks: (rules.TicksPerYear * LifeStages.WeaningAgeYears) - 1);
+        var child = SpawnInfant(world, mother, new Position(0, 0), ageTicks: (rules.TicksPerYear * TestCatalogs.WeaningAgeYears) - 1);
 
         world.Advance(1);
 
@@ -134,7 +134,7 @@ public class WorldStateNursingTests
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
         var mother = SpawnMother(world, new Position(0, 0));
-        SpawnInfant(world, mother, new Position(0, 0), ageTicks: rules.TicksPerYear * LifeStages.WeaningAgeYears);
+        SpawnInfant(world, mother, new Position(0, 0), ageTicks: rules.TicksPerYear * TestCatalogs.WeaningAgeYears);
 
         Assert.Null(world.NursingInfantOf(mother));
     }
@@ -205,7 +205,7 @@ public class WorldStateNursingTests
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
         var mother = SpawnMother(world, new Position(0, 0));
-        var child = SpawnInfant(world, mother, new Position(0, 0), ageTicks: (rules.TicksPerYear * LifeStages.WeaningAgeYears) - 2);
+        var child = SpawnInfant(world, mother, new Position(0, 0), ageTicks: (rules.TicksPerYear * TestCatalogs.WeaningAgeYears) - 2);
         world.Advance(1);
         Assert.IsType<FollowTask>(child.Tasks.Current);
 

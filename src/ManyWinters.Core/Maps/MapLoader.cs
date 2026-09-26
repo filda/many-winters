@@ -235,6 +235,7 @@ public static class MapLoader
     private static void SpawnBand(WorldState world, Random idRng, Random namingRng, Position campCenter, long forebearDeathTick)
     {
         var rules = world.Configuration.Rules;
+        var humanLifeCycle = world.Configuration.SpeciesCatalog.Get(Person.HumanSpecies).LifeCycle;
         var rng = new Random(CrowdPlacementSeed);
         var positions = new List<Position>();
 
@@ -264,12 +265,12 @@ public static class MapLoader
         {
             // Died before the story began, after a full life: old enough to have raised anyone in
             // the crowd, gone long enough to be buried rather than lying around camp.
-            var id = PersonId.New(idRng);
+            var id = CreatureId.New(idRng);
             var forebear = new Person
             {
                 Id = id,
                 Name = NextFoundingName(),
-                BirthTick = forebearDeathTick - (rules.MaxLifespanYears * rules.TicksPerYear),
+                BirthTick = forebearDeathTick - (humanLifeCycle.MaxLifespanYears * rules.TicksPerYear),
                 IsAlive = false,
                 DeathTick = forebearDeathTick,
                 CauseOfDeath = DeathCause.OldAge,
@@ -296,7 +297,7 @@ public static class MapLoader
             var father = StartingFatherIndex[index] is { } fatherIndex ? SpawnStarting(fatherIndex) : SpawnForebear(Sex.Male);
             var initialAgeTicks = StartingAgesInWinters[index] * rules.TicksPerYear;
             world.Execute(new SpawnPersonCommand(
-                PersonId.New(idRng),
+                CreatureId.New(idRng),
                 NextFoundingName(),
                 positions[index],
                 mother,

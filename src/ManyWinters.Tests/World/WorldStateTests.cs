@@ -240,6 +240,7 @@ public class WorldStateTests
         var bag = new ItemKindId("bag");
         var world = new WorldState(new WorldConfiguration
         {
+            SpeciesCatalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle)]),
             ItemCatalog = new ItemCatalog(
                 new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
                 new MaterialCatalog([]),
@@ -257,6 +258,7 @@ public class WorldStateTests
         var bag = new ItemKindId("bag");
         var world = new WorldState(new WorldConfiguration
         {
+            SpeciesCatalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle)]),
             ItemCatalog = new ItemCatalog(
                 new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
                 new MaterialCatalog([]),
@@ -1031,17 +1033,24 @@ public class WorldStateTests
     }
 
     // A short calendar, so old age arrives after a handful of ticks instead of 3000.
-    private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2, MaxLifespanYears = 3 };
+    private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2 };
+
+    // A short-lived human, replacing what ShortLifeRules used to set via
+    // SimulationRules.MaxLifespanYears before it moved onto the species' own LifeCycle (step 0c).
+    private static readonly LifeCycle ShortLifeCycle = TestCatalogs.HumanLifeCycle with { MaxLifespanYears = 3 };
 
     private static WorldState CreateWorld(SimulationRules rules) =>
         new(TestCatalogs.CreateConfiguration() with { Rules = rules });
 
+    private static WorldState CreateWorld(SimulationRules rules, LifeCycle humanLifeCycle) =>
+        new(TestCatalogs.CreateConfigurationWithLifeCycle(humanLifeCycle) with { Rules = rules });
+
     [Fact]
     public void AdvanceKillsAPersonWhoReachesTheMaximumLifespanEvenWhenNeverHungry()
     {
-        var world = CreateWorld(ShortLifeRules);
+        var world = CreateWorld(ShortLifeRules, ShortLifeCycle);
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        var lifespanTicks = ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears;
+        var lifespanTicks = ShortLifeRules.TicksPerYear * ShortLifeCycle.MaxLifespanYears;
 
         // Fed back to zero every tick so only old age can be the cause of death.
         for (var tick = 0; tick < lifespanTicks - 1; tick++)
@@ -1056,6 +1065,32 @@ public class WorldStateTests
 
         Assert.False(person.IsAlive);
         Assert.Equal(lifespanTicks, person.DeathTick);
+    }
+
+    // Old age is read off the person's own species' LifeCycle (WorldState.LifeCycleOf), not a
+    // fixed number: two worlds built with different human lifespans kill their people at
+    // different ticks (docs/todo/fauna-plan.md, step 0c).
+    [Fact]
+    public void AdvanceReadsTheMaximumLifespanOffTheCreaturesOwnSpeciesRatherThanAFixedNumber()
+    {
+        var shortWorld = CreateWorld(ShortLifeRules, TestCatalogs.HumanLifeCycle with { MaxLifespanYears = 2 });
+        var shortPerson = shortWorld.SpawnPerson("Ava", new Position(0, 0));
+
+        var longWorld = CreateWorld(ShortLifeRules, TestCatalogs.HumanLifeCycle with { MaxLifespanYears = 5 });
+        var longPerson = longWorld.SpawnPerson("Bran", new Position(0, 0));
+
+        var shortLifespanTicks = ShortLifeRules.TicksPerYear * 2;
+
+        for (var tick = 0; tick < shortLifespanTicks; tick++)
+        {
+            shortWorld.Advance(1);
+            shortPerson.Needs.Hunger = 0;
+            longWorld.Advance(1);
+            longPerson.Needs.Hunger = 0;
+        }
+
+        Assert.False(shortPerson.IsAlive);
+        Assert.True(longPerson.IsAlive);
     }
 
     [Fact]
@@ -1121,10 +1156,10 @@ public class WorldStateTests
     [Fact]
     public void AdvanceRecordsOldAgeAsTheCauseOfDeathWhenTheMaximumLifespanIsReached()
     {
-        var world = CreateWorld(ShortLifeRules);
+        var world = CreateWorld(ShortLifeRules, ShortLifeCycle);
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
-        for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears) - 1; tick++)
+        for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeCycle.MaxLifespanYears) - 1; tick++)
         {
             world.Advance(1);
             person.Needs.Hunger = 0;
@@ -1138,10 +1173,10 @@ public class WorldStateTests
     [Fact]
     public void AdvancePrioritizesOldAgeAsTheCauseOfDeathWhenBothConditionsAreMetSimultaneously()
     {
-        var world = CreateWorld(ShortLifeRules);
+        var world = CreateWorld(ShortLifeRules, ShortLifeCycle);
         var person = world.SpawnPerson("Ava", new Position(0, 0));
 
-        for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeRules.MaxLifespanYears) - 1; tick++)
+        for (var tick = 0; tick < (ShortLifeRules.TicksPerYear * ShortLifeCycle.MaxLifespanYears) - 1; tick++)
         {
             world.Advance(1);
             person.Needs.Hunger = 0;

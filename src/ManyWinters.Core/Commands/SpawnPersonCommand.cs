@@ -7,7 +7,7 @@ namespace ManyWinters.Core.Commands;
 // Person.Unknown. The id is normally the person's own to draw (see EntityId) - only a creator
 // that must produce the same world twice (MapLoader) names one.
 public sealed record SpawnPersonCommand(
-    PersonId Id,
+    CreatureId Id,
     string Name,
     Position Position,
     Person Mother,
@@ -21,7 +21,7 @@ public sealed record SpawnPersonCommand(
     float? Curiosity = null) : ICommand
 {
     public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0)
-        : this(PersonId.New(), name, position, mother, father, initialAgeTicks)
+        : this(CreatureId.New(), name, position, mother, father, initialAgeTicks)
     {
     }
 
@@ -37,7 +37,7 @@ public sealed record SpawnPersonCommand(
         BirthTick = world.Clock.CurrentTick - InitialAgeTicks,
         Mother = Mother,
         Father = Father,
-        Sex = Sex ?? Person.SexOf(Id),
+        Sex = Sex ?? Creature.SexOf(Id),
         MaxHunger = world.Configuration.Rules.MaxHungerFor(Id),
         Curiosity = Curiosity ?? world.Configuration.Rules.StartingBandCuriosity,
     });

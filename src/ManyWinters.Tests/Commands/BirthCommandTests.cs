@@ -7,7 +7,7 @@ namespace ManyWinters.Tests.Commands;
 
 public class BirthCommandTests
 {
-    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears;
+    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
 
     private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
         world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);
@@ -137,7 +137,7 @@ public class BirthCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
-        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * (LifeStages.AdultAgeYears - 1), sex: Sex.Female);
+        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * (TestCatalogs.AdultAgeYears - 1), sex: Sex.Female);
         var father = SpawnFather(world, new Position(1, 0));
 
         world.Execute(new BirthCommand("Bran", mother, father));
@@ -151,7 +151,7 @@ public class BirthCommandTests
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
         var mother = SpawnMother(world, new Position(0, 0));
-        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * (LifeStages.AdultAgeYears - 1), sex: Sex.Male);
+        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * (TestCatalogs.AdultAgeYears - 1), sex: Sex.Male);
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -164,8 +164,8 @@ public class BirthCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var rules = world.Configuration.Rules;
-        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * LifeStages.ElderAgeYears, sex: Sex.Female);
-        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * LifeStages.ElderAgeYears, sex: Sex.Male);
+        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: rules.TicksPerYear * TestCatalogs.ElderAgeYears, sex: Sex.Female);
+        var father = world.SpawnPerson("Doran", new Position(1, 0), initialAgeTicks: rules.TicksPerYear * TestCatalogs.ElderAgeYears, sex: Sex.Male);
 
         world.Execute(new BirthCommand("Bran", mother, father));
 
@@ -205,7 +205,7 @@ public class BirthCommandTests
         var mother = SpawnMother(world, new Position(0, 0));
         var father = SpawnFather(world, new Position(1, 0));
         world.Execute(new BirthCommand("Bran", mother, father));
-        world.Clock.Advance(world.Configuration.Rules.TicksPerYear * LifeStages.WeaningAgeYears);
+        world.Clock.Advance(world.Configuration.Rules.TicksPerYear * TestCatalogs.WeaningAgeYears);
 
         world.Execute(new BirthCommand("Ivy", mother, father));
 

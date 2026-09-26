@@ -209,7 +209,7 @@ EntityVisualVariation.IndexFor(seed, VariantSalt, variantCount) // this entity's
 
 That gives a wolf its own voice — not random each time, *that* wolf's pitch. For a
 game about a people across generations it is more than a trick: a person's voice comes
-from their `PersonId` and disappears when they do. The salt parameter is what keeps a
+from their `CreatureId` and disappears when they do. The salt parameter is what keeps a
 person's pitch independent of their tint, exactly as it already keeps sprite layers
 from varying in lockstep.
 

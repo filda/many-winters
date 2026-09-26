@@ -2,24 +2,24 @@ using ManyWinters.Core.Population;
 
 namespace ManyWinters.Core.Tasks;
 
-public sealed class PersonTaskQueue
+public sealed class CreatureTaskQueue
 {
-    private readonly Queue<PersonTask> _pending = new();
+    private readonly Queue<CreatureTask> _pending = new();
 
-    public PersonTask? Current { get; private set; }
+    public CreatureTask? Current { get; private set; }
 
-    public void Enqueue(PersonTask task) => _pending.Enqueue(task);
+    public void Enqueue(CreatureTask task) => _pending.Enqueue(task);
 
     // A new order preempts whatever the person was doing, rather than waiting behind it.
-    public void Interrupt(PersonTask task)
+    public void Interrupt(CreatureTask task)
     {
         _pending.Clear();
         Current = task;
     }
 
-    public void Advance(Person person)
+    public void Advance(Creature creature)
     {
-        Current?.Advance(person);
+        Current?.Advance(creature);
         AdvanceIfComplete();
     }
 

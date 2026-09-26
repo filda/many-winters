@@ -1,6 +1,6 @@
 namespace ManyWinters.Core.World;
 
-// Every entity id (PersonId, EntityId, ...) is a Guid the entity draws for itself when
+// Every entity id (CreatureId, EntityId, ...) is a Guid the entity draws for itself when
 // constructed - nobody hands ids out, so nothing has to be counted or saved to keep them
 // unique. Deterministic per-entity systems (visual variation, idle wandering, casual teaching)
 // key off SeedOf.

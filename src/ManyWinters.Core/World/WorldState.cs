@@ -127,11 +127,37 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / Configuration.Rules.TicksPerSeason;
 
-    public LifeStage LifeStageOf(Person person) => LifeStages.For(AgeInYears(person));
+    public LifeStage LifeStageOf(Person person) => LifeCycleOf(person).StageFor(AgeInYears(person));
 
     // Grown enough to have children. Elders count: this is a floor on childhood, not a fertility
     // model - a world whose last two people are old is a story worth telling.
-    public bool IsOldEnoughForChildren(Person person) => AgeInYears(person) >= LifeStages.AdultAgeYears;
+    public bool IsOldEnoughForChildren(Person person) => AgeInYears(person) >= LifeCycleOf(person).AdultAgeYears;
+
+    // A creature's own species' age bands and lifespan (docs/todo/fauna-plan.md, step 0c). A
+    // dictionary lookup per call is fine at tens of people per tick; nothing here caches it.
+    private LifeCycle LifeCycleOf(Creature creature) => Configuration.SpeciesCatalog.Get(creature.Species).LifeCycle;
+
+    // The only place that answers "how much hunger does this item put right for this creature"
+    // (docs/todo/fauna-plan.md, step 0d): nutrition is the item's own (ItemCatalog's
+    // HungerRestoredPerUnitFor), digestibility is the species' (SpeciesDefinition.DigestibilityOf)
+    // - a wolf can eat a pear but it will not keep it going, and grass feeds a deer and not a
+    // person. Every reader with a creature in hand goes through this rather than the catalog
+    // directly.
+    public float HungerRestoredPerUnitFor(Creature creature, ItemKindId item)
+    {
+        var itemCatalog = Configuration.ItemCatalog;
+        var nutrition = itemCatalog.HungerRestoredPerUnitFor(item);
+        // An item nobody described (or one that puts nothing right anyway) is skipped before
+        // Get, the same "undescribed is weightless" pattern ItemCatalog's own readers use -
+        // never a KeyNotFoundException for something that was never going to matter.
+        if (nutrition <= 0f)
+        {
+            return 0f;
+        }
+
+        var species = Configuration.SpeciesCatalog.Get(creature.Species);
+        return nutrition * species.DigestibilityOf(itemCatalog.Get(item).Material);
+    }
 
     // The infant this person is nursing, if any: her own living child, under weaning age and
     // within reach. A scan of People per person per tick is fine at tens of people.
@@ -150,13 +176,13 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Reads the same facts as NursingInfantOf independently rather than being told by it, so
     // which of the pair Advance reaches first within a tick cannot change what either gets.
-    public bool IsBeingNursed(Person person) => IsNursedBy(person, person.Mother);
+    public bool IsBeingNursed(Person person) => IsNursedBy(person, person.NursingMother);
 
     // Age-based base plus gear bonuses. Presence, not count, as with InsulationFor: five baskets
     // are not five times the bonus of one.
     public float MaxCarryWeightFor(Person person)
     {
-        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), Configuration.Rules.MaxLifespanYears);
+        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(person), LifeCycleOf(person));
         var gearBonus = person.Inventory.Counts.Keys.Sum(Configuration.ItemCatalog.CarryCapacityBonusFor);
         return baseWeight + gearBonus;
     }
@@ -232,7 +258,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
                 TryAutoEat(person);
 
-                var diedOfOldAge = AgeInYearsAt(person, currentTick) >= rules.MaxLifespanYears;
+                var diedOfOldAge = AgeInYearsAt(person, currentTick) >= LifeCycleOf(person).MaxLifespanYears;
                 // Their own MaxHunger, not the rules'.
                 if (person.Needs.Hunger >= person.MaxHunger || diedOfOldAge)
                 {
@@ -308,7 +334,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     // rather than installed. IdleTask carries per-instance state (anchor, leg, pause) that
     // replacing it every tick would throw away; churning a FollowTask for the same mother is
     // pointless. A change of task type always interrupts.
-    private static bool KeepsCurrentTask(PersonTask? current, PersonTask decided) => (current, decided) switch
+    private static bool KeepsCurrentTask(CreatureTask? current, CreatureTask decided) => (current, decided) switch
     {
         (IdleTask, IdleTask) => true,
         (FollowTask running, FollowTask fresh) => ReferenceEquals(running.Target, fresh.Target),
@@ -331,25 +357,27 @@ public sealed class WorldState(WorldConfiguration configuration)
     // nothing left to stand beside it for.
     private bool IsWorthTakingFrom(Person person, Entity entity) =>
         entity.Category == EntityCategory.Pile
-            ? IsFoodPile(entity) && IsHungryEnoughToEat(person)
+            ? IsFoodPile(person, entity) && IsHungryEnoughToEat(person)
             : IsWorthGathering(person, entity);
 
-    private bool IsFoodPile(Entity entity) =>
+    // Food for a given person about to be sent there, not food in general: a pile of the same
+    // material that person's species cannot digest is not worth the walk.
+    private bool IsFoodPile(Person person, Entity entity) =>
         entity is { Category: EntityCategory.Pile, StaticAmount: > 0 }
-        && Configuration.ItemCatalog.HungerRestoredPerUnitFor(EatFromPileCommand.FoodOf(entity)) > 0f;
+        && HungerRestoredPerUnitFor(person, EatFromPileCommand.FoodOf(entity)) > 0f;
 
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
     // (IdleTask) is the fallback. Hunger wins over a known skill.
-    private PersonTask DecideIdleTask(Person person)
+    private CreatureTask DecideIdleTask(Person person)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
 
         // An infant has no skill and nothing to gather, so it keeps up with its mother instead -
         // that is what feeds it and what keeps it within teaching reach. An orphan falls through
         // and wanders like anybody else; nothing here saves it, and nothing should.
-        if (LifeStageOf(person) == LifeStage.Infant && person.Mother.IsAlive)
+        if (LifeStageOf(person) == LifeStage.Infant && person.NursingMother is { IsAlive: true } mother)
         {
-            return new FollowTask(person.Mother, reachDistance, Configuration.Rules.InfantFollowSpeedPerTick);
+            return new FollowTask(mother, reachDistance, Configuration.Rules.InfantFollowSpeedPerTick);
         }
         // Without knowing how to eat, gathering food would not help, so this falls through to
         // the general search below.
@@ -357,7 +385,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         {
             // A food resource this person never learned to gather is as unreachable as none, but
             // food somebody put down needs no skill to take (see EatFromPileCommand). Nearest wins.
-            var foodNode = FindNearestGatherableEntity(person, definition => IsFoodResource(definition) && IsKnownSkill(person, definition.Skill));
+            var foodNode = FindNearestGatherableEntity(person, definition => IsFoodResource(person, definition) && IsKnownSkill(person, definition.Skill));
             var food = NearerOf(person, foodNode, FindNearestFoodPile(person));
             if (food is not null)
             {
@@ -386,18 +414,19 @@ public sealed class WorldState(WorldConfiguration configuration)
         return definition is not null && person.KnownTechniques.Contains(definition.BaseTechnique);
     }
 
-    private bool IsNursedBy(Person person, Person mother) =>
+    private bool IsNursedBy(Person person, Creature? mother) =>
         person.IsAlive
-        && mother.IsAlive
-        && ReferenceEquals(person.Mother, mother)
+        && mother is { IsAlive: true }
+        && ReferenceEquals(person.NursingMother, mother)
         && LifeStageOf(person) == LifeStage.Infant
         && IsWithinReach(person.Position, mother.Position);
 
-    private bool IsFoodResource(ResourceDefinition definition) =>
-        definition.YieldsItem is { } item && Configuration.ItemCatalog.HungerRestoredPerUnitFor(item) > 0f;
+    // Food for a given person, not food in general: see IsFoodPile.
+    private bool IsFoodResource(Person person, ResourceDefinition definition) =>
+        definition.YieldsItem is { } item && HungerRestoredPerUnitFor(person, item) > 0f;
 
     private bool HasEdibleFood(Person person) =>
-        person.Inventory.Counts.Any(kv => kv.Value > 0 && Configuration.ItemCatalog.HungerRestoredPerUnitFor(kv.Key) > 0f);
+        person.Inventory.Counts.Any(kv => kv.Value > 0 && HungerRestoredPerUnitFor(person, kv.Key) > 0f);
 
     // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
     // the same kind is normally nearby - and so is anything this person could not take from:
@@ -426,7 +455,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private Entity? FindNearestFoodPile(Person person) =>
         _entities
-            .Where(IsFoodPile)
+            .Where(pile => IsFoodPile(person, pile))
             .Where(pile => Distance(person.Position, pile.Position) <= Configuration.Rules.IdleSearchRadius)
             .MinBy(pile => Distance(person.Position, pile.Position));
 
@@ -887,7 +916,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Deterministic from the ids' seeds (EntityId.SeedOf) and the tick, as IdleTask.SeedFor is,
     // rather than a shared Random: reproducible and independent of call order between people.
-    private static bool PassesCasualTeachingRoll(PersonId teacherId, PersonId studentId, TechniqueId technique, long tick, float chance)
+    private static bool PassesCasualTeachingRoll(CreatureId teacherId, CreatureId studentId, TechniqueId technique, long tick, float chance)
     {
         var seed = CasualTeachingSeed(teacherId.Seed, studentId.Seed, technique.Value, tick);
 

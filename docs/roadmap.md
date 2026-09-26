@@ -95,6 +95,16 @@ Goal: create the first complete gameplay cycle.
 
 Goal: make individual lives matter.
 
+## 10b. Fauna and Hunting
+
+- A shared `Creature` base under `Person` and a new `Animal`; species defined as data, humans included (life cycle, diet).
+- Wild herds that graze, wander, breed by season and die on their own.
+- Hunting as a skill with a knowledge gate, a spear from the existing verbs, animals that flee.
+- Carcasses butchered for meat, hide, bone and sinew; hide finally has a source.
+- Decay of every corpse, human or animal, in one mechanism.
+
+Goal: the "Hunt" in the loop below actually exists before the loop is judged. Inserted 2026-09-26; decisions and phases in `docs/todo/fauna-plan.md`. Dangerous animals wait for health and injury.
+
 ## 11. Vertical Slice Evaluation
 
 Go/no-go checkpoint. Test the core loop:

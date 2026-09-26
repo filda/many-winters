@@ -13,7 +13,6 @@ public class SimulationRulesTests
 
         Assert.Equal(75, rules.TicksPerSeason);
         Assert.Equal(300, rules.TicksPerYear);
-        Assert.Equal(10, rules.MaxLifespanYears);
         Assert.Equal(2f, rules.MaxInteractionDistance);
     }
 
@@ -78,14 +77,14 @@ public class SimulationRulesTests
         Assert.InRange(below, 400, 600);
     }
 
-    // The draw reads every bit of the spread except the one Person.SexOf takes, so lifespan
+    // The draw reads every bit of the spread except the one Creature.SexOf takes, so lifespan
     // and sex stay independent.
     [Fact]
     public void HowLongSomebodyLastsDoesNotFollowFromTheirSex()
     {
         var longLastingWomen = Enumerable.Range(1, 1000)
             .Select(TestIds.Person)
-            .Count(id => Person.SexOf(id) == Sex.Female && HungerRules.MaxHungerFor(id) > HungerRules.MaxHunger);
+            .Count(id => Creature.SexOf(id) == Sex.Female && HungerRules.MaxHungerFor(id) > HungerRules.MaxHunger);
 
         // A quarter of 1000 if the two draws are independent, all or nothing if they are not.
         Assert.InRange(longLastingWomen, 200, 300);

@@ -18,7 +18,7 @@ public class BandRosterTests
 
         var entry = Assert.Single(BandRoster.Of(world).People);
 
-        Assert.Equal($"Ava ({LifeStages.AdultAgeYears})", entry.Heading);
+        Assert.Equal($"Ava ({TestWorld.AdultAgeYears})", entry.Heading);
         Assert.Equal("At rest", entry.Task);
     }
 

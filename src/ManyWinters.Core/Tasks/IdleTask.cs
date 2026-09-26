@@ -4,8 +4,8 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Tasks;
 
 // A small aimless walk near wherever the person ended up, one leg at a time via an internal
-// MoveTask. Never completes; a real order replaces it via PersonTaskQueue.Interrupt.
-public sealed class IdleTask : PersonTask
+// MoveTask. Never completes; a real order replaces it via CreatureTaskQueue.Interrupt.
+public sealed class IdleTask : CreatureTask
 {
     private const float MinWanderRadius = 3f;
     private const float MaxWanderRadius = 8f;
@@ -27,12 +27,12 @@ public sealed class IdleTask : PersonTask
 
     public override bool IsComplete => false;
 
-    public override void Advance(Person person)
+    public override void Advance(Creature creature)
     {
         if (_rng is null)
         {
-            _rng = new Random(SeedFor(person.Id.Seed));
-            _anchor = person.Position;
+            _rng = new Random(SeedFor(creature.Id.Seed));
+            _anchor = creature.Position;
             // Drawn once per person, not per leg: how far this one tends to roam.
             _wanderRadius = MinWanderRadius + ((float)_rng.NextDouble() * (MaxWanderRadius - MinWanderRadius));
             _pauseTicksRemaining = NextPauseTicks();
@@ -49,7 +49,7 @@ public sealed class IdleTask : PersonTask
             _currentLeg = new MoveTask(NextWanderDestination(_anchor!.Value), SpeedPerTick);
         }
 
-        _currentLeg.Advance(person);
+        _currentLeg.Advance(creature);
         if (_currentLeg.IsComplete)
         {
             _currentLeg = null;

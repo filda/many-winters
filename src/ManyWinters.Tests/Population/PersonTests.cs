@@ -9,7 +9,7 @@ public class PersonTests
     [Fact]
     public void UnknownHasTheEmptyIdWhichNoEntityEverDraws()
     {
-        Assert.Equal(new PersonId(Guid.Empty), Person.Unknown.Id);
+        Assert.Equal(new CreatureId(Guid.Empty), Person.Unknown.Id);
     }
 
     [Fact]
@@ -41,5 +41,16 @@ public class PersonTests
     public void UnknownIsOneSharedInstance()
     {
         Assert.Same(Person.Unknown, Person.Unknown);
+    }
+
+    // Every person is a human today (docs/todo/fauna-plan.md, step 0c) - no draw, no per-instance
+    // choice, just what a Person always is.
+    [Fact]
+    public void EveryPersonIsTheHumanSpecies()
+    {
+        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+
+        Assert.Equal(new SpeciesId("human"), person.Species);
+        Assert.Equal(Person.HumanSpecies, person.Species);
     }
 }

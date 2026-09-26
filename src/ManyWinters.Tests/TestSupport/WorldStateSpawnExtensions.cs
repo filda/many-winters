@@ -19,12 +19,12 @@ public static class WorldStateSpawnExtensions
         Person? father = null,
         Sex? sex = null,
         float curiosity = 1f) =>
-        world.SpawnPerson(PersonId.New(), name, position, initialAgeTicks, mother, father, sex, curiosity);
+        world.SpawnPerson(CreatureId.New(), name, position, initialAgeTicks, mother, father, sex, curiosity);
 
     // With a chosen id - for tests pinning an outcome that runs on the id's seed.
     public static Person SpawnPerson(
         this WorldState world,
-        PersonId id,
+        CreatureId id,
         string name,
         Position position,
         long initialAgeTicks = 0,
@@ -44,7 +44,7 @@ public static class WorldStateSpawnExtensions
             BirthTick = world.Clock.CurrentTick - initialAgeTicks,
             Mother = mother ?? Person.Unknown,
             Father = father ?? Person.Unknown,
-            Sex = sex ?? Person.SexOf(id),
+            Sex = sex ?? Creature.SexOf(id),
             MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
             Curiosity = curiosity,
         };

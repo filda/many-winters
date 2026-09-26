@@ -9,7 +9,7 @@ namespace ManyWinters.Tests.World;
 // turns a strong enough one into a child without the player asking.
 public class WorldStateAffectionTests
 {
-    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears;
+    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
 
     private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
         world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);

@@ -81,7 +81,7 @@ internal static class PersonActions
 
     private static ItemKindId? CarriedFood(WorldState world, Person person) =>
         person.Inventory.Counts.Keys
-            .Where(kind => world.Configuration.ItemCatalog.HungerRestoredPerUnitFor(kind) > 0f)
+            .Where(kind => world.HungerRestoredPerUnitFor(person, kind) > 0f)
             .OrderBy(kind => kind.Value, StringComparer.Ordinal)
             .Cast<ItemKindId?>()
             .FirstOrDefault();

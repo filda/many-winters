@@ -196,11 +196,12 @@ public class MapLoaderTests
     {
         var map = LoadDefault();
         var rules = map.World.Configuration.Rules;
+        var maxLifespanYears = map.World.Configuration.SpeciesCatalog.Get(Person.HumanSpecies).LifeCycle.MaxLifespanYears;
 
         Assert.All(map.World.Forebears, forebear =>
         {
             Assert.Equal(-rules.TicksPerYear, forebear.DeathTick);
-            Assert.Equal(rules.MaxLifespanYears, map.World.AgeInYearsAt(forebear, forebear.DeathTick!.Value));
+            Assert.Equal(maxLifespanYears, map.World.AgeInYearsAt(forebear, forebear.DeathTick!.Value));
         });
     }
 

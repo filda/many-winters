@@ -43,8 +43,8 @@ public class BandArrivalTests
     public void SomeoneJustGrownCountsAsAnAdult()
     {
         var world = World;
-        world.SpawnPerson("Doran", new Position(0, 0), initialAgeTicks: LifeStages.AdultAgeYears * Year, sex: Sex.Male);
-        world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: (LifeStages.AdultAgeYears * Year) - 1, sex: Sex.Female);
+        world.SpawnPerson("Doran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeYears * Year, sex: Sex.Male);
+        world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: (TestCatalogs.AdultAgeYears * Year) - 1, sex: Sex.Female);
 
         var arrival = BandArrival.Of(world);
 

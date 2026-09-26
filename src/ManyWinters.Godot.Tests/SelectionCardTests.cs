@@ -259,7 +259,7 @@ public class SelectionCardTests
         person.DeathTick = world.Clock.CurrentTick;
         person.CauseOfDeath = DeathCause.Hunger;
 
-        Assert.Equal($"Died at {LifeStages.AdultAgeYears} winters of hunger.", SelectionCard.For(world, person).Death);
+        Assert.Equal($"Died at {TestWorld.AdultAgeYears} winters of hunger.", SelectionCard.For(world, person).Death);
     }
 
     // The age at death is fixed the moment they died, not whatever the clock reads when the

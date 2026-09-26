@@ -15,7 +15,7 @@ public sealed record BandArrival
 
     public required int People { get; init; }
 
-    // Adults (LifeStages.AdultAgeYears and up); everyone younger is a child, so the three sum
+    // Adults (LifeCycle.AdultAgeYears and up); everyone younger is a child, so the three sum
     // to People.
     public required int Men { get; init; }
 

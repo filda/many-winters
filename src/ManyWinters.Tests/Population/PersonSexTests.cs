@@ -26,7 +26,7 @@ public class PersonSexTests
     [Fact]
     public void SexOfDrawsOneForACallerWithNoOpinion()
     {
-        Assert.Contains(Person.SexOf(TestIds.Person(7)), new[] { Sex.Female, Sex.Male });
+        Assert.Contains(Creature.SexOf(TestIds.Person(7)), new[] { Sex.Female, Sex.Male });
     }
 
     [Fact]
@@ -34,14 +34,14 @@ public class PersonSexTests
     {
         // MapLoader regenerates its starting band from a fixed seed rather than loading it, so
         // a draw that moved would make a new game a different world.
-        Assert.Equal(Person.SexOf(TestIds.Person(7)), Person.SexOf(TestIds.Person(7)));
+        Assert.Equal(Creature.SexOf(TestIds.Person(7)), Creature.SexOf(TestIds.Person(7)));
     }
 
     // Why SexOf runs its seed through SeedHash: consecutive ids must not alternate or all agree.
     [Fact]
     public void NeighbouringIdsDoNotAllDrawTheSameSex()
     {
-        var sexes = Enumerable.Range(1, 40).Select(seed => Person.SexOf(TestIds.Person(seed))).ToList();
+        var sexes = Enumerable.Range(1, 40).Select(seed => Creature.SexOf(TestIds.Person(seed))).ToList();
 
         Assert.Contains(Sex.Female, sexes);
         Assert.Contains(Sex.Male, sexes);
@@ -50,7 +50,7 @@ public class PersonSexTests
     [Fact]
     public void BothSexesTurnUpRoughlyEquallyOftenAcrossManyIds()
     {
-        var females = Enumerable.Range(1, 1000).Count(seed => Person.SexOf(TestIds.Person(seed)) == Sex.Female);
+        var females = Enumerable.Range(1, 1000).Count(seed => Creature.SexOf(TestIds.Person(seed)) == Sex.Female);
 
         Assert.InRange(females, 400, 600);
     }

@@ -28,7 +28,7 @@ public sealed partial class WorldPresenter : Node3D
     private readonly RevealableExploration _exploration;
     // One cursor, one highlighted thing - the invariant lives here, not in each view.
     private readonly HoverArbiter _hover = new();
-    private readonly Dictionary<PersonId, PersonView> _personViews = new();
+    private readonly Dictionary<CreatureId, PersonView> _personViews = new();
     private readonly Dictionary<EntityId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
     private readonly Dictionary<EntityId, BuildingView> _buildingViews = new();
@@ -106,7 +106,7 @@ public sealed partial class WorldPresenter : Node3D
     // whether the cursor is still on the lit thing changes continuously.
     public void RevalidateHover() => _hover.Revalidate();
 
-    public void SetPersonAlive(PersonId id, bool isAlive)
+    public void SetPersonAlive(CreatureId id, bool isAlive)
     {
         if (_personViews.TryGetValue(id, out var view))
         {
@@ -114,7 +114,7 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
-    public void SetPersonPosition(PersonId id, Position position, float overSeconds)
+    public void SetPersonPosition(CreatureId id, Position position, float overSeconds)
     {
         if (_personViews.TryGetValue(id, out var view))
         {
@@ -122,20 +122,20 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
-    public Vector3? GetPersonGlobalPosition(PersonId id) =>
+    public Vector3? GetPersonGlobalPosition(CreatureId id) =>
         _personViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
 
     // For Main's screen-space selection marker: how far above the person's position the top of
     // the drawn silhouette sits - a nominal half-height would float or sink depending on the
     // texture's own margins.
-    public float? GetPersonHeadHeightOffset(PersonId id) =>
+    public float? GetPersonHeadHeightOffset(CreatureId id) =>
         _personViews.TryGetValue(id, out var view) ? view.TopHeightOffset : null;
 
     // For Main's occlusion fade, so the selection's own sprites are not treated as blocking
     // the view of themselves.
-    public Node3D? GetPersonNode(PersonId id) => _personViews.GetValueOrDefault(id);
+    public Node3D? GetPersonNode(CreatureId id) => _personViews.GetValueOrDefault(id);
 
-    public void RemovePersonView(PersonId id)
+    public void RemovePersonView(CreatureId id)
     {
         if (_personViews.TryGetValue(id, out var view))
         {

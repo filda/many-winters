@@ -167,12 +167,15 @@ public class EatCommandTests
         // Everything shipped restores 1 per unit, which cannot tell dividing hunger by the rate
         // from multiplying by it. Stew restoring 4 does: ten hunger needs three units, not forty.
         var stew = new ItemKindId("stew");
-        var materials = new MaterialCatalog([new MaterialDefinition(new MaterialId("stew"), "Stew", Density: 1f)]);
-        var configuration = TestCatalogs.CreateConfiguration() with
+        var stewMaterial = new MaterialId("stew");
+        var materials = new MaterialCatalog([new MaterialDefinition(stewMaterial, "Stew", Density: 1f)]);
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle,
+            [new SpeciesDefinition.DietEntry(stewMaterial, 1f)]);
+        var configuration = TestCatalogs.CreateConfigurationWithSpecies(species) with
         {
             MaterialCatalog = materials,
             ItemCatalog = new ItemCatalog(
-                [new ItemDefinition(stew, "Stew", new MaterialId("stew"), new FormId("vessel"), Volume: 1f, HungerRestoredPerUnit: 4f)],
+                [new ItemDefinition(stew, "Stew", stewMaterial, new FormId("vessel"), Volume: 1f, HungerRestoredPerUnit: 4f)],
                 materials,
                 new FormCatalog([])),
         };
@@ -322,5 +325,27 @@ public class EatCommandTests
         person.Inventory.Add(TestCatalogs.AppleItem, 20);
 
         Assert.Equal(ActionBlocker.NotHungry, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
+    }
+
+    // Digestibility, not just nutrition, decides edibility (docs/todo/fauna-plan.md, step 0d): the
+    // same apple is food for a person whose species digests it and not food at all for one whose
+    // species does not, even though the item's own nutrition never changes.
+    [Fact]
+    public void ASpeciesWhoseDietLacksAnItemsMaterialCannotEatItButAnOrdinaryPersonCan()
+    {
+        var ordinaryWorld = TestCatalogs.CreateWorld();
+        var ordinaryPerson = EaterWithFood(ordinaryWorld);
+        ordinaryPerson.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.None, new EatCommand(ordinaryPerson, TestCatalogs.AppleItem).Blocker(ordinaryWorld));
+
+        var nonDigestingSpecies = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle);
+        var nonDigestingWorld = new WorldState(TestCatalogs.CreateConfigurationWithSpecies(nonDigestingSpecies));
+        var nonDigestingPerson = nonDigestingWorld.SpawnPerson("Kell", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        nonDigestingPerson.KnownTechniques.Add(TestCatalogs.BasicEating);
+        nonDigestingPerson.Inventory.Add(TestCatalogs.AppleItem, 20);
+        nonDigestingPerson.Needs.Hunger = 50f;
+
+        Assert.Equal(ActionBlocker.NotEdible, new EatCommand(nonDigestingPerson, TestCatalogs.AppleItem).Blocker(nonDigestingWorld));
     }
 }

@@ -1,12 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
-using ManyWinters.Core.Items;
-using ManyWinters.Core.Knowledge;
-using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Population;
 
-public sealed class Person
+public sealed class Person : Creature
 {
     // Where every family line ends. Parents are always real Person objects (see Mother), so
     // someone with no recorded ancestry points here: the empty id (no entity ever draws it - see
@@ -22,7 +19,7 @@ public sealed class Person
     [SetsRequiredMembers]
     private Person(string unknownRootName)
     {
-        Id = new PersonId(Guid.Empty);
+        Id = new CreatureId(Guid.Empty);
         Name = unknownRootName;
         BirthTick = 0;
 
@@ -38,20 +35,7 @@ public sealed class Person
         Sex = SexOf(Id);
     }
 
-    // Drawn here, not handed out by a world - see EntityId.
-    public PersonId Id { get; init; } = PersonId.New();
-
     public required string Name { get; init; }
-
-    public Position Position { get; set; }
-
-    public bool IsAlive { get; set; } = true;
-
-    public required long BirthTick { get; init; }
-
-    public long? DeathTick { get; set; }
-
-    public DeathCause? CauseOfDeath { get; set; }
 
     public bool IsBuried { get; set; }
 
@@ -61,18 +45,6 @@ public sealed class Person
     public required Person Mother { get; init; }
 
     public required Person Father { get; init; }
-
-    // Required like Mother and Father: nobody leaves it to chance by accident. A caller with no
-    // opinion says so with SexOf rather than this drawing quietly, which would make every test
-    // person's sex a coin flip per run. Saved rather than re-derived from the id (PersonSaveData),
-    // or a chosen sex would be replaced by the id's draw on reload.
-    public required Sex Sex { get; init; }
-
-    // The hunger this person dies at (WorldState.Advance checks Needs.Hunger against it). Drawn
-    // off their own id by SimulationRules.MaxHungerFor when created inside a world, so two people
-    // born the same tick don't run out together; the default is for a person built outside any
-    // world. Not saved: unlike Sex it is only ever the draw, and the draw comes back off the id.
-    public float MaxHunger { get; init; } = SimulationRules.Default.MaxHunger;
 
     // How readily this person works a thing out for themselves, as a multiplier on the idle
     // discovery roll (see WorldState.DiscoverByFiddling). One is the rate the shipped band
@@ -89,25 +61,16 @@ public sealed class Person
     // different things, and what nobody alive believes is lost with them.
     public Beliefs Beliefs { get; } = new();
 
-    public Needs Needs { get; } = new();
+    // The base class's abstract hook, satisfied with this person's own typed, never-null Mother
+    // (docs/todo/fauna-plan.md, step 0b). A covariant return - C# allows narrowing an override's
+    // return type - so WorldState's nursing/following code can read Creature.NursingMother
+    // uniformly while a Person's own callers keep using Person.Mother directly.
+    public override Person NursingMother => Mother;
 
-    public Skills Skills { get; } = new();
+    // A well-known id, declared once rather than drawn or configured per instance - the same
+    // pattern as EatCommand.Skill (docs/todo/fauna-plan.md, step 0c). Every Person is this
+    // species; an animal's own kind is the point of the step that introduces it.
+    public static readonly SpeciesId HumanSpecies = new("human");
 
-    public HashSet<TechniqueId> KnownTechniques { get; } = new();
-
-    public Inventory Inventory { get; } = new();
-
-    public PersonTaskQueue Tasks { get; } = new();
-
-    // A plausible sex for someone nobody has an opinion about, drawn from their id like every
-    // other per-entity variation, so it survives a reload; spread by SeedHash first because
-    // close ids must not come out alike. What a caller with no stake reaches for
-    // (SpawnPersonCommand) - deliberately something you have to ask for.
-    public static Sex SexOf(PersonId id) =>
-        (SeedHash.Avalanche(unchecked((uint)id.Seed)) & 1) == 0 ? Sex.Female : Sex.Male;
-
-    // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't drop this person
-    // into an IdleTask despite an empty queue - lets the presentation layer buy the selected
-    // person a few ticks of standing still between manual actions. 0: no exemption.
-    public long IdleGraceUntilTick { get; set; }
+    public override SpeciesId Species => HumanSpecies;
 }

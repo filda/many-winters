@@ -1,6 +1,7 @@
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.World;
@@ -12,6 +13,7 @@ public class WorldConfigurationTests
     {
         var configuration = new WorldConfiguration();
 
+        Assert.Throws<KeyNotFoundException>(() => configuration.SpeciesCatalog.Get(new SpeciesId("human")));
         Assert.Throws<KeyNotFoundException>(() => configuration.ResourceCatalog.Get(new EntityKindId("apple")));
         Assert.Throws<KeyNotFoundException>(() => configuration.SkillCatalog.Get(new SkillTypeId("foraging")));
         Assert.Throws<KeyNotFoundException>(() => configuration.RecipeCatalog.Get(new ItemKindId("axe")));
@@ -25,10 +27,10 @@ public class WorldConfigurationTests
     [Fact]
     public void OneRuleCanBeOverriddenWithoutRestatingTheOthers()
     {
-        var configuration = new WorldConfiguration { Rules = new SimulationRules { MaxLifespanYears = 1 } };
+        var configuration = new WorldConfiguration { Rules = new SimulationRules { TicksPerSeason = 1 } };
 
-        Assert.Equal(1, configuration.Rules.MaxLifespanYears);
-        Assert.Equal(SimulationRules.Default.TicksPerSeason, configuration.Rules.TicksPerSeason);
+        Assert.Equal(1, configuration.Rules.TicksPerSeason);
+        Assert.Equal(SimulationRules.Default.MaxHunger, configuration.Rules.MaxHunger);
         Assert.Equal(SimulationRules.Default.MaxInteractionDistance, configuration.Rules.MaxInteractionDistance);
     }
 
@@ -41,6 +43,7 @@ public class WorldConfigurationTests
             asked.Add(catalog);
             return catalog switch
             {
+                "species" => [("human.json", """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 } }""")],
                 "resources" => [("apple.json", """{ "id": "apple", "displayName": "Apple", "skill": "foraging" }""")],
                 "skills" => [("foraging.json", """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""")],
                 "recipes" => [("axe.json", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""")],
@@ -51,7 +54,9 @@ public class WorldConfigurationTests
             };
         });
 
-        Assert.Equal(["materials", "forms", "resources", "skills", "recipes", "items"], asked);
+        Assert.Equal(["species", "materials", "forms", "resources", "skills", "recipes", "items"], asked);
+        Assert.Equal("Human", configuration.SpeciesCatalog.Get(new SpeciesId("human")).DisplayName);
+        Assert.Equal(10, configuration.SpeciesCatalog.Get(new SpeciesId("human")).LifeCycle.MaxLifespanYears);
         Assert.Equal("Apple", configuration.ResourceCatalog.Get(new EntityKindId("apple")).DisplayName);
         Assert.Equal("Foraging", configuration.SkillCatalog.Get(new SkillTypeId("foraging")).DisplayName);
         Assert.Equal(5, configuration.RecipeCatalog.Get(new ItemKindId("axe")).InputAmount);
@@ -67,6 +72,7 @@ public class WorldConfigurationTests
     public void LoadFromDirectoryReadsEveryCatalogFromItsOwnFolderUnderTheContentRoot()
     {
         var root = Path.Combine(Path.GetTempPath(), $"manywinters-worldconfiguration-{Guid.NewGuid():N}");
+        WriteDefinition(root, "species", "human", """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 } }""");
         WriteDefinition(root, "resources", "apple", """{ "id": "apple", "displayName": "Apple", "skill": "foraging" }""");
         WriteDefinition(root, "skills", "foraging", """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""");
         WriteDefinition(root, "recipes", "axe", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""");
@@ -78,6 +84,7 @@ public class WorldConfigurationTests
         {
             var configuration = WorldConfiguration.LoadFromDirectory(root);
 
+            Assert.Equal(4, configuration.SpeciesCatalog.Get(new SpeciesId("human")).LifeCycle.AdultAgeYears);
             Assert.Equal(new SkillTypeId("foraging"), configuration.ResourceCatalog.Get(new EntityKindId("apple")).Skill);
             Assert.Equal(new TechniqueId("efficient_foraging"), configuration.SkillCatalog.Get(new SkillTypeId("foraging")).EfficientTechnique);
             Assert.Equal(new ItemKindId("wood"), configuration.RecipeCatalog.Get(new ItemKindId("axe")).InputItem);

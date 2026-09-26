@@ -25,7 +25,7 @@ public class FamilyMilestoneTests
         var person = world.SpawnPerson(
             name,
             position,
-            initialAgeTicks: world.Configuration.Rules.TicksPerYear * LifeStages.AdultAgeYears,
+            initialAgeTicks: world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears,
             sex: sex);
 
         // Foraging and eating have to be learned; granted directly because this test is about

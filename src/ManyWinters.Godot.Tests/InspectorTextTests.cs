@@ -168,8 +168,10 @@ public class InspectorTextTests
     [InlineData(12, "aged woman", "aged man")]
     public void AnAgeReadsAsWhoTheyAreAtThatPartOfALife(long ageInYears, string female, string male)
     {
-        Assert.Equal(female, InspectorText.ForAgeAndSex(ageInYears, maxLifespanYears: 10, Sex.Female));
-        Assert.Equal(male, InspectorText.ForAgeAndSex(ageInYears, maxLifespanYears: 10, Sex.Male));
+        var lifeCycle = new LifeCycle(WeaningAgeYears: 1, AdultAgeYears: 4, ElderAgeYears: 7, MaxLifespanYears: 10);
+
+        Assert.Equal(female, InspectorText.ForAgeAndSex(ageInYears, lifeCycle, Sex.Female));
+        Assert.Equal(male, InspectorText.ForAgeAndSex(ageInYears, lifeCycle, Sex.Male));
     }
 
     // "Aged" is an elder's last winter, not anybody's: in a world too short to grow old in, a
@@ -177,7 +179,9 @@ public class InspectorTextTests
     [Fact]
     public void OnlyAnElderIsCalledAged()
     {
-        Assert.Equal("young man", InspectorText.ForAgeAndSex(LifeStages.AdultAgeYears - 1, maxLifespanYears: LifeStages.AdultAgeYears, Sex.Male));
+        var shortLifeCycle = new LifeCycle(WeaningAgeYears: 1, AdultAgeYears: TestWorld.AdultAgeYears, ElderAgeYears: 7, MaxLifespanYears: TestWorld.AdultAgeYears);
+
+        Assert.Equal("young man", InspectorText.ForAgeAndSex(TestWorld.AdultAgeYears - 1, shortLifeCycle, Sex.Male));
     }
 
     // ForDeath directly, rather than only through ForGrave/ForGraveRecord which both build the

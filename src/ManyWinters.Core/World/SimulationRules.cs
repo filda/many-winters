@@ -85,17 +85,15 @@ public sealed record SimulationRules
 
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
     // draw: the same on every reload without being saved, and independent of creation order.
-    public float MaxHungerFor(PersonId id)
+    public float MaxHungerFor(CreatureId id)
     {
-        // Bit 0 of the spread is what Person.SexOf reads; skipping it keeps hunger tolerance
+        // Bit 0 of the spread is what Creature.SexOf reads; skipping it keeps hunger tolerance
         // independent of sex.
         var spread = unchecked((uint)SeedHash.Avalanche(unchecked((uint)id.Seed))) >> 1;
         var fraction = ((spread / (float)(uint.MaxValue >> 1)) * 2f) - 1f;
 
         return MaxHunger * (1f + (fraction * MaxHungerVariation));
     }
-
-    public long MaxLifespanYears { get; init; } = 10;
 
     // Below this a person leaves the food they carry alone; once they eat, EatCommand eats down
     // to zero, so meals are occasional events, not a bite per tick. Well below

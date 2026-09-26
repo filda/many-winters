@@ -60,6 +60,15 @@ internal static class TestWorld
     // of the maker's pack.
     private const float StorageHutVolume = 200f;
 
+    // Mirrors Content/species/human/human.json (docs/todo/fauna-plan.md, step 0c): a deliberate
+    // copy, like every other catalog here, rather than a shared one with ManyWinters.Tests.
+    internal const long AdultAgeYears = 4;
+    private static readonly LifeCycle HumanLifeCycle = new(WeaningAgeYears: 1, AdultAgeYears: AdultAgeYears, ElderAgeYears: 7, MaxLifespanYears: 10);
+
+    // Both Apple and Berry share the "apple" material below, so this one entry keeps both edible
+    // (docs/todo/fauna-plan.md, step 0d) - all that is edible in this test world today.
+    private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet = [new(new MaterialId("apple"), 1f)];
+
     internal static WorldState Create()
     {
         var materials = new MaterialCatalog([
@@ -97,6 +106,7 @@ internal static class TestWorld
             forms);
 
         return new WorldState(new WorldConfiguration(
+            new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet)]),
             new ResourceCatalog([
                 new ResourceDefinition(AppleTree, "Apple", Foraging, Apple, CanFell: true, FellLeaves: [new(new EntityKindId("wood"), 30f)]),
                 new ResourceDefinition(Stump, "Tree Stump", Foraging, Wood),
@@ -193,7 +203,7 @@ internal static class TestWorld
         {
             Name = name,
             Position = position,
-            BirthTick = world.Clock.CurrentTick - (SimulationRules.Default.TicksPerYear * LifeStages.AdultAgeYears),
+            BirthTick = world.Clock.CurrentTick - (SimulationRules.Default.TicksPerYear * AdultAgeYears),
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = sex,
