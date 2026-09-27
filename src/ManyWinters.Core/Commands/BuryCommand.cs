@@ -7,12 +7,6 @@ namespace ManyWinters.Core.Commands;
 
 public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : ICommand
 {
-    private const float SkillGainPerBurial = 1f;
-    private const int PracticesBeforeDiscovery = 5;
-
-    // Stated in tries, not as a level: the practice curve is not linear.
-    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
-
     private static readonly SkillTypeId BurialSkill = new("burial");
 
     public ActionBlocker Blocker(WorldState world)
@@ -47,7 +41,7 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
         var skillDefinition = world.Configuration.SkillCatalog.Get(BurialSkill);
         var technique = skillDefinition.EfficientTechnique;
         // A decayed corpse is unmarked whatever the gravedigger knows: the person who could have
-        // been recognised is gone, only bones are left, and the technique they dug the grave
+        // been recognized is gone, only bones are left, and the technique they dug the grave
         // with does not bring an identity back.
         var isMarked = BuryingPerson.KnownTechniques.Contains(technique) && !world.IsDecayed(Deceased);
 
@@ -69,8 +63,8 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
 
         Deceased.IsBuried = true;
 
-        BuryingPerson.Skills.Increase(BurialSkill, SkillGainPerBurial);
-        if (BuryingPerson.Skills.Get(BurialSkill) >= DiscoveryThreshold)
+        BuryingPerson.Skills.Increase(BurialSkill, world.Configuration.Rules.SkillGainPerBurial);
+        if (BuryingPerson.Skills.Get(BurialSkill) >= Skills.LevelAfter(world.Configuration.Rules.PracticesBeforeDiscovery))
         {
             BuryingPerson.KnownTechniques.Add(technique);
         }
