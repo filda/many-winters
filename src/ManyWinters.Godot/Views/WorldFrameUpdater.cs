@@ -18,9 +18,9 @@ internal sealed class WorldFrameUpdater(
     public void Update(float delta)
     {
         cameraRig.HandleInput(delta);
-        // The camera and the selected person's interpolated position move continuously between
+        // The camera and the selected creature's interpolated position move continuously between
         // ticks, so what stands in the way changes continuously too.
-        occlusionFader.Update(selection.Person);
+        occlusionFader.Update(selection.SelectedCreature);
         selection.UpdateMarker();
         // Hover is taken on mouse movement but can be lost without any - a person can walk out
         // from under a resting cursor (see HoverArbiter).

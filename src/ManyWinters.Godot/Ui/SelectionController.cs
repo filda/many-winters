@@ -24,6 +24,7 @@ internal sealed class SelectionController
     private readonly PersonDetailPanel _detailPanel;
 
     private Person? _person;
+    private Animal? _animal;
     private Grave? _grave;
 
     // Forwarded from the selection card, the detail page, or (in composition code) the contextual
@@ -47,6 +48,11 @@ internal sealed class SelectionController
     public Person? Person => _person;
 
     public Grave? Grave => _grave;
+
+    // Whichever of the two - a person or an animal - is selected, for everything that only reads
+    // what every Creature has: the marker's position, the occlusion fade's sight line, the clock's
+    // idle-grace hint. Never both, so there is never a question of which one wins.
+    public Creature? SelectedCreature => (Creature?)_person ?? _animal;
 
     public SelectionController(
         SelectionUi ui,
@@ -87,6 +93,7 @@ internal sealed class SelectionController
     public void Select(Person person)
     {
         _person = person;
+        _animal = null;
         _grave = null;
         Refresh();
 
@@ -98,10 +105,19 @@ internal sealed class SelectionController
         }
     }
 
+    public void Select(Animal animal)
+    {
+        _animal = animal;
+        _person = null;
+        _grave = null;
+        Refresh();
+    }
+
     public void Select(Grave grave)
     {
         _grave = grave;
         _person = null;
+        _animal = null;
         Refresh();
     }
 
@@ -111,7 +127,7 @@ internal sealed class SelectionController
     {
         Select(person);
 
-        if (_presenter.GetPersonGlobalPosition(person.Id) is { } position)
+        if (_presenter.GetCreatureGlobalPosition(person.Id) is { } position)
         {
             _cameraRig.FocusOn(position);
         }
@@ -122,6 +138,7 @@ internal sealed class SelectionController
     private void Clear()
     {
         _person = null;
+        _animal = null;
         _grave = null;
         Refresh();
     }
@@ -164,6 +181,12 @@ internal sealed class SelectionController
                 _detailPanel.Show(card, offers);
             }
         }
+        else if (_animal is { } animal)
+        {
+            // No detail page and no actions for an animal yet (docs/todo/fauna-plan.md, phase 2b):
+            // the card is everything there is to show, so nothing else here has to close.
+            _selectionPanel.ShowAnimal(AnimalCard.For(_world, animal));
+        }
         else
         {
             _selectionPanel.ClearSelection();
@@ -191,16 +214,16 @@ internal sealed class SelectionController
     // Camera3D.UnprojectPosition/IsPositionBehind do the projection; this anchors a Control on it.
     public void UpdateMarker()
     {
-        if (_person is not { } person
-            || _presenter.GetPersonGlobalPosition(person.Id) is not { } personPosition
-            || _presenter.GetPersonHeadHeightOffset(person.Id) is not { } headHeightOffset)
+        if (SelectedCreature is not { } creature
+            || _presenter.GetCreatureGlobalPosition(creature.Id) is not { } creaturePosition
+            || _presenter.GetCreatureHeadHeightOffset(creature.Id) is not { } headHeightOffset)
         {
             _marker.Visible = false;
             return;
         }
 
         var camera = _cameraRig.Camera;
-        var headPosition = personPosition + new Vector3(0, headHeightOffset, 0);
+        var headPosition = creaturePosition + new Vector3(0, headHeightOffset, 0);
         if (camera.IsPositionBehind(headPosition))
         {
             _marker.Visible = false;

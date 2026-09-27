@@ -73,6 +73,32 @@ public class InspectorTextTests
         Assert.Equal("Keeping up with Sela", InspectorText.ForTask(person));
     }
 
+    // An animal has no name to give (Creature.NursingMother has none to point at for a Person,
+    // but an Animal's own mother carries none), so a fawn's own follow reads without one.
+    [Fact]
+    public void AFawnKeepsCloseToItsMotherWithNoNameToGive()
+    {
+        var world = TestWorld.Create();
+        var fawn = TestWorld.AddAdultAnimal(world, new Position(0, 0));
+        var mother = TestWorld.AddAdultAnimal(world, new Position(1, 0));
+        fawn.Tasks.Interrupt(new FollowTask(mother, keepWithin: 2f, speedPerTick: 0.25f));
+
+        Assert.Equal("Keeping close to its mother", InspectorText.ForTask(fawn));
+    }
+
+    // A species' own flight rule (FleeTask) - only ever an animal's, since no human species
+    // defines Flee.
+    [Fact]
+    public void AFleeingCreatureIsSaidToBeFleeing()
+    {
+        var world = TestWorld.Create();
+        var deer = TestWorld.AddAdultAnimal(world, new Position(0, 0));
+        var person = TestWorld.AddAdult(world, "Ava", new Position(1, 0));
+        deer.Tasks.Interrupt(new FleeTask(person, new SpeciesDefinition.FleeDefinition(FleeDistance: 8f, SafeDistance: 16f, SpeedPerTick: 0.6f)));
+
+        Assert.Equal("Fleeing", InspectorText.ForTask(deer));
+    }
+
     [Fact]
     public void AnUnmarkedGraveRecordsNothingAboutWhoLiesThere()
     {

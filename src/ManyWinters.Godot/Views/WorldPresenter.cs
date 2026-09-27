@@ -13,6 +13,8 @@ public sealed partial class WorldPresenter : Node3D
     // into an event nobody upstream has to be constructed before this presenter is.
     public event Action<Person, MouseButton>? PersonClicked;
 
+    public event Action<Animal, MouseButton>? AnimalClicked;
+
     public event Action<Entity, MouseButton>? ResourceNodeClicked;
 
     public event Action<Entity, MouseButton>? BuildingClicked;
@@ -29,6 +31,7 @@ public sealed partial class WorldPresenter : Node3D
     // One cursor, one highlighted thing - the invariant lives here, not in each view.
     private readonly HoverArbiter _hover = new();
     private readonly Dictionary<CreatureId, PersonView> _personViews = new();
+    private readonly Dictionary<CreatureId, AnimalView> _animalViews = new();
     private readonly Dictionary<EntityId, ResourceNodeView> _resourceNodeViews = new();
     private readonly Dictionary<GraveId, GraveView> _graveViews = new();
     private readonly Dictionary<EntityId, BuildingView> _buildingViews = new();
@@ -37,6 +40,7 @@ public sealed partial class WorldPresenter : Node3D
     // Read every tick by RefreshExploration. The world's live collections, not copies, so a
     // view created later (a new grave, someone born) is in here as soon as the simulation adds it.
     private readonly IReadOnlyList<Person> _people;
+    private readonly IReadOnlyList<Animal> _animals;
     private readonly IReadOnlyList<Grave> _graves;
     private readonly IReadOnlyList<Entity> _entities;
 
@@ -74,12 +78,14 @@ public sealed partial class WorldPresenter : Node3D
         _resourceCatalog = world.Configuration.ResourceCatalog;
         _exploration = exploration;
         _people = world.People;
+        _animals = world.Animals;
         _graves = world.Graves;
         _entities = world.Entities;
         _viewCenter = WorldSpace.ToSimulation(initialCameraPosition);
         _viewRadiusSquared = (double)initialViewRadius * initialViewRadius;
 
         world.PersonAdded += CreatePersonView;
+        world.AnimalAdded += CreateAnimalView;
         world.EntityAdded += CreateEntityView;
         world.GraveAdded += CreateGraveView;
         // Only a pile-category entity ever fires this: a felled or withered resource stays in
@@ -89,6 +95,11 @@ public sealed partial class WorldPresenter : Node3D
         foreach (var person in world.People)
         {
             CreatePersonView(person);
+        }
+
+        foreach (var animal in world.Animals)
+        {
+            CreateAnimalView(animal);
         }
 
         foreach (var entity in world.Entities)
@@ -122,18 +133,43 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
-    public Vector3? GetPersonGlobalPosition(CreatureId id) =>
-        _personViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
+    public void SetAnimalAlive(CreatureId id, bool isAlive)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetAlive(isAlive);
+        }
+    }
 
-    // For Main's screen-space selection marker: how far above the person's position the top of
+    public void SetAnimalPosition(CreatureId id, Position position, float overSeconds)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetTargetPosition(WorldSpace.ToRender(position, view.Size / 2f, _sampleHeight), overSeconds);
+        }
+    }
+
+    // Person or animal, whichever this id belongs to - the one place SelectionController,
+    // WorldInputController and OcclusionFader ask "where is the creature I care about" without
+    // knowing which kind of view answers. A person's own id space is disjoint from an animal's
+    // (both drawn from CreatureId.New), so at most one dictionary ever has it.
+    public Vector3? GetCreatureGlobalPosition(CreatureId id) =>
+        _personViews.TryGetValue(id, out var personView) ? personView.GlobalPosition
+        : _animalViews.TryGetValue(id, out var animalView) ? animalView.GlobalPosition
+        : null;
+
+    // For Main's screen-space selection marker: how far above the creature's position the top of
     // the drawn silhouette sits - a nominal half-height would float or sink depending on the
     // texture's own margins.
-    public float? GetPersonHeadHeightOffset(CreatureId id) =>
-        _personViews.TryGetValue(id, out var view) ? view.TopHeightOffset : null;
+    public float? GetCreatureHeadHeightOffset(CreatureId id) =>
+        _personViews.TryGetValue(id, out var personView) ? personView.TopHeightOffset
+        : _animalViews.TryGetValue(id, out var animalView) ? animalView.TopHeightOffset
+        : null;
 
     // For Main's occlusion fade, so the selection's own sprites are not treated as blocking
     // the view of themselves.
-    public Node3D? GetPersonNode(CreatureId id) => _personViews.GetValueOrDefault(id);
+    public Node3D? GetCreatureNode(CreatureId id) =>
+        (Node3D?)_personViews.GetValueOrDefault(id) ?? _animalViews.GetValueOrDefault(id);
 
     public void RemovePersonView(CreatureId id)
     {
@@ -163,6 +199,8 @@ public sealed partial class WorldPresenter : Node3D
 
     private void RaisePersonClicked(Person person, MouseButton button) => PersonClicked?.Invoke(person, button);
 
+    private void RaiseAnimalClicked(Animal animal, MouseButton button) => AnimalClicked?.Invoke(animal, button);
+
     private void RaiseResourceNodeClicked(Entity node, MouseButton button) => ResourceNodeClicked?.Invoke(node, button);
 
     private void RaiseBuildingClicked(Entity building, MouseButton button) => BuildingClicked?.Invoke(building, button);
@@ -186,6 +224,15 @@ public sealed partial class WorldPresenter : Node3D
         view.SnapRemembered(IsOutOfSight(person.Position));
         AddChild(view);
         _personViews[person.Id] = view;
+    }
+
+    private void CreateAnimalView(Animal animal)
+    {
+        var view = new AnimalView(animal, _hover, RaiseAnimalClicked, RaiseMissedClick);
+        view.Position = WorldSpace.ToRender(animal.Position, view.Size / 2f, _sampleHeight);
+        view.SnapRemembered(IsOutOfSight(animal.Position));
+        AddChild(view);
+        _animalViews[animal.Id] = view;
     }
 
     // Picks which kind of view an Entity gets from its Category, since the model no longer
@@ -266,6 +313,17 @@ public sealed partial class WorldPresenter : Node3D
             if (_personViews.TryGetValue(person.Id, out var personView))
             {
                 personView.SetRemembered(IsOutOfSight(person.Position));
+            }
+        }
+
+        // An animal never contributes to the fog itself (WorldState.RefreshExploration draws it
+        // only from living people), so unlike a person's own view above, a living animal's view
+        // dims exactly like a resource node's or a building's whenever it drifts out of sight.
+        foreach (var animal in _animals)
+        {
+            if (_animalViews.TryGetValue(animal.Id, out var animalView))
+            {
+                animalView.SetRemembered(IsOutOfSight(animal.Position));
             }
         }
 

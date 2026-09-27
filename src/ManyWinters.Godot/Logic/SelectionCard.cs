@@ -87,22 +87,23 @@ internal sealed record SelectionCard(
     }
 
     // How full they are, not how hungry: the bar drains as hunger rises. The band's roster draws
-    // the same bar under every name, so the reading is built here for both.
-    internal static MeterReading FedFor(Person person, float seekFoodThreshold) =>
-        new("Fed", person.MaxHunger - person.Needs.Hunger, person.MaxHunger, HungerFill(person, seekFoodThreshold));
+    // the same bar under every name, so the reading is built here for both - Creature, not
+    // Person, so AnimalCard reads the same bar for a grazing deer.
+    internal static MeterReading FedFor(Creature creature, float seekFoodThreshold) =>
+        new("Fed", creature.MaxHunger - creature.Needs.Hunger, creature.MaxHunger, HungerFill(creature, seekFoodThreshold));
 
-    // Green while the belly is its own business; yellow the moment hunger sends the person off to
-    // look for food by themselves, then deepening to red the rest of the way to the hunger that
-    // kills them.
-    internal static Color HungerFill(Person person, float seekFoodThreshold)
+    // Green while the belly is its own business; yellow the moment hunger sends the creature off
+    // to look for food by itself, then deepening to red the rest of the way to the hunger that
+    // kills it.
+    internal static Color HungerFill(Creature creature, float seekFoodThreshold)
     {
-        if (person.Needs.Hunger < seekFoodThreshold)
+        if (creature.Needs.Hunger < seekFoodThreshold)
         {
             return Fed;
         }
 
-        var remaining = person.MaxHunger - seekFoodThreshold;
-        var travelled = remaining > 0f ? Math.Clamp((person.Needs.Hunger - seekFoodThreshold) / remaining, 0f, 1f) : 1f;
+        var remaining = creature.MaxHunger - seekFoodThreshold;
+        var travelled = remaining > 0f ? Math.Clamp((creature.Needs.Hunger - seekFoodThreshold) / remaining, 0f, 1f) : 1f;
         return Hungry.Lerp(Starving, travelled);
     }
 

@@ -57,9 +57,9 @@ internal sealed class SimulationLoop(
     // next fixed tick.
     public void TickOnce()
     {
-        if (selection.Person is { } selectedPerson)
+        if (selection.SelectedCreature is { } selectedCreature)
         {
-            world.Execute(new GrantIdleGraceCommand(selectedPerson, pacing.SelectedPersonIdleGraceTicks));
+            world.Execute(new GrantIdleGraceCommand(selectedCreature, pacing.SelectedPersonIdleGraceTicks));
         }
 
         world.Advance(1);
@@ -82,6 +82,12 @@ internal sealed class SimulationLoop(
             presenter.SetPersonPosition(person.Id, person.Position, person.IsAlive ? (float)pacing.TickIntervalSeconds : 0f);
         }
 
+        foreach (var animal in world.Animals)
+        {
+            presenter.SetAnimalAlive(animal.Id, animal.IsAlive);
+            presenter.SetAnimalPosition(animal.Id, animal.Position, animal.IsAlive ? (float)pacing.TickIntervalSeconds : 0f);
+        }
+
         foreach (var node in world.Entities)
         {
             if (node.Growth is not { } growth)
@@ -101,6 +107,13 @@ internal sealed class SimulationLoop(
         }
 
         GD.Print($"Tick {world.Clock.CurrentTick}: {world.People.Count(p => p.IsAlive)} of {world.People.Count} people alive.");
+
+        // Its own line, not folded into the one above: the herds exist from world creation, well
+        // before the first tick, but GameFixture's own log offset (see its InitializeAsync) makes
+        // every boot-time line permanently unreadable to a test, so this is printed here, every
+        // tick, the same way the population line above is - the first "advance one tick" a golden
+        // path test does is enough for E2E to witness the herds exist without clicking anything.
+        GD.Print($"Animals: {world.Animals.Count}");
 
         // A verbose session follows the game from its log alone, so each tick also says what the
         // renderer drew - the one honest answer to whether the world reached the screen at all.

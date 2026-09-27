@@ -6,8 +6,8 @@ using ManyWinters.Godot.Views;
 
 namespace ManyWinters.Godot.Interaction;
 
-// A decoration sprite between the camera and the selected person would otherwise hide them
-// with no way to tell where they went.
+// A decoration sprite between the camera and whoever is selected - a person or an animal - would
+// otherwise hide them with no way to tell where they went.
 internal sealed class OcclusionFader(
     FreeCameraRig cameraRig,
     WorldPresenter presenter,
@@ -20,9 +20,9 @@ internal sealed class OcclusionFader(
     private Vector3? _lastTargetPosition;
     private const float RecomputeDistanceSquaredThreshold = 0.0001f;
 
-    public void Update(Person? selectedPerson)
+    public void Update(Creature? selectedCreature)
     {
-        var (targetPosition, selectedPersonNode) = ResolveOcclusionTarget(selectedPerson);
+        var (targetPosition, selectedCreatureNode) = ResolveOcclusionTarget(selectedCreature);
         var cameraPosition = cameraRig.CameraGlobalPosition;
 
         if (_lastCameraPosition is { } lastCameraPosition
@@ -36,7 +36,7 @@ internal sealed class OcclusionFader(
         _lastCameraPosition = cameraPosition;
         _lastTargetPosition = targetPosition;
 
-        var occluding = ComputeOccludingSprites(cameraPosition, targetPosition, selectedPersonNode);
+        var occluding = ComputeOccludingSprites(cameraPosition, targetPosition, selectedCreatureNode);
 
         // Re-applied every frame, not only on entering the set: the hover highlight rewrites the
         // same sprite's Modulate on every hover-state change and would undo the fade whenever the
@@ -65,14 +65,14 @@ internal sealed class OcclusionFader(
         }
     }
 
-    // What the occlusion sight line runs to: the selected person if any (and the node to exclude,
-    // since it sits at the target itself), else the camera's own orbit/pan target so nothing gets
-    // to block the view indefinitely just because no one is selected.
-    private (Vector3 TargetPosition, Node? SelectedPersonNode) ResolveOcclusionTarget(Person? selectedPerson)
+    // What the occlusion sight line runs to: whoever is selected if anyone (and the node to
+    // exclude, since it sits at the target itself), else the camera's own orbit/pan target so
+    // nothing gets to block the view indefinitely just because no one is selected.
+    private (Vector3 TargetPosition, Node? SelectedCreatureNode) ResolveOcclusionTarget(Creature? selectedCreature)
     {
-        if (selectedPerson is { } person && presenter.GetPersonGlobalPosition(person.Id) is { } personPosition)
+        if (selectedCreature is { } creature && presenter.GetCreatureGlobalPosition(creature.Id) is { } creaturePosition)
         {
-            return (personPosition, presenter.GetPersonNode(person.Id));
+            return (creaturePosition, presenter.GetCreatureNode(creature.Id));
         }
 
         return (cameraRig.RigGlobalPosition, null);
@@ -82,7 +82,7 @@ internal sealed class OcclusionFader(
     // every ResourceNode's Area3D subtree stuttered the whole frame, camera included. Ground
     // shadows are plain Sprite3Ds (GroundShadow), never billboards, so need no exclusion; only
     // the selection's own sprites do, since they sit at the target itself.
-    private HashSet<Sprite3D> ComputeOccludingSprites(Vector3 cameraPosition, Vector3 targetPosition, Node? selectedPersonNode)
+    private HashSet<Sprite3D> ComputeOccludingSprites(Vector3 cameraPosition, Vector3 targetPosition, Node? selectedCreatureNode)
     {
         var result = new HashSet<Sprite3D>();
 
@@ -93,7 +93,7 @@ internal sealed class OcclusionFader(
 
         foreach (var sprite in BillboardSprite.LiveSprites)
         {
-            if (selectedPersonNode is not null && selectedPersonNode.IsAncestorOf(sprite))
+            if (selectedCreatureNode is not null && selectedCreatureNode.IsAncestorOf(sprite))
             {
                 continue;
             }

@@ -65,6 +65,12 @@ internal static class TestWorld
     internal const long AdultAgeYears = 4;
     private static readonly LifeCycle HumanLifeCycle = new(WeaningAgeYears: 1, AdultAgeYears: AdultAgeYears, ElderAgeYears: 7, MaxLifespanYears: 10);
 
+    // Mirrors Content/species/deer/deer.json, narrowed to what AnimalCard/InspectorText tests
+    // read: the life cycle for age-and-sex wording and nothing about diet, herding or breeding.
+    private static readonly SpeciesId DeerSpecies = new("deer");
+    private const long DeerAdultAgeYears = 2;
+    private static readonly LifeCycle DeerLifeCycle = new(WeaningAgeYears: 1, AdultAgeYears: DeerAdultAgeYears, ElderAgeYears: 6, MaxLifespanYears: 8);
+
     // Both Apple and Berry share the "apple" material below, so this one entry keeps both edible
     // (docs/todo/fauna-plan.md, step 0d) - all that is edible in this test world today.
     private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet = [new(new MaterialId("apple"), 1f)];
@@ -106,7 +112,11 @@ internal static class TestWorld
             forms);
 
         return new WorldState(new WorldConfiguration(
-            new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet)]),
+            new SpeciesCatalog(
+            [
+                new SpeciesDefinition(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet),
+                new SpeciesDefinition(DeerSpecies, "Deer", DeerLifeCycle, CanCarry: false),
+            ]),
             new ResourceCatalog([
                 new ResourceDefinition(AppleTree, "Apple", Foraging, Apple, CanFell: true, FellLeaves: [new(new EntityKindId("wood"), 30f)]),
                 new ResourceDefinition(Stump, "Tree Stump", Foraging, Wood),
@@ -211,5 +221,25 @@ internal static class TestWorld
 
         world.AddPerson(person);
         return person;
+    }
+
+    // Grown, on a home range of its own - the animal counterpart of AddAdult, for AnimalCard and
+    // InspectorText.ForTask tests that need a Creature which is not a Person.
+    internal static Animal AddAdultAnimal(WorldState world, Position position, Sex sex = Sex.Female)
+    {
+        var home = new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f };
+        world.AddHomeRange(home);
+
+        var id = CreatureId.New();
+        var animal = new Animal(DeerSpecies, home)
+        {
+            Id = id,
+            Position = position,
+            BirthTick = world.Clock.CurrentTick - (SimulationRules.Default.TicksPerYear * DeerAdultAgeYears),
+            Sex = sex,
+        };
+
+        world.AddAnimal(animal);
+        return animal;
     }
 }

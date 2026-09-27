@@ -42,8 +42,11 @@ internal partial class SelectionPanel : PaperPanel
     private Label _death = null!;
     private VBoxContainer _personBody = null!;
     private Label _graveRecord = null!;
+    private VBoxContainer _animalBody = null!;
+    private Label _animalTask = null!;
 
     private MeterRows _meterRows = null!;
+    private MeterRows _animalMeterRows = null!;
 
     // Which action the player pressed. Main runs it: the panel knows what an offer is, not what
     // executing one means for the rest of the game.
@@ -112,6 +115,21 @@ internal partial class SelectionPanel : PaperPanel
         _graveRecord = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _graveRecord.Visible = false;
         Body.AddChild(_graveRecord);
+
+        // No pack, no knowledge, no actions - nothing can be done to an animal yet
+        // (docs/todo/fauna-plan.md, phase 2b), so its own body is only the meter and the doing
+        // line every creature's card carries.
+        _animalBody = new VBoxContainer();
+        _animalBody.AddThemeConstantOverride("separation", SectionSpacing);
+        _animalBody.Visible = false;
+        Body.AddChild(_animalBody);
+
+        var animalMeters = new VBoxContainer();
+        _animalBody.AddChild(animalMeters);
+        _animalMeterRows = new MeterRows(animalMeters, MeterHeight, BodyFontSize);
+
+        _animalTask = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
+        _animalBody.AddChild(_animalTask);
     }
 
     // Main holds the selection, so the cross only says the player asked for it to go.
@@ -183,6 +201,7 @@ internal partial class SelectionPanel : PaperPanel
         Visible = true;
         _personBody.Visible = true;
         _graveRecord.Visible = false;
+        _animalBody.Visible = false;
         _heading.Disabled = false;
         _detailIcon.Visible = true;
 
@@ -202,6 +221,7 @@ internal partial class SelectionPanel : PaperPanel
     {
         Visible = true;
         _personBody.Visible = false;
+        _animalBody.Visible = false;
         _graveRecord.Visible = true;
         // Nothing behind a grave for the detail page to say - the heading stops answering to a
         // press rather than opening a page about nobody.
@@ -212,6 +232,26 @@ internal partial class SelectionPanel : PaperPanel
         _beside.Text = string.Empty;
         _death.Visible = false;
         _graveRecord.Text = record;
+    }
+
+    // No detail page and nothing pressable about an animal yet, so the heading is inert exactly
+    // as a grave's is.
+    internal void ShowAnimal(AnimalCard card)
+    {
+        Visible = true;
+        _personBody.Visible = false;
+        _graveRecord.Visible = false;
+        _animalBody.Visible = true;
+        _heading.Disabled = true;
+        _detailIcon.Visible = false;
+
+        SetTitle(card.Title);
+        _beside.Text = card.Beside;
+        _death.Visible = false;
+        _animalTask.Text = $"Doing: {card.Task}";
+        _animalTask.Visible = card.Task.Length > 0;
+
+        _animalMeterRows.Sync([card.Fed]);
     }
 
     internal void ClearSelection() => Visible = false;

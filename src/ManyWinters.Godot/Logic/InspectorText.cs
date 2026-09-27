@@ -13,27 +13,35 @@ namespace ManyWinters.Godot.Logic;
 // player. Kept apart from the panel so the wording is a plain function of the state.
 internal static class InspectorText
 {
-    internal static string ForTask(Person person) => person.Tasks.Current switch
+    // Creature, not Person: an animal has tasks too (docs/todo/fauna-plan.md, phase 2b), and this
+    // is also AnimalCard's own "doing" line.
+    internal static string ForTask(Creature creature) => creature.Tasks.Current switch
     {
         MoveTask move => $"Walking to {move.Destination}",
         GatherTask gather => $"Gathering {gather.Target.Kind}",
-        // Target is a Creature (docs/todo/fauna-plan.md, step 0b); only a Person is ever named here
-        // today, since only a person's infant follows a mother.
+        // A person's infant follows its mother by name; an animal's fawn follows a mother with
+        // none to give.
         FollowTask { Target: Person target } => $"Keeping up with {target.Name}",
+        FollowTask => "Keeping close to its mother",
+        // A species' own flight rule (WorldState.DecideIdleTask, FleeTask) - no human ever runs
+        // one, so this only ever fires for an animal.
+        FleeTask => "Fleeing",
         _ => "Idle",
     };
 
     // The same thing in the player's words rather than the debugger's: what someone is doing,
     // never where. A destination in raw coordinates is a fact about the simulation, and a card
     // about a person is not the place to read one off.
-    internal static string ForWork(Person person, ResourceCatalog resources) => person.Tasks.Current switch
+    internal static string ForWork(Creature creature, ResourceCatalog resources) => creature.Tasks.Current switch
     {
         MoveTask => "Walking",
         // A pile's kind is an item, not a resource; the only reason to walk to one is a meal.
         GatherTask { Target.Category: EntityCategory.Pile } => "Going for food",
         GatherTask gather => $"Gathering {resources.Get(gather.Target.Kind).DisplayName.ToLowerInvariant()}",
         FollowTask { Target: Person target } => $"Keeping up with {target.Name}",
-        // "Idle" is a scheduler's word for a person standing in a field.
+        FollowTask => "Keeping close to its mother",
+        FleeTask => "Fleeing",
+        // "Idle" is a scheduler's word for a creature standing in a field.
         _ => "At rest",
     };
 
