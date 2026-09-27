@@ -172,6 +172,18 @@ public sealed class InspectCodeTask : FrostingTask<BuildContext>
     }
 }
 
+[TaskName("RenderAudio")]
+public sealed class RenderAudioTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        // Deliberately outside the CI gate: it produces files for a human to listen to, and the
+        // listening is the check. Under artifacts/ so git ignores the WAVs.
+        var output = Path.Combine(context.ArtifactsDirectory, "audio");
+        BuildProcess.Run(context, "dotnet", "run", "--project", context.SynthPrototypeProjectPath, "--configuration", context.BuildConfiguration, "--", "--out", output);
+    }
+}
+
 [TaskName("CI")]
 [IsDependentOn(typeof(LineEndingsTask))]
 [IsDependentOn(typeof(RestoreTask))]

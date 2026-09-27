@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ManyWinters.Audio\ManyWinters.Audio.csproj" />
     <ProjectReference Include="..\ManyWinters.Core\ManyWinters.Core.csproj" />
     <ProjectReference Include="..\ManyWinters.Tools\SimulationRunner\ManyWinters.Tools.SimulationRunner.csproj" />
   </ItemGroup>

@@ -58,9 +58,12 @@ src/
 │   ├── Interaction/           #   camera rig, ground picking, hover fallback
 │   ├── Ui/                    #   status bar and floating panels
 │   └── Prototypes/            #   experiment scenes, held to a lower bar (see conventions)
+├── ManyWinters.Audio/         # Sound synthesis: DSP primitives, sound models, analysis. float[] in,
+│                              #   float[] out - no Godot, no Core
 ├── ManyWinters.Tools/
-│   └── SimulationRunner/      # Headless console runner (no Godot required)
-├── ManyWinters.Tests/         # Tests for ManyWinters.Core and the SimulationRunner
+│   ├── SimulationRunner/      # Headless console runner (no Godot required)
+│   └── SynthPrototype/        # Renders the audio listening set into artifacts/audio
+├── ManyWinters.Tests/         # Tests for ManyWinters.Core, ManyWinters.Audio and the tools
 └── ManyWinters.Godot.Tests/   # Tests for the presentation layer's own calculations
 ```
 
@@ -155,9 +158,14 @@ dotnet run --project build/ManyWinters.Build.csproj -- --target=Beckett
 
 # Save a PNG of the running game window (Windows only)
 dotnet run --project build/ManyWinters.Build.csproj -- --target=Screenshot --out=shot.png
+
+# Render the audio prototype's listening set into artifacts/audio
+dotnet run --project build/ManyWinters.Build.csproj -- --target=RenderAudio
 ```
 
 The `CI` target is the whole local gate: the line-ending check, restore, formatting, the Release build, InspectCode, tests and (on Windows) the E2E suite, stopping at the first failure. Run it before considering a change done. In CI the same checks split into parallel jobs instead of the single target — LineEndings and Format run first, each on its own runner, and the Build, Test and InspectCode job starts once both pass (they share one Release build); the E2E suite runs in its own Windows job and gates the release. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build, and it is the home for every repository task that needs a process launched, a log parsed or a Win32 call made. Do not add shell scripts beside it.
+
+`RenderAudio` is deliberately outside the `CI` gate: it writes WAVs for a human to listen to, and the listening *is* the check (`docs/audio-synthesis-prototype-plan.md`). Its output lands in the git-ignored `artifacts/` folder.
 
 `Screenshot` captures the window's own composited surface through `PrintWindow`, so the game may be behind other windows. It picks the main window whose title starts with "ManyWinters Godot" and skips the editor; `--pid=<n>` or `--title=<prefix>` override that.
 

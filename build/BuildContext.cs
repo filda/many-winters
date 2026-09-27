@@ -15,6 +15,8 @@ public sealed class BuildContext(ICakeContext context) : FrostingContext(context
 
     public string GodotProjectPath => Path.Combine(RootDirectory, "src", "ManyWinters.Godot");
 
+    public string SynthPrototypeProjectPath => Path.Combine(RootDirectory, "src", "ManyWinters.Tools", "SynthPrototype", "ManyWinters.Tools.SynthPrototype.csproj");
+
     // Not part of ManyWinters.sln — see the comment atop the csproj for why.
     public string EndToEndTestProjectPath => Path.Combine(RootDirectory, "src", "ManyWinters.E2E.Tests", "ManyWinters.E2E.Tests.csproj");
 
