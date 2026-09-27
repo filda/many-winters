@@ -78,6 +78,8 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
             // Born into its mother's band, so it works things out at that band's rate rather
             // than the player band's (see Person.Curiosity).
             Curiosity = Mother.Curiosity,
+            // Same camp as its mother (see Person.Home) - a newborn is not a fresh band.
+            Home = Mother.Home,
         };
 
         world.AddPerson(child);

@@ -127,6 +127,12 @@ public partial class Main : Node3D
         _workshopController.Closed += _simulationLoop.TickAsSoonAsPossible;
         _mainUi.ClockShouldResume += _simulationLoop.TickAsSoonAsPossible;
 
+        // The E2E suite's calibration: printed the moment the prologue (or any later inscription)
+        // goes down, which is always after GameFixture has set its own log-reading offset - the
+        // suite never has to guess a click target off a recorded frame again (see AGENTS.md's
+        // e2e task, 2026-09-27).
+        _mainUi.InscriptionOverlay.Dismissed += PrintE2EAnchors;
+
         await Building(100, "The band arrives");
 
         _loadingCanvas.QueueFree();
@@ -305,12 +311,81 @@ public partial class Main : Node3D
     private void OnSpawnButtonPressed()
     {
         var name = _world.GenerateUnrelatedName(Random.Shared);
-        _world.Execute(new SpawnPersonCommand(name, FindFreeSpawnPosition(), Person.Unknown, Person.Unknown));
+        var position = FindFreeSpawnPosition();
+
+        // Borrows the nearest living person's home (docs/todo/fauna-plan.md, step 1b) rather
+        // than founding a new one: a debug-spawned person joins whichever band is closest, or
+        // wanders from wherever they stand if nobody living has one (see Person.Home).
+        var nearest = _world.People.Where(person => person.IsAlive).MinBy(person => WorldState.Distance(position, person.Position));
+        _world.Execute(new SpawnPersonCommand(name, position, Person.Unknown, Person.Unknown, home: nearest?.Home));
     }
 
     private void OnExtinguishButtonPressed()
     {
         _world.Execute(new ExtinguishBandCommand());
+    }
+
+    // The E2E suite's own calibration (see AGENTS.md's e2e task, 2026-09-27): one parsable line
+    // per anchor, in the viewport pixel space GameFixture.Click already posts to - the harness
+    // sends WM_LBUTTONDOWN/UP straight to the window's client area (see WindowInput.Click) and
+    // the game is launched at exactly that client size (see GameWindow.ExpectedClientSize), so a
+    // viewport pixel from Camera3D.UnprojectPosition needs no further conversion on either side.
+    // Which person/node/animal is picked is E2EAnchors' pure business; only turning that pick
+    // into a screen point needs the engine. Gated like every other input-echoing log line (see
+    // LaunchOptions.Verbose): the harness always launches this way, so the suite always sees
+    // these, and an ordinary session never does.
+    private void PrintE2EAnchors()
+    {
+        if (!LaunchOptions.Verbose)
+        {
+            return;
+        }
+
+        var camera = _cameraRig.Camera;
+        var campCenter = _continuity.CampCenter;
+
+        PrintE2EAnchor(
+            "person",
+            E2EAnchors.FirstLivingPerson(_world.People) is { } person ? _presenter.GetCreatureGlobalPosition(person.Id) : null,
+            camera);
+
+        PrintE2EAnchor(
+            "wood",
+            E2EAnchors.NearestWoodResourceNode(_world.Entities, _world.Configuration.ResourceCatalog, campCenter) is { } wood
+                ? _presenter.GetResourceNodeGlobalPosition(wood.Id)
+                : null,
+            camera);
+
+        PrintE2EAnchor(
+            "deer",
+            E2EAnchors.NearestLivingAnimal(_world.Animals, campCenter) is { } animal ? _presenter.GetCreatureGlobalPosition(animal.Id) : null,
+            camera);
+    }
+
+    // The sprite's body centre, not its feet: WorldPresenter seats every creature/node view's
+    // origin at groundHeight + nominalHeight/2 (see WorldSpace.ToRender), which already is the
+    // vertical middle of the drawn silhouette for an ordinarily-centred sprite, so the unprojected
+    // origin itself is a click that lands on opaque pixels rather than off the top or bottom of
+    // one. None when there is no such thing, it fell out of camera view (a pending resource node),
+    // or it projects behind the camera or off the edge of the viewport - a test reading "none"
+    // fails with a clear message instead of clicking a stale or wrong pixel.
+    private static void PrintE2EAnchor(string kind, Vector3? worldPosition, Camera3D camera)
+    {
+        if (worldPosition is not { } position || camera.IsPositionBehind(position))
+        {
+            GD.Print($"E2E anchor {kind} none");
+            return;
+        }
+
+        var screen = camera.UnprojectPosition(position);
+        var viewportSize = camera.GetViewport().GetVisibleRect().Size;
+        if (screen.X < 0 || screen.Y < 0 || screen.X >= viewportSize.X || screen.Y >= viewportSize.Y)
+        {
+            GD.Print($"E2E anchor {kind} none");
+            return;
+        }
+
+        GD.Print($"E2E anchor {kind} {(int)screen.X} {(int)screen.Y}");
     }
 
     // What every caller of OrderCoordinator.Perform used to refresh by hand once it had executed

@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 26;
+    private const int CurrentVersion = 27;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -128,7 +128,8 @@ public static class SaveGameService
         person.Mother.Id.Value,
         person.Father.Id.Value,
         person.Sex,
-        person.Curiosity);
+        person.Curiosity,
+        person.Home?.Id.Value);
 
     // Recursive both ways, because an assembly is: a bound thing holds two more of them, to any
     // depth.
@@ -173,17 +174,33 @@ public static class SaveGameService
         var world = new WorldState(configuration);
         world.Clock.Advance(data.Tick);
 
+        // Built before any person, unlike Animal's own home ranges below: a person's Home is
+        // resolved while restoring the person (see RestorePerson), not in a second pass, so it
+        // has to exist first.
+        var homeRangesById = new Dictionary<Guid, HomeRange>();
+        foreach (var homeRangeData in data.HomeRanges)
+        {
+            var homeRange = new HomeRange(new Position(homeRangeData.AnchorX, homeRangeData.AnchorY))
+            {
+                Id = new HomeRangeId(homeRangeData.Id),
+                Radius = homeRangeData.Radius,
+                DriftMetresPerSeason = homeRangeData.DriftMetresPerSeason,
+            };
+            world.RestoreHomeRange(homeRange);
+            homeRangesById[homeRangeData.Id] = homeRange;
+        }
+
         // Parents have to exist before their children: forebears first (children of Unknown
         // only), then people in save order, a parent always having been added before its child.
         var peopleById = new Dictionary<Guid, Person> { [Person.Unknown.Id.Value] = Person.Unknown };
         foreach (var forebearData in data.Forebears)
         {
-            world.RestoreForebear(RestorePerson(forebearData, peopleById, configuration.Rules));
+            world.RestoreForebear(RestorePerson(forebearData, peopleById, homeRangesById, configuration.Rules));
         }
 
         foreach (var personData in data.People)
         {
-            world.RestorePerson(RestorePerson(personData, peopleById, configuration.Rules));
+            world.RestorePerson(RestorePerson(personData, peopleById, homeRangesById, configuration.Rules));
         }
 
         foreach (var entityData in data.Entities)
@@ -263,19 +280,6 @@ public static class SaveGameService
             world.Affections.Set(new CreatureId(bond.PersonA), new CreatureId(bond.PersonB), bond.Value);
         }
 
-        var homeRangesById = new Dictionary<Guid, HomeRange>();
-        foreach (var homeRangeData in data.HomeRanges)
-        {
-            var homeRange = new HomeRange(new Position(homeRangeData.AnchorX, homeRangeData.AnchorY))
-            {
-                Id = new HomeRangeId(homeRangeData.Id),
-                Radius = homeRangeData.Radius,
-                DriftMetresPerSeason = homeRangeData.DriftMetresPerSeason,
-            };
-            world.RestoreHomeRange(homeRange);
-            homeRangesById[homeRangeData.Id] = homeRange;
-        }
-
         // A mother always precedes her young in save order (world.Animals is insertion order),
         // exactly the "parents before children" guarantee RestorePerson relies on above.
         var animalsById = new Dictionary<Guid, Animal>();
@@ -333,7 +337,11 @@ public static class SaveGameService
         return animal;
     }
 
-    private static Person RestorePerson(PersonSaveData personData, Dictionary<Guid, Person> peopleById, SimulationRules rules)
+    private static Person RestorePerson(
+        PersonSaveData personData,
+        Dictionary<Guid, Person> peopleById,
+        Dictionary<Guid, HomeRange> homeRangesById,
+        SimulationRules rules)
     {
         var id = new CreatureId(personData.Id);
         var person = new Person
@@ -350,6 +358,7 @@ public static class SaveGameService
             Father = ParentById(personData.FatherId, peopleById),
             Sex = personData.Sex,
             Curiosity = personData.Curiosity,
+            Home = personData.HomeRangeId is { } homeRangeId ? homeRangesById[homeRangeId] : null,
 
             // Not saved: it is redrawn from the id.
             MaxHunger = rules.MaxHungerFor(id),

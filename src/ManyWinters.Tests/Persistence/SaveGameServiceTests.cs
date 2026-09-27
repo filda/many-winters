@@ -216,6 +216,36 @@ public class SaveGameServiceTests
         }
     }
 
+    // Person.Home (docs/todo/fauna-plan.md, step 1b) is resolved against HomeRangeSaveData like
+    // Animal.Home already was - by id, once the home ranges themselves have been restored.
+    [Fact]
+    public void RoundTripResolvesAPersonsHomeRangeById()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var home = new HomeRange(new Position(10, 20)) { Radius = 8f, DriftMetresPerSeason = 0f };
+        world.AddHomeRange(home);
+        world.SpawnPerson("Ava", new Position(11, 21), home: home);
+        world.SpawnPerson("Bran", new Position(-3f, 0f));
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var restoredAva = restored.People.Single(p => p.Name == "Ava");
+            var restoredBran = restored.People.Single(p => p.Name == "Bran");
+            var restoredHome = Assert.Single(restored.HomeRanges);
+
+            Assert.Same(restoredHome, restoredAva.Home);
+            Assert.Null(restoredBran.Home);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public void RoundTripPreservesForebearsAndTheChildrenWhoPointAtThem()
     {

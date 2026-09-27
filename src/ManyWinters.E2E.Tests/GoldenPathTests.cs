@@ -24,15 +24,17 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
     {
         _game.DismissPrologue();
 
-        // A person standing in the camp at the boot tick (the band is seeded, the world stands
-        // still with the clock held). Calibrated off a recorded frame - the world's centre is
-        // open ground between people at this tick, not a person, so the click targets a body,
-        // not the middle of the camp.
-        _game.Click(760, 345);
+        // Where the first living person actually stands, read off the game's own log rather than
+        // a recorded frame (Main.PrintE2EAnchors) - the calibration can never go stale again, even
+        // once step 1b's shared camp HomeRange has people wandering instead of standing still.
+        var person = _game.ReadAnchor("person");
+        Assert.NotNull(person);
+
+        _game.Click(person.Value.X, person.Value.Y);
         var selected = _game.WaitForGameLog("Selected ", TimeSpan.FromSeconds(4));
         if (selected is null)
         {
-            _game.Click(760, 345);
+            _game.Click(person.Value.X, person.Value.Y);
             selected = _game.WaitForGameLog("Selected ", TimeSpan.FromSeconds(4));
         }
 
@@ -51,9 +53,8 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     // (WorkshopActions.Carried) - so the test first orders the selected person to gather the
     // wood pile in the camp (a left click on a node with somebody selected, see
     // WorldInputController.OnResourceNodeClicked) and steps the held clock while the order is
-    // walked and resolved.
-    private const int GatherTargetX = 575;
-    private const int GatherTargetY = 437;
+    // walked and resolved. Where the wood pile actually is comes off the game's own log (see
+    // Main.PrintE2EAnchors), not a recorded frame.
     private const int GatherTicks = 30;
 
     // The selection panel's "Pack" line (the whole line is a button) opens the workbench. The
@@ -78,17 +79,22 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     {
         _game.DismissPrologue();
 
-        // Select the person calibrated for EntityInspection and send them gathering. A swallowed
-        // gather click would leave the workbench without a recipe to offer; re-clicking is safe -
-        // a repeated selection falls through to the ground and the repeated gather order replaces
-        // whatever that walk started, landing at the wood pile either way.
-        _game.Click(760, 345); // select the person
-        _game.Click(GatherTargetX, GatherTargetY); // send them gathering
+        var person = _game.ReadAnchor("person");
+        var wood = _game.ReadAnchor("wood");
+        Assert.NotNull(person);
+        Assert.NotNull(wood);
+
+        // Select the first living person and send them gathering. A swallowed gather click would
+        // leave the workbench without a recipe to offer; re-clicking is safe - a repeated
+        // selection falls through to the ground and the repeated gather order replaces whatever
+        // that walk started, landing at the wood pile either way.
+        _game.Click(person.Value.X, person.Value.Y); // select the person
+        _game.Click(wood.Value.X, wood.Value.Y); // send them gathering
         var gathered = _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
         if (gathered is null)
         {
-            _game.Click(760, 345);
-            _game.Click(GatherTargetX, GatherTargetY);
+            _game.Click(person.Value.X, person.Value.Y);
+            _game.Click(wood.Value.X, wood.Value.Y);
             gathered = _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
         }
 
@@ -122,9 +128,8 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
 {
     // The store is built out of wood, and nobody carries anything at the boot tick - the same
     // gather-first setup as CraftingUiTests (the wood pile in the camp, thirty held-clock steps,
-    // then a settled frame).
-    private const int GatherTargetX = 575;
-    private const int GatherTargetY = 437;
+    // then a settled frame). Where the person and the wood pile are comes off the game's own log
+    // (see Main.PrintE2EAnchors), not a recorded frame.
     private const int GatherTicks = 30;
 
     // The open ground the store is asked for on and placed at: the context menu opens exactly at
@@ -151,14 +156,19 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
     {
         _game.DismissPrologue();
 
+        var person = _game.ReadAnchor("person");
+        var wood = _game.ReadAnchor("wood");
+        Assert.NotNull(person);
+        Assert.NotNull(wood);
+
         // The same gather-first setup as CraftingUiTests, with the same guarded re-clicks.
-        _game.Click(760, 345); // select the person calibrated for EntityInspection
-        _game.Click(GatherTargetX, GatherTargetY); // send them gathering
+        _game.Click(person.Value.X, person.Value.Y); // select the first living person
+        _game.Click(wood.Value.X, wood.Value.Y); // send them gathering
         var gathered = _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
         if (gathered is null)
         {
-            _game.Click(760, 345);
-            _game.Click(GatherTargetX, GatherTargetY);
+            _game.Click(person.Value.X, person.Value.Y);
+            _game.Click(wood.Value.X, wood.Value.Y);
             gathered = _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
         }
 

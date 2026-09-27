@@ -1,5 +1,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using ManyWinters.Tools.E2EHarness;
 
@@ -33,7 +35,34 @@ public sealed class GameFixture : IAsyncLifetime
     public Task DisposeAsync()
     {
         _window?.Dispose();
+        AssertBootLogHasNoScriptError();
         return Task.CompletedTask;
+    }
+
+    // The whole run's log, not the per-test offset: a script error at boot (Main._Ready building
+    // every view) precedes every test's own offset, and the tests above it can still pass while
+    // it sits there unread - this is the one place that reads the file from its start. Thrown
+    // rather than asserted with xunit's Assert: this runs from IAsyncLifetime.DisposeAsync, not a
+    // [Fact], and xunit surfaces an exception from here as this fixture's own failure just the
+    // same.
+    private static void AssertBootLogHasNoScriptError()
+    {
+        var path = GameLogPath();
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        var log = reader.ReadToEnd();
+
+        var match = Regex.Match(log, @"NullReferenceException|at ManyWinters\.");
+        if (match.Success)
+        {
+            var context = log[Math.Max(0, match.Index - 200)..Math.Min(log.Length, match.Index + 400)];
+            throw new InvalidOperationException($"The game's log contains a script error:\n...{context}...");
+        }
     }
 
     public void Click(int x, int y) => WindowInput.Click(Handle, x, y);
@@ -133,6 +162,33 @@ public sealed class GameFixture : IAsyncLifetime
         }
 
         return null;
+    }
+
+    /// <summary>Reads the last "E2E anchor <paramref name="kind"/> x y" line written since the
+    /// current log offset (see Main.PrintE2EAnchors, printed once right after "Inscription
+    /// dismissed." on every prologue) - null if there is no such line yet, or Main printed "...
+    /// none" for it (nothing of that kind was on screen to click). A test calls this right after
+    /// DismissPrologue, before anything else is waited for: unlike WaitForGameLog this peeks
+    /// rather than advancing the offset, because the anchor lines are never themselves the text a
+    /// later wait in the same test looks for, so leaving them in the unread tail is harmless and
+    /// more than one anchor can each be read once.</summary>
+    public (int X, int Y)? ReadAnchor(string kind)
+    {
+        var path = GameLogPath();
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        stream.Seek(_gameLogOffset, SeekOrigin.Begin);
+        using var reader = new StreamReader(stream);
+        var rest = reader.ReadToEnd();
+
+        var match = Regex.Match(rest, $@"E2E anchor {Regex.Escape(kind)} (\d+) (\d+)");
+        return match.Success
+            ? (int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture))
+            : null;
     }
 
     private static string GameLogPath() => Path.Combine(

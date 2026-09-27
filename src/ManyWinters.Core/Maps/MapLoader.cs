@@ -81,6 +81,15 @@ public static class MapLoader
     // Wild food growing right where the band settled, scattered over a radius small enough that
     // the starting crowd has food within a short walk - the open world's food
     // (ScatterOpenWorldBiomes) is far too thin to count on in the first winter.
+    // The band's own HomeRange radius (docs/todo/fauna-plan.md, step 1b): the wander radius
+    // people already had before there was a shared anchor to give them one (IdleTask's own
+    // MinWanderRadius..MaxWanderRadius band tops out at 8).
+    private const float CampHomeRadius = 8f;
+
+    // Distinguishes the camp home's own id draw from every other thing seeded off a tick
+    // elsewhere in this file - see SpawnBand's campHomeIdSeed.
+    private const uint CampHomeIdSalt = 10;
+
     private const float CampFoodRadius = 12f;
     private const int CampAppleCount = 2;
     private const int CampPearCount = 2;
@@ -359,6 +368,37 @@ public static class MapLoader
         var rng = new Random(CrowdPlacementSeed);
         var positions = new List<Position>();
 
+        // The band has a home too (docs/todo/fauna-plan.md, step 1b): one shared, non-drifting
+        // HomeRange at this camp, at the radius people already wandered within
+        // (IdleTask.MaxWanderRadius), so IdleTask and DecideIdleTask's food search need no new
+        // logic - the Home-aware paths already built for Animal just apply. A camp doesn't wander
+        // the way a herd's ground does (DriftMetresPerSeason 0); a band's own migration would be
+        // a deliberate decision, not a drift. A fresh HomeRange every call, so an old camp's home
+        // (graves and huts still there) is left behind rather than reused when a successor band
+        // founds a new one elsewhere (MapLoader.SpawnNewBand).
+        //
+        // Its id is not drawn from idRng, unlike a herd's own HomeRangeId: SpawnBand runs before
+        // ScatterDecorations/SpawnAnimalHerds, so any extra draw here would shift every seeded
+        // draw after it - exactly what shifted the shipped band's own wander paths and broke
+        // FamilyMilestoneTests/DeerHerdMilestoneTests the first time this was tried. It still has
+        // to be deterministic (every id in this game drives per-entity variation off its seed),
+        // so it is drawn from its own Random instead, seeded off forebearDeathTick mixed with a
+        // salt the same way HomeRange.Advance mixes an id and a season: forebearDeathTick is a
+        // fixed constant for the starting band (LoadDefault always passes the same one) but a
+        // distinct, ever-increasing value for every successor (SpawnNewBand passes the current
+        // tick, which only grows across a playthrough) - so two LoadDefault calls agree, and a
+        // successor's camp id never collides with the band before it, without threading a band
+        // index through.
+        var campHomeIdSeed = unchecked((uint)forebearDeathTick * 2654435761u) ^ CampHomeIdSalt;
+        var campHomeIdRng = new Random(SeedHash.Avalanche(campHomeIdSeed));
+        var campHome = new HomeRange(campCenter)
+        {
+            Id = HomeRangeId.New(campHomeIdRng),
+            Radius = CampHomeRadius,
+            DriftMetresPerSeason = 0f,
+        };
+        world.AddHomeRange(campHome);
+
         // Stryker disable once Equality: only fills the list; everything below indexes it by the ages array, so a spare entry moves nobody
         for (var i = 0; i < StartingAgesInWinters.Length; i++)
         {
@@ -423,7 +463,8 @@ public static class MapLoader
                 mother,
                 father,
                 initialAgeTicks,
-                StartingSexFor(index)));
+                StartingSexFor(index),
+                Home: campHome));
 
             // Commands are plain data (ICommand) and return nothing; the person just added is the
             // newest in People.

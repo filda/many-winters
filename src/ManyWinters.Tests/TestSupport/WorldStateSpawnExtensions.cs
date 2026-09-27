@@ -19,8 +19,9 @@ public static class WorldStateSpawnExtensions
         Person? mother = null,
         Person? father = null,
         Sex? sex = null,
-        float curiosity = 1f) =>
-        world.SpawnPerson(CreatureId.New(), name, position, initialAgeTicks, mother, father, sex, curiosity);
+        float curiosity = 1f,
+        HomeRange? home = null) =>
+        world.SpawnPerson(CreatureId.New(), name, position, initialAgeTicks, mother, father, sex, curiosity, home);
 
     // With a chosen id - for tests pinning an outcome that runs on the id's seed.
     public static Person SpawnPerson(
@@ -35,7 +36,10 @@ public static class WorldStateSpawnExtensions
         // can have a child with whom pin it, or they assert against a coin flip.
         Sex? sex = null,
         // One is the rate the shipped band works things out at; tests about idle discovery turn it.
-        float curiosity = 1f)
+        float curiosity = 1f,
+        // Null (the default) leaves the person with no home, exactly as before step 1b - a test
+        // that cares about camp-anchored wandering hands one in (see Person.Home).
+        HomeRange? home = null)
     {
         var person = new Person
         {
@@ -48,6 +52,7 @@ public static class WorldStateSpawnExtensions
             Sex = sex ?? Creature.SexOf(id),
             MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
             Curiosity = curiosity,
+            Home = home,
         };
 
         world.AddPerson(person);

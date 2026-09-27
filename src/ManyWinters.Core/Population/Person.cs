@@ -67,6 +67,15 @@ public sealed class Person : Creature
     // uniformly while a Person's own callers keep using Person.Mother directly.
     public override Person NursingMother => Mother;
 
+    // Covariant override of Creature.Home (docs/todo/fauna-plan.md, step 1b, "Osadnici na
+    // sdilenou kotvu tabora"): unlike Animal.Home, settable and nullable, because a person built
+    // outside any map (most tests) and Person.Unknown have none and behave exactly as before -
+    // IdleTask anchors wherever they stand and the idle food search centres on themselves
+    // (WorldState.DecideIdleTask). Every member of a real band gets one (MapLoader.LoadDefault),
+    // inherited at birth (BirthCommand) and, for a debug-spawned person, borrowed from the
+    // nearest living person (Main.OnSpawnButtonPressed).
+    public override HomeRange? Home { get; init; }
+
     // A well-known id, declared once rather than drawn or configured per instance - the same
     // pattern as EatCommand.Skill (docs/todo/fauna-plan.md, step 0c). Every Person is this
     // species; an animal's own kind is the point of the step that introduces it.

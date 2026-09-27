@@ -67,9 +67,10 @@ public abstract class Creature
     public abstract SpeciesId Species { get; }
 
     // The shared ground this creature wanders around (WorldState.DecideIdleTask), if it has one.
-    // Null for a Person today - people still wander from wherever they stand (step 1b moves the
-    // starting band onto a shared camp anchor). An Animal always has one (see Animal.Home),
-    // exposed here as a covariant override the same way NursingMother is, so WorldState never
-    // has to ask "is this an Animal" to find it (docs/todo/fauna-plan.md, "Co je stado konkretne").
-    public virtual HomeRange? Home => null;
+    // An Animal always has one (see Animal.Home); a Person has one once born or spawned into a
+    // real band (see Person.Home) and null otherwise - a person built outside any map, or
+    // Person.Unknown, wanders from wherever they stand instead. Exposed here as a covariant
+    // override the same way NursingMother is, so WorldState never has to ask "is this an Animal"
+    // to find it (docs/todo/fauna-plan.md, "Co je stado konkretne").
+    public virtual HomeRange? Home { get; init; }
 }

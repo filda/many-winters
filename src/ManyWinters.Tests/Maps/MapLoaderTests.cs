@@ -65,6 +65,63 @@ public class MapLoaderTests
         Assert.Equal(new Position(5, 250), map.CampCenter);
     }
 
+    // The band has a home too (docs/todo/fauna-plan.md, step 1b): every starting person shares
+    // the one camp HomeRange, anchored right on CampCenter, with no drift - a camp does not
+    // wander the way a herd's ground does.
+    [Fact]
+    public void LoadDefaultGivesEveryStartingPersonTheSameHomeAtCampCenterWithNoDrift()
+    {
+        var map = LoadDefault();
+
+        var homes = map.World.People.Select(person => person.Home).ToList();
+        Assert.All(homes, home => Assert.NotNull(home));
+        Assert.All(homes, home => Assert.Same(homes[0], home));
+        Assert.Equal(map.CampCenter, homes[0]!.Anchor);
+        Assert.Equal(0f, homes[0]!.DriftMetresPerSeason);
+        Assert.Contains(homes[0], map.World.HomeRanges);
+    }
+
+    // DriftMetresPerSeason 0 means exactly that: the camp anchor must still be sitting on
+    // CampCenter a year on, not merely "close".
+    [Fact]
+    public void TheCampsHomeNeverMovesEvenAfterAYearOfTicks()
+    {
+        var map = LoadDefault();
+        var ticksPerYear = map.World.Configuration.Rules.TicksPerYear;
+
+        map.World.Advance(ticksPerYear);
+
+        Assert.Equal(map.CampCenter, map.World.People[0].Home!.Anchor);
+    }
+
+    // Every id in this game drives per-entity variation off its own seed (see EntityId), so the
+    // camp home's id has to survive "the same map twice" like every other one - even though it is
+    // deliberately not drawn from idRng (see SpawnBand's campHomeIdSeed comment).
+    [Fact]
+    public void LoadDefaultGivesTheCampsHomeTheSameIdOnEveryNewGame()
+    {
+        var first = LoadDefault().World.People[0].Home!.Id;
+        var second = LoadDefault().World.People[0].Home!.Id;
+
+        Assert.Equal(first, second);
+    }
+
+    // A successor's camp home must never collide with the one before it in the same world
+    // (docs/todo/fauna-plan.md, step 1b) - both live in world.HomeRanges at once, the old one's
+    // graves and huts still standing on it.
+    [Fact]
+    public void ASuccessorBandsCampHomeHasADifferentIdFromTheFirstBands()
+    {
+        var map = LoadDefault();
+        var startingHomeId = map.World.People[0].Home!.Id;
+
+        map.World.Advance(50);
+        var newCampCenter = MapLoader.SpawnNewBand(map.World, new Random(1), map.CampCenter);
+        var successorHomeId = map.World.People.First(p => p.Home!.Anchor == newCampCenter).Home!.Id;
+
+        Assert.NotEqual(startingHomeId, successorHomeId);
+    }
+
     [Fact]
     public void LoadDefaultWiresTheGivenConfigurationIntoTheReturnedWorld()
     {
@@ -496,7 +553,10 @@ public class MapLoaderTests
         var map = LoadDefault();
 
         Assert.Empty(map.World.Animals);
-        Assert.Empty(map.World.HomeRanges);
+        // The band's own camp HomeRange (docs/todo/fauna-plan.md, step 1b) exists regardless of
+        // whether any species with a herd was described at all - only the herds themselves are
+        // conditional on the "deer" species existing.
+        Assert.Equal(map.World.People[0].Home, Assert.Single(map.World.HomeRanges));
     }
 
     [Fact]
@@ -505,9 +565,12 @@ public class MapLoaderTests
         var map = MapLoader.LoadDefault(TestCatalogs.CreateConfigurationWithDeer());
         var world = map.World;
 
-        Assert.Equal(2, world.HomeRanges.Count);
+        // Alongside the herds' own two, the band's own camp HomeRange (step 1b) is in this list
+        // too - excluded below by the same "far enough from camp" check every herd home passes.
+        var herdHomes = world.HomeRanges.Where(home => !ReferenceEquals(home, world.People[0].Home)).ToList();
+        Assert.Equal(2, herdHomes.Count);
 
-        foreach (var home in world.HomeRanges)
+        foreach (var home in herdHomes)
         {
             Assert.True(WorldState.Distance(home.Anchor, map.CampCenter) >= 60, "A herd's home range sits too close to camp.");
 

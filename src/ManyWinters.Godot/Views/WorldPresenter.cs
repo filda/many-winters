@@ -199,6 +199,13 @@ public sealed partial class WorldPresenter : Node3D
         : _animalViews.TryGetValue(id, out var animalView) ? animalView.TopHeightOffset
         : null;
 
+    // For Main's E2E anchor line (see Main.PrintE2EAnchors): a resource node has no CreatureId,
+    // so it does not go through GetCreatureGlobalPosition above. Null both when the id is
+    // unknown and when the node is still pending (out of camera view, see CreateResourceNodeView)
+    // - either way there is no view to project a screen point from.
+    public Vector3? GetResourceNodeGlobalPosition(EntityId id) =>
+        _resourceNodeViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
+
     // For Main's occlusion fade, so the selection's own sprites are not treated as blocking
     // the view of themselves.
     public Node3D? GetCreatureNode(CreatureId id) =>

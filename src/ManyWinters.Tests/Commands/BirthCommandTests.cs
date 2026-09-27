@@ -61,6 +61,36 @@ public class BirthCommandTests
         Assert.Equal(mother.Position, world.People[^1].Position);
     }
 
+    // A newborn is not a fresh band (docs/todo/fauna-plan.md, step 1b): it wanders around the
+    // same camp its mother does, not around wherever it happens to be born.
+    [Fact]
+    public void TheChildInheritsItsMothersHome()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var home = new HomeRange(new Position(0, 0)) { Radius = 8f, DriftMetresPerSeason = 0f };
+        world.AddHomeRange(home);
+        var mother = world.SpawnPerson("Sela", new Position(0, 0), initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female, home: home);
+        var father = SpawnFather(world, new Position(1, 0));
+
+        world.Execute(new BirthCommand("Bran", mother, father));
+
+        Assert.Same(home, world.People[^1].Home);
+    }
+
+    // A mother with no home of her own (built outside any map, or the debug spawn with nobody
+    // nearby) leaves her child in the same state, not somehow inventing one.
+    [Fact]
+    public void AChildOfAHomelessMotherHasNoHomeEither()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var mother = SpawnMother(world, new Position(0, 0));
+        var father = SpawnFather(world, new Position(1, 0));
+
+        world.Execute(new BirthCommand("Bran", mother, father));
+
+        Assert.Null(world.People[^1].Home);
+    }
+
     // Knowledge in this game is taught, never inherited.
     [Fact]
     public void TheChildInheritsNoTechniquesSkillsOrBelongings()

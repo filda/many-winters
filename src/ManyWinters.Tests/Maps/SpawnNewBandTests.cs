@@ -164,6 +164,24 @@ public class SpawnNewBandTests
         Assert.Equal(expected.Y, camp.Y, 6);
     }
 
+    // A successor band founds its own camp home rather than reusing the old one (docs/todo/
+    // fauna-plan.md, step 1b): the old camp's home stays in the world (graves and huts are
+    // there) but nobody living points at it any more.
+    [Fact]
+    public void SpawnNewBandFoundsItsOwnHomeAwayFromTheOldOne()
+    {
+        var world = new WorldState(TestCatalogs.CreateConfiguration());
+        var oldCamp = new Position(5, 250);
+        var oldHome = new HomeRange(oldCamp) { Radius = 8f, DriftMetresPerSeason = 0f };
+        world.AddHomeRange(oldHome);
+
+        var camp = MapLoader.SpawnNewBand(world, new Random(1), oldCamp);
+
+        Assert.All(world.People, person => Assert.NotSame(oldHome, person.Home));
+        Assert.All(world.People, person => Assert.Equal(camp, person.Home!.Anchor));
+        Assert.Contains(oldHome, world.HomeRanges);
+    }
+
     [Fact]
     public void SpawnNewBandIsDeterministicForTheSameSeedAndOldCamp()
     {

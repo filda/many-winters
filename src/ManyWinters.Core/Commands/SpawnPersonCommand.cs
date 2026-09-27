@@ -18,10 +18,14 @@ public sealed record SpawnPersonCommand(
     Sex? Sex = null,
     // Null takes the player band's rate from the rules; an NPC band passes its own (see
     // Person.Curiosity).
-    float? Curiosity = null) : ICommand
+    float? Curiosity = null,
+    // Null leaves the new person with no home (see Person.Home) - a caller with an opinion
+    // passes one: MapLoader.LoadDefault hands every starting/successor band member the same camp
+    // HomeRange, Main.OnSpawnButtonPressed borrows the nearest living person's.
+    HomeRange? Home = null) : ICommand
 {
-    public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0)
-        : this(CreatureId.New(), name, position, mother, father, initialAgeTicks)
+    public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0, HomeRange? home = null)
+        : this(CreatureId.New(), name, position, mother, father, initialAgeTicks, Home: home)
     {
     }
 
@@ -40,5 +44,6 @@ public sealed record SpawnPersonCommand(
         Sex = Sex ?? Creature.SexOf(Id),
         MaxHunger = world.Configuration.Rules.MaxHungerFor(Id),
         Curiosity = Curiosity ?? world.Configuration.Rules.StartingBandCuriosity,
+        Home = Home,
     });
 }

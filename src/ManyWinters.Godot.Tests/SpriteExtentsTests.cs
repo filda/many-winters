@@ -76,6 +76,21 @@ public class SpriteExtentsTests
     }
 
     [Fact]
+    public void AMissingTextureUsesTheWholeSquareCanvasAsItsExtent()
+    {
+        // SpriteVisibleExtent.Compute falls back to a 1x1 canvas with the whole thing "used" when
+        // a texture path does not exist on disk - the same square BillboardSprite's placeholder
+        // quad draws, so a kind missing its art is still fully clickable rather than invisible to
+        // picking (see AnimalView's missing-deer-texture crash, docs/todo/fauna-plan.md phase 2b).
+        var extent = SpriteExtents.From(Vector2.Zero, Vector2.One, Vector2.One, WorldHeight);
+
+        Assert.Equal(WorldHeight, extent.Width, 5);
+        Assert.Equal(WorldHeight, extent.Height, 5);
+        Assert.Equal(0f, extent.CenterXOffset, 5);
+        Assert.Equal(0f, extent.CenterYOffset, 5);
+    }
+
+    [Fact]
     public void ContentIsMeasuredInWorldMetresNotPixels()
     {
         // Half the canvas wide and a quarter of it tall, at 2cm per pixel.
