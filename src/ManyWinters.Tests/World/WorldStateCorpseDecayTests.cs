@@ -4,17 +4,16 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// docs/todo/fauna-plan.md phase 4 ("Zpracování") and phase 4c: a dead, unburied Animal's bones
-// vanish SimulationRules.BonesLingerTicks after SimulationRules.CorpseDecayTicks - a Person's
-// never do, since the record of a band is its graves. What perishable *goods* a corpse holds no
-// longer follows CorpseDecayTicks at all (that was 4a's rule): meat, rawhide and the rest now rot
-// on each material's own shelf life, wherever they lie - see WorldStateSpoilageTests.
+// A dead, unburied Animal's bones vanish SimulationRules.BonesLingerTicks after
+// SimulationRules.CorpseDecayTicks - a Person's never do, since the record of a band is its
+// graves. What perishable *goods* a corpse holds no longer follows CorpseDecayTicks: meat,
+// rawhide and the rest rot on each material's own shelf life, wherever they lie.
 public class WorldStateCorpseDecayTests
 {
     private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 10f, DriftMetresPerSeason = 0f };
 
     // Meat and rawhide rot on their own clocks - meat first, since it has the shorter shelf life -
-    // while bone and (since phase 4c) sinew, which no longer spoils, outlast both.
+    // while bone and sinew, neither of which spoils, outlast both.
     [Fact]
     public void ADeadAnimalsMeatAndRawhideRotOnTheirOwnClocksWhileBoneAndSinewOutlastThem()
     {
@@ -34,7 +33,7 @@ public class WorldStateCorpseDecayTests
 
         world.Advance(1);
         Assert.Equal(0, deer.Inventory.Get(TestCatalogs.MeatItem));
-        // Rawhide's own, longer shelf life hasn't come due yet.
+        // Rawhide's longer shelf life hasn't come due yet.
         Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.RawhideItem));
 
         world.Advance(TestCatalogs.RawhideShelfLifeTicks - TestCatalogs.MeatShelfLifeTicks);

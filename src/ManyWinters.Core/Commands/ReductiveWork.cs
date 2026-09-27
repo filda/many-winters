@@ -12,15 +12,15 @@ namespace ManyWinters.Core.Commands;
 // apart takes only three facts, which is what this holds.
 //
 // The verbs stay separate commands because that is what the world speaks in: an offer names one,
-// and the discovery pass asks each what stands in the way (WorldState.TrialOf). What they do not
-// need is a second copy of the machinery, which is all that was different between them.
+// and the discovery pass asks each what stands in the way. What they do not need is a second
+// copy of the machinery, which is all that was different between them.
 internal sealed record ReductiveWork(
     TechniqueId Verb,
     SkillTypeId Skill,
     // What a substance has to be like to take this verb at all, asked of the material rather
-    // than authored per outcome (see MaterialAffordances).
+    // than authored per outcome.
     Func<MaterialDefinition, bool> Affords,
-    // What to say when the substance will not take it - the one refusal that is this verb's own.
+    // What to say when the substance will not take it - the one refusal specific to this verb.
     ActionBlocker Refusal)
 {
     private const float SkillGainPerAttempt = 1f;
@@ -42,7 +42,7 @@ internal sealed record ReductiveWork(
             return Refusal;
         }
 
-        // Asked last, like every knowledge gate (see ActionBlocker.NotLearned).
+        // Asked last, like every knowledge gate.
         var skill = world.Configuration.SkillCatalog.Find(Skill);
         return skill is not null && person.KnownTechniques.Contains(skill.BaseTechnique)
             ? ActionBlocker.None
@@ -60,9 +60,8 @@ internal sealed record ReductiveWork(
         var definition = world.Configuration.ItemCatalog.Get(item);
 
         // Whatever comes of it, they learn what the stuff is: they had it in their hands and
-        // worked it, and a handful spoiled teaches as much as one twisted well (see Beliefs,
-        // SimulationRules.UnderstandingFromWorkingIt). This is how a player reaches past what
-        // their band already understands.
+        // worked it, and a handful spoiled teaches as much as one twisted well. This is how a
+        // player reaches past what their band already understands.
         WorkAttempt.TeachesWhatItIs(world, person, definition.Material);
 
         // Spent either way: a handful mangled in the trying is gone as surely as one twisted
@@ -77,16 +76,15 @@ internal sealed record ReductiveWork(
                 // Curing exchanges one already-known substance for another rather than
                 // fashioning a new individual object - rawhide and hide are both stock, the same
                 // tier meat and bone come off a carcass as, so what comes out lands back there
-                // too rather than becoming a worked object with a quality nobody reads
-                // (docs/todo/fauna-plan.md phase 4d). The stock item is found by the very
-                // (material, form) pair the transition names.
+                // too rather than becoming a worked object with a quality nobody reads. The stock
+                // item is found by the very (material, form) pair the transition names.
                 var cured = world.Configuration.ItemCatalog.KindFor(curedMaterial, transition.Form)!.Value;
                 person.Inventory.Add(cured, transition.InputAmount, world.Clock.CurrentTick, world.Configuration.ItemCatalog);
             }
             else
             {
                 // Bulk carries over from what went in, so working a thing down neither creates
-                // nor destroys weight (see FormTransition).
+                // nor destroys weight.
                 person.Inventory.AddAssembly(new Assembly.Part(
                     definition.Material,
                     transition.Form,

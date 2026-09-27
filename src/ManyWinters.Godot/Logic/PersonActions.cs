@@ -16,8 +16,8 @@ namespace ManyWinters.Godot.Logic;
 // only has to draw what comes back.
 //
 // Engine-free, so the list is an ordinary function of world state and can be tested without a
-// running Godot. What a thing is called in English is decided here too, the way InspectorText
-// decides the rest of the inspector's prose.
+// running Godot. What a thing is called in English is decided here too, the way the rest of the
+// inspector's prose is decided.
 internal static class PersonActions
 {
     internal static IReadOnlyList<ActionOffer> For(WorldState world, Person person)
@@ -34,12 +34,12 @@ internal static class PersonActions
         return offers;
     }
 
-    // No line per verb here. Working what is in the pack is asked for at the workbench instead
-    // (WorkshopActions, opened from the pack line on the card), where the player picks the things
-    // and not the verb - a card that grew a "Twist grass" line would be telling them in advance
-    // what works, which is the thing the design is built to avoid (see
-    // docs/materials-and-crafting-architecture.md section 7). Making from a recipe moved there
-    // too, so everything done with the pack lives behind the same line on the card.
+    // No line per verb here. Working what is in the pack is asked for at the workbench instead,
+    // opened from the pack line on the card, where the player picks the things and not the verb -
+    // a card that grew a "Twist grass" line would be telling them in advance what works, which is
+    // the thing the design is built to avoid (docs/materials-and-crafting-architecture.md section
+    // 7). Making from a recipe moved there too, so everything done with the pack lives behind the
+    // same line on the card.
 
     // Offered only to someone actually carrying something edible. An Eat button on an empty pack
     // is an instruction to go and find food, which is not what pressing it would do.
@@ -53,8 +53,8 @@ internal static class PersonActions
         return ActionOffer.For("Eat", new EatCommand(person, item), world, EatCommand.Skill);
     }
 
-    // Shared with WorkshopActions.Recipes and TargetActions, the two halves of the same recipe
-    // list split on where the output lands - the one live check MakeCommand itself runs to
+    // Shared with the workshop's and the world-target's recipe lists, the two halves of the same
+    // recipe list split on where the output lands - the one live check MakeCommand itself runs to
     // decide it.
     internal static bool FitsInInventory(WorldState world, Person person, ItemKindId output) =>
         person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));

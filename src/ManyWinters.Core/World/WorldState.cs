@@ -45,17 +45,15 @@ public sealed class WorldState(WorldConfiguration configuration)
     // simulates, draws, counts or clicks them.
     public IReadOnlyList<Person> Forebears => _forebears;
 
-    // The second kind of Creature (docs/todo/fauna-plan.md, phase 1a): simulated in Advance
-    // alongside People, but never a target of the people-only passes (AutoTeachNearbyPeople,
-    // AdvanceAffections, StartFamilies, ...).
+    // The second kind of Creature: simulated in Advance alongside People, but never a target of
+    // the people-only passes (AutoTeachNearbyPeople, AdvanceAffections, StartFamilies, ...).
     public IReadOnlyList<Animal> Animals => _animals;
 
     public IReadOnlyList<Entity> Entities => _entities;
 
     public IReadOnlyList<Grave> Graves => _graves;
 
-    // Shared, slowly drifting anchors a herd (or, from step 1b, a band) wanders around - see
-    // HomeRange. Advanced once per tick in Advance.
+    // Shared, slowly drifting anchors a herd wanders around. Advanced once per tick in Advance.
     public IReadOnlyList<HomeRange> HomeRanges => _homeRanges;
 
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
@@ -72,8 +70,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     public event Action<Entity>? EntityRemoved;
 
     // A dead, unburied animal whose bones have finally lingered past
-    // SimulationRules.BonesLingerTicks (docs/todo/fauna-plan.md phase 4) - fired by the decay
-    // pass in Advance, mirroring EntityRemoved.
+    // SimulationRules.BonesLingerTicks - fired by the decay pass in Advance, mirroring
+    // EntityRemoved.
     public event Action<Animal>? AnimalRemoved;
 
     // Add* take a finished object: what it is made of is the caller's business
@@ -171,16 +169,14 @@ public sealed class WorldState(WorldConfiguration configuration)
     // model - a world whose last two people are old is a story worth telling.
     public bool IsOldEnoughForChildren(Person person) => AgeInYears(person) >= LifeCycleOf(person).AdultAgeYears;
 
-    // A creature's own species' age bands and lifespan (docs/todo/fauna-plan.md, step 0c). A
-    // dictionary lookup per call is fine at tens of people per tick; nothing here caches it.
+    // A creature's own species' age bands and lifespan. A dictionary lookup per call is fine at
+    // tens of people per tick; nothing here caches it.
     private LifeCycle LifeCycleOf(Creature creature) => Configuration.SpeciesCatalog.Get(creature.Species).LifeCycle;
 
-    // The only place that answers "how much hunger does this item put right for this creature"
-    // (docs/todo/fauna-plan.md, step 0d): nutrition is the item's own (ItemCatalog's
-    // HungerRestoredPerUnitFor), digestibility is the species' (SpeciesDefinition.DigestibilityOf)
-    // - a wolf can eat a pear but it will not keep it going, and grass feeds a deer and not a
-    // person. Every reader with a creature in hand goes through this rather than the catalog
-    // directly.
+    // The only place that answers "how much hunger does this item put right for this creature":
+    // nutrition is the item's own, digestibility is the species' - a wolf can eat a pear but it
+    // will not keep it going, and grass feeds a deer and not a person. Every reader with a
+    // creature in hand goes through this rather than the catalog directly.
     public float HungerRestoredPerUnitFor(Creature creature, ItemKindId item)
     {
         var itemCatalog = Configuration.ItemCatalog;
@@ -218,8 +214,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // Age-based base plus gear bonuses. Presence, not count, as with InsulationFor: five baskets
     // are not five times the bonus of one. 0 outright for a species that can't carry anything at
-    // all (docs/todo/fauna-plan.md, step 0d: an animal's CanCarry is false, so it never pockets
-    // what it grazes).
+    // all - an animal's CanCarry is false, so it never pockets what it grazes.
     public float MaxCarryWeightFor(Creature creature)
     {
         if (!Configuration.SpeciesCatalog.Get(creature.Species).CanCarry)
@@ -287,10 +282,9 @@ public sealed class WorldState(WorldConfiguration configuration)
                 }
 
                 // A throw is only attempted once in range, and costs time like a workbench
-                // attempt (SimulationRules.TicksPerWorkAttempt) - HuntTask only ever walks
-                // (docs/todo/fauna-plan.md phase 3). Only a Person ever hunts (nothing grants
+                // attempt - HuntTask only ever walks. Only a Person ever hunts (nothing grants
                 // basic_hunting to an animal), so the type check here is the same guard
-                // ButcherCommand's own doc comment relies on.
+                // ButcherCommand relies on.
                 if (creature.Tasks.Current is HuntTask activeHunt
                     && creature is Person hunter
                     && Distance(creature.Position, activeHunt.Prey.Position) <= activeHunt.Range
@@ -345,8 +339,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             }
 
             // A year further on, a dead animal's bones themselves are gone - a person's never
-            // are (see AnimalRemoved). Snapshotted: RemoveAnimal mutates _animals mid-iteration
-            // otherwise.
+            // are. Snapshotted: RemoveAnimal mutates _animals mid-iteration otherwise.
             foreach (var animal in _animals.ToList())
             {
                 if (animal.IsAlive || animal.DeathTick is not { } deathTick)
@@ -360,10 +353,9 @@ public sealed class WorldState(WorldConfiguration configuration)
                 }
             }
 
-            // Spoilage (docs/todo/fauna-plan.md phase 4c): every stack and worked object, in
-            // every creature's pack (alive or dead - a corpse's meat rots on its own clock, not
-            // at CorpseDecayTicks), in every building's storage, and on every ground pile or
-            // Made thing lying loose. Replaces 4a's single corpse-wide strip entirely: what a
+            // Spoilage: every stack and worked object, in every creature's pack (alive or dead -
+            // a corpse's meat rots on its own clock, not at CorpseDecayTicks), in every
+            // building's storage, and on every ground pile or Made thing lying loose. What a
             // resource node itself holds never spoils - it grows.
             foreach (var creature in AllCreatures())
             {
@@ -455,41 +447,34 @@ public sealed class WorldState(WorldConfiguration configuration)
         IdleTask => true,
         // FollowTask never completes, so this is what notices an infant has been weaned.
         FollowTask => true,
-        // Reconsidered every tick like IdleTask/FollowTask, but DecideIdleTask's own flee check
-        // hands back the very same FleeTask while it is still running (see there) rather than
-        // re-deriving completion from FleeDistance, which would cut the flee short the moment the
-        // gap merely passes FleeDistance on the way out to the wider SafeDistance.
+        // Reconsidered every tick like IdleTask/FollowTask, but the flee check below hands back
+        // the very same FleeTask while it is still running rather than re-deriving completion
+        // from FleeDistance, which would cut the flee short the moment the gap merely passes
+        // FleeDistance on the way out to the wider SafeDistance.
         FleeTask => true,
-        // A threat closing in is worth dropping a gather order for, same as urgent hunger - see
-        // NearbyThreatTo.
+        // A threat closing in is worth dropping a gather order for, same as urgent hunger.
         GatherTask gather => !IsWorthTakingFrom(creature, gather.Target) || NeedsToSeekFoodUrgently(creature) || NearbyThreatTo(creature) is not null,
         // The prey died (to this hunter or anyone else), wandered out of the search radius, or
         // hunger is (still) urgent - mirroring GatherTask's own NeedsToSeekFoodUrgently branch
         // above, which re-derives the best option every tick while hungry rather than committing
         // to one target. Deliberately still HungerSeekFoodThreshold here, not WouldEatIfTheyCould's
-        // lower one, even though a hunt can now start there (docs/todo/fauna-plan.md, phase 3,
-        // "rozhodnuto 2026-09-27"): measured against HuntingMilestoneTests, re-deriving from the
-        // lower threshold thrashes rather than helps - a hunter closing on one deer keeps getting
-        // handed whichever different deer FindNearestHuntablePrey now calls nearest (the herd
-        // scatters as the hunter's own approach spooks it, so "nearest" keeps changing faster than
-        // any one chase can finish), which starves them worse than committing to one target
-        // between hunger 25 and 50 would. Below 50 a freshly installed hunt is left to run
-        // uninterrupted (HuntTask.Advance itself still re-aims at its own single Prey every tick,
-        // same as always) rather than re-picking a target on every tick; above 50 this re-derives
-        // as before, and a hungry hunter who has since come to carry food (TryAutoEat eats it down
-        // every tick regardless of task) is dropped here rather than hunting on for more
-        // (docs/todo/fauna-plan.md phase 3).
+        // lower one: re-deriving from the lower threshold thrashes rather than helps, since a
+        // hunter closing on one deer keeps getting handed whichever different deer is now
+        // nearest (the herd scatters as the hunter's own approach spooks it, so "nearest" keeps
+        // changing faster than any one chase can finish), which starves them worse than
+        // committing to one target between hunger 25 and 50 would. Below 50 a freshly installed
+        // hunt is left to run uninterrupted rather than re-picking a target on every tick; above
+        // 50 this re-derives as before, and a hungry hunter who has since come to carry food is
+        // dropped here rather than hunting on for more.
         HuntTask hunt => !hunt.Prey.IsAlive
             || Distance(creature.Position, hunt.Prey.Position) > Configuration.Rules.IdleSearchRadius
             || creature.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold,
         // No *meat* left, specifically - not "the carcass is totally empty": a carcass a
-        // beginner stripped of meat but left hide and sinew on (ButcherCommand's own
-        // beginner/efficient split) still has a nonzero inventory, and a hungry butcher parked
-        // beside it forever would starve next to something that can no longer feed them
-        // (mirrors FindNearestDeadAnimalWithMeat's own "worth walking to" test). No hunger term
-        // here either, for the same reason HuntTask above stays off WouldEatIfTheyCould: a carcass
-        // does not move, so there is less to gain from re-deriving mid-walk, and nothing to lose
-        // by not doing so.
+        // beginner stripped of meat but left hide and sinew on still has a nonzero inventory,
+        // and a hungry butcher parked beside it forever would starve next to something that can
+        // no longer feed them. No hunger term here either, for the same reason HuntTask above
+        // stays off WouldEatIfTheyCould: a carcass does not move, so there is less to gain from
+        // re-deriving mid-walk, and nothing to lose by not doing so.
         ButcherTask butcher => butcher.Carcass.Inventory.Get(ButcherCommand.Meat) <= 0,
         _ => false,
     };
@@ -517,14 +502,13 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     // The same "hungry, knows how to eat, empty-handed" test as NeedsToSeekFoodUrgently, at
     // HungerEatThreshold rather than HungerSeekFoodThreshold - "would eat if they had something"
-    // rather than "must go find something now". Used only for the two animal food steps
-    // (DecideIdleTask's carcass and hunt branches, and ShouldReconsiderIdleTask's matching
-    // HuntTask/ButcherTask cases): a hunt is a long trip - closing on prey, then walking to and
-    // butchering the carcass - that a person already committed to gathering nearby plant food or
-    // a pile would not be worth interrupting for, but is worth setting out on well before hunger
-    // becomes urgent, unlike a two-step trip to a nearby tree. Gathering plant food and piles keep
-    // NeedsToSeekFoodUrgently's higher threshold unchanged - that pacing is a separate decision the
-    // family milestone depends on (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+    // rather than "must go find something now". Used only for the two animal food steps below: a
+    // hunt is a long trip - closing on prey, then walking to and butchering the carcass - that a
+    // person already committed to gathering nearby plant food or a pile would not be worth
+    // interrupting for, but is worth setting out on well before hunger becomes urgent, unlike a
+    // two-step trip to a nearby tree. Gathering plant food and piles keep
+    // NeedsToSeekFoodUrgently's higher threshold unchanged - that pacing is a separate decision
+    // the family milestone depends on.
     private bool WouldEatIfTheyCould(Creature creature) =>
         creature.Needs.Hunger >= Configuration.Rules.HungerEatThreshold
         && KnowsHowToEat(creature)
@@ -553,15 +537,14 @@ public sealed class WorldState(WorldConfiguration configuration)
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
     // (IdleTask) is the fallback. Hunger wins over a known skill. A search centres on the
     // creature's own HomeRange anchor when it has one (an animal) rather than on where it
-    // happens to be standing (a person, today - docs/todo/fauna-plan.md, "Co je stado konkretne").
+    // happens to be standing (a person, today).
     private CreatureTask DecideIdleTask(Creature creature)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
         var searchOrigin = creature.Home?.Anchor ?? creature.Position;
 
         // A threat wins over everything else, including an infant's own mother and hunger: a
-        // species that never notices a person standing next to it reads as broken
-        // (docs/todo/fauna-plan.md, "Útěk dřív než lov"). Species data (SpeciesDefinition.Flee),
+        // species that never notices a person standing next to it reads as broken. Species data,
         // not a type check on the creature - a human never has one.
         if (Configuration.SpeciesCatalog.Get(creature.Species).Flee is { } flee)
         {
@@ -592,27 +575,26 @@ public sealed class WorldState(WorldConfiguration configuration)
         if (NeedsToSeekFoodUrgently(creature))
         {
             // A food resource this creature never learned to gather is as unreachable as none,
-            // but food somebody put down needs no skill to take (see EatFromPileCommand). Nearest wins.
+            // but food somebody put down needs no skill to take. Nearest wins.
             var foodNode = FindNearestGatherableEntity(creature, searchOrigin, definition => IsFoodResource(creature, definition) && IsKnownSkill(creature, definition.Skill));
             var food = NearerOf(searchOrigin, foodNode, FindNearestFoodPile(creature, searchOrigin));
             if (food is not null)
             {
-                // A pile is taken from at the tighter PileReachDistance (EatFromPileCommand,
-                // PickUpItemCommand), so the walk has to end there too, or the creature would stop
-                // at the wider tree/building reach and never get close enough to take anything.
+                // A pile is taken from at the tighter PileReachDistance, so the walk has to end
+                // there too, or the creature would stop at the wider tree/building reach and
+                // never get close enough to take anything.
                 var reach = food.Category == EntityCategory.Pile ? Configuration.Rules.PileReachDistance : reachDistance;
                 return new GatherTask(food, reach);
             }
         }
 
-        // The two animal food steps trigger earlier, at WouldEatIfTheyCould's lower threshold
-        // (see there): a hunt is a long trip, worth setting out on well before hunger turns
-        // urgent, unlike the plant food/pile search just above (which keeps the higher threshold
-        // on purpose - docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27"). Still tried
-        // only once the plant food/pile search above has come up with nothing, and butchering
-        // before hunting when both are known: a carcass already on the ground is a meal without
-        // the risk of a miss, and wiping out a whole hunt's worth of throws over a herd that
-        // already has food lying around would be busywork (docs/todo/fauna-plan.md phase 3).
+        // The two animal food steps trigger earlier, at WouldEatIfTheyCould's lower threshold: a
+        // hunt is a long trip, worth setting out on well before hunger turns urgent, unlike the
+        // plant food/pile search just above (which keeps the higher threshold on purpose). Still
+        // tried only once the plant food/pile search above has come up with nothing, and
+        // butchering before hunting when both are known: a carcass already on the ground is a
+        // meal without the risk of a miss, and wiping out a whole hunt's worth of throws over a
+        // herd that already has food lying around would be busywork.
         if (WouldEatIfTheyCould(creature))
         {
             if (IsKnownSkill(creature, ButcherCommand.Skill) && FindNearestDeadAnimalWithMeat(searchOrigin) is { } carcass)
@@ -667,7 +649,7 @@ public sealed class WorldState(WorldConfiguration configuration)
         && LifeStageOf(creature) == LifeStage.Infant
         && IsWithinReach(creature.Position, mother.Position);
 
-    // Food for a given creature, not food in general: see IsFoodPile.
+    // Food for a given creature, not food in general, the same distinction IsFoodPile makes.
     private bool IsFoodResource(Creature creature, ResourceDefinition definition) =>
         definition.YieldsItem is { } item && HungerRestoredPerUnitFor(creature, item) > 0f;
 
@@ -678,26 +660,26 @@ public sealed class WorldState(WorldConfiguration configuration)
     // the same kind is normally nearby - and so is anything this creature could not take from:
     // nobody walks to a source to gather nothing. `origin` only bounds the *fallback* search's
     // reach - the creature's own position for a Person, its HomeRange anchor for an Animal with
-    // nothing matching inside its home (see DecideIdleTask) - the *nearest* pick in both tiers is
-    // always nearest-to-the-creature-itself, not to the anchor (see below).
+    // nothing matching inside its home - the *nearest* pick in both tiers is always
+    // nearest-to-the-creature-itself, not to the anchor.
     //
     // An animal with a Home searches nearest-to-itself among nodes bounded by its Home (radius
     // plus a small margin for its own footprint), not nearest-to-the-shared-anchor: the anchor
     // bounds where the herd may graze, it is not everybody's common destination. Picking nearest
     // to the anchor instead sent every member of a herd at the single node nearest that one point,
     // where ResolveCollisions then kept most of them outside MaxInteractionDistance and nobody
-    // ate (found starving the shipped map's herds - see DeerHerdMilestoneTests).
+    // ate.
     //
-    // The in-home tier also only counts a node that can still give this creature a full harvest
-    // (GatherCommand.WouldYieldAFullHarvest), not merely IsWorthGathering's "more than zero left":
-    // a home tuft that regrew to a sliver still "matched" the plain rule, so a herd converged on
-    // its own barely-regrown patch and nibbled it at regen speed forever rather than falling
-    // through to fuller grass a little further out. Only when nothing at home clears that bar
-    // does the search widen to the old IdleSearchRadius tier, at the old any-amount-left rule -
-    // still picking whichever match is nearest to the creature itself (not to the anchor), or a
-    // herd already scattered across its own ground by the first tier would regroup on a single
-    // depleted tuft nearest the anchor the moment it fell through to this one. For a Person (no
-    // Home) `origin` is its own position anyway, so both tiers agree with the old behaviour.
+    // The in-home tier also only counts a node that can still give this creature a full harvest,
+    // not merely IsWorthGathering's "more than zero left": a home tuft that regrew to a sliver
+    // still "matched" the plain rule, so a herd converged on its own barely-regrown patch and
+    // nibbled it at regen speed forever rather than falling through to fuller grass a little
+    // further out. Only when nothing at home clears that bar does the search widen to the wider
+    // IdleSearchRadius tier, at the any-amount-left rule - still picking whichever match is
+    // nearest to the creature itself (not to the anchor), or a herd already scattered across its
+    // own ground by the first tier would regroup on a single depleted tuft nearest the anchor the
+    // moment it fell through to this one. For a Person (no Home) `origin` is its own position
+    // anyway, so both tiers agree.
     private Entity? FindNearestGatherableEntity(Creature creature, Position origin, Func<ResourceDefinition, bool> matches)
     {
         if (creature.Home is { } home)
@@ -750,10 +732,10 @@ public sealed class WorldState(WorldConfiguration configuration)
             .Where(pile => Distance(origin, pile.Position) <= Configuration.Rules.IdleSearchRadius)
             .MinBy(pile => Distance(origin, pile.Position));
 
-    // A carcass worth walking to for its meat, nearest to `origin` first (docs/todo/fauna-plan.md
-    // phase 3) - "worth" meaning ButcherCommand would actually find something, not merely that an
-    // animal died here once. Only meat is asked about: a picked-clean carcass still holding hide
-    // or bone but no meat is not a meal.
+    // A carcass worth walking to for its meat, nearest to `origin` first - "worth" meaning
+    // ButcherCommand would actually find something, not merely that an animal died here once.
+    // Only meat is asked about: a picked-clean carcass still holding hide or bone but no meat is
+    // not a meal.
     private Animal? FindNearestDeadAnimalWithMeat(Position origin) =>
         _animals
             .Where(animal => !animal.IsAlive && animal.Inventory.Get(ButcherCommand.Meat) > 0)
@@ -761,8 +743,8 @@ public sealed class WorldState(WorldConfiguration configuration)
             .MinBy(animal => Distance(origin, animal.Position));
 
     // Living prey worth a throw, nearest to `origin` first: a species whose carcass would hold
-    // no meat at all is not worth hunting (docs/todo/fauna-plan.md phase 3) - nothing here checks
-    // FleeDistance or HuntingRange, since HuntTask itself closes whatever gap remains.
+    // no meat at all is not worth hunting - nothing here checks FleeDistance or HuntingRange,
+    // since HuntTask itself closes whatever gap remains.
     private Animal? FindNearestHuntablePrey(Position origin) =>
         _animals
             .Where(animal => animal.IsAlive && Configuration.SpeciesCatalog.Get(animal.Species).Carcass.Any(yield => yield.Item == ButcherCommand.Meat && yield.Amount > 0))
@@ -1167,9 +1149,9 @@ public sealed class WorldState(WorldConfiguration configuration)
     }
 
     // Where fawns come from when nobody asks - the animal counterpart of StartFamilies, but no
-    // pair state: a female's own id and the tick decide everything (docs/todo/fauna-plan.md,
-    // phase 1b, "mnozeni"). Iterates a snapshot of _animals because giving birth adds to it, the
-    // same "a child must not become a candidate on the tick it is born" guard StartFamilies uses.
+    // pair state: a female's own id and the tick decide everything. Iterates a snapshot of
+    // _animals because giving birth adds to it, the same "a child must not become a candidate on
+    // the tick it is born" guard StartFamilies uses.
     private void BreedAnimals(long currentTick, Climate climate)
     {
         var mothers = _animals.Where(animal => animal.IsAlive && animal.Sex == Sex.Female).ToList();
@@ -1207,8 +1189,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
     }
 
-    // Same HomeRange reference, not merely nearby - a herd shares one anchor (see Animal.Home),
-    // so "at home" is exactly "in this herd" rather than a distance check.
+    // Same HomeRange reference, not merely nearby - a herd shares one anchor, so "at home" is
+    // exactly "in this herd" rather than a distance check.
     private bool HasAdultMaleOfHerOwnSpeciesAtHome(Animal mother) =>
         _animals.Any(candidate =>
             candidate.IsAlive
@@ -1217,9 +1199,9 @@ public sealed class WorldState(WorldConfiguration configuration)
             && ReferenceEquals(candidate.Home, mother.Home)
             && LifeStageOf(candidate) == LifeStage.Adult);
 
-    // What SpawnAnimalCommand does for a fawn born mid-game rather than drawn by MapLoader: same
-    // position and Home as its mother, her as Mother, sex off its own freshly drawn id, and
-    // whatever the species starts every newborn knowing (SpawnAnimalCommand.Execute).
+    // What spawning does for a fawn born mid-game rather than drawn at map load: same position
+    // and Home as its mother, her as Mother, sex off its own freshly drawn id, and whatever the
+    // species starts every newborn knowing.
     private void GiveBirth(Animal mother, long currentTick)
     {
         var id = NewbornIdFor(mother.Id, currentTick);
@@ -1228,8 +1210,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     }
 
     // Deterministic from the mother's own id and the tick, as NameForNewborn is from two parents'
-    // ids and the tick - a fawn has only one parent in this rule (see decision 3, "mnozeni": no
-    // pair state), so her id alone is the seed.
+    // ids and the tick - a fawn has only one parent in this rule, so her id alone is the seed.
     private static CreatureId NewbornIdFor(CreatureId motherId, long currentTick)
     {
         var mixed = unchecked((uint)(motherId.Seed * 2654435761u) ^ ((uint)currentTick * 40503u));
@@ -1257,9 +1238,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     private CultureProfile? _cachedTrendProfile;
     private HashSet<string>? _cachedExistingNames;
 
-    // Deterministic from the parents and the tick, so a replayed world names the same children
-    // (SeedHash.Avalanche, as CasualTeachingSeed below). The culture it draws from is rebuilt
-    // from People/Forebears rather than saved separately.
+    // Deterministic from the parents and the tick, so a replayed world names the same children.
+    // The culture it draws from is rebuilt from People/Forebears rather than saved separately.
     //
     // Public because a child the player asks for is named the same way as one the band has of
     // its own accord: BirthCommand takes the name, so somebody has to draw it, and there is only
@@ -1304,8 +1284,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         return (_cachedCultureProfile, _cachedTrendProfile, _cachedExistingNames);
     }
 
-    // Deterministic from the ids' seeds (EntityId.SeedOf) and the tick, as IdleTask.SeedFor is,
-    // rather than a shared Random: reproducible and independent of call order between people.
+    // Deterministic from the ids' seeds and the tick, rather than a shared Random: reproducible
+    // and independent of call order between people.
     private static bool PassesCasualTeachingRoll(CreatureId teacherId, CreatureId studentId, TechniqueId technique, long tick, float chance)
     {
         var seed = CasualTeachingSeed(teacherId.Seed, studentId.Seed, technique.Value, tick);
@@ -1335,21 +1315,20 @@ public sealed class WorldState(WorldConfiguration configuration)
         return hash;
     }
 
-    // What a dead creature leaves behind, put into its own Inventory once at the moment it dies
-    // (docs/todo/fauna-plan.md, phase 3, "Rozhodnutí předem" item 4) - whatever the cause,
-    // hunger and old age included, and however starved or old it died: scaling the yield by
-    // condition is left for later, noted but not solved here. A human's species carries no
-    // Carcass at all (SpeciesDefinition.Carcass), so this adds nothing to a dead person; taking
-    // a dead person's possessions stays LootCommand's job.
+    // What a dead creature leaves behind, put into its own Inventory once at the moment it dies -
+    // whatever the cause, hunger and old age included, and however starved or old it died:
+    // scaling the yield by condition is left for later, noted but not solved here. A human's
+    // species carries no Carcass at all, so this adds nothing to a dead person; taking a dead
+    // person's possessions stays LootCommand's job.
     // Internal rather than private: HuntCommand's kill is a death caused by a command rather
     // than by this Advance's own hunger/old-age check, but it fills a carcass exactly the same
-    // way (docs/todo/fauna-plan.md phase 3).
+    // way.
     internal void FillCarcass(Creature creature)
     {
-        // The moment these came to be as things (docs/todo/fauna-plan.md phase 4c) is the death
-        // itself, whichever path set it moments ago - hunger/old age (Advance, using the tick
-        // this death happened on) or a hunt (HuntCommand, which only has world.Clock.CurrentTick
-        // to hand). Falls back to now only if somehow called before DeathTick was set.
+        // The moment these came to be as things is the death itself, whichever path set it
+        // moments ago - hunger/old age (using the tick this death happened on) or a hunt (which
+        // only has world.Clock.CurrentTick to hand). Falls back to now only if somehow called
+        // before DeathTick was set.
         var tick = creature.DeathTick ?? Clock.CurrentTick;
         var itemCatalog = Configuration.ItemCatalog;
         foreach (var yield in Configuration.SpeciesCatalog.Get(creature.Species).Carcass)
@@ -1359,8 +1338,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     }
 
     // Whether this creature's corpse has crossed SimulationRules.CorpseDecayTicks - derived
-    // rather than stored (docs/todo/fauna-plan.md phase 4). A living creature, or one that never
-    // died in this world (no DeathTick), is never decayed. BuryCommand asks this to tell an
+    // rather than stored. A living creature, or one that never died in this world (no
+    // DeathTick), is never decayed. BuryCommand asks this to tell an
     // unmarked grave from a marked one; the >= here (as opposed to Advance's own one-time ==)
     // is deliberate, since a caller may ask on any tick, not just the one decay happened on.
     public bool IsDecayed(Creature creature) =>
@@ -1392,8 +1371,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     // MoveTask/IdleTask aim at a destination with no awareness of what else is there, so this
     // untangles the overlap afterwards, every tick (O(n^2), as AutoTeachNearbyPeople). Every
     // living creature, person or animal - a deer and a person are pushed apart using their own
-    // species' radii (SpeciesDefinition.CollisionRadius) rather than one shared constant
-    // (docs/todo/fauna-plan.md, "Pruchody jen pro lidi"). Separations are computed against
+    // species' radii rather than one shared constant. Separations are computed against
     // start-of-tick positions and summed into one clamped push per creature
     // (SimulationRules.MaxCollisionPushPerTick), so discovery order cannot bias the result.
     private void ResolveCollisions()

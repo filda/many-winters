@@ -10,9 +10,9 @@ namespace ManyWinters.Godot.Interaction;
 
 // Every player-issued ActionOffer - pressed on a card, picked off the menu, or meant by a click
 // in the world - ends up here. The offer carries both the command and the world's own answer
-// about whether it can run (see ActionOffer), so nothing is re-checked: this is the one place
-// that turns "yes, and here is how" into a command, and the one place that remembers an order
-// somebody has to walk to before it fires (see PendingOrders).
+// about whether it can run, so nothing is re-checked: this is the one place that turns "yes, and
+// here is how" into a command, and the one place that remembers an order somebody has to walk to
+// before it fires.
 internal sealed class OrderCoordinator(
     WorldState world,
     WorldPresenter presenter,
@@ -44,10 +44,10 @@ internal sealed class OrderCoordinator(
             GD.Print($"Order by {person.Name}: {offer.Label}.");
         }
 
-        // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): being directed is how
-        // a person is shown the way, so an action that teaches grants its base technique first.
-        // Granted when the order is given rather than when it is carried out, so somebody sent off
-        // to a tree already knows what to do with it by the time they get there.
+        // Nobody starts knowing anything: being directed is how a person is shown the way, so an
+        // action that teaches grants its base technique first. Granted when the order is given
+        // rather than when it is carried out, so somebody sent off to a tree already knows what
+        // to do with it by the time they get there.
         if (offer.TeachFirst is { } skill)
         {
             TeachBaseTechniqueIfNeeded(person, skill);
@@ -56,19 +56,17 @@ internal sealed class OrderCoordinator(
         switch (OrderPlan.For(offer))
         {
             case OrderDispatch.InstallPursuit:
-                // Hunt and Butcher both work this way (docs/todo/fauna-plan.md, phase 3c): the
-                // task walks (or does not need to) and WorldState.Advance runs the command itself
-                // every tick the task stays current, so there is nothing here to remember and
-                // re-check on arrival - unlike every other directed action, which is a single
-                // attempt once the walk ends.
+                // Hunt and Butcher both work this way: the task walks (or does not need to) and
+                // WorldState.Advance runs the command itself every tick the task stays current,
+                // so there is nothing here to remember and re-check on arrival - unlike every
+                // other directed action, which is a single attempt once the walk ends.
                 _pendingOrders.Forget(person);
                 person.Tasks.Interrupt(offer.Pursuit!);
                 break;
 
             case OrderDispatch.WalkThenExecute:
-                // A pile is taken from at the tighter PileReachDistance (see SimulationRules), so
-                // the walk has to stop closer too, or the order would arrive out of reach and
-                // never fire.
+                // A pile is taken from at the tighter PileReachDistance, so the walk has to stop
+                // closer too, or the order would arrive out of reach and never fire.
                 var approachDistance = offer.Command is EatFromPileCommand or PickUpItemCommand
                     ? presentation.PileApproachDistance
                     : presentation.ApproachDistance;
@@ -87,7 +85,7 @@ internal sealed class OrderCoordinator(
         WorldChanged?.Invoke();
     }
 
-    // Fires the order of everyone who has arrived where they were sent (see PendingOrders).
+    // Fires the order of everyone who has arrived where they were sent.
     public void ResolvePending()
     {
         foreach (var offer in _pendingOrders.Ready(world))
@@ -126,9 +124,6 @@ internal sealed class OrderCoordinator(
         }
     }
 
-    // Nobody starts knowing anything (see SkillDefinition.BaseTechnique): the player directing an
-    // action is how the person is shown the way, so every player-driven action grants its base
-    // technique first rather than silently no-oping.
     private void TeachBaseTechniqueIfNeeded(Person person, SkillTypeId skill)
     {
         var baseTechnique = world.Configuration.SkillCatalog.Get(skill).BaseTechnique;

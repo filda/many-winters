@@ -8,11 +8,8 @@ using ManyWinters.Godot.Views;
 
 namespace ManyWinters.Godot.Interaction;
 
-// The one simulation tick a rendered frame may owe, and everything that has to stay in step
-// with it: exploration/fog/cloud refresh, pending orders, the status bar's clock, selection and
-// debug summaries, band-ending announcements, and pushing each person's and resource's new state
-// to its view. Continuous presentation that runs regardless of ticking lives in
-// WorldFrameUpdater instead.
+// The one simulation tick a rendered frame may owe, and everything that must stay in step with
+// it. Continuous presentation that runs regardless of ticking lives elsewhere.
 internal sealed class SimulationLoop(
     WorldState world,
     SimulationPacing pacing,
@@ -29,12 +26,11 @@ internal sealed class SimulationLoop(
 
     public void Update(double delta)
     {
-        // Time stands still while any registered modal holds the clock (see MainUi) - an
-        // inscription, a pause the player asked for, the controls page, the workbench, the
-        // detail page - and, in a session launched with the clock held, for as long as the
-        // session runs; the world is stepped on purpose with the "advance one tick" key (see
-        // Main._Input) instead of letting the wall clock decide. Not calling Advance at all is
-        // what keeps a held clock from consuming accumulated time.
+        // Time stands still while any registered modal holds the clock - an inscription, a pause
+        // the player asked for, the controls page, the workbench, the detail page - and, in a
+        // session launched with the clock held, for as long as the session runs; the world
+        // advances instead only via the "advance one tick" key. Not calling Advance at all keeps
+        // a held clock from consuming accumulated time.
         if (ui.HoldsClock || LaunchOptions.ClockHeld)
         {
             return;
@@ -52,9 +48,8 @@ internal sealed class SimulationLoop(
     // exploration/fog/clouds, pending orders, the status-bar clock, selection and debug
     // summaries, band-ending announcements, and each person's and resource's new state - is
     // pushed to the views. Called by Update when the accumulator is full, and directly by the
-    // "advance one tick" key (see Main._Input) while the deterministic simulation is frozen, so
-    // an order placed during the freeze is resolved exactly once and the frame settles at the
-    // next fixed tick.
+    // "advance one tick" key while the deterministic simulation is frozen, so an order placed
+    // during the freeze is resolved exactly once and the frame settles at the next fixed tick.
     public void TickOnce()
     {
         if (selection.SelectedCreature is { } selectedCreature)
@@ -76,9 +71,9 @@ internal sealed class SimulationLoop(
         foreach (var person in world.People)
         {
             presenter.SetPersonAlive(person.Id, person.IsAlive);
-            // Never true before IsAlive is false (WorldState.IsDecayed), so this is always the
-            // second of the two - a dead person's bones never vanish (docs/todo/fauna-plan.md
-            // phase 4b), only their look deepens once the record of them has decayed.
+            // Never true before IsAlive is false, so this is always the second of the two - a
+            // dead person's bones never vanish, only their look deepens once the record of them
+            // has decayed.
             presenter.SetPersonDecayed(person.Id, world.IsDecayed(person));
             // A person who dies mid-stride still tweens to that tick's final position over the
             // next second - one last visible step. Snapping (overSeconds: 0) once dead pins the
@@ -102,8 +97,8 @@ internal sealed class SimulationLoop(
 
             if (!growth.IsAlive)
             {
-                // Nodes that withered from climate stress (see WorldState.Advance); felling
-                // removes its own view immediately.
+                // Nodes that withered from climate stress; felling removes its own view
+                // immediately.
                 presenter.RemoveResourceNodeView(node.Id);
                 continue;
             }
@@ -114,10 +109,10 @@ internal sealed class SimulationLoop(
         GD.Print($"Tick {world.Clock.CurrentTick}: {world.People.Count(p => p.IsAlive)} of {world.People.Count} people alive.");
 
         // Its own line, not folded into the one above: the herds exist from world creation, well
-        // before the first tick, but GameFixture's own log offset (see its InitializeAsync) makes
-        // every boot-time line permanently unreadable to a test, so this is printed here, every
-        // tick, the same way the population line above is - the first "advance one tick" a golden
-        // path test does is enough for E2E to witness the herds exist without clicking anything.
+        // before the first tick, but the test harness's own boot-time log offset makes every
+        // earlier line unreadable to a test, so this prints every tick, same as the population
+        // line above - the first "advance one tick" a golden path test does is enough for E2E to
+        // witness the herds exist without clicking anything.
         GD.Print($"Animals: {world.Animals.Count}");
 
         // A verbose session follows the game from its log alone, so each tick also says what the
@@ -130,12 +125,11 @@ internal sealed class SimulationLoop(
     }
 
     // What letting a clock-holding page go is supposed to do: the world resumes on the very next
-    // frame rather than up to a full interval later (see TickAccumulator).
+    // frame rather than up to a full interval later.
     public void TickAsSoonAsPossible() => _accumulator.TickAsSoonAsPossible();
 
-    // Also called outside a tick, right after an order executes or is queued (see
-    // OrderCoordinator.WorldChanged): a felled tree or a built store should not wait for the
-    // next tick to leave the debug counts stale.
+    // Also called outside a tick, right after an order executes or is queued: a felled tree or a
+    // built store should not wait for the next tick to leave the debug counts stale.
     public void RefreshBuildingsLabel()
     {
         var buildings = world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();

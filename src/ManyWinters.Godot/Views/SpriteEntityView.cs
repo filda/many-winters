@@ -17,8 +17,8 @@ namespace ManyWinters.Godot.Views;
 // SpriteExtents, HoverArbiter, WalkCycle); this is the thin shell that calls them.
 internal abstract partial class SpriteEntityView : Area3D, IHoverable
 {
-    // One drawn layer. TexturePath and BaseModulate are settable because PersonView re-points
-    // and re-colours its layers on death.
+    // One drawn layer. TexturePath and BaseModulate are settable because a view may re-point
+    // and re-colour its layers on death.
     protected sealed class SpriteLayer(Sprite3D sprite, string texturePath, bool picks, bool outlines)
     {
         public Sprite3D Sprite { get; } = sprite;
@@ -93,8 +93,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // the node is in the tree and WorldPresenter has already set its Position.
     protected abstract void Build();
 
-    // For a view with an animation of its own (PersonView's walk cycle), whose processing
-    // cannot be switched off between fades.
+    // For a view with an animation of its own (a walk cycle), whose processing cannot be
+    // switched off between fades.
     protected virtual bool NeedsEveryFrame => false;
 
     protected virtual void OnProcess(double delta)
@@ -141,8 +141,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     }
 
     // The soft blob under the entity, seated where a sprite of NominalHeight has its bottom
-    // edge. Not a layer: never tinted, never picked against (docs/todo/todo.md plans a real
-    // silhouette).
+    // edge. Not a layer: never tinted, never picked against.
     protected void SetUpGroundShadow(float diameter)
     {
         var groundShadow = GroundShadow.Create(diameter);
@@ -317,9 +316,9 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // down the same fallback chain as one that missed the pixels.
     protected virtual bool OnClicked(MouseButton button) => false;
 
-    // Pins the hit-test plane to a stable anchor instead of each sprite's own GlobalPosition:
-    // PersonView's walk bob moves the layers every frame, which sweeps the sampled pixel across
-    // silhouette edges and flickers the hover. Null means each sprite's own position.
+    // Pins the hit-test plane to a stable anchor instead of each sprite's own GlobalPosition: a
+    // walk bob moves the layers every frame, which sweeps the sampled pixel across silhouette
+    // edges and flickers the hover. Null means each sprite's own position.
     protected virtual Vector3? PixelHitAnchor => null;
 
     private bool IsOpaqueAt(Camera3D camera, Vector3 worldPosition) =>

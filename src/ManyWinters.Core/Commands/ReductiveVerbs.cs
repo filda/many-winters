@@ -9,10 +9,9 @@ namespace ManyWinters.Core.Commands;
 // docs/materials-and-crafting-architecture.md section 7): one thing picked is the whole of the
 // question, and this is where it is answered.
 //
-// The item's own transitions decide it (FormTransition), so nothing here knows that grass is
-// twisted or stone is knapped. Both the directed path (WorkshopActions) and the autonomous one
-// (WorldState.TrialOf) ask this, which is why it lives beside the commands rather than in
-// either.
+// The item's transitions decide it, so nothing here knows that grass is twisted or stone is
+// knapped. Both the directed path and the autonomous one ask this, which is why it lives beside
+// the commands rather than in either.
 public static class ReductiveVerbs
 {
     // What working this one thing down would be, or null when it answers to no reductive verb at

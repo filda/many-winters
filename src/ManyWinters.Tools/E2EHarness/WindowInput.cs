@@ -6,12 +6,11 @@ namespace ManyWinters.Tools.E2EHarness;
 /// <summary>
 /// Sends synthetic mouse/keyboard input to a specific window without requiring it to be
 /// focused or in the foreground — PostMessage with WM_LBUTTONDOWN/UP and client-area
-/// coordinates, confirmed to work against the standalone game window (see
-/// project_beckett_lite_limits memory: Beckett Lite itself cannot inject input, but this
-/// window-message approach, independent of Beckett, does).
-/// TODO: confirm Godot's DisplayServer actually reacts to posted window messages the same
-/// way it reacts to real hardware input; SendInput (which does move the real cursor) is the
-/// fallback if PostMessage turns out not to reach Godot's input handling.
+/// coordinates, confirmed to work against the standalone game window: Beckett Lite cannot
+/// inject input, but this window-message approach, independent of Beckett, does.
+/// TODO: confirm Godot's DisplayServer reacts to posted window messages the same way it reacts
+/// to real hardware input; SendInput (which does move the real cursor) is the fallback if
+/// PostMessage turns out not to reach Godot's input handling.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class WindowInput
@@ -31,10 +30,10 @@ public static class WindowInput
     {
         var lParam = MakeLParam(clientX, clientY);
 
-        // A move before the down/up mirrors a real cursor: Godot's own picking (GroundPick,
-        // HoverArbiter) resolves what's under the cursor from InputEventMouseMotion, so a click
-        // with nothing establishing a cursor position first may hit whatever was last hovered
-        // rather than (clientX, clientY). Unverified until this runs against the real game.
+        // A move before the down/up mirrors a real cursor: Godot's picking resolves what's under
+        // the cursor from InputEventMouseMotion, so a click with nothing establishing a cursor
+        // position first may hit whatever was last hovered rather than (clientX, clientY).
+        // Unverified until this runs against the real game.
         Post(windowHandle, WmMouseMove, IntPtr.Zero, lParam);
         Post(windowHandle, WmLButtonDown, MkLButton, lParam);
         Thread.Sleep(pressDuration ?? TimeSpan.FromMilliseconds(50));
@@ -42,8 +41,7 @@ public static class WindowInput
     }
 
     /// <summary>Sends a right-button press and release at one spot — the gesture the game reads
-    /// as "what may be done here" (RightClickGesture: pressed and released in one spot, dragged
-    /// it would turn the camera instead).</summary>
+    /// as "what may be done here": dragged instead, it would turn the camera.</summary>
     public static void RightClick(IntPtr windowHandle, int clientX, int clientY, TimeSpan? pressDuration = null)
     {
         var lParam = MakeLParam(clientX, clientY);
@@ -63,7 +61,7 @@ public static class WindowInput
     }
 
     /// <summary>Presses a key down and leaves it down until KeyUp - for holds a test wants to
-    /// end on a condition rather than on a timer (see GameFixture.HoldKeyUntilLog).</summary>
+    /// end on a condition rather than on a timer.</summary>
     public static void KeyDown(IntPtr windowHandle, int virtualKeyCode) =>
         Post(windowHandle, WmKeyDown, (IntPtr)virtualKeyCode, IntPtr.Zero);
 

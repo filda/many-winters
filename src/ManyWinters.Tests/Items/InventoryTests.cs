@@ -20,8 +20,8 @@ public class InventoryTests
     private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
         new(id, displayName, Stuff, Lump, weight);
 
-    // For the age-ledger tests (docs/todo/fauna-plan.md phase 4c): one catalog with a kind whose
-    // material spoils, so Add/Remove/Transfer/Expire have something to track.
+    // For the age-ledger tests: one catalog with a kind whose material spoils, so
+    // Add/Remove/Transfer/Expire have something to track.
     private static readonly ItemKindId Meat = new("meat");
     private static readonly MaterialId Perishable = new("meat");
     private const long MeatShelfLifeTicks = 30;
@@ -329,8 +329,8 @@ public class InventoryTests
         Assert.False(inventory.HasRoomFor(Wood, catalog, maxWeight: 10f));
     }
 
-    // docs/todo/fauna-plan.md phase 4c: the age ledger. Untimed Add/plain Remove behave exactly
-    // as before (every test above uses them); these are about the tick-aware overloads.
+    // The age ledger. Untimed Add/plain Remove behave exactly as before (every test above uses
+    // them); these are about the tick-aware overloads.
 
     [Fact]
     public void AddWithATickEnrollsAPerishableKindInTheAgeLedgerButNotANonPerishableOne()
@@ -345,8 +345,8 @@ public class InventoryTests
         Assert.False(inventory.Ages.ContainsKey(Wood));
     }
 
-    // The invariant docs/todo/fauna-plan.md phase 4c calls for: a ledgered kind's entries always
-    // sum to its count, through Add, Remove and Expire.
+    // The invariant: a ledgered kind's entries always sum to its count, through Add, Remove and
+    // Expire.
     [Fact]
     public void TheLedgerTotalAlwaysEqualsTheCountThroughAddRemoveAndExpire()
     {
@@ -426,8 +426,8 @@ public class InventoryTests
     }
 
     // Transfer/TransferUpToCapacity: moving something already aged does not restamp it, unlike
-    // Add (docs/todo/fauna-plan.md phase 4c) - meat butchered at tick 0, deposited at tick 10 and
-    // withdrawn at tick 20 still spoils at tick 30, not at tick 20 + 30.
+    // Add - meat butchered at tick 0, deposited at tick 10 and withdrawn at tick 20 still spoils
+    // at tick 30, not at tick 20 + 30.
     [Fact]
     public void TransferPreservesTheOriginalAgeRatherThanRestampingItNow()
     {
@@ -479,10 +479,9 @@ public class InventoryTests
         Assert.Equal(500, destination.Get(Wood));
     }
 
-    // The whole point of an assembly's own MadeTick (docs/todo/fauna-plan.md phase 4c): a worked
-    // object spoils by the shortest shelf life among its own parts' materials, built directly
-    // rather than through Knap/Twist/Bind/Sharpen (their production wiring is covered by each
-    // command's own tests).
+    // The whole point of an assembly's own MadeTick: a worked object spoils by the shortest
+    // shelf life among its parts' materials, built directly rather than through
+    // Knap/Twist/Bind/Sharpen (their production wiring is covered by each command's own tests).
     [Fact]
     public void ExpireRemovesAWorkedThingOnceItsOwnPartsShelfLifeIsUp()
     {

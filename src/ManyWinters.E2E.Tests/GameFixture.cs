@@ -39,12 +39,11 @@ public sealed class GameFixture : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    // The whole run's log, not the per-test offset: a script error at boot (Main._Ready building
-    // every view) precedes every test's own offset, and the tests above it can still pass while
+    // The whole run's log, not the per-test offset: a script error at boot (building a view for
+    // every entity) precedes every test's own offset, and the tests above it can still pass while
     // it sits there unread - this is the one place that reads the file from its start. Thrown
     // rather than asserted with xunit's Assert: this runs from IAsyncLifetime.DisposeAsync, not a
-    // [Fact], and xunit surfaces an exception from here as this fixture's own failure just the
-    // same.
+    // [Fact], and xunit surfaces an exception from here as this fixture's own failure regardless.
     private static void AssertBootLogHasNoScriptError()
     {
         var path = GameLogPath();
@@ -72,14 +71,14 @@ public sealed class GameFixture : IAsyncLifetime
     /// <summary>Holds a Win32 virtual-key code down for <paramref name="holdDuration"/> before releasing it — long enough for a held-key game action (e.g. camera tilt) to move, not just register.</summary>
     public void KeyPress(int virtualKeyCode, TimeSpan? holdDuration = null) => WindowInput.KeyPress(Handle, virtualKeyCode, holdDuration);
 
-    // The Win32 virtual-key code for F12 - the game's "advance one tick" key (see Main._Input).
+    // The Win32 virtual-key code for F12, the game's "advance one tick" key.
     private const int VkF12 = 0x7B;
 
     /// <summary>Steps the held clock forward exactly one tick (the game's "advance one tick"
     /// key), so an order placed while the clock stands - a craft, a building - is resolved once
     /// and the frame settles at the next fixed tick. The suite launches the game with the clock
-    /// held (see GameWindow.LaunchAsync), so the world otherwise holds at the boot tick; in
-    /// normal play the clock runs and the key is ignored.</summary>
+    /// held, so the world otherwise holds at the boot tick; in normal play the clock runs and the
+    /// key is ignored.</summary>
     public void AdvanceOneTick() => KeyPress(VkF12);
 
     /// <summary>Presses a key down and holds it until the game's log gains a line containing
@@ -116,9 +115,9 @@ public sealed class GameFixture : IAsyncLifetime
     /// is settled at its first live tick; the rest of the tick interval (one second) is well clear
     /// of the follow-on input, so the frame the test captures is a fixed tick, not a moving one.
     /// A posted click can be swallowed on a stuttering machine, so the dismissal is verified
-    /// against the game's own log ("Inscription dismissed.", Ui/InscriptionOverlay.cs) and
-    /// retried - still before anybody is selected, so a repeated click that missed the button
-    /// could only land on the ground, which nobody is selected to walk.</summary>
+    /// against the game's own log ("Inscription dismissed.") and retried - still before anybody
+    /// is selected, so a repeated click that missed the button could only land on the ground,
+    /// which nobody is selected to walk.</summary>
     public void DismissPrologue()
     {
         Click(PrologueClosingX, PrologueClosingY);
@@ -165,13 +164,12 @@ public sealed class GameFixture : IAsyncLifetime
     }
 
     /// <summary>Reads the last "E2E anchor <paramref name="kind"/> x y" line written since the
-    /// current log offset (see Main.PrintE2EAnchors, printed once right after "Inscription
-    /// dismissed." on every prologue) - null if there is no such line yet, or Main printed "...
-    /// none" for it (nothing of that kind was on screen to click). A test calls this right after
-    /// DismissPrologue, before anything else is waited for: unlike WaitForGameLog this peeks
-    /// rather than advancing the offset, because the anchor lines are never themselves the text a
-    /// later wait in the same test looks for, so leaving them in the unread tail is harmless and
-    /// more than one anchor can each be read once.</summary>
+    /// current log offset - printed once right after "Inscription dismissed." on every prologue -
+    /// null if there is no such line yet, or "... none" was printed for it (nothing of that kind
+    /// was on screen to click). A test calls this right after DismissPrologue, before anything
+    /// else is waited for: unlike WaitForGameLog this peeks rather than advancing the offset,
+    /// because the anchor lines are never themselves the text a later wait looks for, so leaving
+    /// them in the unread tail is harmless and more than one anchor can each be read once.</summary>
     public (int X, int Y)? ReadAnchor(string kind)
     {
         var path = GameLogPath();

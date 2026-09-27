@@ -1,9 +1,9 @@
 namespace ManyWinters.Core.World;
 
-// Spatial-hash rejection sampling shared by CloudSpotScatter and MapLoader's decoration/crowd
-// placement: bucket by a cell at least as wide as the largest gap two items can need, so a
-// candidate checks only the 3x3 cells around it. Coordinates are doubles; a float caller loses
-// nothing by widening, so both get identical answers.
+// Spatial-hash rejection sampling shared by every scattered-placement system: bucket by a cell at
+// least as wide as the largest gap two items can need, so a candidate checks only the 3x3 cells
+// around it. Coordinates are doubles; a float caller loses nothing by widening, so both get
+// identical answers.
 public sealed class SpatialSpacingIndex<T>
 {
     private readonly double _cellSize;
@@ -21,8 +21,7 @@ public sealed class SpatialSpacingIndex<T>
     }
 
     // True if an already-added item sits closer to (x, z) than requiredGap allows. The gap is
-    // asked per neighbour so a size-dependent spacing (CloudSpotScatter) and a constant one
-    // (MapLoader) share the index.
+    // asked per neighbour so a size-dependent spacing and a constant one can share the index.
     public bool IsTooClose(double x, double z, Func<T, double> requiredGap)
     {
         var (cellX, cellZ) = CellFor(x, z);

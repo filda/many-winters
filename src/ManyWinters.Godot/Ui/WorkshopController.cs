@@ -49,18 +49,16 @@ internal sealed class WorkshopController
     public event Action<Inscription>? InscriptionRecorded;
 
     // The workbench, opened from the pack line on the selected person's card. Like the pause page
-    // it holds the clock while it is up (see SimulationLoop.Update): working a thing over is
-    // meant to be unhurried.
+    // it holds the clock while it is up: working a thing over is meant to be unhurried.
     public WorkshopController(WorkshopUi ui, WorldState world, OrderCoordinator orders)
     {
         _world = world;
         _orders = orders;
 
-        // ui.Shield is MainUi's to attach and show/hide alongside the panel (see MainUi) - the
-        // clock is stopped while the bench is out, and an order given into a stopped clock lands
-        // the moment it starts again (the same reasoning as InscriptionOverlay). It draws
-        // nothing: the world is what the player is working in the middle of, and the camera keeps
-        // turning over it.
+        // ui.Shield is MainUi's to attach and show/hide alongside the panel - the clock is
+        // stopped while the bench is out, and an order given into a stopped clock lands the
+        // moment it starts again. It draws nothing: the world is what the player is working in
+        // the middle of, and the camera keeps turning over it.
         _workshop = ui.Panel;
         _workshop.Closed += () => Closed?.Invoke();
         _workshop.Attempted += OnAttempt;
@@ -85,9 +83,8 @@ internal sealed class WorkshopController
 
         _person = person;
 
-        // It puts itself in the middle of the screen and stays there (PanelPlacement.Centred):
-        // the world stands still while this is open, so it is the thing being done rather than a
-        // card to read beside it.
+        // It puts itself in the middle of the screen and stays there: the world stands still
+        // while this is open, so it is the thing being done rather than a card to read beside it.
         _workshop.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));
 
         // A verbose session follows the game from its log alone; the bench coming up says so, and
@@ -118,7 +115,7 @@ internal sealed class WorkshopController
 
     // Pressed a "Make X" line rather than picked something to try - the recipe list has its own
     // event because a successful one changes the pack the same attempt does, and the panel needs
-    // both redrawn (WorkshopActions.Carried, WorkshopActions.Recipes).
+    // both the pack and the recipes redrawn.
     private void OnRecipe(ActionOffer offer)
     {
         if (_person is not { } person)
@@ -130,10 +127,9 @@ internal sealed class WorkshopController
         RefreshPack(person);
     }
 
-    // Eat or Drop, pressed on whatever is picked. Neither is an attempt (WorkshopActions.Attempt)
-    // - there is no dice roll and no cost to the clock, the same as pressing either off the
-    // person's own card - so this only carries the command out and redraws the pack underneath
-    // it, the way a recipe does (OnRecipe).
+    // Eat or Drop, pressed on whatever is picked. Neither is an attempt - there is no dice roll
+    // and no cost to the clock, the same as pressing either off the person's own card - so this
+    // only carries the command out and redraws the pack underneath it, the way a recipe does.
     private void OnEat()
     {
         if (_person is not { } person || WorkshopActions.Eat(_world, person, _workshop.Picked) is not { } offer)
@@ -166,7 +162,7 @@ internal sealed class WorkshopController
     }
 
     // What the current pick would do, asked of the world rather than of the panel: the panel
-    // holds no world and no opinion about what works (see WorkshopActions).
+    // holds no world and no opinion about what works.
     private void RefreshOffer()
     {
         if (_person is not { } person)
@@ -205,7 +201,7 @@ internal sealed class WorkshopController
 
         // An attempt costs time whether or not it came off - the clock is held while the bench is
         // open, so this is the only thing that moves it, and it is what stops a player pressing
-        // until the dice land (see WorkAttempt, SimulationRules.TicksPerWorkAttempt).
+        // until the dice land.
         _world.Advance(_world.Configuration.Rules.TicksPerWorkAttempt);
 
         var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
@@ -221,7 +217,7 @@ internal sealed class WorkshopController
             : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
 
         // A shape nobody in the band has a word for is a thing worth naming, and this is the
-        // moment to ask: they are looking at what they just made (see Vocabulary).
+        // moment to ask: they are looking at what they just made.
         if (made is not null && !_world.Vocabulary.HasAWordFor(made))
         {
             _justMade = made;
@@ -244,7 +240,7 @@ internal sealed class WorkshopController
             [$"{person.Name} made a thing the band had no word for.", $"They are calling it {word}."],
             // Carried even though the chronicle leaves closing words off the page: an
             // inscription without them is one the overlay cannot be dismissed from, and that is
-            // meant only for a band with nobody left (see InscriptionOverlay.Show).
+            // meant only for a band with nobody left.
             "The word is passed along"));
 
         _workshop.ReportOutcome($"They are calling it {word}.");

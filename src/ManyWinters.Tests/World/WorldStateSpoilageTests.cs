@@ -5,11 +5,11 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// docs/todo/fauna-plan.md phase 4c: the once-per-tick spoilage pass in WorldState.Advance -
-// wherever a perishable thing lies (a ground pile, a building's storage, a pack carried between
-// containers), it vanishes SimulationRules... no, its own material's ShelfLifeTicks after it came
-// to be, full stop. Inventory's own tests (InventoryTests) cover the ledger/transfer mechanics
-// directly; these are about WorldState actually running that pass over the whole map.
+// The once-per-tick spoilage pass in WorldState.Advance - wherever a perishable thing lies (a
+// ground pile, a building's storage, a pack carried between containers), it vanishes its
+// material's ShelfLifeTicks after it came to be, full stop. Inventory's tests (InventoryTests)
+// cover the ledger/transfer mechanics directly; these are about WorldState running that pass
+// over the whole map.
 public class WorldStateSpoilageTests
 {
     [Fact]
@@ -19,8 +19,8 @@ public class WorldStateSpoilageTests
         var catalog = world.Configuration.ItemCatalog;
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         // Ticked, not the plain untimed Add every other test's setup uses: an untimed unit is
-        // deliberately exempt from Expire (docs/todo/fauna-plan.md phase 4c), so a pile built from
-        // one would never vanish - this test is about the case that does.
+        // deliberately exempt from Expire, so a pile built from one would never vanish - this
+        // test is about the case that does.
         person.Inventory.Add(TestCatalogs.AppleItem, 5, tick: 0, catalog);
         world.Execute(new DropCommand(person, new CarriedThing.Stock(TestCatalogs.AppleItem, 5)));
         var pile = Assert.Single(world.Entities, e => e.Category == EntityCategory.Pile);
@@ -73,7 +73,7 @@ public class WorldStateSpoilageTests
         Assert.Equal(25, world.Clock.CurrentTick);
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.MeatItem));
 
-        // Picked at tick 0, so it spoils at tick 30 - not at 25 + its own shelf life (55), which
+        // Picked at tick 0, so it spoils at tick 30 - not at 25 + its shelf life (55), which
         // stamping the pile (or the pickup) "now" would give instead.
         world.Advance(TestCatalogs.MeatShelfLifeTicks - 25 - 1);
         Assert.Equal(5, person.Inventory.Get(TestCatalogs.MeatItem));
@@ -82,10 +82,9 @@ public class WorldStateSpoilageTests
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.MeatItem));
     }
 
-    // Deposit then withdraw is a transfer at each end (docs/todo/fauna-plan.md phase 4c): meat
-    // butchered (well, handed straight into a pack here) at tick 0, deposited at tick 10 and
-    // withdrawn at tick 20 spoils at tick 30 - not at tick 20 + its own shelf life, as restamping
-    // it at each hand-off would give.
+    // Deposit then withdraw is a transfer at each end: meat butchered (well, handed straight into
+    // a pack here) at tick 0, deposited at tick 10 and withdrawn at tick 20 spoils at tick 30 -
+    // not at tick 20 + its shelf life, as restamping it at each hand-off would give.
     [Fact]
     public void MeatKeepsItsOriginalAgeAcrossADepositAndAWithdraw()
     {
@@ -97,8 +96,7 @@ public class WorldStateSpoilageTests
         person.Inventory.Add(TestCatalogs.MeatItem, 5, tick: 0, catalog);
 
         world.Advance(10);
-        // An untasked person idly wanders (IdleTask) - pinned back so the reach checks below are
-        // about spoilage, not about where an unrelated random walk happened to leave them.
+        // Pinned back against the same idle-wander drift as above.
         person.Position = position;
         world.Execute(new DepositCommand(person, hut, new CarriedThing.Stock(TestCatalogs.MeatItem, 5)));
 

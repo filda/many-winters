@@ -4,13 +4,12 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Replaces the formerly separate CraftCommand and ConstructCommand: both were "check materials,
-// remove them, produce the output," differing only in where the output landed. That difference
-// is now derived from weight rather than authored by which command was called (see
+// One command for both crafting and construction: check materials, remove them, produce the
+// output. Where the output lands is derived from weight rather than authored per recipe (see
 // docs/materials-and-crafting-architecture.md section 5) - a light output goes into the maker's
-// pack, a heavy one (more than fits under WorldState.MaxCarryWeightFor) comes into existence in
-// the world instead. Position is only consulted for that heavy case; when it is omitted the
-// output is placed wherever the maker is standing.
+// pack, a heavy one (more than fits in the maker's carry capacity) comes into existence in the
+// world instead. Position is only consulted for that heavy case; when it is omitted the output
+// is placed wherever the maker is standing.
 public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Position = null) : ICommand
 {
     private const float StartingCondition = 100f;
@@ -48,15 +47,15 @@ public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Pos
 
         if (FitsInInventory(world))
         {
-            // Comes into being right now (docs/todo/fauna-plan.md phase 4c) - matters once a
-            // recipe's own output has a shelf life (rawhide_clothing).
+            // Comes into being right now - matters once a recipe's output has a shelf life
+            // (rawhide_clothing).
             Person.Inventory.Add(Output, 1, world.Clock.CurrentTick, world.Configuration.ItemCatalog);
             return;
         }
 
         // Only one recipe today (storage_hut) ever lands here, so EntityCategory.Building is
         // hardcoded rather than authored per recipe; the first placeable-but-not-building output
-        // (a canoe, say) needs this to become a real choice.
+        // (a canoe) needs this to become a real choice.
         world.AddEntity(new Entity
         {
             Kind = new EntityKindId(Output.Value),
@@ -68,8 +67,8 @@ public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Pos
     }
 
     // Wherever the maker is standing, unless a specific spot was asked for - so "make an axe"
-    // from the person's own card and "build a storage hut here" from a ground click both go
-    // through this one command.
+    // from the person's card and "build a storage hut here" from a ground click both go through
+    // this one command.
     private Position TargetPosition => Position ?? Person.Position;
 
     private bool FitsInInventory(WorldState world) =>

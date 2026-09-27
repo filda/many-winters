@@ -19,7 +19,7 @@ public static class BillboardSprite
     // LiveSprites: its contract is "every billboard that exists", not "every fadeable one".
     private static readonly HashSet<Sprite3D> _excludedFromOcclusionFade = new();
 
-    // Billboards Main's occlusion fade is currently ghosting. A set rather than a read of
+    // Billboards the game's occlusion fade is currently ghosting. A set rather than a read of
     // Modulate.A: SpritePixelHit needs it (what the player sees through, they click through),
     // and Modulate is written by the fade and the views' tinting alike, so it is not a
     // reliable record.

@@ -88,9 +88,8 @@ public class SaveGameServiceTests
         }
     }
 
-    // docs/todo/fauna-plan.md phase 4c: a perishable stack's age ledger has to survive a save, or
-    // reloading would make everything spoiled or fresh forget the difference - it should spoil at
-    // the same tick before and after.
+    // A perishable stack's age ledger has to survive a save, or reloading would make everything
+    // spoiled or fresh forget the difference - it should spoil at the same tick before and after.
     [Fact]
     public void RoundTripPreservesAPerishableStacksAgeSoItSpoilsAtTheSameTick()
     {
@@ -216,8 +215,8 @@ public class SaveGameServiceTests
         }
     }
 
-    // Person.Home (docs/todo/fauna-plan.md, step 1b) is resolved against HomeRangeSaveData like
-    // Animal.Home already was - by id, once the home ranges themselves have been restored.
+    // Person.Home is resolved against HomeRangeSaveData like Animal.Home already was - by id,
+    // once the home ranges themselves have been restored.
     [Fact]
     public void RoundTripResolvesAPersonsHomeRangeById()
     {
@@ -581,9 +580,9 @@ public class SaveGameServiceTests
         }
     }
 
-    // DeathCause.Hunted (docs/todo/fauna-plan.md, phase 3) is serialised by name like every
-    // other enum here, but it is new enough - and only ever set by a command rather than by
-    // Advance's own hunger/old-age check - that it earns its own round-trip test.
+    // DeathCause.Hunted is serialised by name like every other enum here, but it is set only by
+    // a command rather than by Advance's own hunger/old-age check, so it earns its own
+    // round-trip test.
     [Fact]
     public void RoundTripPreservesAnAnimalHuntedToDeath()
     {
@@ -612,10 +611,10 @@ public class SaveGameServiceTests
         }
     }
 
-    // docs/todo/fauna-plan.md phase 4c: a carcass's meat no longer decays with the body
-    // (CorpseDecayTicks) - it rots on its own material's shelf life, tracked in the age ledger
-    // (Inventory.Ages), which itself has to survive a save/load and still fire exactly once, not
-    // once on load and once again when Advance revisits the same tick.
+    // A carcass's meat no longer decays with the body (CorpseDecayTicks) - it rots on its own
+    // material's shelf life, tracked in the age ledger (Inventory.Ages), which has to survive a
+    // save/load and still fire exactly once, not once on load and once again when Advance
+    // revisits the same tick.
     [Fact]
     public void RoundTripSurvivesMeatSpoilageFiringExactlyOnceAcrossASaveAndLoad()
     {
@@ -657,9 +656,9 @@ public class SaveGameServiceTests
         }
     }
 
-    // Animal.PregnantSinceTick (docs/todo/fauna-plan.md, phase 1b, "mnozeni"): a mother mid-way
-    // through gestation has to still be pregnant, at the same tick, after a reload - a silent
-    // omission here would end every pregnancy in progress the moment somebody saved.
+    // Animal.PregnantSinceTick: a mother mid-way through gestation has to still be pregnant, at
+    // the same tick, after a reload - a silent omission here would end every pregnancy in
+    // progress the moment somebody saved.
     [Fact]
     public void RoundTripPreservesAPregnantAnimal()
     {

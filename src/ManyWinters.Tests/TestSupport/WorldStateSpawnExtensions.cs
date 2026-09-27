@@ -37,8 +37,8 @@ public static class WorldStateSpawnExtensions
         Sex? sex = null,
         // One is the rate the shipped band works things out at; tests about idle discovery turn it.
         float curiosity = 1f,
-        // Null (the default) leaves the person with no home, exactly as before step 1b - a test
-        // that cares about camp-anchored wandering hands one in (see Person.Home).
+        // Null (the default) leaves the person with no home; a test that cares about
+        // camp-anchored wandering hands one in.
         HomeRange? home = null)
     {
         var person = new Person
@@ -59,9 +59,9 @@ public static class WorldStateSpawnExtensions
         return person;
     }
 
-    // Test-only shorthand for SpawnAnimalCommand: builds its own HomeRange (radius 10, no
-    // drift, so a test's assertions about wander bounds don't have to account for it moving too)
-    // unless the test hands in one of its own.
+    // Test-only shorthand for SpawnAnimalCommand: builds a HomeRange (radius 10, no drift, so a
+    // test's assertions about wander bounds don't have to account for it moving too) unless the
+    // test hands in one of its own.
     public static Animal SpawnAnimal(
         this WorldState world,
         SpeciesId species,

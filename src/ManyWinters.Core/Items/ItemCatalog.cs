@@ -97,9 +97,8 @@ public sealed class ItemCatalog
             : null;
 
     // The one stock item, if any, already described by exactly this material and this form -
-    // asked only by curing (ReductiveWork), which exchanges one already-known substance for
-    // another rather than fashioning a new individual object (docs/todo/fauna-plan.md phase 4d,
-    // "ReductiveWork picks the output item by (material, form)").
+    // asked only by curing, which exchanges one already-known substance for another rather than
+    // fashioning a new individual object.
     public ItemKindId? KindFor(MaterialId material, FormId form) =>
         _definitions.Values.FirstOrDefault(d => d.Material == material && d.Form == form)?.Id;
 
@@ -109,13 +108,12 @@ public sealed class ItemCatalog
 
     // How long a thing of this kind lasts once it exists, from the material it was made of -
     // null if it never spoils. An undescribed item never spoils, the same forgiveness
-    // InsulationFor and WeightFor give it (docs/todo/fauna-plan.md phase 4c).
+    // InsulationFor and WeightFor give it.
     public long? ShelfLifeFor(ItemKindId id) =>
         _definitions.TryGetValue(id, out var definition) ? _materials.Find(definition.Material)?.ShelfLifeTicks : null;
 
-    // The shortest shelf life among a worked object's own parts' materials, or null if none of
-    // them spoil - the whole thing rots at its most perishable part (docs/todo/fauna-plan.md
-    // phase 4c, "assembly spoils when currentTick - MadeTick >= min(...)").
+    // The shortest shelf life among a worked object's parts' materials, or null if none of them
+    // spoil - the whole thing rots at its most perishable part.
     public long? ShelfLifeTicksOf(Assembly assembly) => assembly switch
     {
         Assembly.Part part => _materials.Find(part.Material)?.ShelfLifeTicks,

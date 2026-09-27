@@ -12,8 +12,8 @@ namespace ManyWinters.Core.Commands;
 // It is not a reductive verb in the shape of the others and does not use ReductiveWork: nothing
 // changes form. A wedge comes out a wedge - keener, and smaller, because an edge is renewed by
 // taking material off it. Quality up and mass down is the whole of the trade, and both are read
-// by the same score (ItemCatalog.ChoppingScoreOf), so grinding away at an already-good edge
-// makes a worse tool without any rule saying so.
+// by the same chopping score, so grinding away at an already-good edge makes a worse tool
+// without any rule saying so.
 //
 // What it is worth is bounded by the hand doing it: an edge can be brought up to what this
 // person could have made themselves and no further. So a practised knapper can rescue the poor
@@ -21,11 +21,11 @@ namespace ManyWinters.Core.Commands;
 // made in one's first winter is worth doing once the hands have learned something.
 public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
 {
-    // Directing somebody to sharpen is how they learn to sharpen (see ActionOffer.TeachFirst).
+    // Directing somebody to sharpen is how they learn to sharpen.
     public static readonly SkillTypeId Skill = new("sharpening");
 
     // Private, unlike the reductive verbs': nothing changes form, so no content names this verb
-    // in an item's transitions and the only thing that reads it is the roll's own seed.
+    // in an item's transitions and the only thing that reads it is the roll's seed.
     private static readonly TechniqueId Verb = new("sharpen");
 
     private const float SkillGainPerAttempt = 1f;
@@ -48,13 +48,13 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
         }
 
         // Renewing a stone edge is striking flakes off it, so it asks of the substance exactly
-        // what knapping one in the first place asked (see MaterialAffordances.CanKnap).
+        // what knapping one in the first place asked.
         if (world.Configuration.MaterialCatalog.Find(edge.Material) is not { } material || !MaterialAffordances.CanKnap(material))
         {
             return ActionBlocker.NotKnappable;
         }
 
-        // Asked last, like every knowledge gate (see ActionBlocker.NotLearned).
+        // Asked last, like every knowledge gate.
         var skill = world.Configuration.SkillCatalog.Find(Skill);
         return skill is not null && Person.KnownTechniques.Contains(skill.BaseTechnique)
             ? ActionBlocker.None
@@ -70,8 +70,7 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
 
         var edge = EdgeOf(Thing, world)!;
 
-        // Teaches what it's made of whether or not the working comes off (see
-        // WorkAttempt.TeachesWhatItIs).
+        // Teaches what it's made of whether or not the working comes off.
         WorkAttempt.TeachesWhatItIs(world, Person, edge.Material);
 
         // Material comes off the edge either way: a botched strike takes as much of it as a good
@@ -82,22 +81,20 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
             : worn;
 
         Person.Inventory.RemoveAssembly(Thing);
-        // A sharpen is one of the four verbs that "make" a thing (docs/todo/fauna-plan.md phase
-        // 4c), so the whole object's age resets here even though only its edge changed.
+        // A sharpen is one of the four verbs that "make" a thing, so the whole object's age
+        // resets here even though only its edge changed.
         Person.Inventory.AddAssembly(WithReplaced(Thing, edge, reworked) with { MadeTick = world.Clock.CurrentTick });
 
         Person.Skills.Increase(Skill, SkillGainPerAttempt);
     }
 
     // Whether there is anything on this object to sharpen at all, which is what the workbench
-    // asks before offering the attempt: a pick that leads nowhere is not an offer (see
-    // WorkshopActions).
+    // asks before offering the attempt: a pick that leads nowhere is not an offer.
     public static bool HasAnEdge(Assembly thing, WorldState world) => EdgeOf(thing, world) is not null;
 
     // The piece this object cuts with, wherever it sits inside it: the one whose shape presents
     // an edge and whose substance is hard enough to hold it. Mass and workmanship are left out -
-    // they decide how well the thing chops (ItemCatalog.ChoppingScoreOf), not which part is the
-    // blade.
+    // they decide how well the thing chops, not which part is the blade.
     private static Assembly.Part? EdgeOf(Assembly assembly, WorldState world) => assembly switch
     {
         Assembly.Part part => Keenness(part, world) > 0f ? part : null,
@@ -120,8 +117,8 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
         * (world.Configuration.MaterialCatalog.Find(part.Material)?.Hardness ?? 0f);
 
     // The object rebuilt with one piece swapped out. The first matching piece only: two pieces
-    // that match in every particular are the same thing to anyone who could tell them apart (see
-    // Inventory.RemoveAssembly), but one attempt sharpens one edge.
+    // that match in every particular are the same thing to anyone who could tell them apart, but
+    // one attempt sharpens one edge.
     private static Assembly WithReplaced(Assembly assembly, Assembly.Part target, Assembly.Part replacement)
     {
         var done = false;

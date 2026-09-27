@@ -120,7 +120,7 @@ public class BeliefDistortionTests
     }
 
     // The other lever, and the one that keeps a settlement's knowledge honest: reality. Working
-    // the stuff writes what it actually is over whatever was going around.
+    // the stuff writes what it is over whatever was going around.
     [Fact]
     public void WorkingTheStuffSettlesTheMatter()
     {

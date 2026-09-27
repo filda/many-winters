@@ -16,8 +16,7 @@ public sealed record SaveData(
     IReadOnlyList<ExplorationCellSaveData> ExploredCells,
     IReadOnlyList<AffectionSaveData> Affections,
     IReadOnlyList<WordSaveData> Vocabulary,
-    // Both added in the same version bump as Animal/HomeRange itself
-    // (docs/todo/fauna-plan.md, phase 1a).
+    // Both added in the same version bump as Animal/HomeRange.
     IReadOnlyList<AnimalSaveData> Animals,
     IReadOnlyList<HomeRangeSaveData> HomeRanges);
 
@@ -46,8 +45,8 @@ public sealed record PersonSaveData(
     Sex Sex,
     // Set per band rather than per rules, so it has to survive a reload.
     float Curiosity,
-    // The shared camp anchor this person wanders around (see Person.Home) - null for one with
-    // none, which is every save written before step 1b. Resolved against HomeRangeSaveData like
+    // The shared camp anchor this person wanders around - null for one with none, which is every
+    // save written before this existed. Resolved against HomeRangeSaveData like
     // AnimalSaveData.HomeRangeId.
     Guid? HomeRangeId = null);
 
@@ -65,9 +64,9 @@ public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 // whole point of a belief is that it need not match the world.
 public sealed record BeliefSaveData(MaterialId Material, MaterialProperty Property, float Value, float Confidence);
 
-// `Ages` is the FIFO age ledger for a perishable kind (docs/todo/fauna-plan.md phase 4c,
-// Inventory.Ages) - null for a kind that carries no age at all (non-perishable, or added
-// untimed), which is every stack written before this existed, so an old save still reads.
+// `Ages` is the FIFO age ledger for a perishable kind - null for a kind that carries no age at
+// all (non-perishable, or added untimed), which is every stack written before this existed, so
+// an old save still reads.
 public sealed record ItemStackSaveData(ItemKindId Kind, int Count, IReadOnlyList<AgedEntrySaveData>? Ages = null);
 
 // One batch of units that came into being on the same tick.
@@ -114,8 +113,8 @@ public sealed record EntitySaveData(
     // a person's inventory needs two lists: a count is no truth at all about two axes of
     // different quality.
     IReadOnlyList<AssemblySaveData>? StorageWorkedThings = null,
-    // When a stock pile came to be, for the spoilage pass (docs/todo/fauna-plan.md phase 4c) -
-    // null for anything that isn't a stock pile, or for one saved before this existed.
+    // When a stock pile came to be, for the spoilage pass - null for anything that isn't a stock
+    // pile, or for one saved before this existed.
     long? DroppedTick = null);
 
 public sealed record GraveSaveData(
@@ -133,9 +132,8 @@ public sealed record GraveSaveData(
 
 public sealed record ExplorationCellSaveData(int X, int Y);
 
-// The second kind of Creature (docs/todo/fauna-plan.md, phase 1a). No name, no beliefs, no
-// curiosity - what Animal itself doesn't have. MaxHunger isn't saved for the same reason a
-// Person's isn't (PersonSaveData): it is always redrawn from the id.
+// The second kind of Creature. No name, no beliefs, no curiosity - what Animal doesn't have.
+// MaxHunger isn't saved for the same reason a Person's isn't: it is always redrawn from the id.
 public sealed record AnimalSaveData(
     Guid Id,
     SpeciesId Species,
@@ -151,15 +149,13 @@ public sealed record AnimalSaveData(
     DeathCause? CauseOfDeath,
     Sex Sex,
     Guid HomeRangeId,
-    // Null for one spawned as an adult (every animal in phase 1a - MapLoader's starting herds);
-    // set once a fawn is born (phase 1b).
+    // Null for one spawned as an adult (MapLoader's starting herds); set once a fawn is born.
     Guid? MotherId,
-    // Null for a male and for a female not currently carrying (Animal.PregnantSinceTick).
+    // Null for a male and for a female not currently carrying.
     long? PregnantSinceTick = null,
-    // What a dead animal's carcass still holds (docs/todo/fauna-plan.md, phase 3) - null for one
-    // still alive, since a living animal never carries anything (SpeciesDefinition.CanCarry is
-    // false for every animal today). Last and nullable so a save written before butchering
-    // existed still reads.
+    // What a dead animal's carcass still holds - null for one still alive, since a living animal
+    // never carries anything (every animal's SpeciesDefinition.CanCarry is false today). Last and
+    // nullable so a save written before butchering existed still reads.
     IReadOnlyList<ItemStackSaveData>? Inventory = null);
 
 public sealed record HomeRangeSaveData(Guid Id, double AnchorX, double AnchorY, float Radius, float DriftMetresPerSeason);

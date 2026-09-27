@@ -32,7 +32,7 @@ internal static class HoverOutline
 
     // Draws the rim on `host` until Clear, tracing the union of `textures`. They are handed to
     // the shader explicitly - an overlay pass has no binding to what the sprite draws - and read
-    // off the layers, which keeps the rim in step through a texture swap (PersonView on death).
+    // off the layers, which keeps the rim in step through a texture swap (a body's, on death).
     internal static void Show(Sprite3D host, IReadOnlyList<Texture2D> textures)
     {
         if (textures.Count == 0)

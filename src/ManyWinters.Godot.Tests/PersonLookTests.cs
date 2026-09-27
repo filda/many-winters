@@ -81,9 +81,8 @@ public class PersonLookTests
 
     private static string Path(string layer, string variant) => $"res://Content/people/{layer}_{variant}.png";
 
-    // Which tint replaces a creature's own colour for its state (docs/todo/fauna-plan.md phase
-    // 4b) - null for the living, since their colour is their own rather than something looked up
-    // here.
+    // Which tint replaces a creature's own colour for its state - null for the living, since
+    // their colour is their own rather than something looked up here.
     [Fact]
     public void TheLivingHaveNoTint()
     {

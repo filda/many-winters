@@ -3,7 +3,7 @@ namespace ManyWinters.Core.Population.Naming;
 // A frequency table sampled by weight rather than picked uniformly - what `CultureProfile` is a
 // collection of, one per naming feature (onsets, nuclei, codas, syllable counts). Insertion
 // order backs sampling instead of a Dictionary's enumeration order, which .NET does not promise
-// to hold still, and this has to replay identically every time (see WorldState.NameForNewborn).
+// to hold still, and this has to replay identically every time.
 public sealed class WeightedSet<T>
     where T : notnull
 {
@@ -36,8 +36,8 @@ public sealed class WeightedSet<T>
         TotalWeight += weight;
     }
 
-    // Fades every weight toward zero without discarding it outright - CultureProfile's slow
-    // decay, applied once per historical name it replays (CultureProfile.Build).
+    // Fades every weight toward zero without discarding it outright - the slow decay applied once
+    // per historical name replayed when rebuilding a profile.
     public void DecayAll(float factor)
     {
         for (var i = 0; i < _weights.Count; i++)

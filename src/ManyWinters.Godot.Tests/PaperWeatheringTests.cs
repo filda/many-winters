@@ -7,7 +7,7 @@ namespace ManyWinters.Godot.Tests;
 // what decides how dirty it came out.
 public class PaperWeatheringTests
 {
-    // The names the game actually rules its pages with.
+    // The names the game rules its pages with.
     private static readonly string[] Pages = ["Workshop", "Chronicle", "detail", "menu", "pause", "help"];
 
     // Weathering that reshuffled between sessions would read as a bug rather than as paper.

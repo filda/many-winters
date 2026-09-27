@@ -37,8 +37,7 @@ public static class Prologue
                 "Their graves, if any are dug, will say the rest."),
         };
 
-        // The pick comes after every line's, so adding it never reshuffles the wordings above
-        // (see PhraseDraw).
+        // The pick comes after every line's, so adding it never reshuffles the wordings above.
         return new Inscription(title, lines, draw.Pick(
             "Set forth",
             "Enter the wilds",

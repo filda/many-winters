@@ -13,8 +13,8 @@ namespace ManyWinters.Godot.Logic;
 // player. Kept apart from the panel so the wording is a plain function of the state.
 internal static class InspectorText
 {
-    // Creature, not Person: an animal has tasks too (docs/todo/fauna-plan.md, phase 2b), and this
-    // is also AnimalCard's own "doing" line.
+    // Creature, not Person: an animal has tasks too, and this is also the animal card's own
+    // "doing" line.
     internal static string ForTask(Creature creature) => creature.Tasks.Current switch
     {
         MoveTask move => $"Walking to {move.Destination}",
@@ -23,8 +23,8 @@ internal static class InspectorText
         // none to give.
         FollowTask { Target: Person target } => $"Keeping up with {target.Name}",
         FollowTask => "Keeping close to its mother",
-        // A species' own flight rule (WorldState.DecideIdleTask, FleeTask) - no human ever runs
-        // one, so this only ever fires for an animal.
+        // A species' own flight rule - no human ever runs one, so this only ever fires for an
+        // animal.
         FleeTask => "Fleeing",
         HuntTask => "Hunting",
         ButcherTask => "Butchering",
@@ -205,8 +205,8 @@ internal static class InspectorText
         {
             DeathCause.Hunger => " of hunger",
             DeathCause.OldAge => " of old age",
-            // As above (ForDeath): only an Animal is hunted today, but the debug inspector must
-            // still say something sensible if a grave ever records it.
+            // As above: only an Animal is hunted today, but the debug inspector must still say
+            // something sensible if a grave ever records it.
             DeathCause.Hunted => " to a hunter's spear",
             _ => string.Empty,
         };

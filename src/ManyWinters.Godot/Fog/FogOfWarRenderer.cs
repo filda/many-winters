@@ -38,10 +38,10 @@ public sealed class FogOfWarRenderer
     // only has to cover the [-1, 1] clip range (2x2), never less.
     private const float OverlayQuadSize = 4f;
 
-    // One below Godot's maximum: the sheets must draw over every piece of world content (see the
-    // constructor - the quad sits at the near plane, so distance sorting alone would not settle
-    // it), but under the hover rim, which HoverOutline draws at 127 - a remembered tree is still
-    // a valid thing to point at.
+    // One below Godot's maximum: the sheets must draw over every piece of world content (the
+    // quad sits at the near plane, so distance sorting alone would not settle it), but under the
+    // hover rim, which HoverOutline draws at 127 - a remembered tree is still a valid thing to
+    // point at.
     private const int OverlayRenderPriority = 126;
 
     private readonly RevealableExploration _exploration;
@@ -49,7 +49,7 @@ public sealed class FogOfWarRenderer
     private readonly ImageTexture _explorationTexture;
 
     // Metres from each texel to the nearest ever-explored cell (GridDistanceField), so the unknown
-    // shader fades out with distance from where the band has actually been. Its own Rf texture
+    // shader fades out with distance from where the band has been. Its own Rf texture
     // because _explorationTexture's four Rgba8 channels are all taken.
     private readonly ImageTexture _distanceTexture;
 

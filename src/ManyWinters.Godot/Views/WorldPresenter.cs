@@ -50,9 +50,8 @@ public sealed partial class WorldPresenter : Node3D
     // scale, so only those go through pending.
     //
     // "Explored" never reverts, so once "Reveal Map" or normal play has explored the whole map,
-    // that gate alone would build a node for every decoration on it in one pass - see
-    // IsWithinViewOfCamera for the second, camera-distance gate that actually bounds how many
-    // resource nodes exist at once.
+    // that gate alone would build a node for every decoration on it in one pass; the second,
+    // camera-distance gate below bounds how many resource nodes exist at once.
     private readonly Dictionary<EntityId, Entity> _pendingResourceNodes = new();
 
     // Updated each RefreshExploration call. Simulation space (X, Y on the ground plane), not
@@ -91,9 +90,9 @@ public sealed partial class WorldPresenter : Node3D
         // Only a pile-category entity ever fires this: a felled or withered resource stays in
         // Entities with Growth.IsAlive false instead, and a building is never removed.
         world.EntityRemoved += entity => RemoveItemPileView(entity.Id);
-        // A dead, unburied animal's bones themselves vanish SimulationRules.BonesLingerTicks past
-        // decay (docs/todo/fauna-plan.md phase 4b) - the corpse the presenter has been dimming
-        // through fog of war for a season is finally gone from the world, not merely marked.
+        // A dead, unburied animal's bones vanish SimulationRules.BonesLingerTicks past decay - the
+        // corpse the presenter has been dimming through fog of war for a season is finally gone
+        // from the world, not merely marked.
         world.AnimalRemoved += animal => RemoveAnimalView(animal.Id);
 
         foreach (var person in world.People)
@@ -161,10 +160,9 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
-    // Driven by WorldState.AnimalRemoved (subscribed in the constructor): unlike RemovePersonView
-    // (a buried person, an order the player gave, so OrderCoordinator calls it), nothing outside
-    // this class asks for this - the world forgets the animal's bones on its own once they have
-    // lingered long enough.
+    // Driven by WorldState.AnimalRemoved (subscribed in the constructor): unlike RemovePersonView,
+    // which fires from an order the player gave, nothing outside this class asks for this - the
+    // world forgets the animal's bones on its own once they have lingered long enough.
     private void RemoveAnimalView(CreatureId id)
     {
         if (_animalViews.TryGetValue(id, out var view))
@@ -182,16 +180,16 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
-    // Person or animal, whichever this id belongs to - the one place SelectionController,
-    // WorldInputController and OcclusionFader ask "where is the creature I care about" without
-    // knowing which kind of view answers. A person's own id space is disjoint from an animal's
-    // (both drawn from CreatureId.New), so at most one dictionary ever has it.
+    // Person or animal, whichever this id belongs to - the one place callers ask "where is the
+    // creature I care about" without knowing which kind of view answers. A person's id space is
+    // disjoint from an animal's (both drawn from CreatureId.New), so at most one dictionary ever
+    // has it.
     public Vector3? GetCreatureGlobalPosition(CreatureId id) =>
         _personViews.TryGetValue(id, out var personView) ? personView.GlobalPosition
         : _animalViews.TryGetValue(id, out var animalView) ? animalView.GlobalPosition
         : null;
 
-    // For Main's screen-space selection marker: how far above the creature's position the top of
+    // For the screen-space selection marker: how far above the creature's position the top of
     // the drawn silhouette sits - a nominal half-height would float or sink depending on the
     // texture's own margins.
     public float? GetCreatureHeadHeightOffset(CreatureId id) =>
@@ -199,15 +197,15 @@ public sealed partial class WorldPresenter : Node3D
         : _animalViews.TryGetValue(id, out var animalView) ? animalView.TopHeightOffset
         : null;
 
-    // For Main's E2E anchor line (see Main.PrintE2EAnchors): a resource node has no CreatureId,
-    // so it does not go through GetCreatureGlobalPosition above. Null both when the id is
-    // unknown and when the node is still pending (out of camera view, see CreateResourceNodeView)
-    // - either way there is no view to project a screen point from.
+    // For the E2E anchor line: a resource node has no CreatureId, so it does not go through
+    // GetCreatureGlobalPosition above. Null both when the id is unknown and when the node is
+    // still pending (out of camera view) - either way there is no view to project a screen
+    // point from.
     public Vector3? GetResourceNodeGlobalPosition(EntityId id) =>
         _resourceNodeViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
 
-    // For Main's occlusion fade, so the selection's own sprites are not treated as blocking
-    // the view of themselves.
+    // For the occlusion fade, so the selection's own sprites are not treated as blocking the
+    // view of themselves.
     public Node3D? GetCreatureNode(CreatureId id) =>
         (Node3D?)_personViews.GetValueOrDefault(id) ?? _animalViews.GetValueOrDefault(id);
 
@@ -492,8 +490,8 @@ public sealed partial class WorldPresenter : Node3D
     }
 
     // Driven by WorldState.EntityRemoved, unlike a felled resource or a buried person - a pile
-    // shrinks and vanishes from an ordinary command, not a special one Main has to recognise, so
-    // the event is enough.
+    // shrinks and vanishes from an ordinary command, not a special one that needs recognising,
+    // so the event is enough.
     private void RemoveItemPileView(EntityId id)
     {
         if (_itemPileViews.TryGetValue(id, out var view))

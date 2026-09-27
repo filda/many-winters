@@ -1,10 +1,9 @@
 namespace ManyWinters.Core.World;
 
-// "Here live ..." - a shared anchor a herd wanders around (IdleTask reads it instead of each
-// member's own standing position), or a lone creature's own patch. The anchor drifts a fixed
-// distance once per season, in a direction drawn from the range's own id and the season index,
-// so the ground a herd calls home shifts slowly and reproducibly and never jumps mid-season
-// (docs/todo/fauna-plan.md, "Co je stado konkretne").
+// "Here live ..." - a shared anchor a herd wanders around instead of each member's own standing
+// position, or a lone creature's own patch. The anchor drifts a fixed distance once per season,
+// in a direction drawn from the range's own id and the season index, so the ground a herd calls
+// home shifts slowly and reproducibly and never jumps mid-season.
 public sealed class HomeRange
 {
     public HomeRangeId Id { get; init; } = HomeRangeId.New();
@@ -13,9 +12,8 @@ public sealed class HomeRange
 
     public required float Radius { get; init; }
 
-    // From the species' herd (SpeciesDefinition.HerdDefinition.DriftMetresPerSeason), kept here
-    // rather than in SimulationRules so a second species can drift at its own rate. 0 for a home
-    // range that never moves.
+    // From the species' own herd definition, kept here rather than in the shared rules so a
+    // second species can drift at its own rate. 0 for a home range that never moves.
     public required float DriftMetresPerSeason { get; init; }
 
     // Null until the first Advance call, which only ever establishes which season "now" is - it
@@ -25,9 +23,9 @@ public sealed class HomeRange
 
     public HomeRange(Position anchor) => Anchor = anchor;
 
-    // Idempotent within a season: called every tick (WorldState.Advance), but only moves the
-    // anchor on the tick that crosses into a new season, so the drift is exactly
-    // DriftMetresPerSeason per season regardless of how often this is called.
+    // Idempotent within a season: called every tick, but only moves the anchor on the tick that
+    // crosses into a new season, so the drift is exactly DriftMetresPerSeason per season
+    // regardless of how often this is called.
     public void Advance(long tick, long ticksPerSeason)
     {
         if (ticksPerSeason <= 0)
@@ -49,7 +47,7 @@ public sealed class HomeRange
         }
 
         // Spread by SeedHash so a home range's own id and the season index don't correlate with
-        // a neighbouring one's, the same reasoning as IdleTask.SeedFor.
+        // a neighbouring one's.
         var mixed = unchecked((uint)(Id.Seed * 73856093) ^ ((uint)season * 19349663u));
         var angle = new Random(SeedHash.Avalanche(mixed)).NextDouble() * Math.Tau;
 

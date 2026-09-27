@@ -51,9 +51,8 @@ public class IdleDiscoveryTests
         Assert.Contains(TestCatalogs.BasicTwisting, person.KnownTechniques);
     }
 
-    // Tan is a reductive verb exactly like Twist (docs/todo/fauna-plan.md phase 4d): idle hands
-    // reach it too, since ReductiveVerbs.For is the one place DiscoverByFiddling asks and it now
-    // knows a third verb.
+    // Tan is a reductive verb exactly like Twist: idle hands reach it too, since ReductiveVerbs.For
+    // is the one place DiscoverByFiddling asks, and it knows a third verb.
     [Fact]
     public void SomebodyIdlingWithRawhideEventuallyWorksOutHowToTan()
     {

@@ -23,7 +23,7 @@ internal sealed class WorldFrameUpdater(
         occlusionFader.Update(selection.SelectedCreature);
         selection.UpdateMarker();
         // Hover is taken on mouse movement but can be lost without any - a person can walk out
-        // from under a resting cursor (see HoverArbiter).
+        // from under a resting cursor.
         presenter.RevalidateHover();
         // The mask camera tracks the main camera's continuous movement.
         cloudFogMask.Update();

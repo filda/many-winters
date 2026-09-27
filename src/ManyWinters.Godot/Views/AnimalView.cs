@@ -5,11 +5,10 @@ using ManyWinters.Godot.Sprites;
 
 namespace ManyWinters.Godot.Views;
 
-// The second Creature drawn in the world (docs/todo/fauna-plan.md, phase 2b): one layer, whichever
-// texture its species drew for itself if it has one, else the flat tinted quad BillboardSprite
-// falls back to already - no deer art exists yet, and none is drawn here either. Everything about
-// being a creature that walks (bob, per-tick target, death) is CreatureView's; this is only which
-// texture and how tall.
+// The second Creature drawn in the world: one layer, whichever texture its species drew for
+// itself if it has one, else the flat tinted quad BillboardSprite falls back to already - no
+// deer art exists yet, and none is drawn here either. Everything about being a creature that
+// walks (bob, per-tick target, death) is CreatureView's; this is only which texture and how tall.
 internal partial class AnimalView : CreatureView
 {
     private const float MinScale = 0.9f;
@@ -33,7 +32,7 @@ internal partial class AnimalView : CreatureView
     private SpriteLayer _body = null!;
     private Color _aliveModulate;
 
-    // Internal for the same reason as PersonView's and ResourceNodeView's constructors.
+    // Internal, like other view constructors: only WorldPresenter builds views.
     internal AnimalView(Animal animal, HoverArbiter hover, Action<Animal, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(animal, NominalHeightFor(animal.Species), hover, onMissedClick)
     {
@@ -82,7 +81,7 @@ internal partial class AnimalView : CreatureView
         _body.BaseModulate = PersonLook.TintFor(isAlive, isDecayed: false) ?? _aliveModulate;
 
     // Once WorldState.IsDecayed: the one layer tinted one step further, the same as a person's
-    // corpse (see PersonView.OnDecayedChanged) - no bones art exists here either.
+    // corpse - no bones art exists here either.
     protected override void OnDecayedChanged() =>
         _body.BaseModulate = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;
 
@@ -92,8 +91,8 @@ internal partial class AnimalView : CreatureView
     private static string TexturePathFor(SpeciesId species) => $"res://Content/species/{species.Value}/{species.Value}.png";
 
     // A species' own height where its .tres sets one, else a plausible default rather than a
-    // resource's decoration-scale fallback - see DefaultHeight. Static because the base class
-    // needs it before this view has fields.
+    // resource's decoration-scale fallback. Static because the base class needs it before this
+    // view has fields.
     private static float NominalHeightFor(SpeciesId species)
     {
         var visual = LoadVisualDefinition(species);

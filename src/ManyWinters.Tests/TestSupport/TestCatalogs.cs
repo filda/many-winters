@@ -42,12 +42,12 @@ public static class TestCatalogs
     private static readonly SkillTypeId Butchering = new("butchering");
     private static readonly SkillTypeId Hunting = new("hunting");
 
-    // Nobody is born knowing how to eat or teach either - see SkillDefinition.BaseTechnique.
+    // Nobody is born knowing how to eat or teach either.
     private static readonly SkillTypeId Eating = new("eating");
     private static readonly SkillTypeId Teaching = new("teaching");
 
-    // Never self-taught (see SkillDefinition.BaseTechnique): only GrantTechniqueCommand or
-    // TeachCommand ever puts one of these into a person's KnownTechniques.
+    // Never self-taught: only GrantTechniqueCommand or TeachCommand ever puts one of these into a
+    // person's KnownTechniques.
     public static readonly TechniqueId BasicForaging = new("basic_foraging");
     public static readonly TechniqueId BasicMushroomForaging = new("basic_mushroom_foraging");
     private static readonly TechniqueId BasicRootDigging = new("basic_root_digging");
@@ -94,12 +94,11 @@ public static class TestCatalogs
     private static readonly ItemKindId Bag = new("bag");
     public static readonly ItemKindId StorageHutItem = new("storage_hut");
 
-    // A dead animal's carcass (docs/todo/fauna-plan.md, phase 3): what ButcherCommand takes off
-    // it, one item kind each - matching the well-known ids ButcherCommand itself asks for.
+    // A dead animal's carcass: one item kind per thing ButcherCommand takes off it.
     public static readonly ItemKindId MeatItem = new("meat");
     public static readonly ItemKindId HideItem = new("hide");
     // Raw off the animal, not the tanned hide warm_clothing is made from - the only one of the
-    // two that spoils (docs/todo/fauna-plan.md phase 4c).
+    // two that spoils.
     public static readonly ItemKindId RawhideItem = new("rawhide");
     public static readonly ItemKindId BoneItem = new("bone");
     public static readonly ItemKindId SinewItem = new("sinew");
@@ -138,13 +137,11 @@ public static class TestCatalogs
     private static readonly TechniqueId TwistVerb = new("twist");
     private static readonly TechniqueId KnapVerb = new("knap");
     private static readonly TechniqueId TanVerb = new("tan");
-    // Two hide - a deer gives one, so it takes two deer to clothe one person
-    // (docs/todo/fauna-plan.md phase 4).
+    // Two hide - a deer gives one, so it takes two deer to clothe one person.
     public const int WarmClothingInputAmount = 2;
     private const float FoodHungerRestoredPerUnit = 1f;
 
-    // Mirrors Content/materials/{id}/{id}.json. Weight is density times volume
-    // (ItemCatalog.WeightFor).
+    // Mirrors Content/materials/{id}/{id}.json. Weight is density times volume.
     private const float WoodDensity = 0.5f;
     private const float WoodHardness = 0.4f;
     private const float WoodToughness = 0.7f;
@@ -152,9 +149,8 @@ public static class TestCatalogs
     private const float WoodFibrousness = 0.5f;
     private const float StoneDensity = 2f;
     private const float StoneHardness = 1f;
-    // Hard and brittle is what makes stone knappable (MaterialAffordances.CanKnap); a toughness
-    // left at zero would read as "nobody said" to MaterialWords while the predicate treated it
-    // as perfectly brittle.
+    // Hard and brittle is what makes stone knappable; 0.15 rather than 0 avoids reading as
+    // unspecified to MaterialWords while still counting as brittle for CanKnap.
     private const float StoneToughness = 0.15f;
     private const float PlantFibreDensity = 0.2f;
     private const float PlantFibreToughness = 0.5f;
@@ -168,9 +164,8 @@ public static class TestCatalogs
     private const float FoodDensity = 1f;
     private const float HideInsulation = 1f;
 
-    // Mirrors the shelf life every perishable material's own json carries (docs/todo/fauna-plan.md
-    // phase 4c). Hide (tanned), bone, wood, stone and plant_fibre have none - rawhide is what
-    // spoils, hide is what tanning (phase 4d) turns it into.
+    // Mirrors the shelf life each perishable material's json carries. Hide (tanned), bone, wood,
+    // stone and plant_fibre have none - rawhide is what spoils, hide is what tanning turns it into.
     public const long MeatShelfLifeTicks = 30;
     public const long RawhideShelfLifeTicks = 75;
     public const long AppleShelfLifeTicks = 150;
@@ -178,24 +173,20 @@ public static class TestCatalogs
     private const long MushroomShelfLifeTicks = 40;
     private const long PotatoShelfLifeTicks = 300;
 
-    // Mirrors grass.json's own hungerRestoredPerUnit (docs/todo/fauna-plan.md, step 0d): the
-    // item's own nutrition, harmless to a human whose diet has no plant_fibre entry at all, is
-    // what makes a deer's diet (above) able to restore hunger from it.
+    // Mirrors grass.json's hungerRestoredPerUnit: nutrition harmless to a human, whose diet has
+    // no plant_fibre entry, but what lets a deer's diet (above) restore hunger from it.
     private const float GrassHungerRestoredPerUnit = 0.5f;
 
-    // Mirrors meat.json (docs/todo/fauna-plan.md, phase 3): meat is roughly five times as
-    // calorie-dense as a piece of fruit (apple/pear/potato/mushroom all restore
-    // FoodHungerRestoredPerUnit=1 per unit), the same order of magnitude real meat and fruit
-    // differ by. A typical meal (TryAutoEat fires at Rules.HungerEatThreshold=25 and eats down
+    // Mirrors meat.json: meat is roughly five times as calorie-dense as fruit (apple/pear/potato/
+    // mushroom all restore FoodHungerRestoredPerUnit=1), the same order of magnitude real meat
+    // and fruit differ by. A typical meal (TryAutoEat fires at HungerEatThreshold=25, eating down
     // to zero) needs 25 apple units but only 5 meat units, so a deer's carcass (30 meat) covers
-    // about six such meals - a real meal for a shipped band, not just one person's dinner.
+    // about six meals - enough for a shipped band, not just one person.
     private const float MeatHungerRestoredPerUnit = 5f;
 
-    // Mirrors bone.json (docs/todo/fauna-plan.md, phase 3): hard and tough like stone
-    // (StoneHardness=1, StoneToughness=0.15 above) but noticeably lighter, and - unlike stone -
-    // too tough to fracture into an edge (MaterialAffordances.CanKnap needs Toughness < 0.3), so
-    // it comes out not-knappable and not-sharpenable from the properties alone, no special case
-    // needed.
+    // Mirrors bone.json: hard and tough like stone (StoneHardness=1, StoneToughness=0.15 above)
+    // but lighter, and too tough to fracture into an edge (CanKnap needs Toughness < 0.3) -
+    // not-knappable and not-sharpenable purely from these numbers, no special case needed.
     private const float BoneDensity = 1.3f;
     private const float BoneHardness = 0.75f;
     private const float BoneToughness = 0.6f;
@@ -203,11 +194,9 @@ public static class TestCatalogs
     private const float BoneElasticity = 0.05f;
     private const float BoneFibrousness = 0.1f;
 
-    // Mirrors sinew.json (docs/todo/fauna-plan.md, phase 3): fibrous and flexible enough to
-    // twist (MaterialAffordances.CanTwist needs Fibrousness > 0.5 and Flexibility > 0.4) and
-    // elastic enough to hold tension (MaterialAffordances.HoldsTension needs Elasticity > 0.6) -
-    // the bow/snare material the crafting doc names, and "sinew twisted is a sinew cord" (see
-    // sinew's own twist FormTransition below).
+    // Mirrors sinew.json: fibrous and flexible enough to twist (CanTwist needs Fibrousness > 0.5
+    // and Flexibility > 0.4) and elastic enough to hold tension (HoldsTension needs Elasticity >
+    // 0.6) - the bow/snare material the crafting doc names.
     private const float SinewDensity = 0.9f;
     private const float SinewToughness = 0.5f;
     private const float SinewFlexibility = 0.6f;
@@ -225,8 +214,8 @@ public static class TestCatalogs
     private const float SinewVolume = 1f;
     public const int SinewPerCord = 3;
 
-    // Basket (wood) and bag (grass, lighter but holds less); CarryCapacityBonus is applied in
-    // WorldState.MaxCarryWeightFor.
+    // Basket (wood) and bag (grass, lighter but holds less); CarryCapacityBonus adds to how much
+    // a person can carry.
     private const int BasketInputAmount = 8;
     private const float BasketVolume = 4f;
     private const float BasketCarryCapacityBonus = 20f;
@@ -237,8 +226,8 @@ public static class TestCatalogs
 
     public static readonly EntityKindId StorageHut = new("storage_hut");
     public const int StorageHutInputAmount = 20;
-    // Deliberately far beyond any realistic carry capacity (see MakeCommand): what routes it
-    // into the world instead of the maker's pack.
+    // Deliberately far beyond any realistic carry capacity: what routes it into the world
+    // instead of the maker's pack.
     private const float StorageHutVolume = 200f;
 
     public const float ColdFoodYieldMultiplier = 0.4f;
@@ -258,7 +247,7 @@ public static class TestCatalogs
     private const float FellBushWoodYield = 30f;
 
     // Mirrors collisionRadius in Content/resources/{kind}/{kind}.json; deliberately independent of
-    // the sprite's height (see ResourceDefinition.CollisionRadius).
+    // the sprite's height.
     private const float FruitTreeCollisionRadius = 0.35f;
     private const float BushCollisionRadius = 0.3f;
     private const float ForestTreeCollisionRadius = 0.4f;
@@ -266,13 +255,11 @@ public static class TestCatalogs
     private const float RockClusterCollisionRadius = 0.45f;
     private const float RockBoulderCollisionRadius = 0.6f;
 
-    // Carry capacity ramps up with age (CarryCapacity.BaseWeightFor); command tests that don't
-    // care about age spawn people already at the adult baseline.
+    // Carry capacity ramps up with age; command tests that don't care about age spawn people
+    // already at the adult baseline.
     public static readonly long AdultAgeTicks = SimulationRules.Default.TicksPerYear * 4;
 
-    // Mirrors Content/species/human/human.json (docs/todo/fauna-plan.md, step 0c): the same
-    // numbers LifeStages and SimulationRules.MaxLifespanYears used to hardcode, now the one
-    // species every test world defines.
+    // Mirrors Content/species/human/human.json: the one species every test world defines.
     public const long WeaningAgeYears = 1;
     public const long AdultAgeYears = 4;
     public const long ElderAgeYears = 7;
@@ -280,9 +267,9 @@ public static class TestCatalogs
 
     public static readonly LifeCycle HumanLifeCycle = new(WeaningAgeYears, AdultAgeYears, ElderAgeYears, HumanMaxLifespanYears);
 
-    // Mirrors Content/species/human/human.json's diet (docs/todo/fauna-plan.md, step 0d): every
-    // material whose item has a HungerRestoredPerUnit above zero here, all at digestibility 1 -
-    // exactly what is edible today, so no test's behaviour changes.
+    // Mirrors Content/species/human/human.json's diet: every material whose item has a
+    // HungerRestoredPerUnit above zero, at digestibility 1 - exactly what is edible, so no test's
+    // behaviour changes.
     private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet =
     [
         new(AppleMaterial, 1f),
@@ -294,9 +281,8 @@ public static class TestCatalogs
 
     private static readonly SpeciesDefinition HumanSpecies = new(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet);
 
-    // Mirrors Content/species/deer/deer.json (docs/todo/fauna-plan.md, phase 1a): only defined
-    // when a test opts into it (CreateConfigurationWithDeer), so every test that doesn't care
-    // about animals keeps seeing exactly the human-only catalog it always has.
+    // Mirrors Content/species/deer/deer.json: only defined when a test opts into having deer, so
+    // every test that doesn't care about animals keeps the human-only catalog.
     private const long DeerWeaningAgeYears = 1;
     private const long DeerAdultAgeYears = 2;
     private const long DeerElderAgeYears = 6;
@@ -316,30 +302,27 @@ public static class TestCatalogs
     private const float DeerHerdHomeRadius = 15f;
     private const float DeerHerdDriftMetresPerSeason = 20f;
 
-    // Mirrors deer.json's breeding block (docs/todo/fauna-plan.md, phase 1b, "mnozeni"): mates in
-    // Mild (Spring and Autumn in the shipped calendar - SeasonParameters.Default), carries for two
-    // seasons, and must be under 40 hunger to count as eligible.
+    // Mirrors deer.json's breeding block: mates in Mild (Spring and Autumn in the shipped
+    // calendar), carries for two seasons, and must be under 40 hunger to count as eligible.
     private const long DeerGestationTicks = 150;
     private const float DeerConceptionChancePerTick = 0.02f;
     private const float DeerSatietyHungerBelow = 40f;
 
-    // The shipped map's winter reserve (docs/todo/fauna-plan.md, phase 1's "Otevřené ladění"):
-    // the largest multiplier at which the same herd, run through the shipped map's own year
-    // (MapLoader.LoadDefault, see DeerHerdMilestoneTests), still ends up at or above where it
-    // started (start 17, 5 births, end 18 at 0.28; end 16 already at 0.29 - a sharp cutoff, not a
-    // knife-edge value, since 0.1 through 0.28 all land on the same 18).
+    // The shipped map's winter reserve: the largest multiplier at which the same herd, run
+    // through the shipped map's own year, still ends up at or above where it started (start 17,
+    // 5 births, end 18 at 0.28; end 16 already at 0.29 - a sharp cutoff, not a knife-edge value,
+    // since 0.1 through 0.28 all land on the same 18).
     public const float DeerHungerPerTickMultiplier = 0.28f;
 
-    // Faster than a person's own fastest walk (MoveCommand.SpeedPerTick 1f is a player-directed
-    // walk; a deer clearly outrunning that on FleeDistance/SafeDistance mirrors deer.json).
+    // Faster than a person's fastest walk (a player-directed move is 1f per tick); a deer clearly
+    // outrunning that on FleeDistance/SafeDistance mirrors deer.json.
     public const float DeerFleeDistance = 8f;
     private const float DeerSafeDistance = 16f;
     private const float DeerFleeSpeedPerTick = 0.6f;
 
     public static readonly SpeciesId DeerSpeciesId = new("deer");
 
-    // Mirrors deer.json's carcass block (docs/todo/fauna-plan.md, phase 3): what ButcherCommand
-    // finds in a dead deer's Inventory.
+    // Mirrors deer.json's carcass block: what ButcherCommand finds in a dead deer's Inventory.
     public const int DeerCarcassMeat = 30;
     public const int DeerCarcassHide = 1;
     public const int DeerCarcassBone = 4;
@@ -415,8 +398,8 @@ public static class TestCatalogs
     {
         new RecipeDefinition(Axe, WoodItem, AxeInputAmount),
         new RecipeDefinition(WarmClothing, HideItem, WarmClothingInputAmount),
-        // Rawhide clothing needs no further knowledge and shrivels each season
-        // (docs/todo/fauna-plan.md phase 4c) - the same two-hide amount as warm_clothing.
+        // Rawhide clothing needs no further knowledge and shrivels each season - the same
+        // two-hide amount as warm_clothing.
         new RecipeDefinition(RawhideClothing, RawhideItem, WarmClothingInputAmount),
         new RecipeDefinition(Basket, WoodItem, BasketInputAmount),
         new RecipeDefinition(Bag, GrassItem, BagInputAmount),
@@ -424,11 +407,11 @@ public static class TestCatalogs
     });
 
     // Mirrors Content/forms/{id}/{id}.json: only a wedge presents an edge, which is what keeps a
-    // raw lump of the same stone from scoring as a tool (see ItemCatalog.ChoppingScoreFor).
+    // raw lump of the same stone from scoring as a tool.
     private const float WedgeEdgeSharpness = 1f;
     private const float CordLashingStrength = 1f;
 
-    // A shaft doubles the blow of what is lashed to its end (see ItemCatalog.ChoppingScoreOf).
+    // A shaft doubles the blow of what is lashed to its end.
     private const float StickHaftLeverage = 1f;
 
     private static FormCatalog CreateFormCatalog() => new(new[]
@@ -458,13 +441,12 @@ public static class TestCatalogs
         new MaterialDefinition(MushroomMaterial, "Mushroom Flesh", FoodDensity, ShelfLifeTicks: MushroomShelfLifeTicks),
         new MaterialDefinition(MeatMaterial, "Meat", FoodDensity, ShelfLifeTicks: MeatShelfLifeTicks),
         new MaterialDefinition(BoneMaterial, "Bone", BoneDensity, Hardness: BoneHardness, Toughness: BoneToughness, Flexibility: BoneFlexibility, Elasticity: BoneElasticity, Fibrousness: BoneFibrousness),
-        // Dried sinew keeps (docs/todo/fauna-plan.md phase 4c: "sinew was perishable in 4a; dried
-        // sinew keeps") - no longer perishable.
+        // Dried sinew does not spoil.
         new MaterialDefinition(SinewMaterial, "Sinew", SinewDensity, Toughness: SinewToughness, Flexibility: SinewFlexibility, Elasticity: SinewElasticity, Fibrousness: SinewFibrousness),
     });
 
-    // The axe is stone and, since docs/todo/fauna-plan.md phase 4, the warm clothing recipe
-    // itself asks for hide (Content/recipes/warm_clothing/warm_clothing.json).
+    // The axe is stone; the warm clothing recipe asks for hide (Content/recipes/warm_clothing/
+    // warm_clothing.json).
     private static ItemCatalog CreateItemCatalog(MaterialCatalog materials, FormCatalog forms) => new(new[]
     {
         new ItemDefinition(WarmClothing, "Warm Clothing", HideMaterial, Garment, WarmClothingVolume),
@@ -506,54 +488,52 @@ public static class TestCatalogs
 
     public static WorldState CreateWorld() => new(CreateConfiguration());
 
-    // Every Person.MaxHunger comes out at exactly SimulationRules.MaxHunger. The shipped game
+    // Every Person.MaxHunger comes out at exactly SimulationRules.MaxHunger: the shipped game
     // draws one per person, so a test pinning an exact tick of death would otherwise assert
-    // against a draw. Tests about the spread itself use CreateWorld.
+    // against a draw. Tests about the spread use CreateWorld.
     public static WorldConfiguration CreateConfigurationWithoutHungerVariation() =>
         CreateConfiguration() with { Rules = SimulationRules.Default with { MaxHungerVariation = 0f } };
 
     public static WorldState CreateWorldWithoutHungerVariation() => new(CreateConfigurationWithoutHungerVariation());
 
     // For tests that shrink a lifespan to make old age arrive after a handful of ticks instead of
-    // ten winters (WorldStateTests' ShortLifeRules used to do this via SimulationRules.MaxLifespanYears,
-    // which moved onto the species' own LifeCycle in step 0c). Keeps the standard diet - only the
-    // life cycle differs.
+    // ten winters. MaxLifespanYears lives on the species' LifeCycle, not SimulationRules. Keeps
+    // the standard diet - only the life cycle differs.
     public static WorldConfiguration CreateConfigurationWithLifeCycle(LifeCycle humanLifeCycle) =>
         CreateConfigurationWithSpecies(HumanSpecies with { LifeCycle = humanLifeCycle });
 
     // For tests that need a human species with a diet (or anything else about the species) other
-    // than the standard one - e.g. a species that cannot digest the apple's material at all,
-    // to prove EatCommand actually consults it (docs/todo/fauna-plan.md, step 0d).
+    // than the standard one - e.g. a species that cannot digest the apple's material, to prove
+    // EatCommand consults it.
     public static WorldConfiguration CreateConfigurationWithSpecies(SpeciesDefinition humanSpecies) =>
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(humanSpecies) };
 
-    // For tests about Animal/HomeRange/SpawnAnimalCommand and MapLoader's starting herds
-    // (docs/todo/fauna-plan.md, phase 1a): the human catalog plus the one deer species above.
+    // For tests about Animal/HomeRange/SpawnAnimalCommand and MapLoader's starting herds: the
+    // human catalog plus the one deer species above.
     public static WorldConfiguration CreateConfigurationWithDeer() =>
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies) };
 
     public static WorldState CreateWorldWithDeer() => new(CreateConfigurationWithDeer());
 
-    // For tests about corpse decay and bones (docs/todo/fauna-plan.md phase 4) that shrink
-    // CorpseDecayTicks/BonesLingerTicks rather than simulating hundreds of ticks to reach them.
+    // For tests about corpse decay and bones that shrink CorpseDecayTicks/BonesLingerTicks
+    // rather than simulating hundreds of ticks to reach them.
     private static WorldConfiguration CreateConfigurationWithShortCorpseDecay(long corpseDecayTicks, long bonesLingerTicks) =>
         CreateConfigurationWithDeer() with { Rules = SimulationRules.Default with { CorpseDecayTicks = corpseDecayTicks, BonesLingerTicks = bonesLingerTicks } };
 
     public static WorldState CreateWorldWithShortCorpseDecay(long corpseDecayTicks, long bonesLingerTicks) =>
         new(CreateConfigurationWithShortCorpseDecay(corpseDecayTicks, bonesLingerTicks));
 
-    // For tests about WorldState.BreedAnimals (docs/todo/fauna-plan.md, phase 1b, "mnozeni") that
-    // need a chance, gestation or satiety threshold other than the shipped deer.json's, so a
-    // condition can be proven with a handful of ticks instead of replaying the real numbers.
+    // For tests about WorldState.BreedAnimals that need a chance, gestation or satiety threshold
+    // other than the shipped deer.json's, so a condition can be proven with a handful of ticks
+    // instead of replaying the real numbers.
     public static WorldConfiguration CreateConfigurationWithDeerBreeding(SpeciesDefinition.BreedingDefinition breeding) =>
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies with { Breeding = breeding }) };
 
-    // The shipped axe-grade sharp hafted tool HuntCommand's own arithmetic is pinned against
-    // (docs/todo/fauna-plan.md phase 3, SimulationRules.HuntingHitChancePerToolScore): a knapped
-    // wedge lashed to a stick, both practised to mastery (WorkAttempt.QualityFor is 1 at
-    // Skills.LevelAfter(50) - see MakingAnAxeTests.Toolmaker). Built directly from the parts
-    // rather than by executing Knap/Twist/Bind, so a test can pin its exact chopping score
-    // without also depending on those commands' own dice.
+    // The shipped axe-grade sharp hafted tool HuntCommand's arithmetic is pinned against
+    // (SimulationRules.HuntingHitChancePerToolScore): a knapped wedge lashed to a stick, both
+    // practised to mastery (WorkAttempt.QualityFor is 1 at Skills.LevelAfter(50)). Built directly
+    // from the parts rather than by executing Knap/Twist/Bind, so a test can pin its exact
+    // chopping score without depending on those commands' own dice.
     //
     // ChoppingScoreOf works out to EdgeSharpness(Wedge=1) * Hardness(Stone=1) * sqrt(weight
     // density(Stone=2)*volume(1)=2) * (1 + HaftLeverage(Stick=1) * JointStrength(0.5)) ~= 2.121 -

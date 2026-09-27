@@ -42,8 +42,8 @@ public sealed class CultureProfile
     // Builds a profile from a population's whole naming history, oldest name first, decaying
     // between observations so recent names outweigh ancient ones without discarding them - the
     // plan's `profile *= 0.95f; profile.Observe(newborn.Name)` loop, replayed from scratch
-    // instead of carried as save-file state: every name it needs already lives in
-    // WorldState.People/Forebears, which the save file already has (see WorldState.NamingHistory).
+    // instead of carried as save-file state: every name it needs already lives in the world's
+    // recorded people, which the save file already has.
     public static CultureProfile Build(IEnumerable<string> namesOldestFirst, float decayPerObservation)
     {
         var profile = new CultureProfile();

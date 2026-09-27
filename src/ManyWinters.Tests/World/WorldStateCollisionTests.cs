@@ -105,7 +105,7 @@ public class WorldStateCollisionTests
     }
 
     // 0.35 (human) + 0.6 (deer, TestCatalogs.DeerCollisionRadius) apart, using each creature's
-    // own species radius (docs/todo/fauna-plan.md, phase 1a) rather than one shared constant.
+    // species radius rather than one shared constant.
     [Fact]
     public void ADeerAndAPersonStandingTooCloseArePushedApartUsingTheirOwnSpeciesRadii()
     {
@@ -115,8 +115,8 @@ public class WorldStateCollisionTests
         var home = new HomeRange(new Position(0.5, 0)) { Radius = 10f, DriftMetresPerSeason = 0f };
         var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0.5, 0), home);
 
-        // IdleTask's own first tick never moves anyone (its pause floor is 3 ticks - IdleTask),
-        // so only the collision push can change either position here.
+        // IdleTask's first tick never moves anyone (its pause floor is 3 ticks), so only the
+        // collision push can change either position here.
         world.Advance(1);
 
         var minDistance = PersonRadius + TestCatalogs.DeerCollisionRadius;

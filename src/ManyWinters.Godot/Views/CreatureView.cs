@@ -6,11 +6,11 @@ namespace ManyWinters.Godot.Views;
 
 // Everything about a Creature that walks: the per-tick target position and interpolation between
 // simulation ticks, the walk bob and the idle bob that hands over to it, and the pose reset a
-// death settles into. PersonView was the only Creature view until fauna-plan.md's phase 2b added
-// a second one (AnimalView); this is what the two share, widened off Person to Creature exactly
-// where PersonView only ever read what every Creature has (the seed, the position, IsAlive).
-// A subclass keeps only what is its own: which layers it draws, what a click on it means, and -
-// for PersonView - the paper-doll retexturing a death swaps in.
+// death settles into. PersonView was the only Creature view until a second one was added; this
+// is what the two share, widened off Person to Creature exactly where PersonView only ever read
+// what every Creature has: the seed, the position, IsAlive. A subclass keeps only what is its
+// own: which layers it draws, what a click on it means, and - for PersonView - the paper-doll
+// retexturing a death swaps in.
 internal abstract partial class CreatureView : SpriteEntityView
 {
     // A cardboard-cutout-on-a-stick bounce while walking. Each creature draws their own rate and
@@ -69,7 +69,7 @@ internal abstract partial class CreatureView : SpriteEntityView
 
     // Draws this creature's own walk/idle rates from its seed and primes the tick target at
     // wherever WorldPresenter placed the node. Called from a subclass's Build(), after
-    // ScaleAndKeepGroundContact - the same order PersonView always built in.
+    // ScaleAndKeepGroundContact - the same order every subclass follows.
     protected void InitializeMotion()
     {
         var seed = _creature.Id.Seed;
@@ -148,7 +148,7 @@ internal abstract partial class CreatureView : SpriteEntityView
     protected abstract void ApplyPose(Vector3 offset);
 
     // `target` is where WorldSpace.ToRender puts an unscaled creature; this view stands a little
-    // higher than that (ScaleAndKeepGroundContact), and so must its target.
+    // higher than that, and so must its target.
     public void SetTargetPosition(Vector3 target, float overSeconds)
     {
         var corrected = target + GroundContactCorrection;
@@ -178,14 +178,14 @@ internal abstract partial class CreatureView : SpriteEntityView
             ApplyPose();
         }
 
-        // A lying-down silhouette can be wider and shorter (PersonView's dead layers); the
-        // collision box and the marker's height both follow from re-measuring the layers.
+        // A lying-down silhouette can be wider and shorter than a standing one; the collision
+        // box and the marker's height both follow from re-measuring the layers.
         RefreshCollisionShape();
     }
 
     // What a subclass does the moment IsAlive actually flips - PersonView swaps every layer's
     // texture for its lying-down counterpart; AnimalView, with no corpse art of its own, only
-    // retints (see AnimalView.OnAliveChanged). Nothing by default.
+    // retints. Nothing by default.
     protected virtual void OnAliveChanged(bool isAlive)
     {
     }
@@ -206,8 +206,8 @@ internal abstract partial class CreatureView : SpriteEntityView
     }
 
     // What a subclass does the moment its corpse decays past recognition - there is no bones art,
-    // so both PersonView and AnimalView only deepen the tint their own dead look already applied
-    // (see PersonLook.TintFor). Nothing by default.
+    // so both PersonView and AnimalView only deepen the tint their own dead look already applied.
+    // Nothing by default.
     protected virtual void OnDecayedChanged()
     {
     }

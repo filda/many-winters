@@ -43,7 +43,7 @@ public sealed record LootCommand(Person LootingPerson, Person Deceased) : IComma
         // Only what fits comes off the corpse; the rest stays lootable. Capacity is recomputed
         // per iteration: looting a basket partway through raises the room for what follows. A
         // transfer, not a fresh Add: whatever was already aging in the deceased's pack keeps
-        // aging in the looter's (docs/todo/fauna-plan.md phase 4c).
+        // aging in the looter's.
         foreach (var (item, count) in Deceased.Inventory.Counts.ToList())
         {
             Deceased.Inventory.TransferUpToCapacity(item, count, LootingPerson.Inventory, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(LootingPerson));

@@ -5,9 +5,9 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// The band has a home too (docs/todo/fauna-plan.md, step 1b): a Person with a HomeRange wanders
-// around it and its idle food search is bounded from it, exactly as an Animal's already was -
-// no new logic in WorldState, only a Home to give a Person (see Person.Home).
+// The band has a home too: a Person with a HomeRange wanders around it and its idle food search
+// is bounded from it, exactly as an Animal's already was - no new logic in WorldState, only a
+// Home to give a Person.
 public class PersonHomeRangeTests
 {
     // Hunger accrual is switched off here: these tests are about wandering and search bounds,
@@ -24,7 +24,7 @@ public class PersonHomeRangeTests
         world.AddHomeRange(home);
         var person = world.SpawnPerson("Ava", home.Anchor, initialAgeTicks: TestCatalogs.AdultAgeTicks, home: home);
 
-        // Sent 30 m out - well outside the home's own radius - and given time to arrive.
+        // Sent 30 m out - well outside the home's radius - and given time to arrive.
         world.Execute(new MoveCommand(person, new Position(30, 0)));
         world.Advance(35);
 
@@ -50,16 +50,16 @@ public class PersonHomeRangeTests
         world.Advance(500);
 
         Assert.Null(person.Home);
-        // IdleTask's own default band (3..8 m) - see IdleTaskTests for the mechanism itself; this
-        // only confirms WorldState still hands a homeless person the old no-home IdleTask.
+        // IdleTask's default band (3..8 m); this only confirms WorldState still hands a homeless
+        // person a no-home IdleTask.
         Assert.True(WorldState.Distance(start, person.Position) <= 8f + 0.01f);
     }
 
     // WorldState.FindNearestGatherableEntity's fallback tier bounds its search by IdleSearchRadius
-    // from the creature's Home anchor, not from wherever the creature itself is standing (see
-    // DecideIdleTask's searchOrigin) - built explicitly here: a tree much nearer to the person
-    // than the camp is, but far enough from camp to fall outside IdleSearchRadius, must be
-    // ignored in favour of one further from the person but still within IdleSearchRadius of camp.
+    // from the creature's Home anchor, not from wherever the creature is standing - built
+    // explicitly here: a tree much nearer to the person than the camp is, but far enough from
+    // camp to fall outside IdleSearchRadius, must be ignored in favour of one further from the
+    // person but still within IdleSearchRadius of camp.
     [Fact]
     public void AnIdleSearchNeverReachesATreeFartherThanIdleSearchRadiusFromCampEvenIfNearerToThePersonThemself()
     {
@@ -68,7 +68,7 @@ public class PersonHomeRangeTests
         var home = new HomeRange(new Position(0, 0)) { Radius = 8f, DriftMetresPerSeason = 0f };
         world.AddHomeRange(home);
 
-        // Standing well outside the home's own radius but still within IdleSearchRadius of camp.
+        // Standing well outside the home's radius but still within IdleSearchRadius of camp.
         var person = world.SpawnPerson("Ava", new Position(65, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks, home: home);
         person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
 

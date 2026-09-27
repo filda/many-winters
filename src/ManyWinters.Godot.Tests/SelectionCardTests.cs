@@ -45,8 +45,8 @@ public class SelectionCardTests
         Assert.Equal("deceased", SelectionCard.For(world, person).Beside);
     }
 
-    // Once WorldState.IsDecayed the world itself has forgotten who this was
-    // (docs/todo/fauna-plan.md phase 4b) - there is nothing left to call it but its bones.
+    // Once WorldState.IsDecayed the world itself has forgotten who this was - there is nothing
+    // left to call it but its bones.
     [Fact]
     public void TheDecayedSayBonesInsteadOfDeceased()
     {

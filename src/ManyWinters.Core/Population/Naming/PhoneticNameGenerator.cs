@@ -160,7 +160,7 @@ public static class PhoneticNameGenerator
             var nucleus = profile.Nuclei.Sample(rng);
 
             // Only the last syllable gets a coda: a mid-word consonant run belongs to the next
-            // syllable's onset under maximal-onset segmentation (see NameSyllables.Split).
+            // syllable's onset under maximal-onset segmentation.
             var isLast = i == syllableCount - 1;
             var coda = isLast && !profile.Codas.IsEmpty ? profile.Codas.Sample(rng) : string.Empty;
             builder.Append(onset).Append(nucleus).Append(coda);

@@ -25,9 +25,9 @@ public static class WorkAttempt
 
     // Working a thing is how somebody comes to know it, whether or not the attempt came off:
     // they had it in their hands and saw what it did, and a spoiled try says as much as a good
-    // one (see Beliefs, SimulationRules.UnderstandingFromWorkingIt). This is the *reach* a
-    // player buys by directing an attempt - somebody can be sent to try a substance the whole
-    // band understands nothing about, and they come back understanding it.
+    // one. This is the *reach* a player buys by directing an attempt - somebody can be sent to
+    // try a substance the whole band understands nothing about, and they come back
+    // understanding it.
     public static void TeachesWhatItIs(WorldState world, Person person, MaterialId material)
     {
         if (world.Configuration.MaterialCatalog.Find(material) is { } actual)
@@ -41,10 +41,9 @@ public static class WorkAttempt
     public static float QualityFor(Person person, SkillTypeId skill) => Practised(person, skill);
 
     // Deterministic from the person's seed, the verb and the tick - never a shared Random, as
-    // every other roll in the game is (see WorldState.PassesCasualTeachingRoll). The tick is in
-    // the mix so a second try is a second roll, not the same one again; that's also why an
-    // attempt costs time (see SimulationRules.TicksPerWorkAttempt), or a player could stand at a
-    // held clock and press until it worked.
+    // every other roll in the game is. The tick is in the mix so a second try is a second roll,
+    // not the same one again; that's also why an attempt costs time, or a player could stand at
+    // a held clock and press until it worked.
     public static bool Succeeds(Person person, SkillTypeId skill, TechniqueId verb, long tick)
     {
         var mixed = unchecked((uint)(person.Id.Seed * 73856093) ^ (uint)(StableStringHash(verb.Value) * 19349663) ^ ((uint)tick * 2654435761u));
@@ -62,7 +61,7 @@ public static class WorkAttempt
     }
 
     // Not string.GetHashCode(): .NET randomizes it per process, and this roll must be stable
-    // across runs (same reasoning as WorldState.StableStringHash).
+    // across runs.
     private static int StableStringHash(string value)
     {
         var hash = 17;

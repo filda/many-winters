@@ -3,7 +3,7 @@ using Godot;
 namespace ManyWinters.Godot.Logic;
 
 // The line from the camera to what it is looking at, and the test for whether something
-// stands in the way. Main decides the target and which sprites to ask about.
+// stands in the way. The game decides the target and which sprites to ask about.
 internal readonly record struct SightLine(Vector3 Origin, Vector3 Direction, float Length)
 {
     // Below this the camera sits on its own target: no line to be in the way of, nothing fades.

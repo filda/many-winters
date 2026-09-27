@@ -32,10 +32,9 @@ internal static class TestWorld
     private static readonly TechniqueId BasicEating = new("basic_eating");
     internal static readonly TechniqueId BasicTeaching = new("basic_teaching");
 
-    // Mirrors Content/skills/{hunting,butchering}/*.json and Content/items/{meat,hide,bone,sinew}
-    // (docs/todo/fauna-plan.md, phase 3c) - only what TargetActionsTests and AnimalCardTests read:
-    // the ids HuntCommand/ButcherCommand ask for and a carcass's own item kinds, named the way the
-    // player reads them.
+    // Mirrors Content/skills/{hunting,butchering}/*.json and Content/items/{meat,hide,bone,sinew} -
+    // only what the hunting and animal-card tests read: the ids HuntCommand/ButcherCommand ask
+    // for and a carcass's own item kinds, named the way the player reads them.
     private static readonly TechniqueId BasicHunting = new("basic_hunting");
     private static readonly TechniqueId BasicButchering = new("basic_butchering");
     internal static readonly ItemKindId Meat = new("meat");
@@ -71,27 +70,26 @@ internal static class TestWorld
     // of the maker's pack.
     private const float StorageHutVolume = 200f;
 
-    // Mirrors Content/species/human/human.json (docs/todo/fauna-plan.md, step 0c): a deliberate
-    // copy, like every other catalog here, rather than a shared one with ManyWinters.Tests.
+    // Mirrors Content/species/human/human.json: a deliberate copy, like every other catalog here,
+    // rather than a shared one with ManyWinters.Tests.
     internal const long AdultAgeYears = 4;
     private static readonly LifeCycle HumanLifeCycle = new(WeaningAgeYears: 1, AdultAgeYears: AdultAgeYears, ElderAgeYears: 7, MaxLifespanYears: 10);
 
-    // Mirrors Content/species/deer/deer.json, narrowed to what AnimalCard/InspectorText tests
-    // read: the life cycle for age-and-sex wording and nothing about diet, herding or breeding.
+    // Mirrors Content/species/deer/deer.json, narrowed to what the age-and-sex wording tests
+    // read: the life cycle alone, nothing about diet, herding or breeding.
     private static readonly SpeciesId DeerSpecies = new("deer");
     private const long DeerAdultAgeYears = 2;
     private static readonly LifeCycle DeerLifeCycle = new(WeaningAgeYears: 1, AdultAgeYears: DeerAdultAgeYears, ElderAgeYears: 6, MaxLifespanYears: 8);
 
-    // Both Apple and Berry share the "apple" material below, so this one entry keeps both edible
-    // (docs/todo/fauna-plan.md, step 0d) - all that is edible in this test world today.
+    // Both Apple and Berry share the "apple" material below, so this one entry keeps both edible -
+    // all that is edible in this test world.
     private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet = [new(new MaterialId("apple"), 1f)];
 
     internal static WorldState Create() => Create(SimulationRules.Default);
 
-    // A short decay window, for SelectionCard/AnimalCard tests that need a creature past
-    // WorldState.IsDecayed without simulating a season of ticks - mirrors
-    // ManyWinters.Tests.TestCatalogs.CreateWorldWithShortCorpseDecay (see its own comment); a
-    // deliberate copy, like every other catalog here, rather than a shared one with that project.
+    // A short decay window, for tests that need a creature past WorldState.IsDecayed without
+    // simulating a season of ticks - mirrors the other project's own short-decay test world, a
+    // deliberate copy like every other catalog here rather than a shared one with that project.
     internal static WorldState CreateWithShortCorpseDecay(long corpseDecayTicks) =>
         Create(SimulationRules.Default with { CorpseDecayTicks = corpseDecayTicks });
 

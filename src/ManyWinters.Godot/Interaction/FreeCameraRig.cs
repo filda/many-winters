@@ -33,7 +33,7 @@ public sealed partial class FreeCameraRig : Node3D
     private const float MaxTiltDegrees = 70f;
     private const float TiltSpeedDegreesPerSecond = 45f;
 
-    // Minimum clearance the camera keeps above the ground directly under it - see UpdateCamera.
+    // Minimum clearance the camera keeps above the ground directly under it.
     private const float MinCameraGroundClearance = 0.3f;
 
     // ViewRadius's margin over the raw zoom distance: at the default tilt the ground footprint

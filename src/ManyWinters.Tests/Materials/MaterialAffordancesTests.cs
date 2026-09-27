@@ -117,8 +117,8 @@ public class MaterialAffordancesTests
         Assert.True(MaterialAffordances.CanCrush(undescribed));
     }
 
-    // Whatever would otherwise rot is what curing is for: a shelf life, nothing else
-    // (docs/todo/fauna-plan.md phase 4d) - rawhide and meat both qualify, hide and wood do not.
+    // Whatever would otherwise rot is what curing is for: a shelf life, nothing else - rawhide
+    // and meat both qualify, hide and wood do not.
     [Fact]
     public void AMaterialWithAShelfLifeCanBeCured()
     {

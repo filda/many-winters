@@ -3,12 +3,12 @@ using Godot;
 namespace ManyWinters.Godot;
 
 // The modes a rendered session can be asked for on its own command line — everything after "++"
-// in the arguments (see OS.GetCmdlineUserArgs). Each names something the game itself offers, and
-// none of them knows who asked or why; a session that wants several just lists several:
+// in the arguments. Each names something the game itself offers, and none of them knows who
+// asked or why; a session that wants several just lists several:
 //
 // - hold-clock: the simulation clock is held for the whole session, and the "advance one tick"
-//   key (see Main._Input) steps it one tick at a time — the world ticked only when asked, the
-//   way an inscription or a pause already holds it, just without a page of its own.
+//   key steps it one tick at a time — the world ticked only when asked, the way an inscription
+//   or a pause already holds it, just without a page of its own.
 // - verbose: the log says what the player's input turned into — a selection, an order, a panel
 //   opened — so a session can be followed from its log alone.
 // - still: nothing on screen moves on real time. The person bob and walk playback hold at the

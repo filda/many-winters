@@ -3,9 +3,8 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// SpawnPersonCommand's counterpart for the second kind of Creature (docs/todo/fauna-plan.md,
-// phase 1a). The id is normally the animal's own to draw (see EntityId) - only a creator that
-// must produce the same world twice (MapLoader) names one.
+// SpawnPersonCommand's counterpart for the second kind of Creature. The id is normally the
+// animal's to draw - only a creator that must produce the same world twice (MapLoader) names one.
 public sealed record SpawnAnimalCommand(
     CreatureId Id,
     SpeciesId Species,
@@ -13,8 +12,7 @@ public sealed record SpawnAnimalCommand(
     HomeRange Home,
     Sex Sex,
     long BirthTick,
-    // Null for one spawned as an adult (MapLoader's starting herds); set once a fawn is born
-    // (phase 1b).
+    // Null for one spawned as an adult (MapLoader's starting herds); set once a fawn is born.
     Animal? Mother = null) : ICommand
 {
     // World-building, not a player action, exactly like SpawnPersonCommand: whoever calls this
@@ -33,8 +31,8 @@ public sealed record SpawnAnimalCommand(
             Mother = Mother,
         };
 
-        // "Uz maji neco naucemo" (docs/todo/todo.md): an animal is autonomous from the moment it
-        // exists, rather than starting as ignorant as a newborn person.
+        // An animal is autonomous from the moment it exists, rather than starting as ignorant as
+        // a newborn person.
         foreach (var technique in world.Configuration.SpeciesCatalog.Get(Species).InnateTechniques)
         {
             animal.KnownTechniques.Add(technique);

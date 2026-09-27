@@ -1,8 +1,8 @@
 namespace ManyWinters.Godot.Logic;
 
-// The line under the pause panel's title: the band counted the same three ways Prologue and
-// Epitaph break it down (adults of each sex, everyone younger a child), in plain digits rather
-// than prose. An empty group is left out rather than written as "0 children", matching how
+// The line under the pause panel's title: the band counted the same three ways the arrival and
+// epitaph screens break it down (adults of each sex, everyone younger a child), in plain digits
+// rather than prose. An empty group is left out rather than written as "0 children", matching how
 // those breakdowns do it.
 internal static class PopulationSummary
 {

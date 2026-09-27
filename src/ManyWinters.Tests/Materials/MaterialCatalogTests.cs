@@ -39,8 +39,8 @@ public class MaterialCatalogTests
         Assert.Null(definition?.ShelfLifeTicks);
     }
 
-    // docs/todo/fauna-plan.md phase 4c: the spoilage pass reads this number off the material a
-    // perishable item is made of, whatever the item is (rawhide/meat and the plant foods).
+    // The spoilage pass reads this number off the material a perishable item is made of,
+    // whatever the item is (rawhide/meat and the plant foods).
     [Fact]
     public void LoadFromDirectoryReadsAShelfLifeDefinition()
     {
@@ -121,9 +121,9 @@ public class MaterialCatalogTests
         }
     }
 
-    // The exact content shipped in Content/materials/sinew/sinew.json (docs/todo/fauna-plan.md,
-    // phase 3): fibrous and flexible enough to twist, elastic enough to hold tension - the
-    // bow/snare material the crafting doc names.
+    // The exact content shipped in Content/materials/sinew/sinew.json: fibrous and flexible
+    // enough to twist, elastic enough to hold tension - the bow/snare material the crafting doc
+    // names.
     [Fact]
     public void LoadFromDirectoryReadsASinewDefinitionThatHoldsTensionAndCanTwist()
     {
@@ -145,10 +145,9 @@ public class MaterialCatalogTests
         }
     }
 
-    // The exact content shipped in Content/materials/bone/bone.json (docs/todo/fauna-plan.md,
-    // phase 3): hard and tough like stone but lighter, and - unlike stone - too tough to
-    // fracture into an edge, so it comes out neither knappable nor sharpenable from the
-    // properties alone.
+    // The exact content shipped in Content/materials/bone/bone.json: hard and tough like stone
+    // but lighter, and - unlike stone - too tough to fracture into an edge, so it comes out
+    // neither knappable nor sharpenable from the properties alone.
     [Fact]
     public void LoadFromDirectoryReadsABoneDefinitionThatIsNotKnappable()
     {

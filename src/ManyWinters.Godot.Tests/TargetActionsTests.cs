@@ -551,8 +551,8 @@ public class TargetActionsTests
             Labels(TargetActions.For(world, ava, hut)));
     }
 
-    // A living deer and its own carcass are offered entirely different things (docs/todo/fauna-
-    // plan.md, phase 3c) - the same "living and dead never share a list" rule as a Person target.
+    // A living deer and its own carcass are offered entirely different things - the same "living
+    // and dead never share a list" rule as a Person target.
     [Fact]
     public void ALivingAnimalIsOfferedHuntAndNothingElse()
     {
@@ -626,8 +626,7 @@ public class TargetActionsTests
         Assert.Same(deer, pursuit.Prey);
         Assert.Equal(world.Configuration.Rules.HuntingRange, pursuit.Range);
         // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
-        // player-directed hunt walks like every other order the player gives
-        // (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+        // player-directed hunt walks like every other order the player gives.
         Assert.Equal(MoveCommand.SpeedPerTick, pursuit.SpeedPerTick);
     }
 
@@ -646,8 +645,7 @@ public class TargetActionsTests
         Assert.Same(deer, pursuit.Carcass);
         Assert.Equal(world.Configuration.Rules.PileReachDistance, pursuit.Reach);
         // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
-        // player-directed butchering walks like every other order the player gives
-        // (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+        // player-directed butchering walks like every other order the player gives.
         Assert.Equal(MoveCommand.SpeedPerTick, pursuit.SpeedPerTick);
     }
 

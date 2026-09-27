@@ -43,7 +43,7 @@ public sealed class Beliefs
         Learn(material.Id, MaterialProperty.Fibrousness, material.Fibrousness, confidenceGained);
     }
 
-    // Restoring a saved belief, which is not the same as noticing it again (see Skills.Restore).
+    // Restoring a saved belief, which is not the same as noticing it again.
     public void Restore(MaterialId material, MaterialProperty property, float value, float confidence) =>
         _held[(material, property)] = new Belief(value, confidence);
 
@@ -58,9 +58,9 @@ public sealed class Beliefs
         _held.Any(entry => entry.Key.Material == material && entry.Value.Confidence >= FirmEnoughToAct);
 
     // The substance as this person takes it to be - the same shape as the real definition, so
-    // everything that reads a material (MaterialAffordances, MaterialWords) can be pointed at
-    // somebody's understanding of it without knowing that beliefs exist. What they have no firm
-    // belief about reads as zero: not "the same as the truth", but "nothing they know of".
+    // anything that reads a material can be pointed at somebody's understanding of it without
+    // knowing that beliefs exist. What they have no firm belief about reads as zero: not "the
+    // same as the truth", but "nothing they know of".
     public MaterialDefinition AsBelieved(MaterialDefinition actual) => actual with
     {
         Density = Of(actual.Id, MaterialProperty.Density),

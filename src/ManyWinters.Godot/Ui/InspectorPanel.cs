@@ -4,11 +4,10 @@ namespace ManyWinters.Godot.Ui;
 
 // Debug only: the world's raw numbers and the levers that move them. What the player is meant
 // to read and press lives in SelectionPanel; this window keeps the dump, the spawner, the
-// extinguisher and the map reveal, none of which belong in the game proper (docs/todo/todo.md).
+// extinguisher and the map reveal, none of which belong in the game proper.
 //
-// Shut until the status bar's Inspector button is pressed. It used to open with the game and
-// sit over the corner the band's roster now claims, which put a debug tool in front of the
-// player before they had asked for one.
+// Shut until the status bar's Inspector button is pressed, so a debug tool is never in front of
+// the player before they asked for it.
 //
 // Raises what the player pressed rather than acting on it: composition code decides what
 // spawning, extinguishing, or revealing the map actually does to the world.
@@ -71,15 +70,14 @@ internal sealed partial class InspectorPanel : PanelContainer
         spawnButton.Pressed += () => SpawnRequested?.Invoke();
         body.AddChild(spawnButton);
 
-        // The quick way to the epitaph and its "Another band comes" offer (docs/todo/todo.md):
-        // the epitaph of a band nobody is left in carries no closing words, so without this the
-        // only way to that screen is playing the band out by hand.
+        // The quick way to the epitaph and its "Another band comes" offer: the epitaph of a band
+        // nobody is left in carries no closing words, so without this the only way to that
+        // screen is playing the band out by hand.
         var extinguishButton = new Button { Text = "Extinguish Band" };
         extinguishButton.Pressed += () => ExtinguishRequested?.Invoke();
         body.AddChild(extinguishButton);
 
-        // A development view, not a gameplay one (see RevealableExploration): the whole map as if
-        // fog of war did not exist.
+        // A development view, not a gameplay one: the whole map as if fog of war did not exist.
         var revealMapToggle = new CheckButton { Text = "Reveal Map" };
         revealMapToggle.Toggled += toggledOn => RevealMapToggled?.Invoke(toggledOn);
         body.AddChild(revealMapToggle);

@@ -54,7 +54,7 @@ public class ReductiveVerbsTests
     }
 
     // Already cured, so nothing further to try - a thing that answers to no verb at all is not
-    // an error to word, simply not an offer (WorkshopActions' own comment).
+    // an error to word, simply not an offer.
     [Fact]
     public void HideAnswersToNoVerbAtAll()
     {

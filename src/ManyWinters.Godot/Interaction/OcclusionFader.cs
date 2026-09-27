@@ -98,9 +98,8 @@ internal sealed class OcclusionFader(
                 continue;
             }
 
-            // A tree's trunk layer (see ResourceNodeView): Camera.png's "trunks stay solid" rule,
-            // even when the trunk geometrically sits in the way itself. People are excluded too
-            // (see PersonView).
+            // A tree's trunk layer keeps Camera.png's "trunks stay solid" rule, even when the
+            // trunk geometrically sits in the way. People are excluded too.
             if (BillboardSprite.IsExcludedFromOcclusionFade(sprite))
             {
                 continue;

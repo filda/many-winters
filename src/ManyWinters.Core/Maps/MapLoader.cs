@@ -29,10 +29,10 @@ public static class MapLoader
     // as soldiers on parade. Seeded for reproducibility.
     private const int CrowdPlacementSeed = 1;
 
-    // Entities normally draw their own random id (see EntityId); the starting map draws them
-    // from this one seeded generator so a new game is the same world twice, down to every
-    // variant keyed off an id's seed. Separate from the placement generators: 16 bytes per
-    // entity drawn from those would shift every position that follows.
+    // Entities normally draw their own random id; the starting map draws them from this one
+    // seeded generator so a new game is the same world twice, down to every variant keyed off an
+    // id's seed. Separate from the placement generators: 16 bytes per entity drawn from those
+    // would shift every position that follows.
     private const int EntityIdSeed = 3;
 
     // Separate from EntityIdSeed and CrowdPlacementSeed for the same reason: drawing names from
@@ -79,15 +79,14 @@ public static class MapLoader
     private const int GroveMushroomCount = 6;
 
     // Wild food growing right where the band settled, scattered over a radius small enough that
-    // the starting crowd has food within a short walk - the open world's food
-    // (ScatterOpenWorldBiomes) is far too thin to count on in the first winter.
-    // The band's own HomeRange radius (docs/todo/fauna-plan.md, step 1b): the wander radius
-    // people already had before there was a shared anchor to give them one (IdleTask's own
-    // MinWanderRadius..MaxWanderRadius band tops out at 8).
+    // the starting crowd has food within a short walk - the open world's food is far too thin to
+    // count on in the first winter.
+    // The band's HomeRange radius: the wander radius people already had before there was a
+    // shared anchor to give them one - the idle wander radius tops out at 8.
     private const float CampHomeRadius = 8f;
 
-    // Distinguishes the camp home's own id draw from every other thing seeded off a tick
-    // elsewhere in this file - see SpawnBand's campHomeIdSeed.
+    // Distinguishes the camp home's id draw from every other thing seeded off a tick elsewhere
+    // in this file.
     private const uint CampHomeIdSalt = 10;
 
     private const float CampFoodRadius = 12f;
@@ -149,29 +148,28 @@ public static class MapLoader
         ScatterDecorations(world, idRng);
 
         // Last, on the same idRng the crowd and the decorations already drew from: nothing
-        // spawned above shifts (FamilyMilestoneTests.TheShippedStartingBandHasChildrenOfItsOwn
-        // is brittle to that - docs/todo/fauna-plan.md, "Co je stado konkretne").
+        // spawned above shifts, since the shipped band's family milestone depends on this draw
+        // order.
         SpawnAnimalHerds(world, idRng);
 
         return new LoadedMap(world, CampCenter);
     }
 
-    // How far a starting herd's own home range sits from camp, so grazing deer are never
-    // mistaken for camp's own food scatter (docs/todo/fauna-plan.md, phase 1a).
+    // How far a starting herd's home range sits from camp, so grazing deer are never mistaken
+    // for camp's food scatter.
     private const double MinHerdDistanceFromCamp = 60;
     private const int HerdPlacementSeed = 9;
     private const int HerdCount = 2;
     // Drawn per herd instead of taking the first candidate that merely clears the distance check:
     // ScatterDecorations has already run by the time this does, so the actual grass is on the map
-    // to look at - a herd's own patch has to be where the grass is, or it starves regardless of
-    // how well it then forages within it (docs/todo/fauna-plan.md phase 1b - the shipped map's
-    // herds starving even with plenty of grass in the region overall).
+    // to look at - a herd's patch has to be where the grass is, or it starves regardless of how
+    // well it then forages within it, even with plenty of grass in the region overall.
     private const int HerdCenterCandidateCount = 40;
     private static readonly SpeciesId DeerSpeciesId = new("deer");
 
     // Two herds of whatever species the content describes as "deer" (silently skipped if none is
-    // defined - a minimal test configuration, say), each with its own drifting HomeRange, spawned
-    // on open ground at least MinHerdDistanceFromCamp from CampCenter.
+    // defined - a minimal test configuration), each with its own drifting HomeRange, spawned on
+    // open ground at least MinHerdDistanceFromCamp from CampCenter.
     private static void SpawnAnimalHerds(WorldState world, Random idRng)
     {
         var speciesCatalog = world.Configuration.SpeciesCatalog;
@@ -200,8 +198,8 @@ public static class MapLoader
                 var id = CreatureId.New(idRng);
                 var position = RandomPositionInDisk(rng, center, herd.HomeRadius);
 
-                // Spread across the species' own adult years, never as young as a fawn (phase 1a
-                // spawns no young - reproduction is phase 1b) and never past its own lifespan.
+                // Spread across the species' adult years, never as young as a fawn - no fawns
+                // are spawned yet - and never past its own lifespan.
                 var adultSpanYears = Math.Max(1, species.LifeCycle.MaxLifespanYears - species.LifeCycle.AdultAgeYears);
                 var ageYears = species.LifeCycle.AdultAgeYears + rng.Next((int)adultSpanYears);
                 var birthTick = world.Clock.CurrentTick - (ageYears * rules.TicksPerYear);
@@ -212,10 +210,9 @@ public static class MapLoader
     }
 
     // Draws HerdCenterCandidateCount candidates (each still subject to NextHerdCenter's own
-    // distance-from-camp rule) and keeps whichever has the most grass within the species' own
-    // HomeRadius, rather than the first candidate drawn - see HerdCenterCandidateCount. Candidates
-    // are drawn in the same order a single draw always was, so with a candidate count of 1 this
-    // reduces to the old behaviour exactly.
+    // distance-from-camp rule) and keeps whichever has the most grass within the species'
+    // HomeRadius, rather than the first candidate drawn. Candidates are drawn in the same order
+    // a single draw always was.
     private static Position BestHerdCenter(WorldState world, Random rng, float homeRadius)
     {
         var best = NextHerdCenter(rng);
@@ -238,7 +235,7 @@ public static class MapLoader
     private static int GrassNodesWithin(WorldState world, Position center, double radius) =>
         world.Entities.Count(entity => entity.Kind == GrassKind && WorldState.Distance(center, entity.Position) <= radius);
 
-    // Uniform over the disk's area, as IdleTask's own wander destinations and the crowd scatter.
+    // Uniform over the disk's area, as IdleTask's wander destinations and the crowd scatter.
     private static Position RandomPositionInDisk(Random rng, Position center, double radius)
     {
         var angle = rng.NextDouble() * Math.Tau;
@@ -290,8 +287,8 @@ public static class MapLoader
 
     // Everything a camp scatters reaches at most CampFoodRadius from its center (the food; the
     // starting stock sits 5/10 m out, the crowd within CrowdRadius). The camp center keeps that
-    // far, plus slack for a person's own extent, inside the terrain edge, so the farthest of
-    // what the band brings still has ground under it.
+    // far, plus slack for a person's extent, inside the terrain edge, so the farthest of what
+    // the band brings still has ground under it.
     private const float CampEdgeInset = CampFoodRadius + 4f;
 
     // A plain clamp to the terrain edge would pin the center there when the old camp sits near
@@ -368,27 +365,25 @@ public static class MapLoader
         var rng = new Random(CrowdPlacementSeed);
         var positions = new List<Position>();
 
-        // The band has a home too (docs/todo/fauna-plan.md, step 1b): one shared, non-drifting
-        // HomeRange at this camp, at the radius people already wandered within
-        // (IdleTask.MaxWanderRadius), so IdleTask and DecideIdleTask's food search need no new
-        // logic - the Home-aware paths already built for Animal just apply. A camp doesn't wander
-        // the way a herd's ground does (DriftMetresPerSeason 0); a band's own migration would be
-        // a deliberate decision, not a drift. A fresh HomeRange every call, so an old camp's home
-        // (graves and huts still there) is left behind rather than reused when a successor band
-        // founds a new one elsewhere (MapLoader.SpawnNewBand).
+        // The band has a home too: one shared, non-drifting HomeRange at this camp, at the
+        // radius people already wandered within, so IdleTask and DecideIdleTask's food search
+        // need no new logic - the Home-aware paths already built for Animal just apply. A camp
+        // doesn't wander the way a herd's ground does (DriftMetresPerSeason 0); a band's
+        // migration would be a deliberate decision, not a drift. A fresh HomeRange every call, so
+        // an old camp's home (graves and huts still there) is left behind rather than reused
+        // when a successor band founds a new one elsewhere.
         //
-        // Its id is not drawn from idRng, unlike a herd's own HomeRangeId: SpawnBand runs before
+        // Its id is not drawn from idRng, unlike a herd's HomeRangeId: SpawnBand runs before
         // ScatterDecorations/SpawnAnimalHerds, so any extra draw here would shift every seeded
-        // draw after it - exactly what shifted the shipped band's own wander paths and broke
-        // FamilyMilestoneTests/DeerHerdMilestoneTests the first time this was tried. It still has
-        // to be deterministic (every id in this game drives per-entity variation off its seed),
-        // so it is drawn from its own Random instead, seeded off forebearDeathTick mixed with a
-        // salt the same way HomeRange.Advance mixes an id and a season: forebearDeathTick is a
-        // fixed constant for the starting band (LoadDefault always passes the same one) but a
-        // distinct, ever-increasing value for every successor (SpawnNewBand passes the current
-        // tick, which only grows across a playthrough) - so two LoadDefault calls agree, and a
-        // successor's camp id never collides with the band before it, without threading a band
-        // index through.
+        // draw after it - exactly what shifted the shipped band's wander paths and broke the
+        // family and herd milestone tests the first time this was tried. It still has to be
+        // deterministic (every id in this game drives per-entity variation off its seed), so it
+        // is drawn from its own Random instead, seeded off forebearDeathTick mixed with a salt
+        // the same way HomeRange.Advance mixes an id and a season: forebearDeathTick is a fixed
+        // constant for the starting band (LoadDefault always passes the same one) but a distinct,
+        // ever-increasing value for every successor (SpawnNewBand passes the current tick, which
+        // only grows across a playthrough) - so two LoadDefault calls agree, and a successor's
+        // camp id never collides with the band before it, without threading a band index through.
         var campHomeIdSeed = unchecked((uint)forebearDeathTick * 2654435761u) ^ CampHomeIdSalt;
         var campHomeIdRng = new Random(SeedHash.Avalanche(campHomeIdSeed));
         var campHome = new HomeRange(campCenter)
@@ -485,7 +480,7 @@ public static class MapLoader
     }
 
     // Anyone the family table names as a mother or father has their sex settled by it, not by
-    // their id (see Person.Sex), or the table could hand a man a child to have borne.
+    // their id, or the table could hand a man a child to have borne.
     private static Sex? StartingSexFor(int index)
     {
         if (StartingMotherIndex.Contains(index))
@@ -586,7 +581,7 @@ public static class MapLoader
 
     // Same two coherent-noise-field approach as above (density and biome). Each candidate is one
     // independent (x, y) sample, not a cluster center: the noise fields alone decide whether it
-    // survives and what grows there, so any clustering is the noise's own spatial coherence.
+    // survives and what grows there, so any clustering is the noise's spatial coherence.
     private static void ScatterOpenWorldBiomes(WorldState world, Random rng, Random idRng, SpatialSpacingIndex<Position> occupied)
     {
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);

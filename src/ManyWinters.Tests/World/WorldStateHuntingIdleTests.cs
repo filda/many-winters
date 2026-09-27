@@ -5,10 +5,10 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// WorldState.DecideIdleTask's hunting/butchering branch (docs/todo/fauna-plan.md, phase 3):
-// tried after the existing "seek food when hungry" node/pile search comes up empty, and only
-// while hungry - hunting is not busywork for an idle, fed person, and a hungry butcher is sent to
-// a carcass already on the ground before a hunter is sent after a live one.
+// WorldState.DecideIdleTask's hunting/butchering branch: tried after the existing "seek food
+// when hungry" node/pile search comes up empty, and only while hungry - hunting is not busywork
+// for an idle, fed person, and a hungry butcher is sent to a carcass already on the ground
+// before a hunter is sent after a live one.
 public class WorldStateHuntingIdleTests
 {
     private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 0f };
@@ -61,10 +61,9 @@ public class WorldStateHuntingIdleTests
         Assert.IsNotType<HuntTask>(hunter.Tasks.Current);
     }
 
-    // Change B (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27"): the two animal food
-    // steps trigger at HungerEatThreshold (25) rather than waiting for HungerSeekFoodThreshold
-    // (50) - "would eat if they had something", not "must go find something now". A hunt is a
-    // long trip, worth setting out on early.
+    // The two animal food steps trigger at HungerEatThreshold (25) rather than waiting for
+    // HungerSeekFoodThreshold (50) - "would eat if they had something", not "must go find
+    // something now". A hunt is a long trip, worth setting out on early.
     [Fact]
     public void AHunterHungryEnoughToEatButNotYetUrgentIsSentToHunt()
     {
@@ -218,9 +217,8 @@ public class WorldStateHuntingIdleTests
         Assert.IsNotType<ButcherTask>(butcher.Tasks.Current);
     }
 
-    // docs/todo/fauna-plan.md phase 4: a decayed carcass holds only bone, and bone is never a
-    // meal - nobody idle should be sent to one (WorldState.FindNearestDeadAnimalWithMeat only
-    // asks about meat).
+    // A decayed carcass holds only bone, and bone is never a meal - nobody idle should be sent
+    // to one.
     [Fact]
     public void AHungryPersonIsNeverSentToButcherAMeatlessCarcass()
     {

@@ -6,8 +6,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
-// ButcherTask walks to a carcass exactly the way GatherTask walks to a pile
-// (docs/todo/fauna-plan.md, phase 3) - a carcass lies where it fell, it does not move.
+// ButcherTask walks to a carcass exactly the way GatherTask walks to a pile - a carcass lies
+// where it fell, it does not move.
 public class ButcherTaskTests
 {
     private static readonly Position CarcassPosition = new(10, 10);
@@ -15,7 +15,7 @@ public class ButcherTaskTests
     private static readonly float Reach = SimulationRules.Default.PileReachDistance;
 
     // Most tests here are about the walk itself, not about which speed installed it, so they all
-    // share the idle AI's own unhurried pace (WorldState.DecideIdleTask) unless the test says
+    // share the idle AI's unhurried pace (WorldState.DecideIdleTask) unless the test says
     // otherwise.
     private const float IdleSpeed = GatherTask.SpeedPerTick;
 
@@ -59,11 +59,10 @@ public class ButcherTaskTests
         Assert.Equal(IdleSpeed, task.SpeedPerTick);
     }
 
-    // The bug this constructor parameter fixes (docs/todo/fauna-plan.md, phase 3, "rozhodnuto
-    // 2026-09-27"): a player-directed butchering (TargetActions, MoveCommand.SpeedPerTick) has to
-    // close the gap faster than the autonomous idle AI's own unhurried pace
-    // (WorldState.DecideIdleTask, GatherTask.SpeedPerTick) - both used to hard-code the slower one
-    // regardless of who sent the butcher.
+    // The bug this constructor parameter fixes: a player-directed butchering (TargetActions,
+    // MoveCommand.SpeedPerTick) has to close the gap faster than the autonomous idle AI's
+    // unhurried pace (WorldState.DecideIdleTask, GatherTask.SpeedPerTick) - both used to
+    // hard-code the slower one regardless of who sent the butcher.
     [Fact]
     public void ADirectedButcheringClosesTheDistanceFasterThanAnIdleOne()
     {

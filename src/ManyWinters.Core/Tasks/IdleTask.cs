@@ -6,11 +6,10 @@ namespace ManyWinters.Core.Tasks;
 // A small aimless walk, one leg at a time via an internal MoveTask. Never completes; a real
 // order replaces it via CreatureTaskQueue.Interrupt.
 //
-// Without a home (every Person today - see Creature.Home): anchored wherever the creature
-// happened to be standing on the first Advance, radius drawn once from its own id. With one
-// (every Animal): anchored on the home range's own drifting Anchor, re-read every leg so the
-// wander follows it, and radius is the home's own (docs/todo/fauna-plan.md, "Co je stado
-// konkretne").
+// Without a home (every Person today): anchored wherever the creature happened to be standing on
+// the first Advance, radius drawn once from its own id. With one (every Animal): anchored on the
+// home range's own drifting Anchor, re-read every leg so the wander follows it, and radius is the
+// home's own.
 public sealed class IdleTask(HomeRange? home = null) : CreatureTask
 {
     private const float MinWanderRadius = 3f;
@@ -18,8 +17,8 @@ public sealed class IdleTask(HomeRange? home = null) : CreatureTask
     private const float SpeedPerTick = 0.15f;
 
     // A pause between wander legs (and before the first), or idle reads as restless constant
-    // walking. The ceiling is public because Main._Ready runs the world that long before the
-    // player sees it, so the band is already on the move.
+    // walking. The ceiling is public because startup runs the world that long before the player
+    // sees it, so the band is already on the move.
     private const int MinPauseTicks = 3;
     public const int MaxPauseTicks = 10;
 
@@ -76,8 +75,8 @@ public sealed class IdleTask(HomeRange? home = null) : CreatureTask
 
     private int NextPauseTicks() => MinPauseTicks + _rng!.Next(MaxPauseTicks - MinPauseTicks + 1);
 
-    // Uniform over the disk's area, as MapLoader's crowd scatter: independent uniform angle and
-    // radius would bunch samples near the anchor.
+    // Uniform over the disk's area: independent uniform angle and radius would bunch samples near
+    // the anchor.
     private Position NextWanderDestination(Position anchor)
     {
         var angle = _rng!.NextDouble() * Math.Tau;
@@ -85,7 +84,7 @@ public sealed class IdleTask(HomeRange? home = null) : CreatureTask
         return new Position(anchor.X + (distance * Math.Cos(angle)), anchor.Y + (distance * Math.Sin(angle)));
     }
 
-    // Close id seeds (EntityId.SeedOf) would otherwise land their first draws close together,
-    // reading as synchronized wandering - see SeedHash.
+    // Close id seeds would otherwise land their first draws close together, reading as
+    // synchronized wandering.
     private static int SeedFor(int personSeed) => SeedHash.Avalanche(unchecked((uint)personSeed));
 }

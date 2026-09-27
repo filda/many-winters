@@ -4,7 +4,7 @@ using ManyWinters.Godot.Logic;
 namespace ManyWinters.Godot.Sprites;
 
 // Reads the non-transparent rectangle out of a sprite's texture, which needs the engine, and
-// hands it to SpriteExtents to turn into world metres.
+// converts it to world metres.
 internal static class SpriteVisibleExtent
 {
     // Keyed by texture path: the used rect and canvas size are fractions of the image, so one
@@ -17,14 +17,11 @@ internal static class SpriteVisibleExtent
         {
             if (!ResourceLoader.Exists(texturePath))
             {
-                // No art for this kind (yet): BillboardSprite.Apply falls back to a flat quad the
-                // full size of the canvas, opaque everywhere, so the visible extent is the whole
-                // square rather than a used-ink rect there is no image here to read. Checked
-                // before TextureCache.Get, not after it throws: Get wraps a bare
-                // ResourceLoader.Load, which would print Godot's own "Resource file not found"
-                // and hand back null, and GetImage() on that null crashed AnimalView._Ready
-                // (RefreshCollisionShape -> VisibleExtent -> Compute) for every animal missing its
-                // species texture (docs/todo/fauna-plan.md phase 2b).
+                // No art for this kind yet: the billboard falls back to a flat opaque quad the
+                // full size of the canvas, so the used rect must be the whole square rather than
+                // an empty read. Checked before TextureCache.Get, not after it throws: Get wraps
+                // a bare ResourceLoader.Load, which returns null for a missing resource, and
+                // GetImage() on that null crashed for every entity missing its texture.
                 used = (Vector2.Zero, Vector2.One, Vector2.One);
             }
             else

@@ -6,20 +6,19 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
-/// Phase 3's own milestone (docs/todo/fauna-plan.md): a person taught eating, hunting and
-/// butchering, carrying a sharp hafted tool, feeds themselves from a living herd with no plant
-/// food anywhere - proving the kill -> butcher -> eat loop closes on its own, with nobody issuing
-/// a single order after the world starts. The same band without <c>basic_hunting</c> has nothing
-/// to fall back on and starves, which is the control this milestone needs.
+/// A person taught eating, hunting and butchering, carrying a sharp hafted tool, feeds themselves
+/// from a living herd with no plant food anywhere - proving the kill -> butcher -> eat loop
+/// closes on its own, with nobody issuing a single order after the world starts. The same band
+/// without <c>basic_hunting</c> has nothing to fall back on and starves, which is the control
+/// this milestone needs.
 ///
-/// What "survives" means here needed measuring rather than assuming (see the id-seed comment on
-/// <see cref="SpawnHuntingBand"/>): a solo hunt has to close a real gap to reach a fleeing or
-/// just-killed deer at <see cref="ManyWinters.Core.World.SimulationRules.HuntingRange"/>, which
-/// costs time a hungry person does not always have, so an individual miss is a real death - the
-/// fauna plan's own vertical-slice notes name exactly this risk ("hunting creates injury risk,
-/// losing a skilled hunter reduces future food security"). The band as a whole is what has to
-/// survive; at least one member reaching the end of the year, fed entirely by the herd, is what
-/// proves the loop rather than a lucky single meal.
+/// What "survives" means here needed measuring rather than assuming: a solo hunt has to close a
+/// real gap to reach a fleeing or just-killed deer at
+/// <see cref="ManyWinters.Core.World.SimulationRules.HuntingRange"/>, which costs time a hungry
+/// person does not always have, so an individual miss is a real death - hunting creates injury
+/// risk, and losing a skilled hunter reduces future food security. The band as a whole is what
+/// has to survive; at least one member reaching the end of the year, fed entirely by the herd, is
+/// what proves the loop rather than a lucky single meal.
 /// </summary>
 public class HuntingMilestoneTests
 {
@@ -31,8 +30,8 @@ public class HuntingMilestoneTests
     // Mirrors DeerHerdMilestoneTests' own ScatterGrass: two rings of near-endless grass, close
     // enough that a hungry deer never has far to walk and plentiful enough nobody's own grazing
     // ever exhausts it. The herd's food, not the band's - a person's diet has no plant_fibre
-    // entry at all (docs/todo/fauna-plan.md, step 0d), so this is not "plant food" from the
-    // band's own point of view, and no fruit/root/mushroom node exists anywhere in this test.
+    // entry at all, so this is not "plant food" from the band's point of view, and no
+    // fruit/root/mushroom node exists anywhere in this test.
     private static void ScatterGrass(WorldState world, Position center, int perRing)
     {
         void Ring(double distance)
@@ -54,17 +53,15 @@ public class HuntingMilestoneTests
     // closing, not how a band comes to learn the rest, so efficient_hunting is granted alongside
     // basic_hunting: a band that has "been shown how" and hunts all year round is a practised
     // one, not one on its very first attempt. Each carries the shipped axe-grade sharp hafted
-    // tool (TestCatalogs.CreateTestAxe) so a miss is the exception rather than the rule (see
-    // HuntCommandTests for the arithmetic).
+    // tool (TestCatalogs.CreateTestAxe) so a miss is the exception rather than the rule.
     //
     // Ids are drawn from a seeded Random rather than left to CreatureId.New()'s own Guid, and
     // `masterSeed` is not tuned to a knife-edge: what a throw lands on, which way a spooked deer
     // runs, and where everyone's idle wander drifts to all come from the same ids, so the whole
-    // year is one deterministic replay once they're fixed (WorldStateBreedingTests pins its own
-    // conception chance to 1 for the equivalent reason - a test should not depend on real
-    // randomness to pass). 0 is the first seed tried and needs no special pleading: hunting a
-    // real herd for a real year is not free of risk (see this class's own doc comment), so this
-    // is one ordinary year out of many, not a cherry-picked best case.
+    // year is one deterministic replay once they're fixed - a test should not depend on real
+    // randomness to pass. 0 is the first seed tried and needs no special pleading: hunting a
+    // real herd for a real year is not free of risk, so this is one ordinary year out of many,
+    // not a cherry-picked best case.
     private static (WorldState World, IReadOnlyList<Person> Band) SpawnHuntingBand(int masterSeed, bool huntingKnown)
     {
         var idRng = new Random(masterSeed);

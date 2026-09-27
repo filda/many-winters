@@ -44,8 +44,8 @@ public sealed record DepositCommand(Person Person, Entity Building, CarriedThing
         switch (what)
         {
             case CarriedThing.Stock stock:
-                // A transfer, not a fresh Add: whatever age the stock already carried moves with
-                // it onto the shelf (docs/todo/fauna-plan.md phase 4c).
+                // A transfer, not a fresh Add: the age the stock already carried moves with it
+                // onto the shelf.
                 Person.Inventory.Transfer(stock.Kind, stock.Amount, Building.Storage!);
                 break;
 

@@ -65,8 +65,8 @@ internal sealed class RememberedFade
         return IsFading;
     }
 
-    // The colour a layer shows now, given its full-sight colour. Alpha is left to Main's
-    // occlusion fade: whoever writes this back to a sprite must keep the sprite's live alpha,
-    // not the base's.
+    // The colour a layer shows now, given its full-sight colour. Alpha is left to the game's own
+    // occlusion fade: whoever writes this back to a sprite must keep the sprite's live alpha, not
+    // the base's.
     public Color Applied(Color baseModulate) => baseModulate * Colors.White.Lerp(Tint, _progress);
 }

@@ -297,10 +297,9 @@ public class TwistCommandTests
         Assert.Equal(ActionBlocker.None, new TwistCommand(person, TestCatalogs.GrassItem).Blocker(world));
     }
 
-    // "Sinew twisted is a sinew cord" (docs/materials-and-crafting-architecture.md's own example,
-    // docs/todo/fauna-plan.md phase 3): sinew's properties satisfy CanTwist just like grass's,
-    // with no command code written for it - only its own content (sinew.json's twist
-    // FormTransition) makes this work.
+    // "Sinew twisted is a sinew cord" (docs/materials-and-crafting-architecture.md's own example):
+    // sinew's properties satisfy CanTwist just like grass's, with no command code written for it -
+    // only its own content (sinew.json's twist FormTransition) makes this work.
     [Fact]
     public void SinewTwistsIntoACordTheSameWayGrassDoes()
     {

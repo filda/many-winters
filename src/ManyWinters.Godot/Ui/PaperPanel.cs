@@ -3,11 +3,10 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Ui;
 
-// Where a paper panel sits. Dragged: wherever the player puts it, by its title bar (BandPanel,
-// ChroniclePanel). Centred: the middle of the screen for as long as it is up, which is a place
-// rather than a starting point, so it is not dragged (WorkshopPanel). Docked: pinned to an edge
-// by the panel's own anchors, open for most of the game, so it is not dragged either
-// (SelectionPanel).
+// Where a paper panel sits. Dragged: wherever the player puts it, by its title bar. Centred: the
+// middle of the screen for as long as it is up, which is a place rather than a starting point,
+// so it is not dragged. Docked: pinned to an edge by the panel's own anchors, open for most of
+// the game, so it is not dragged either.
 public enum PanelPlacement
 {
     Dragged,
@@ -25,13 +24,13 @@ public enum PanelPlacement
 public partial class PaperPanel(string title, float? fixedBodyHeight = null) : PanelContainer
 {
     // One size for every panel's title. Protected, because a panel that lays its title inside
-    // something of its own (SelectionPanel) has to know how tall a line of it is.
+    // something of its own has to know how tall a line of it is.
     protected const int TitleFontSize = 22;
 
     private const float TitleBarHeight = 28f;
 
-    // Room below the panel for the status bar (StatusBar.BarHeight) plus breathing space, so a
-    // tall body scrolls instead of drawing over it.
+    // Room below the panel for the status bar plus breathing space, so a tall body scrolls
+    // instead of drawing over it.
     private const float BottomClearance = 56f;
 
     private Label _titleLabel = null!;
@@ -91,11 +90,11 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
         _titleBar.AddChild(heading);
 
         // Room for a panel to put something of its own beside its title - actions that read on
-        // the current selection rather than on the window as a whole (WorkshopPanel).
+        // the current selection rather than on the window as a whole.
         BuildTitleBarExtras(_titleBar);
 
         // Centred on the first line of the title bar rather than on the whole of it, so a heading
-        // that runs to several lines (PersonDetailPanel's portrait) keeps the cross in the corner.
+        // that runs to several lines (a portrait beside the name) keeps the cross in the corner.
         var crossLine = new CenterContainer
         {
             CustomMinimumSize = new Vector2(0, TitleBarHeight),
@@ -115,7 +114,7 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
     }
 
     // What the cross in the corner does. Putting the window away is all most of them need; one
-    // with something to settle on the way out overrides this (WorkshopPanel starts the clock).
+    // with something to settle on the way out - starting the clock again - overrides this.
     protected virtual void OnCloseRequested() => Visible = false;
 
     // What goes in the title bar where the title is: the title itself, unless a panel sets it
@@ -158,9 +157,9 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
     // at both ends: measured from its own top, as any other window is, its height would decide
     // its position and its position its height, and the two would chase each other.
     //
-    // A panel given a fixed height (WorkshopPanel) skips all of this: it is a workbench with a
-    // fixed shape, not a page that grows and shrinks with what is currently laid on it, so its
-    // scroll area is exactly that height whatever the body inside asks for.
+    // A panel given a fixed height skips all of this: it is a workbench with a fixed shape, not
+    // a page that grows and shrinks with what is currently laid on it, so its scroll area is
+    // exactly that height whatever the body inside asks for.
     private void FitBody()
     {
         if (fixedBodyHeight is { } fixedHeight)

@@ -9,10 +9,9 @@ namespace ManyWinters.Godot.Logic;
 // is looked up between "pressed" and "selected".
 //
 // The heading carries the age in brackets after the name, because a roster is read to tell people
-// apart and a name alone does not - a bare count of winters, not DurationText's prose, so a name
+// apart and a name alone does not - a bare count of winters, not a duration in prose, so a name
 // and what that person is doing fit on one line. Winters need no unit in a game called Many
-// Winters, and somebody in their first one reads "(0)". Sex is not written: the sprites are to say
-// that (see docs/todo/todo.md).
+// Winters, and somebody in their first one reads "(0)". Sex is not written: the sprites say that.
 internal readonly record struct RosterEntry(Person Person, string Heading, string Task, MeterReading Fed);
 
 // The band as a list, for the player who has lost track of where everybody went: whose band it is,

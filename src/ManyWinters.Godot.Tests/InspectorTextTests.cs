@@ -74,8 +74,8 @@ public class InspectorTextTests
         Assert.Equal("Keeping up with Sela", InspectorText.ForTask(person));
     }
 
-    // An animal has no name to give (Creature.NursingMother has none to point at for a Person,
-    // but an Animal's own mother carries none), so a fawn's own follow reads without one.
+    // An animal has no name to give: unlike a person's, an animal's mother carries none, so a
+    // fawn's own follow reads without one.
     [Fact]
     public void AFawnKeepsCloseToItsMotherWithNoNameToGive()
     {
@@ -87,8 +87,7 @@ public class InspectorTextTests
         Assert.Equal("Keeping close to its mother", InspectorText.ForTask(fawn));
     }
 
-    // A species' own flight rule (FleeTask) - only ever an animal's, since no human species
-    // defines Flee.
+    // A species' own flight rule - only ever an animal's, since no human species defines Flee.
     [Fact]
     public void AFleeingCreatureIsSaidToBeFleeing()
     {
@@ -100,9 +99,8 @@ public class InspectorTextTests
         Assert.Equal("Fleeing", InspectorText.ForTask(deer));
     }
 
-    // Directed hunting and butchering (docs/todo/fauna-plan.md, phase 3c) - only a Person ever
-    // runs either task, but ForTask reads Creature.Tasks.Current alone, so a bare HuntTask/
-    // ButcherTask on any creature is enough to test the wording.
+    // Only a Person ever runs hunting or butchering, but ForTask reads Creature.Tasks.Current
+    // alone, so a bare HuntTask/ButcherTask on any creature is enough to test the wording.
     [Fact]
     public void AHunterIsSaidToBeHunting()
     {
@@ -258,8 +256,8 @@ public class InspectorTextTests
         Assert.Equal("Died at 5 winters of old age.", InspectorText.ForDeath(5, DeathCause.OldAge));
     }
 
-    // Only an Animal is ever hunted today (DeathCause.Hunted), but the card must not throw or
-    // fall silent if that ever changes for a Person (docs/todo/fauna-plan.md phase 3).
+    // Only an Animal is ever hunted (DeathCause.Hunted), but the card must not throw or fall
+    // silent if that ever changes for a Person.
     [Fact]
     public void ForDeathNamesHuntedAsItsOwnCause()
     {

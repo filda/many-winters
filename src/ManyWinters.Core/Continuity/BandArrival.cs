@@ -3,8 +3,8 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// The facts the prologue is written from (see Prologue): who came, how many, in what season,
-// led in years by whom, and whether they knew anything. A snapshot of the world, never stored.
+// The facts the prologue is written from: who came, how many, in what season, led in years by
+// whom, and whether they knew anything. A snapshot of the world, never stored.
 public sealed record BandArrival
 {
     public required string BandName { get; init; }
@@ -23,7 +23,7 @@ public sealed record BandArrival
 
     public required int Children { get; init; }
 
-    // The one the band is named after (see BandName), and how many winters they had seen.
+    // The one the band is named after, and how many winters they had seen.
     public required Person Eldest { get; init; }
 
     public required int EldestWinters { get; init; }

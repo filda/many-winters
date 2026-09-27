@@ -6,12 +6,12 @@ namespace ManyWinters.Core.Continuity;
 // Writes the inscription shown when a band's line ends (facts: BandEnding, which ending:
 // BandFate). Chronicle voice, not a scoreboard: "Nine winters Liska's people endured".
 // Every sentence with more than one wording is drawn from a short list, seeded from the death
-// that ended the line (see PhraseDraw), so the same ending reads the same on every reload.
-// Only the wording varies, never the facts.
+// that ended the line, so the same ending reads the same on every reload. Only the wording
+// varies, never the facts.
 public static class Epitaph
 {
-    // Spreads the salts apart before the draw (see PhraseDraw), so neighbouring endings do not
-    // pick neighbouring phrases.
+    // Spreads the salts apart before the draw, so neighbouring endings do not pick neighbouring
+    // phrases.
     private const uint SaltStride = 0x9E3779B9;
 
     public static Inscription Write(BandEnding ending)
@@ -53,8 +53,8 @@ public static class Epitaph
             $"The line has ended on the {side} side.",
             $"On the {side} side the line is ended."));
 
-        // The pick comes after every line's, so adding it never reshuffles the wordings above
-        // (see PhraseDraw). The band lives on: the words let the reader walk on with it.
+        // The pick comes after every line's, so adding it never reshuffles the wordings above.
+        // The band lives on: the words let the reader walk on with it.
         return new Inscription(title, lines, draw.Pick(
             "Let them wander",
             "Walk among them"));
@@ -222,9 +222,9 @@ public static class Epitaph
                 "died old",
                 "died full of years",
                 "died of nothing but years"),
-            // Only an Animal dies this way today (see DeathCause.Hunted), so no epitaph has ever
-            // exercised this, but a switch over the enum has to say something sensible for it
-            // rather than falling through to "starved".
+            // Only an Animal dies this way today, so no epitaph has ever exercised this, but a
+            // switch over the enum has to say something sensible for it rather than falling
+            // through to "starved".
             DeathCause.Hunted => draw.Pick(
                 "was hunted down",
                 "fell to a hunter",
@@ -241,8 +241,8 @@ public static class Epitaph
 
     private static string Capitalize(string text) => char.ToUpperInvariant(text[0]) + text[1..];
 
-    // One draw per slot, each from its own salt, so changing the wording of one sentence never
-    // reshuffles the others: the n-th Pick of an inscription always looks at the n-th salt.
+    // One draw per slot, each from a separate salt, so changing the wording of one sentence
+    // never reshuffles the others: the n-th Pick of an inscription always looks at the n-th salt.
     private sealed class PhraseDraw(BandEnding ending)
     {
         private readonly uint _seed = unchecked((uint)(ending.LastToDie?.Id.Seed ?? 0) ^ (uint)ending.EndingTick);

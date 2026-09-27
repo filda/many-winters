@@ -104,8 +104,8 @@ public partial class InscriptionOverlay : Control
     {
         _title.Text = inscription.Title;
         _title.AddThemeFontSizeOverride("font_size", FittedTitleSize(inscription.Title));
-        // A band with nobody left carries no closing words (Epitaph), so it carries no way out
-        // of this screen either: "Another band comes" is the one thing left to do.
+        // A band with nobody left carries no closing words, so it carries no way out of this
+        // screen either: "Another band comes" is the one thing left to do.
         _closing.Visible = inscription.Dismissal is not null;
         _closing.Text = inscription.Dismissal ?? string.Empty;
         // The growth is a hover state, not a memory: a line that was under the cursor when its

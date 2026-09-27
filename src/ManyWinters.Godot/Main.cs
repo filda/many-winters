@@ -17,7 +17,7 @@ namespace ManyWinters.Godot;
 public partial class Main : Node3D
 {
     // Every tunable number this scene runs on lives in these two, not in constants here - what
-    // is a rule of the world itself belongs in SimulationRules (via WorldConfiguration) instead.
+    // is a rule of the world itself belongs to the simulation's own configuration instead.
     private readonly SimulationPacing _pacing = SimulationPacing.Default;
     private readonly PresentationSettings _presentation = PresentationSettings.Default;
 
@@ -40,9 +40,9 @@ public partial class Main : Node3D
     private OcclusionFader _occlusionFader = null!;
     private OrderCoordinator _orderCoordinator = null!;
 
-    // Above the game's own UI canvas (SetUpUi), which is built three quarters of the way through
-    // the load: both sit on the default layer otherwise, and the status bar - added to the tree
-    // later - drew over the bottom of the title page for the rest of the load.
+    // Above the game's own UI canvas, which is built three quarters of the way through the load:
+    // both sit on the default layer otherwise, and the status bar - added to the tree later -
+    // drew over the bottom of the title page for the rest of the load.
     private const int LoadingCanvasLayer = 100;
 
     // The title page, held up while the world is built. On its own CanvasLayer so it covers the
@@ -128,9 +128,8 @@ public partial class Main : Node3D
         _mainUi.ClockShouldResume += _simulationLoop.TickAsSoonAsPossible;
 
         // The E2E suite's calibration: printed the moment the prologue (or any later inscription)
-        // goes down, which is always after GameFixture has set its own log-reading offset - the
-        // suite never has to guess a click target off a recorded frame again (see AGENTS.md's
-        // e2e task, 2026-09-27).
+        // goes down, which is always after the test harness has set its own log-reading offset -
+        // the suite never has to guess a click target off a recorded frame again.
         _mainUi.InscriptionOverlay.Dismissed += PrintE2EAnchors;
 
         await Building(100, "The band arrives");
@@ -189,9 +188,9 @@ public partial class Main : Node3D
             return;
         }
 
-        // A name for a new thing is being typed (see TextEntry): every letter belongs to the
-        // field, so the keys the game answers to on its own are left alone. Escape and F11 are
-        // not letters and still work - one puts the workbench away, the other is the window's.
+        // A name for a new thing is being typed: every letter belongs to the field, so the keys
+        // the game answers to on its own are left alone. Escape and F11 are not letters and still
+        // work - one puts the workbench away, the other is the window's.
         var typing = TextEntry.HasTheKeyboard(GetViewport());
 
         if (!typing && @event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.T })
@@ -264,8 +263,8 @@ public partial class Main : Node3D
     }
 
     // Every control SelectionController, WorkshopController and WorldInputController operate is
-    // already built and attached by MainUi's own constructor (see MainUi); here they are only
-    // handed the bundle they need and wired to each other and to Main.
+    // already built and attached by the UI's own constructor; here they are only handed the
+    // bundle they need and wired to each other and to Main.
     private void SetUpUi()
     {
         _mainUi = new MainUi(_world, _presentation);
@@ -276,8 +275,7 @@ public partial class Main : Node3D
         _mainUi.StatusBar.BandRequested += _selection.ToggleBandPanel;
 
         // The workbench, opened from the pack line on the selected person's card. Like the pause
-        // page it holds the clock while it is up (see _Process): working a thing over is meant to
-        // be unhurried.
+        // page it holds the clock while it is up: working a thing over is meant to be unhurried.
         _workshopController = new WorkshopController(_mainUi.Workshop, _world, _orderCoordinator);
         _selection.WorkshopRequested += _workshopController.Toggle;
 
@@ -313,9 +311,9 @@ public partial class Main : Node3D
         var name = _world.GenerateUnrelatedName(Random.Shared);
         var position = FindFreeSpawnPosition();
 
-        // Borrows the nearest living person's home (docs/todo/fauna-plan.md, step 1b) rather
-        // than founding a new one: a debug-spawned person joins whichever band is closest, or
-        // wanders from wherever they stand if nobody living has one (see Person.Home).
+        // Borrows the nearest living person's home rather than founding a new one: a
+        // debug-spawned person joins whichever band is closest, or wanders from wherever they
+        // stand if nobody living has one.
         var nearest = _world.People.Where(person => person.IsAlive).MinBy(person => WorldState.Distance(position, person.Position));
         _world.Execute(new SpawnPersonCommand(name, position, Person.Unknown, Person.Unknown, home: nearest?.Home));
     }
@@ -325,15 +323,14 @@ public partial class Main : Node3D
         _world.Execute(new ExtinguishBandCommand());
     }
 
-    // The E2E suite's own calibration (see AGENTS.md's e2e task, 2026-09-27): one parsable line
-    // per anchor, in the viewport pixel space GameFixture.Click already posts to - the harness
-    // sends WM_LBUTTONDOWN/UP straight to the window's client area (see WindowInput.Click) and
-    // the game is launched at exactly that client size (see GameWindow.ExpectedClientSize), so a
-    // viewport pixel from Camera3D.UnprojectPosition needs no further conversion on either side.
-    // Which person/node/animal is picked is E2EAnchors' pure business; only turning that pick
-    // into a screen point needs the engine. Gated like every other input-echoing log line (see
-    // LaunchOptions.Verbose): the harness always launches this way, so the suite always sees
-    // these, and an ordinary session never does.
+    // The E2E suite's own calibration: one parsable line per anchor, in the viewport pixel space
+    // the test harness already posts clicks to - it sends WM_LBUTTONDOWN/UP straight to the
+    // window's client area, and the game is launched at exactly that client size, so a viewport
+    // pixel from Camera3D.UnprojectPosition needs no further conversion on either side. Which
+    // person/node/animal is picked is unit-testable on its own; only turning that pick into a
+    // screen point needs the engine. Gated like every other input-echoing log line: the harness
+    // always launches this way, so the suite always sees these, and an ordinary session never
+    // does.
     private void PrintE2EAnchors()
     {
         if (!LaunchOptions.Verbose)
@@ -363,12 +360,12 @@ public partial class Main : Node3D
     }
 
     // The sprite's body centre, not its feet: WorldPresenter seats every creature/node view's
-    // origin at groundHeight + nominalHeight/2 (see WorldSpace.ToRender), which already is the
-    // vertical middle of the drawn silhouette for an ordinarily-centred sprite, so the unprojected
-    // origin itself is a click that lands on opaque pixels rather than off the top or bottom of
-    // one. None when there is no such thing, it fell out of camera view (a pending resource node),
-    // or it projects behind the camera or off the edge of the viewport - a test reading "none"
-    // fails with a clear message instead of clicking a stale or wrong pixel.
+    // origin at groundHeight + nominalHeight/2, which already is the vertical middle of the drawn
+    // silhouette for an ordinarily-centred sprite, so the unprojected origin itself is a click
+    // that lands on opaque pixels rather than off the top or bottom of one. None when there is no
+    // such thing, it fell out of camera view (a pending resource node), or it projects behind the
+    // camera or off the edge of the viewport - a test reading "none" fails with a clear message
+    // instead of clicking a stale or wrong pixel.
     private static void PrintE2EAnchor(string kind, Vector3? worldPosition, Camera3D camera)
     {
         if (worldPosition is not { } position || camera.IsPositionBehind(position))
@@ -388,8 +385,8 @@ public partial class Main : Node3D
         GD.Print($"E2E anchor {kind} {(int)screen.X} {(int)screen.Y}");
     }
 
-    // What every caller of OrderCoordinator.Perform used to refresh by hand once it had executed
-    // or queued the offer.
+    // Everything that must follow any order taking effect, in one place rather than at every
+    // call site.
     private void OnOrderCoordinatorWorldChanged()
     {
         _selection.Refresh();
@@ -410,8 +407,8 @@ public partial class Main : Node3D
             maxAttempts: 20);
     }
 
-    // The few people this one is closest to. Bonds never formed are absent (see Affections.For),
-    // so a loner reads "none" rather than a column of zeroes.
+    // The few people this one is closest to. Bonds never formed are absent, so a loner reads
+    // "none" rather than a column of zeroes.
     private string BondsText(Person person)
     {
         var namesById = _world.People.ToDictionary(p => p.Id, p => p.Name);
@@ -425,7 +422,7 @@ public partial class Main : Node3D
     }
 
     // The debug inspector's raw dump of whoever is selected - kept apart from the player-facing
-    // panels, which are SelectionController's own to refresh.
+    // panels, which have their own refresh path.
     private void RefreshInfoLabel()
     {
         if (_selection.Grave is { } grave)

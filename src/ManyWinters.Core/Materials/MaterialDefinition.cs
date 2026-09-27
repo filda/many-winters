@@ -24,9 +24,8 @@ public sealed record MaterialDefinition(
     float Elasticity = 0f,
     float Fibrousness = 0f,
     // How long a thing made of this material lasts, in ticks, from the moment it came to be as a
-    // thing - picked, butchered, made - wherever it lies (docs/todo/fauna-plan.md, phase 4c,
-    // "kroky 4c a 4d"). Null means it never spoils: bone, wood, stone, plant_fibre and tanned hide
-    // are null; meat, rawhide and the plant foods have a number. Replaces the old flat
-    // `Perishable` bool - a corpse's meat now rots on meat's own clock rather than all at once
-    // when the body itself decays (WorldState.IsDecayed, which stays about the body).
+    // thing - picked, butchered, made - wherever it lies. Null means it never spoils: bone, wood,
+    // stone, plant_fibre and tanned hide are null; meat, rawhide and the plant foods have a
+    // number. A corpse's meat rots on its own clock rather than all at once when the body itself
+    // decays, which is a separate check.
     long? ShelfLifeTicks = null);

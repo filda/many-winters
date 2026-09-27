@@ -3,18 +3,15 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Tasks;
 
-// "Move directly away from this threat" - the species' own flight rule
-// (SpeciesDefinition.FleeDefinition, WorldState.DecideIdleTask): a creature whose species defines
-// Flee breaks off whatever it was doing the moment a living person comes within FleeDistance and
-// runs a straight line away from them until the gap reaches SafeDistance or the threat dies
-// (docs/todo/fauna-plan.md, "Útěk dřív než lov"). No seeded jitter - a straight line is enough for
-// the shipped tuning.
+// "Move directly away from this threat" - the species' own flight rule: a creature whose species
+// defines Flee breaks off whatever it was doing the moment a living person comes within
+// FleeDistance and runs a straight line away from them until the gap reaches SafeDistance or the
+// threat dies. No seeded jitter - a straight line is enough for the shipped tuning.
 public sealed class FleeTask(Creature threat, SpeciesDefinition.FleeDefinition flee) : CreatureTask
 {
     public Creature Threat { get; } = threat;
 
-    // Set by Advance, the same "the task itself decides completion, read right after Advance
-    // runs" pattern as MoveTask's _arrived - CreatureTaskQueue.Advance calls Advance(creature)
+    // Set by Advance, the same pattern as MoveTask's _arrived: the queue calls Advance(creature)
     // then checks IsComplete with no creature to hand it.
     private bool _safe;
 

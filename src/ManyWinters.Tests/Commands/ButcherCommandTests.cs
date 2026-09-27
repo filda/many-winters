@@ -5,9 +5,9 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Commands;
 
-// ButcherCommand follows GatherCommand's own pattern exactly (docs/todo/fauna-plan.md, phase 3,
-// "Rozhodnutí předem" item 4): a base technique that must be taught before anything can be taken
-// at all, and an efficient one earned through practice that gets more out of the same carcass.
+// ButcherCommand follows GatherCommand's pattern exactly: a base technique that must be taught
+// before anything can be taken at all, and an efficient one earned through practice that gets
+// more out of the same carcass.
 public class ButcherCommandTests
 {
     private static Animal DeadDeer(
@@ -96,9 +96,8 @@ public class ButcherCommandTests
         Assert.Equal(ActionBlocker.NothingLeft, new ButcherCommand(butcher, carcass).Blocker(world));
     }
 
-    // What is left of a decayed carcass (docs/todo/fauna-plan.md phase 4: the perishables are
-    // gone, only bone remains) - a beginner takes it exactly as they always could, since bone was
-    // always the beginner's share.
+    // A decayed carcass has only bone left, the perishables gone - a beginner takes it exactly
+    // as they always could, since bone was always the beginner's share.
     [Fact]
     public void ABeginnerButcherTakesOnlyBoneFromABoneOnlyCarcass()
     {
@@ -175,7 +174,7 @@ public class ButcherCommandTests
     }
 
     // Knowledge is asked last: a butcher with a full pack and no training at all hears about the
-    // pack, not that they never learned to butcher (see ActionBlocker.NotLearned).
+    // pack, not that they never learned to butcher.
     [Fact]
     public void AFullPackIsBlamedBeforeNeverHavingLearnedToButcher()
     {
@@ -249,8 +248,8 @@ public class ButcherCommandTests
         Assert.Equal(0f, butcher.Skills.Get(ButcherCommand.Skill));
     }
 
-    // Five butcherings is exactly the threshold (see Skills.LevelAfter): the one that reaches it
-    // is the one that teaches the efficient technique. The pack is emptied between carcasses -
+    // Five butcherings is exactly the threshold: the one that reaches it is the one that teaches
+    // the efficient technique. The pack is emptied between carcasses -
     // a butcher bringing a haul home before going back out for the next deer - so capacity never
     // gets in the way of counting practice.
     [Fact]

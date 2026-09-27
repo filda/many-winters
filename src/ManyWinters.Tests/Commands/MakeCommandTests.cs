@@ -82,7 +82,7 @@ public class MakeCommandTests
         Assert.Equal(ActionBlocker.MissingMaterials, new MakeCommand(person, TestCatalogs.Axe).Blocker(world));
     }
 
-    // docs/todo/fauna-plan.md phase 4: warm clothing is made from hide, not wood.
+    // Warm clothing is made from hide, not wood.
     [Fact]
     public void MakingWarmClothingFromHideSucceeds()
     {
@@ -96,8 +96,8 @@ public class MakeCommandTests
         Assert.Equal(1, person.Inventory.Get(TestCatalogs.WarmClothing));
     }
 
-    // docs/todo/fauna-plan.md phase 4c: a second garment recipe, from the carcass's own rawhide
-    // rather than tanned hide - no further knowledge needed, unlike TanCommand's own future recipe.
+    // A second garment recipe, from the carcass's own rawhide rather than tanned hide - no
+    // further knowledge needed.
     [Fact]
     public void MakingRawhideClothingFromRawhideSucceeds()
     {
@@ -111,9 +111,9 @@ public class MakeCommandTests
         Assert.Equal(1, person.Inventory.Get(TestCatalogs.RawhideClothing));
     }
 
-    // The whole reason for two garments (docs/todo/fauna-plan.md phase 4c): the rawhide one is
-    // gone after a season, the tanned one is not - both made as stock, so both age through
-    // Inventory's own ledger rather than needing an Assembly.
+    // The whole reason for two garments: the rawhide one is gone after a season, the tanned one
+    // is not - both made as stock, so both age through Inventory's own ledger rather than
+    // needing an Assembly.
     [Fact]
     public void RawhideClothingSpoilsAfterASeasonWhileWarmClothingDoesNot()
     {

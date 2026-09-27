@@ -7,8 +7,8 @@ namespace ManyWinters.Godot.Ui;
 // Docked to the right edge rather than floating, because it is open for most of the game and a
 // window the player has to keep shoving aside is one they end up closing.
 //
-// The same page as every other panel the player holds (PaperPanel), only docked rather than
-// placed: the person's name is the page's title, in the same face and size as any other title.
+// The same page as every other panel the player holds, only docked rather than placed: the
+// person's name is the page's title, in the same face and size as any other title.
 //
 // It holds no opinions of its own - what an action is called, whether it can run and why not all
 // arrive as ActionOffer, and the person's own card as SelectionCard. This class draws them and
@@ -117,9 +117,8 @@ internal partial class SelectionPanel : PaperPanel
         _graveRecord.Visible = false;
         Body.AddChild(_graveRecord);
 
-        // No pack, no knowledge, no actions - nothing can be done to an animal yet
-        // (docs/todo/fauna-plan.md, phase 2b), so its own body is only the meter and the doing
-        // line every creature's card carries.
+        // No pack, no knowledge, no actions - nothing can be done to an animal yet, so its body
+        // is only the meter and the doing line every creature's card carries.
         _animalBody = new VBoxContainer();
         _animalBody.AddThemeConstantOverride("separation", SectionSpacing);
         _animalBody.Visible = false;

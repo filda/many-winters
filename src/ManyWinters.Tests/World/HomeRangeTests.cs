@@ -11,8 +11,8 @@ public class HomeRangeTests
     {
         var home = new HomeRange(new Position(0, 0)) { Radius = 15f, DriftMetresPerSeason = 20f };
 
-        // Tick 0 only establishes which season "now" is (see HomeRange.Advance) - a freshly
-        // spawned herd's ground must not jump on the world's very first tick.
+        // Tick 0 only establishes which season "now" is - a freshly spawned herd's ground must
+        // not jump on the world's very first tick.
         for (var tick = 0; tick < TicksPerSeason; tick++)
         {
             home.Advance(tick, TicksPerSeason);

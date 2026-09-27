@@ -176,12 +176,11 @@ public partial class PersonDetailPanel : PaperPanel
     // Put away, so the world can start moving again.
     internal event Action? Closed;
 
-    // A line per skill under its own heading, rather than one comma-spliced sentence - the list
-    // the summary card's "Knows" line used to draw itself, before it grew long enough to need a
-    // page of its own. Lines are kept and updated in place, not thrown away and rebuilt, for the
-    // same reason the actions beside them are: this is redrawn on every tick the page is left
-    // open, and freeing a label mid-frame only to add its replacement back is what made the page
-    // blink.
+    // A line per skill under its own heading, rather than one comma-spliced sentence that stops
+    // reading well once the list grows long. Lines are kept and updated in place, not thrown
+    // away and rebuilt, for the same reason the actions beside them are: this is redrawn on
+    // every tick the page is left open, and freeing a label mid-frame only to add its
+    // replacement back is what made the page blink.
     private void SyncKnowledge(string label, IReadOnlyList<string> known)
     {
         _knowledgeHeading.Text = known.Count > 0 ? $"{label}:" : $"{label}: {(label == "Knows" ? "nothing yet" : "nothing")}";

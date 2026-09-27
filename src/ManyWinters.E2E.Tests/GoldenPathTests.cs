@@ -3,16 +3,16 @@ using System.Text.RegularExpressions;
 namespace ManyWinters.E2E.Tests;
 
 // The five golden-path scenarios agreed on 2026-09-22, alongside WorldBootSmokeTests. What each
-// test claims, it claims through the game's own log (see GameFixture.WaitForGameLog): the facts
-// that exist only inside the running engine - that a posted click was interpreted, that a panel
-// came up, that a view was created - one line per fact, emitted where the fact happens. What the
-// simulation does with an order is ManyWinters.Tests' business and is deliberately not claimed
-// again here. Every click is verified against the log and retried when it did not land: a posted
-// click can be swallowed on a stuttering machine, and each retry is guarded by the wait that
-// preceded it. The frames saved along the way are for the human reviewer, never asserted.
+// test claims, it claims through the game's own log: the facts that exist only inside the
+// running engine - that a posted click was interpreted, that a panel came up, that a view was
+// created - one line per fact, emitted where the fact happens. What the simulation does with an
+// order is ManyWinters.Tests' business and is deliberately not claimed again here. Every click is
+// verified against the log and retried when it did not land: a posted click can be swallowed on
+// a stuttering machine, and each retry is guarded by the wait that preceded it. The frames saved
+// along the way are for the human reviewer, never asserted.
 
-/// <summary>Clicking a person opens their selection panel — <c>SelectionController</c> handles
-/// the click and shows details plus available actions for whatever was under the cursor.</summary>
+/// <summary>Clicking a person opens their selection panel, showing details plus available
+/// actions for whatever was under the cursor.</summary>
 public sealed class EntityInspectionTests : IClassFixture<GameFixture>
 {
     private readonly GameFixture _game;
@@ -24,9 +24,9 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
     {
         _game.DismissPrologue();
 
-        // Where the first living person actually stands, read off the game's own log rather than
-        // a recorded frame (Main.PrintE2EAnchors) - the calibration can never go stale again, even
-        // once step 1b's shared camp HomeRange has people wandering instead of standing still.
+        // Where the first living person stands, read off the game's own log rather than a
+        // recorded frame - the calibration cannot go stale even once people wander around a
+        // shared home range instead of standing still.
         var person = _game.ReadAnchor("person");
         Assert.NotNull(person);
 
@@ -44,17 +44,14 @@ public sealed class EntityInspectionTests : IClassFixture<GameFixture>
     }
 }
 
-/// <summary>Opening a person's workbench (<c>SelectionController.WorkshopRequested</c> →
-/// <c>WorkshopController</c>/<c>WorkshopPanel</c>) and picking a recipe should visibly change
-/// what they're carrying.</summary>
+/// <summary>Opening a person's workbench and picking a recipe should visibly change what they're
+/// carrying.</summary>
 public sealed class CraftingUiTests : IClassFixture<GameFixture>
 {
-    // Nobody carries anything at the boot tick, and the workshop works on what is carried
-    // (WorkshopActions.Carried) - so the test first orders the selected person to gather the
-    // wood pile in the camp (a left click on a node with somebody selected, see
-    // WorldInputController.OnResourceNodeClicked) and steps the held clock while the order is
-    // walked and resolved. Where the wood pile actually is comes off the game's own log (see
-    // Main.PrintE2EAnchors), not a recorded frame.
+    // Nobody carries anything at the boot tick, and the workshop works on what is carried - so
+    // the test first orders the selected person to gather the wood pile in the camp (a left
+    // click on a node with somebody selected) and steps the held clock while the order is walked
+    // and resolved. Where the wood pile is comes off the game's own log, not a recorded frame.
     private const int GatherTicks = 30;
 
     // The selection panel's "Pack" line (the whole line is a button) opens the workbench. The
@@ -65,8 +62,8 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     private const int PackLineY = 135;
 
     // The "Make basket" recipe line in the centred workbench's recipe column (the recipes are
-    // the offers the person can actually carry out; basket and warm clothing both come off 20
-    // wood). Clicking the line runs the recipe the same way the person's own card does.
+    // the offers the person can carry out; basket and warm clothing both come off 20 wood).
+    // Clicking the line runs the recipe the same way the person's own card does.
     private const int RecipeX = 640;
     private const int RecipeY = 239;
 
@@ -122,14 +119,14 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     }
 }
 
-/// <summary>Placing a building through the order flow (<c>OrderCoordinator</c>) should render it
-/// at the position clicked, not just record it in world state.</summary>
+/// <summary>Placing a building through the order flow should render it at the position clicked,
+/// not just record it in world state.</summary>
 public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
 {
     // The store is built out of wood, and nobody carries anything at the boot tick - the same
-    // gather-first setup as CraftingUiTests (the wood pile in the camp, thirty held-clock steps,
-    // then a settled frame). Where the person and the wood pile are comes off the game's own log
-    // (see Main.PrintE2EAnchors), not a recorded frame.
+    // gather-first setup used elsewhere in this suite (the wood pile in the camp, thirty
+    // held-clock steps, then a settled frame). Where the person and the wood pile are comes off
+    // the game's own log, not a recorded frame.
     private const int GatherTicks = 30;
 
     // The open ground the store is asked for on and placed at: the context menu opens exactly at
@@ -161,7 +158,7 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
         Assert.NotNull(person);
         Assert.NotNull(wood);
 
-        // The same gather-first setup as CraftingUiTests, with the same guarded re-clicks.
+        // The same gather-first setup used above, with the same guarded re-clicks.
         _game.Click(person.Value.X, person.Value.Y); // select the first living person
         _game.Click(wood.Value.X, wood.Value.Y); // send them gathering
         var gathered = _game.WaitForGameLog(": Gather.", TimeSpan.FromSeconds(4));
@@ -220,26 +217,26 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
     }
 }
 
-/// <summary>The debug inspector's real "Extinguish Band" hook (Ui/InspectorPanel.cs) is the
-/// quick way to a band's epitaph and its "Another band comes" offer — the only other way there
-/// is playing a band out to its last death by hand.</summary>
+/// <summary>The debug inspector's real "Extinguish Band" hook is the quick way to a band's
+/// epitaph and its "Another band comes" offer — the only other way there is playing a band out
+/// to its last death by hand.</summary>
 public sealed class ExtinctionTransitionTests : IClassFixture<GameFixture>
 {
-    // StatusBar packs its buttons against the right edge of its fixed 48px bottom bar; "Inspector"
-    // sits left of the tick readout and the "?" help button. Calibrated off the button rect in the
-    // game's log (Ui/StatusBar.cs).
+    // The status bar packs its buttons against the right edge of its fixed 48px bottom bar;
+    // "Inspector" sits left of the tick readout and the "?" help button. Calibrated off the
+    // button rect in the game's log.
     private const int InspectorButtonX = 863;
     private const int InspectorButtonY = 625;
 
-    // InspectorPanel opens at a fixed Position (16, 16); "Extinguish Band" is the second button
-    // under the one-line "No selection." dump. Calibrated off the panel's button rects in the
-    // game's log (Ui/InspectorPanel.cs).
+    // The inspector panel opens at a fixed position (16, 16); "Extinguish Band" is the second
+    // button under the one-line "No selection." dump. Calibrated off the panel's button rects in
+    // the game's log.
     private const int ExtinguishButtonX = 198;
     private const int ExtinguishButtonY = 123;
 
-    // "Another band comes" is the one line the epitaph's overlay offers (InscriptionOverlay): a
-    // centred word-button at the height of the closing words an epitaph with nobody left to go on
-    // for does not carry. Calibrated off the overlay's button rect in the game's log.
+    // "Another band comes" is the one line the epitaph's overlay offers: a centred word-button at
+    // the height of the closing words an epitaph with nobody left to go on for does not carry.
+    // Calibrated off the overlay's button rect in the game's log.
     private const int AnotherBandComesX = 575;
     private const int AnotherBandComesY = 380;
 

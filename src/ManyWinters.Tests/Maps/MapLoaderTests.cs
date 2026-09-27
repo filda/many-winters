@@ -65,9 +65,8 @@ public class MapLoaderTests
         Assert.Equal(new Position(5, 250), map.CampCenter);
     }
 
-    // The band has a home too (docs/todo/fauna-plan.md, step 1b): every starting person shares
-    // the one camp HomeRange, anchored right on CampCenter, with no drift - a camp does not
-    // wander the way a herd's ground does.
+    // The band has a home too: every starting person shares the one camp HomeRange, anchored
+    // right on CampCenter, with no drift - a camp does not wander the way a herd's ground does.
     [Fact]
     public void LoadDefaultGivesEveryStartingPersonTheSameHomeAtCampCenterWithNoDrift()
     {
@@ -94,9 +93,9 @@ public class MapLoaderTests
         Assert.Equal(map.CampCenter, map.World.People[0].Home!.Anchor);
     }
 
-    // Every id in this game drives per-entity variation off its own seed (see EntityId), so the
-    // camp home's id has to survive "the same map twice" like every other one - even though it is
-    // deliberately not drawn from idRng (see SpawnBand's campHomeIdSeed comment).
+    // Every id in this game drives per-entity variation off its own seed, so the camp home's id
+    // has to survive "the same map twice" like every other one - even though it is deliberately
+    // not drawn from idRng.
     [Fact]
     public void LoadDefaultGivesTheCampsHomeTheSameIdOnEveryNewGame()
     {
@@ -106,9 +105,8 @@ public class MapLoaderTests
         Assert.Equal(first, second);
     }
 
-    // A successor's camp home must never collide with the one before it in the same world
-    // (docs/todo/fauna-plan.md, step 1b) - both live in world.HomeRanges at once, the old one's
-    // graves and huts still standing on it.
+    // A successor's camp home must never collide with the one before it in the same world - both
+    // live in world.HomeRanges at once, the old one's graves and huts still standing on it.
     [Fact]
     public void ASuccessorBandsCampHomeHasADifferentIdFromTheFirstBands()
     {
@@ -553,9 +551,9 @@ public class MapLoaderTests
         var map = LoadDefault();
 
         Assert.Empty(map.World.Animals);
-        // The band's own camp HomeRange (docs/todo/fauna-plan.md, step 1b) exists regardless of
-        // whether any species with a herd was described at all - only the herds themselves are
-        // conditional on the "deer" species existing.
+        // The band's own camp HomeRange exists regardless of whether any species with a herd was
+        // described at all - only the herds themselves are conditional on the "deer" species
+        // existing.
         Assert.Equal(map.World.People[0].Home, Assert.Single(map.World.HomeRanges));
     }
 
@@ -565,8 +563,8 @@ public class MapLoaderTests
         var map = MapLoader.LoadDefault(TestCatalogs.CreateConfigurationWithDeer());
         var world = map.World;
 
-        // Alongside the herds' own two, the band's own camp HomeRange (step 1b) is in this list
-        // too - excluded below by the same "far enough from camp" check every herd home passes.
+        // Alongside the herds' own two, the band's own camp HomeRange is in this list too -
+        // excluded below by the same "far enough from camp" check every herd home passes.
         var herdHomes = world.HomeRanges.Where(home => !ReferenceEquals(home, world.People[0].Home)).ToList();
         Assert.Equal(2, herdHomes.Count);
 
@@ -580,8 +578,7 @@ public class MapLoaderTests
 
             // MapLoader.SpawnAnimalHerds picks the herd's own centre by grass count nearby
             // (BestHerdCenter), not merely by distance from camp - a herd placed anywhere on open
-            // ground could land somewhere with almost no grass in reach at all
-            // (docs/todo/fauna-plan.md phase 1b, "the shipped map's herds starving").
+            // ground could land somewhere with almost no grass in reach at all.
             var grassNodesInHome = world.Entities.Count(e => e.Kind.Value == "grass" && WorldState.Distance(home.Anchor, e.Position) <= home.Radius);
             Assert.True(grassNodesInHome >= 20, $"expected at least 20 grass nodes within the herd's home, found {grassNodesInHome}.");
         }
@@ -590,8 +587,8 @@ public class MapLoaderTests
     }
 
     // Spawning herds last, off the same idRng, must not shift a single seeded draw the shipped
-    // band or the decoration scatter already made (docs/todo/fauna-plan.md, "Co je stado
-    // konkretne" - the family milestone is brittle to exactly this).
+    // band or the decoration scatter already made - the shipped band's family milestone depends
+    // on this draw order.
     [Fact]
     public void AddingADeerSpeciesDoesNotChangeAnyExistingSpawnPosition()
     {

@@ -68,8 +68,8 @@ public class ItemCatalogTests
         Assert.Equal(1f, catalog.InsulationFor(WarmClothing));
     }
 
-    // docs/todo/fauna-plan.md phase 4c: how long an item lasts comes from its material, whatever
-    // it was made into - the same rule InsulationFor and WeightFor follow.
+    // How long an item lasts comes from its material, whatever it was made into - the same rule
+    // InsulationFor and WeightFor follow.
     [Fact]
     public void ShelfLifeForComesFromTheMaterialRatherThanTheItem()
     {
@@ -343,8 +343,8 @@ public class ItemCatalogTests
             5);
     }
 
-    // The exact content shipped for the carcass items (docs/todo/fauna-plan.md, phase 3):
-    // meat/hide/bone/sinew, each mirroring what ButcherCommand and the diet system expect.
+    // The exact content shipped for the carcass items: meat/hide/bone/sinew, each mirroring what
+    // ButcherCommand and the diet system expect.
     [Fact]
     public void MeatIsALumpOfMeatThatRestoresHunger()
     {
@@ -417,8 +417,7 @@ public class ItemCatalogTests
     }
 
     // A transition with no "material" carries the item's own material over unchanged - twist and
-    // knap's existing shape, and every FormTransition before this one (docs/todo/fauna-plan.md
-    // phase 4d).
+    // knap's existing shape, and every FormTransition before this one.
     [Fact]
     public void ATransitionWithNoMaterialInJsonCarriesTheItemsOwnMaterialOver()
     {
@@ -431,7 +430,7 @@ public class ItemCatalogTests
     }
 
     // A transition that does name one is curing's own fifth fact: the verb changes the
-    // substance, and this is where content says what into (docs/todo/fauna-plan.md phase 4d).
+    // substance, and this is where content says what into.
     [Fact]
     public void ATransitionWithAMaterialInJsonNamesItsTargetMaterial()
     {
@@ -443,8 +442,8 @@ public class ItemCatalogTests
         Assert.Equal(Hide, transition.Material);
     }
 
-    // What curing asks for (docs/todo/fauna-plan.md phase 4d): the one stock item already
-    // described by exactly this material and this form.
+    // What curing asks for: the one stock item already described by exactly this material and
+    // this form.
     [Fact]
     public void KindForFindsTheItemMatchingAMaterialAndForm()
     {

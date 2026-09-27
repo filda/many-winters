@@ -438,10 +438,9 @@ public class WorldStateTests
         Assert.IsType<IdleTask>(person.Tasks.Current);
     }
 
-    // HasEdibleFood asks the diet about a pack's contents, meat included (docs/todo/fauna-plan.md,
-    // phase 3): a hungry person already holding a haul of meat is not sent off after some other
-    // food source, the same forgiveness AdvanceLetsAPersonWalkAwayFromAPileOfFoodOnceFed gives
-    // somebody who has simply eaten already. A pile, not a resource node: a node the person
+    // HasEdibleFood asks the diet about a pack's contents, meat included: a hungry person already
+    // holding a haul of meat is not sent off after some other food source, the same forgiveness
+    // given to somebody who has already eaten. A pile, not a resource node: a node the person
     // could forage from would be sought as ordinary idle work regardless of hunger, which would
     // confound the very thing this proves.
     [Fact]
@@ -508,9 +507,9 @@ public class WorldStateTests
         Assert.True(person.Inventory.Get(TestCatalogs.AppleItem) < 50);
     }
 
-    // Meat is food like any other once a species digests it (docs/todo/fauna-plan.md, phase 3):
-    // a starving person with a raw carcass haul in their pack eats it the same way TryAutoEat
-    // already handles apples, with no cooking step required.
+    // Meat is food like any other once a species digests it: a starving person with a raw
+    // carcass haul in their pack eats it the same way TryAutoEat already handles apples, with
+    // no cooking step required.
     [Fact]
     public void AStarvingPersonWithMeatInThePackEatsItAutonomously()
     {
@@ -1074,8 +1073,8 @@ public class WorldStateTests
     // A short calendar, so old age arrives after a handful of ticks instead of 3000.
     private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2 };
 
-    // A short-lived human, replacing what ShortLifeRules used to set via
-    // SimulationRules.MaxLifespanYears before it moved onto the species' own LifeCycle (step 0c).
+    // A short-lived human: MaxLifespanYears lives on the species' own LifeCycle, not
+    // SimulationRules (step 0c).
     private static readonly LifeCycle ShortLifeCycle = TestCatalogs.HumanLifeCycle with { MaxLifespanYears = 3 };
 
     private static WorldState CreateWorld(SimulationRules rules) =>
@@ -1106,9 +1105,9 @@ public class WorldStateTests
         Assert.Equal(lifespanTicks, person.DeathTick);
     }
 
-    // Old age is read off the person's own species' LifeCycle (WorldState.LifeCycleOf), not a
-    // fixed number: two worlds built with different human lifespans kill their people at
-    // different ticks (docs/todo/fauna-plan.md, step 0c).
+    // Old age is read off the person's species' LifeCycle (WorldState.LifeCycleOf), not a fixed
+    // number: two worlds built with different human lifespans kill their people at different
+    // ticks.
     [Fact]
     public void AdvanceReadsTheMaximumLifespanOffTheCreaturesOwnSpeciesRatherThanAFixedNumber()
     {

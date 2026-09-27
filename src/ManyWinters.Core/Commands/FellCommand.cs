@@ -3,14 +3,13 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Destroys a fellable resource node (a fruit tree, say), leaving behind one or more one-time
-// piles of whatever ResourceDefinition.FellLeaves says (typically wood) that still have to be
-// gathered - unlike GatherCommand, which takes from the node repeatedly and leaves it standing.
+// Destroys a fellable resource node (a fruit tree), leaving behind one or more one-time piles of
+// whatever the resource's own definition names as leftovers (typically wood) that still have to
+// be gathered - unlike GatherCommand, which takes from the node repeatedly and leaves it standing.
 public sealed record FellCommand(Person Person, Entity Node) : ICommand
 {
-    // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in
-    // its own spot - lands from where the tree stood, so the two don't sit exactly on top of
-    // each other.
+    // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in its
+    // spot - lands from where the tree stood, so the two don't sit exactly on top of each other.
     private const double SubsequentLeftoverDistance = 1.4;
 
     public ActionBlocker Blocker(WorldState world)
@@ -73,8 +72,8 @@ public sealed record FellCommand(Person Person, Entity Node) : ICommand
         }
     }
 
-    // Deterministic from the node's own id (see IdGeneration.SeedOf) and the leftover's index, not
-    // a shared mutable Random - the same felled tree drops its log in the same spot on replay.
+    // Deterministic from the node's id and the leftover's index, not a shared mutable Random -
+    // the same felled tree drops its log in the same spot on replay.
     private static Position OffsetPosition(Position origin, int nodeSeed, int index)
     {
         var rng = new Random(SeedHash.Avalanche(unchecked((uint)nodeSeed + ((uint)index * 2654435761u))));

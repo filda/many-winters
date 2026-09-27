@@ -6,16 +6,15 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
-// HuntTask only ever walks (docs/todo/fauna-plan.md, phase 3) - the throw itself is
-// WorldState.Advance's call, gated on range and NextAttemptTick, tested at that level
-// (WorldStateHuntingIdleTests). Closes in on *moving* prey with a fresh MoveTask every tick, the
-// same pattern FollowTask uses for a target that does not sit still.
+// HuntTask only ever walks - the throw itself is WorldState.Advance's call, gated on range and
+// NextAttemptTick, tested at that level. Closes in on *moving* prey with a fresh MoveTask every
+// tick, the same pattern FollowTask uses for a target that does not sit still.
 public class HuntTaskTests
 {
     private const float Range = 10f;
 
     // Most tests here are about the walk itself, not about which speed installed it, so they all
-    // share the idle AI's own unhurried pace (WorldState.DecideIdleTask) unless the test says
+    // share the idle AI's unhurried pace (WorldState.DecideIdleTask) unless the test says
     // otherwise.
     private const float IdleSpeed = GatherTask.SpeedPerTick;
 
@@ -56,11 +55,10 @@ public class HuntTaskTests
         Assert.Equal(IdleSpeed, task.SpeedPerTick);
     }
 
-    // The bug this constructor parameter fixes (docs/todo/fauna-plan.md, phase 3, "rozhodnuto
-    // 2026-09-27"): a player-directed hunt (TargetActions, MoveCommand.SpeedPerTick) has to close
-    // the gap faster than the autonomous idle AI's own unhurried pace (WorldState.DecideIdleTask,
-    // GatherTask.SpeedPerTick) - both used to hard-code the slower one regardless of who sent the
-    // hunter.
+    // The bug this constructor parameter fixes: a player-directed hunt (TargetActions,
+    // MoveCommand.SpeedPerTick) has to close the gap faster than the autonomous idle AI's
+    // unhurried pace (WorldState.DecideIdleTask, GatherTask.SpeedPerTick) - both used to
+    // hard-code the slower one regardless of who sent the hunter.
     [Fact]
     public void ADirectedHuntClosesTheDistanceFasterThanAnIdleOne()
     {
@@ -115,7 +113,7 @@ public class HuntTaskTests
     }
 
     // The whole reason this re-aims every tick instead of a single computed leg, unlike
-    // GatherTask's own resource that never moves.
+    // GatherTask's resource that never moves.
     [Fact]
     public void FollowsPreyThatIsStillMoving()
     {
@@ -123,10 +121,10 @@ public class HuntTaskTests
         var task = new HuntTask(prey, Range, IdleSpeed);
         var hunter = NewHunter(new Position(0, 0));
 
-        // Slower than HuntTask's own walking speed (0.3/tick), the same "the target itself
-        // moves on, more slowly than the follower" case FollowTaskTests covers - a target that
-        // outran the hunter's approach speed would never be caught, which is a fact about the
-        // chase and not what this test is about.
+        // Slower than HuntTask's walking speed (0.3/tick): a target moving more slowly than the
+        // follower still eventually gets caught. A target that outran the hunter's approach
+        // speed would never be caught, which is a fact about the chase and not what this test
+        // is about.
         for (var i = 0; i < 400; i++)
         {
             prey.Position = new Position(prey.Position.X + 0.1, 0);

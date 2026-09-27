@@ -4,8 +4,8 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Commands;
 
 // A child born to two people standing together. A newborn has no skills, techniques or items:
-// knowledge is never inherited, only taught (see TeachCommand), so a child of two expert
-// foragers starts as ignorant as any other.
+// knowledge is never inherited, only taught, so a child of two expert foragers starts as
+// ignorant as any other.
 public sealed record BirthCommand(string Name, Person Mother, Person Father) : ICommand
 {
     // Every precondition lives here, so the player's button and WorldState's autonomous pass
@@ -48,8 +48,7 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
             return ActionBlocker.TooFar;
         }
 
-        // One at a time: a mother already nursing cannot feed a second newborn
-        // (see WorldState.NursingInfantOf).
+        // One at a time: a mother already nursing cannot feed a second newborn.
         return world.NursingInfantOf(Mother) is null ? ActionBlocker.None : ActionBlocker.AlreadyNursing;
     }
 
@@ -60,7 +59,7 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
             return;
         }
 
-        // Drawn before the Person exists because the sex is drawn from the id (see Creature.SexOf).
+        // Drawn before the Person exists because the sex is drawn from the id.
         var id = CreatureId.New();
 
         // Born where its mother is; WorldState.ResolveCollisions untangles the overlap the same
@@ -76,16 +75,16 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
             Father = Father,
             MaxHunger = world.Configuration.Rules.MaxHungerFor(id),
             // Born into its mother's band, so it works things out at that band's rate rather
-            // than the player band's (see Person.Curiosity).
+            // than the player band's.
             Curiosity = Mother.Curiosity,
-            // Same camp as its mother (see Person.Home) - a newborn is not a fresh band.
+            // Same camp as its mother - a newborn is not a fresh band.
             Home = Mother.Home,
         };
 
         world.AddPerson(child);
 
         // Close to its parents from the first day rather than earning it by standing near them.
-        // Only the parents: siblings are not covered yet (docs/todo/todo.md).
+        // Only the parents: siblings are not covered yet.
         var startingAffection = world.Configuration.Rules.StartingAffectionWithParents;
         world.Affections.Set(child.Id, Mother.Id, startingAffection);
         world.Affections.Set(child.Id, Father.Id, startingAffection);

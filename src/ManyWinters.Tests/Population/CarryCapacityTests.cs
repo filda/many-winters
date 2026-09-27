@@ -4,8 +4,8 @@ namespace ManyWinters.Tests.Population;
 
 public class CarryCapacityTests
 {
-    // The same ages LifeCycleTests' Standard uses (docs/todo/fauna-plan.md, step 0c): the two
-    // curves turn at the same points, on purpose (see CarryCapacity's own doc comment).
+    // The same ages the LifeCycle boundary tests use: the two curves turn at the same points,
+    // on purpose.
     private static readonly LifeCycle Standard = new(WeaningAgeYears: 1, AdultAgeYears: 4, ElderAgeYears: 7, MaxLifespanYears: 10);
 
     [Fact]

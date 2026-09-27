@@ -14,9 +14,8 @@ public sealed record SimulationRules
 
     public long TicksPerSeason { get; init; } = 75;
 
-    // Ticks after death (Creature.DeathTick) before a corpse's perishable contents rot away
-    // (WorldState.IsDecayed, docs/todo/fauna-plan.md phase 4) - two seasons, so a band that
-    // cannot reach a carcass in a season still has one more to try before its meat is gone.
+    // Ticks after death before a corpse's perishable contents rot away - two seasons, so a band
+    // that cannot reach a carcass in a season still has one more to try before its meat is gone.
     public long CorpseDecayTicks { get; init; } = 150;
 
     // Ticks after a corpse decays before its bones themselves are gone (a dead, unburied Animal
@@ -120,8 +119,8 @@ public sealed record SimulationRules
     // the pair is processed first.
     public float NursingHungerMultiplier { get; } = 1.5f;
 
-    // Metres per tick an infant follows its mother at (FollowTask): faster than her idle wander,
-    // slower than a purposeful walk, so it trails behind but never loses her.
+    // Metres per tick an infant follows its mother at: faster than her idle wander, slower than
+    // a purposeful walk, so it trails behind but never loses her.
     public float InfantFollowSpeedPerTick { get; } = 0.25f;
 
     // Ceiling on what two people are worth to each other; without one a bond is just a count of
@@ -170,12 +169,12 @@ public sealed record SimulationRules
     public float CasualTeachingChancePerTickForCriticalSkills { get; } = 0.3f;
 
     // Metres within which a person can act on a thing (a node, a building, another person);
-    // every proximity check goes through WorldState.IsWithinReach.
+    // every proximity check goes through this.
     public float MaxInteractionDistance { get; init; } = 2f;
 
-    // Metres within which a person can take from a ground pile (EatFromPileCommand,
-    // PickUpItemCommand). Tighter than MaxInteractionDistance: unlike a tree or a building, a
-    // pile sits underfoot, and the shared reach read as picking it up from too far away.
+    // Metres within which a person can take from a ground pile. Tighter than
+    // MaxInteractionDistance: unlike a tree or a building, a pile sits underfoot, and the shared
+    // reach read as picking it up from too far away.
     public float PileReachDistance { get; } = 1f;
 
     // Cap on how far one tick of collision untangling may move a person, in metres, however
@@ -183,9 +182,8 @@ public sealed record SimulationRules
     // a hijacked walk order; someone deeply stuck clears over a few ticks instead.
     public float MaxCollisionPushPerTick { get; } = 1f;
 
-    // A throw's reach (HuntCommand, docs/todo/fauna-plan.md phase 3) - deliberately beyond a
-    // deer's own FleeDistance (SpeciesDefinition.FleeDefinition, 8m in the shipped deer), so a
-    // hunter who closes the gap before being noticed can still get a throw off.
+    // A throw's reach - deliberately beyond a deer's own FleeDistance (8m in the shipped deer),
+    // so a hunter who closes the gap before being noticed can still get a throw off.
     public float HuntingRange { get; } = 10f;
 
     // A thrown stone in bare hands: nearly hopeless.
@@ -193,15 +191,14 @@ public sealed record SimulationRules
 
     // Scales Inventory.BestChoppingScore into a hit chance on top of the base above - a sharp
     // stone hafted on a stick is a spear as much as an axe until form recognition tells them
-    // apart (docs/materials-and-crafting-architecture.md section 8; a piercing-specific score is
-    // noted as future work in docs/todo/fauna-plan.md phase 5). Picked so the shipped axe-grade
-    // sharp hafted tool - a knapped wedge lashed to a stick, both practised to mastery - lands
-    // around 0.35 per attempt (see HuntCommandTests for the exact arithmetic): that tool scores
-    // ChoppingScoreOf ~= EdgeSharpness(1) * Hardness(1) * sqrt(weight 2) * (1 + HaftLeverage(1) *
-    // JointStrength(0.5)) ~= 2.121, so (0.35 - 0.05) / 2.121 ~= 0.14.
+    // apart (docs/materials-and-crafting-architecture.md section 8). Picked so the shipped
+    // axe-grade sharp hafted tool - a knapped wedge lashed to a stick, both practised to mastery -
+    // lands around 0.35 per attempt: that tool scores ChoppingScoreOf ~= EdgeSharpness(1) *
+    // Hardness(1) * sqrt(weight 2) * (1 + HaftLeverage(1) * JointStrength(0.5)) ~= 2.121, so
+    // (0.35 - 0.05) / 2.121 ~= 0.14.
     public float HuntingHitChancePerToolScore { get; init; } = 0.14f;
 
-    // efficient_hunting's bonus (HuntCommand): applied to the whole chance rather than added
+    // The bonus from knowing efficient hunting: applied to the whole chance rather than added
     // flat, so a practised hunter is proportionally better with whatever they carry, bare hands
     // included.
     public float HuntingEfficientMultiplier { get; init; } = 1.5f;

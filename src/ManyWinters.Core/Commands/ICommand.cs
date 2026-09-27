@@ -8,6 +8,6 @@ public interface ICommand
 
     // Why this cannot run right now, or None. Execute asks it first, so a precondition is
     // written in exactly one place and the UI can ask the same question before offering the
-    // action at all (see ActionBlocker).
+    // action at all.
     ActionBlocker Blocker(WorldState world);
 }

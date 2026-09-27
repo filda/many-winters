@@ -5,9 +5,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// Phase 2's "útěk" milestone (docs/todo/fauna-plan.md, "Útěk dřív než lov"): a species with
-// SpeciesDefinition.Flee (deer) breaks off whatever it is doing the moment a living person comes
-// within FleeDistance, and a species with none (a person) never does.
+// A species with SpeciesDefinition.Flee (deer) breaks off whatever it is doing the moment a
+// living person comes within FleeDistance, and a species with none (a person) never does.
 public class AnimalFleeTests
 {
     private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
@@ -35,8 +34,8 @@ public class AnimalFleeTests
     {
         var world = TestCatalogs.CreateWorldWithDeer();
         var position = new Position(0, 0);
-        // Near-endless, like DeerHerdMilestoneTests.ScatterGrass - a small node would be stripped
-        // to zero by the deer's very first harvest and only slowly regrow (GatherCommand's harvest
+        // Near-endless: a small node would be stripped to zero by the deer's very first harvest
+        // and only slowly regrow (GatherCommand's harvest
         // is 20-40 units a tick against a 200-unit node), so sampling a fixed number of ticks later
         // could land on a drained-but-not-yet-regrown moment that has nothing to do with fleeing.
         world.SpawnResourceNode(TestCatalogs.Grass, position, amount: 1_000_000f);
@@ -104,12 +103,12 @@ public class AnimalFleeTests
     public void ACalfResumesNursingAfterFleeingAndReturningToItsMother()
     {
         var world = TestCatalogs.CreateWorldWithDeer();
-        // A small home radius keeps the mother's own idle wander close to the anchor while the
-        // calf runs off well past it, so the calf's own long walk back is not chasing a mother
+        // A small home radius keeps the mother's idle wander close to the anchor while the
+        // calf runs off well past it, so the calf's long walk back is not chasing a mother
         // who may have wandered off just as far in some other direction.
         var home = NewHome(new Position(0, 0), radius: 2f);
         var mother = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0, 0), home, TestCatalogs.AdultAgeTicks, Sex.Female);
-        // At the mother's own nursing reach (2, exactly SimulationRules.MaxInteractionDistance).
+        // At the mother's nursing reach (2, exactly SimulationRules.MaxInteractionDistance).
         var calf = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(2, 0), home, initialAgeTicks: 0, sex: Sex.Male, mother: mother);
         Assert.True(world.IsBeingNursed(calf));
 

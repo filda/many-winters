@@ -12,9 +12,8 @@ public sealed class Inventory
     private readonly Dictionary<ItemKindId, int> _counts = new();
     private readonly List<Assembly> _assemblies = [];
 
-    // FIFO age ledger, kept only for a kind whose material has a shelf life
-    // (ItemCatalog.ShelfLifeFor) - docs/todo/fauna-plan.md phase 4c, "one rule, three places".
-    // A kind with no entries here is either non-perishable or was only ever added through the
+    // FIFO age ledger, kept only for a kind whose material has a shelf life. A kind with no
+    // entries here is either non-perishable or was only ever added through the
     // plain, untimed Add/Remove below (test setup that does not care when something came to be);
     // either way it never expires. The sum of a kind's entries' counts never exceeds
     // _counts[kind] - it can fall short, for stock added without a tick - which is the invariant
@@ -48,10 +47,10 @@ public sealed class Inventory
     // stuff coming into being for real.
     public void Add(ItemKindId kind, int amount) => _counts[kind] = Get(kind) + amount;
 
-    // A thing coming into existence right now - picked, butchered, made (docs/todo/fauna-plan.md
-    // phase 4c). `tick` is when it came to be, not necessarily "this instant": FillCarcass backdates
-    // to the creature's own DeathTick. Enrolls in the age ledger only if `kind`'s material has a
-    // shelf life; a non-perishable kind added this way behaves exactly like the untimed overload.
+    // A thing coming into existence right now - picked, butchered, made. `tick` is when it came
+    // to be, not necessarily "this instant": FillCarcass backdates to the creature's DeathTick.
+    // Enrolls in the age ledger only if `kind`'s material has a shelf life; a non-perishable kind
+    // added this way behaves exactly like the untimed overload.
     public void Add(ItemKindId kind, int amount, long tick, ItemCatalog catalog)
     {
         _counts[kind] = Get(kind) + amount;
@@ -81,10 +80,10 @@ public sealed class Inventory
 
     // The same removal, but reporting which ledger entries (oldest tick first) it actually took -
     // what DropCommand needs to give a ground pile the oldest of the ages it holds, rather than
-    // stamping the pile "now" and quietly refreshing every unit's age (docs/todo/fauna-plan.md
-    // phase 4c: moving something does not change its age, dropping it included). Null means
-    // there was not enough to remove, exactly like Remove's false; an empty (non-null) list means
-    // the removal succeeded but none of it was tracked (non-perishable, or added untimed).
+    // stamping the pile "now" and quietly refreshing every unit's age: moving something does not
+    // change its age, dropping it included. Null means there was not enough to remove, exactly
+    // like Remove's false; an empty (non-null) list means the removal succeeded but none of it
+    // was tracked (non-perishable, or added untimed).
     public IReadOnlyList<(long Tick, int Count)>? RemoveDated(ItemKindId kind, int amount)
     {
         var current = Get(kind);
@@ -108,9 +107,9 @@ public sealed class Inventory
 
     // Removes up to `amount` from the age ledger, oldest tick first, and reports exactly what was
     // taken - the shape a transfer needs to hand the very same entries on to another Inventory
-    // rather than restamping them "now" (docs/todo/fauna-plan.md phase 4c: moving something
-    // between containers does not change its age). Whatever of `amount` the ledger cannot cover
-    // (untimed stock, or a shortfall) is simply not reported - it was never aged to begin with.
+    // rather than restamping them "now": moving something between containers does not change its
+    // age. Whatever of `amount` the ledger cannot cover (untimed stock, or a shortfall) is simply
+    // not reported - it was never aged to begin with.
     private List<(long Tick, int Count)> ConsumeOldest(ItemKindId kind, int amount)
     {
         var taken = new List<(long, int)>();
@@ -218,9 +217,8 @@ public sealed class Inventory
         return Math.Max(0, (int)(remainingCapacity / unitWeight));
     }
 
-    // Moving something that already exists into another Inventory's uncapped room (a store's own
-    // shelf - DepositCommand) - the age-preserving half of the "one rule" (docs/todo/fauna-plan.md
-    // phase 4c): unlike Add, this is never a thing coming into being, so whatever ticks its units
+    // Moving something that already exists into another Inventory's uncapped room (a store's
+    // shelf): unlike Add, this is never a thing coming into being, so whatever ticks its units
     // already carried travel with them rather than being restamped "now".
     public int Transfer(ItemKindId kind, int amount, Inventory destination)
     {
@@ -271,10 +269,10 @@ public sealed class Inventory
         }
     }
 
-    // The once-per-tick spoilage pass (WorldState.Advance, docs/todo/fauna-plan.md phase 4c):
-    // drops every stacked unit and every worked object whose time is up, wherever this Inventory
-    // sits (a pack, a carcass, a store's shelves). Returns what stock was lost, for tests/logging;
-    // a lost assembly is simply gone from Assemblies, the same as RemoveAssembly leaves no trace.
+    // The once-per-tick spoilage pass (WorldState.Advance): drops every stacked unit and every
+    // worked object whose time is up, wherever this Inventory sits (a pack, a carcass, a store's
+    // shelves). Returns what stock was lost, for tests/logging; a lost assembly is simply gone
+    // from Assemblies, the same as RemoveAssembly leaves no trace.
     public IReadOnlyList<(ItemKindId Kind, int Count)> Expire(long currentTick, ItemCatalog catalog)
     {
         var lost = new List<(ItemKindId, int)>();

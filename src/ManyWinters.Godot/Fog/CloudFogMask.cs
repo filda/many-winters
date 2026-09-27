@@ -47,7 +47,7 @@ public sealed partial class CloudFogMask : SubViewport
         World3D = mainCamera.GetWorld3D();
 
         // Layer 1 (default - terrain, trees, people) for real occlusion, plus the proxies;
-        // VisibleCloudLayerBit is deliberately left out (see the class comment).
+        // VisibleCloudLayerBit is deliberately left out.
         _maskCamera = new Camera3D { CullMask = 1 | CloudLayerBit, Current = true };
         AddChild(_maskCamera);
 

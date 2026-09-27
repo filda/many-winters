@@ -2,7 +2,7 @@ namespace ManyWinters.Core.Commands;
 
 // Why a command cannot run right now, asked before it runs. Every command states its
 // preconditions here once; Execute asks first and returns, so the player's menu and the world
-// can never disagree about what is possible (docs/todo/todo.md).
+// can never disagree about what is possible.
 //
 // A value, not a sentence: how a refusal is worded, and whether it is shown at all, belongs to
 // the presentation layer. It draws the line the player feels - a knowledge blocker hides the
@@ -38,9 +38,8 @@ public enum ActionBlocker
     AlreadyNursing,
 
     // Knowledge: the actor has never been taught this. Always the last thing a command checks,
-    // so it means "nothing else is wrong, they simply do not know how" - which is what lets the
-    // player's menu forgive it for the actions where directing a person is teaching them
-    // (see ActionOffer.For).
+    // so it means "nothing else is wrong, they simply do not know how" - which lets the player's
+    // menu forgive it for actions where directing a person is teaching them.
     NotLearned,
 
     // Teaching only, and not the same as NotLearned: the teacher knows how to teach, just not

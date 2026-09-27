@@ -5,9 +5,9 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// The player's view of whoever is selected, when it is an animal rather than a person
-// (docs/todo/fauna-plan.md, phase 2b) - the same idea as SelectionCardTests, narrowed to what
-// AnimalCard actually shows: no actions, no pack, no knowledge.
+// The player's view of whoever is selected, when it is an animal rather than a person - the same
+// idea as a person's own selection card, narrowed to what AnimalCard actually shows: no actions,
+// no pack, no knowledge.
 public class AnimalCardTests
 {
     [Fact]
@@ -38,8 +38,8 @@ public class AnimalCardTests
         Assert.Equal("deceased", AnimalCard.For(world, deer).Beside);
     }
 
-    // As SelectionCard's own wording for a person (docs/todo/fauna-plan.md phase 4b): once
-    // WorldState.IsDecayed there is nothing left to call it but its bones.
+    // The same wording a person's own card uses: once WorldState.IsDecayed there is nothing left
+    // to call it but its bones.
     [Fact]
     public void TheDecayedSayBonesInsteadOfDeceased()
     {

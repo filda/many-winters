@@ -14,8 +14,8 @@ internal static class BillboardUv
     // counts, which is what keeps the plane FixedY under camera pitch. rayOrigin/rayDirection
     // are the pick ray as the engine cast it - under an orthographic projection that is not
     // "camera position toward the hit". width/height are the rendered size in world metres,
-    // already scaled (see RenderedSize). Null when the ray misses: camera looking straight
-    // down, ray parallel to the plane, zero size, or the hit outside the rectangle.
+    // already scaled. Null when the ray misses: camera looking straight down, ray parallel to
+    // the plane, zero size, or the hit outside the rectangle.
     internal static Vector2? At(
         Vector3 cameraBackward,
         Vector3 rayOrigin,

@@ -7,10 +7,10 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Commands;
 
-// The third reductive verb (docs/todo/fauna-plan.md phase 4d): curing turns rawhide into hide.
-// Twist and Knap are already exhaustively tested against the machinery every reductive verb
-// shares (ReductiveWork, WorkAttempt); this covers what is Tan's own - the material changing
-// underneath the shape - and the blocker ordering the pattern demands.
+// The third reductive verb: curing turns rawhide into hide. Twist and Knap are already
+// exhaustively tested against the machinery every reductive verb shares (ReductiveWork,
+// WorkAttempt); this covers what is Tan's own - the material changing underneath the shape -
+// and the blocker ordering the pattern demands.
 public class TanCommandTests
 {
     private static Person Tanner(WorldState world, int rawhide = 1)
@@ -48,7 +48,7 @@ public class TanCommandTests
 
     // Unlike Twist and Knap, curing exchanges one already-known stock substance for another - it
     // does not fashion a new individual object - so what comes out is a countable "hide", not a
-    // worked Assembly (see ReductiveWork.Execute and ItemCatalog.KindFor).
+    // worked Assembly.
     [Fact]
     public void TanningTurnsRawhideIntoHide()
     {
@@ -92,7 +92,7 @@ public class TanCommandTests
 
     // The transition says what curing would turn a thing into; the material says whether it can
     // be cured at all - a substance with no shelf life will not cure however the content is
-    // authored (the twist/knap pattern's SomethingTheMaterialItselfWillNotTakeIsBlockedAs...).
+    // authored, the same rule Twist and Knap hold to for their own verbs.
     [Fact]
     public void SomethingWithNoShelfLifeIsBlockedAsNotCurable()
     {

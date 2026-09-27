@@ -4,8 +4,8 @@ namespace ManyWinters.Tests.Population;
 
 public class LifeCycleTests
 {
-    // The same boundaries LifeStages used to hardcode (docs/todo/fauna-plan.md, step 0c),
-    // now one instance among possibly many species.
+    // The same boundaries LifeStages used to hardcode, now one instance among possibly many
+    // species.
     private static readonly LifeCycle Standard = new(WeaningAgeYears: 1, AdultAgeYears: 4, ElderAgeYears: 7, MaxLifespanYears: 10);
 
     [Fact]

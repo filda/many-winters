@@ -12,7 +12,7 @@ public class OrderPlanTests
     private static readonly Position FarAway = new(50, 0);
 
     // An offer carrying its own Pursuit task always installs it, whatever the blocker says about
-    // distance - Hunt and Butcher own the walk themselves (docs/todo/fauna-plan.md, phase 3c).
+    // distance - Hunt and Butcher own the walk themselves.
     [Fact]
     public void AnOfferWithAPursuitTaskInstallsIt()
     {

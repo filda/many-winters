@@ -36,11 +36,10 @@ public sealed class Entity
     // entity once it reaches zero.
     public int? StaticAmount { get; set; }
 
-    // When a StaticAmount pile came to be, for the spoilage pass (WorldState.Advance,
-    // docs/todo/fauna-plan.md phase 4c) - one tick for the whole pile rather than a ledger like
-    // Inventory's, since a pile is one drop, not a pack built up over time. Set by DropCommand;
-    // null for anything that isn't a stock pile (a Made thing ages by its own Assembly.MadeTick
-    // instead, and a Growable resource never spoils - it grows).
+    // When a StaticAmount pile came to be, for the spoilage pass - one tick for the whole pile
+    // rather than a ledger like Inventory's, since a pile is one drop, not a pack built up over
+    // time. Set when the pile is dropped; null for anything that isn't a stock pile (a Made thing
+    // ages by its own Assembly.MadeTick instead, and a Growable resource never spoils - it grows).
     public long? DroppedTick { get; init; }
 
     // One worked object lying where somebody put it down - a cord, an axe. Null for a pile of

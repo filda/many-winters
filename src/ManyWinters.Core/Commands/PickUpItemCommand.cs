@@ -34,8 +34,8 @@ public sealed record PickUpItemCommand(Person Person, Entity Pile) : ICommand
 
         if (Pile.Made is { } made)
         {
-            // Whole or not at all, as off a body (see LootCommand): what will not fit stays
-            // where it lies rather than being half-taken.
+            // Whole or not at all, as off a body: what will not fit stays where it lies rather
+            // than being half-taken.
             if (Person.Inventory.AddAssemblyIfItFits(made, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person)))
             {
                 world.RemoveEntity(Pile);
@@ -46,13 +46,11 @@ public sealed record PickUpItemCommand(Person Person, Entity Pile) : ICommand
 
         var item = new ItemKindId(Pile.Kind.Value);
 
-        // Only what fits comes off the pile; the rest stays on the ground (see
-        // LootCommand.Execute, the same shape for a corpse's inventory). Carries the pile's own
-        // age into the pack rather than restamping it "now" (docs/todo/fauna-plan.md phase 4c).
-        // The fallback is a real, reachable path, not defensive dead code: SaveGameService.Load
-        // does not reject an older save by Version, and a pile saved before DroppedTick existed
-        // deserializes with it null (same nullable-default backward compatibility every other
-        // field added since version 1 uses) - such a pile is read as "just found", the same
+        // Only what fits comes off the pile; the rest stays on the ground - the same shape
+        // LootCommand uses for a corpse's inventory. Carries the pile's age into the pack rather
+        // than restamping it "now". The fallback is a real, reachable path, not defensive dead
+        // code: an older save does not reject by Version, and a pile saved before DroppedTick
+        // existed deserializes with it null - such a pile is read as "just found", the same
         // forgiveness an untimed Add gives stock nobody ever dated.
         var taken = Person.Inventory.AddUpToCapacity(
             item,

@@ -61,8 +61,8 @@ public class BirthCommandTests
         Assert.Equal(mother.Position, world.People[^1].Position);
     }
 
-    // A newborn is not a fresh band (docs/todo/fauna-plan.md, step 1b): it wanders around the
-    // same camp its mother does, not around wherever it happens to be born.
+    // A newborn is not a fresh band: it wanders around the same camp its mother does, not around
+    // wherever it happens to be born.
     [Fact]
     public void TheChildInheritsItsMothersHome()
     {

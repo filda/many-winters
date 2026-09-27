@@ -5,17 +5,17 @@ namespace ManyWinters.Core.Commands;
 
 // Putting down anything a person is carrying. One command for both tiers, because putting
 // something down is one act: what differs is only what lands, and that is the difference
-// between the tiers rather than between two verbs (see CarriedThing, Inventory).
+// between the tiers rather than between two verbs.
 //
 // A stack lands as a pile with a count on it; a made thing lands as itself, since it has no
-// count and rounding it into one is what the two tiers exist to avoid (see Entity.Made).
+// count and rounding it into one is what the two tiers exist to avoid.
 public sealed record DropCommand(Person Person, CarriedThing What) : ICommand
 {
     // What a made thing on the ground is called, as far as the map is concerned - every one of
-    // them shares it, because what a thing *is* lives in its shape (AssemblyPattern) and what
-    // it's *called* lives in the band's own words (Vocabulary), neither of which an entity kind
-    // is the right place for. Art will be chosen from the shape, not from this, once there is
-    // art to choose (docs/sprite-pipeline-architecture.md).
+    // them shares it, because what a thing *is* lives in its shape and what it's *called* lives
+    // in the band's words, neither of which an entity kind is the right place for. Art will be
+    // chosen from the shape, not from this, once there is art to choose
+    // (docs/sprite-pipeline-architecture.md).
     public static readonly EntityKindId MadeThingKind = new("made_thing");
 
     public ActionBlocker Blocker(WorldState world)
@@ -48,11 +48,11 @@ public sealed record DropCommand(Person Person, CarriedThing What) : ICommand
         switch (What)
         {
             case CarriedThing.Stock stock:
-                // The pile's clock is the OLDEST of the units going into it, not "now"
-                // (docs/todo/fauna-plan.md phase 4c): a pile is one tick for the whole drop, but
-                // stamping it fresh would refresh every unit's age and let dropping-then-picking-
-                // up launder a nearly-spoiled stack back to brand new. Null (no ledger entries at
-                // all - non-perishable, or added untimed) means it does not matter.
+                // The pile's clock is the OLDEST of the units going into it, not "now": a pile is
+                // one tick for the whole drop, but stamping it fresh would refresh every unit's
+                // age and let dropping-then-picking-up launder a nearly-spoiled stack back to
+                // brand new. Null (no ledger entries - non-perishable, or added untimed) means it
+                // does not matter.
                 var removed = Person.Inventory.RemoveDated(stock.Kind, stock.Amount)!;
                 return new Entity
                 {

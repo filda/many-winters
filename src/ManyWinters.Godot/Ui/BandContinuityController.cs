@@ -30,7 +30,7 @@ internal sealed class BandContinuityController
     private EndingAnnouncements _endingAnnouncements = new();
 
     // Captured the one moment BandArrival.Of really means "just arrived"; read again later only
-    // for its live population counts (see Main.TogglePause).
+    // for its live population counts.
     public long ArrivalTick { get; private set; }
 
     public Position CampCenter { get; private set; }
@@ -72,9 +72,8 @@ internal sealed class BandContinuityController
         ShowInscription(Prologue.Write(arrival), offerAnotherBand: false);
     }
 
-    // The fate is read off the world every tick and shown the first tick it changes (see
-    // EndingAnnouncements): once when the last man or woman dies, once more when the last
-    // person does.
+    // The fate is read off the world every tick and shown only the first tick it changes: once
+    // when the last man or woman dies, once more when the last person does.
     public void AnnounceEndingIfAny()
     {
         if (!_endingAnnouncements.ShouldAnnounce(BandEnding.FateOf(_world.People)))
@@ -87,8 +86,8 @@ internal sealed class BandContinuityController
             var nobodyIsLeft = ending.Fate == BandFate.Ended;
 
             // The roster and the selection are about the dead, and the world under this epitaph
-            // waits for a successor band: put the old band's windows away now, the way that
-            // band's arrival would have (StartAnotherBand), not only then.
+            // waits for a successor band: put the old band's windows away now, the way a new
+            // band's arrival would, not only then.
             if (nobodyIsLeft)
             {
                 CloseBandWindows();
@@ -129,8 +128,8 @@ internal sealed class BandContinuityController
         // Brief pre-roll so the new band is not standing still behind the prologue.
         _world.Advance(IdleTask.MaxPauseTicks + 1);
 
-        // SimulationLoop.Update is blocked while the inscription is up, so refresh the fog here
-        // rather than waiting for it.
+        // The game loop is blocked while the inscription is up, so refresh the fog here rather
+        // than waiting for it.
         _presenter.RefreshExploration(_cameraRig.RigGlobalPosition, _cameraRig.ViewRadius);
         _fogOfWar.Refresh();
         _groundClouds.Refresh();
@@ -152,9 +151,8 @@ internal sealed class BandContinuityController
         _workshop.Close();
     }
 
-    // Every inscription stops the clock until dismissed (see SimulationLoop.Update); its title
-    // goes up on the overlay and the whole of it into the chronicle, where it stays for the
-    // session.
+    // Every inscription stops the clock until dismissed; its title goes up on the overlay and
+    // the whole of it into the chronicle, where it stays for the session.
     private void ShowInscription(Inscription inscription, bool offerAnotherBand)
     {
         Record(inscription);

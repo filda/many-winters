@@ -5,21 +5,20 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Taking apart a dead carcass, in the exact pattern of GatherCommand (docs/todo/fauna-plan.md,
-// phase 3, "Rozhodnutí předem" item 4): a skill with a base technique that must be taught before
-// anything can be taken at all, and an efficient one earned through practice that gets more out
-// of the same source - here, more of the carcass rather than more per gather. Butcher is always
-// a Person: an animal never butchers anything (no species grants basic_butchering innately).
+// Taking apart a dead carcass, in the same pattern as GatherCommand: a skill with a base
+// technique that must be taught before anything can be taken at all, and an efficient one earned
+// through practice that gets more out of the same source - here, more of the carcass rather than
+// more per gather. Butcher is always a Person: no species grants basic_butchering innately, so an
+// animal never butchers anything.
 public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
 {
     public static readonly SkillTypeId Skill = new("butchering");
 
     // Public: HuntCommand and WorldState.DecideIdleTask both ask "does this carcass hold meat"
-    // (docs/todo/fauna-plan.md phase 3) without needing a second, private copy of the id.
+    // without needing a second, private copy of the id.
     public static readonly ItemKindId Meat = new("meat");
-    // Raw off the animal, not the tanned hide warm_clothing is made from (docs/todo/fauna-plan.md
-    // phase 4c: "kůže je perishable jen surová") - TanCommand (phase 4d) will turn one into the
-    // other.
+    // Raw off the animal, not the tanned hide warm_clothing is made from - only rawhide spoils;
+    // TanCommand turns one into the other.
     private static readonly ItemKindId Rawhide = new("rawhide");
     private static readonly ItemKindId Sinew = new("sinew");
     private static readonly ItemKindId Bone = new("bone");
@@ -27,7 +26,7 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
     private const float SkillGainPerButchering = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
+    // Stated in tries, not as a level: the practice curve is not linear.
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     public ActionBlocker Blocker(WorldState world)
@@ -49,9 +48,8 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
             return ActionBlocker.NothingLeft;
         }
 
-        // A carcass lies on the ground like a pile, not a node or a building - the tighter reach
-        // (EatFromPileCommand, LootCommand does not apply here since a corpse without hands is
-        // never the actor).
+        // A carcass lies on the ground like a pile, not a node or a building, so it uses the
+        // same tighter reach - a corpse without hands is never the one acting.
         if (WorldState.Distance(Butcher.Position, Carcass.Position) > world.Configuration.Rules.PileReachDistance)
         {
             return ActionBlocker.TooFar;
@@ -63,9 +61,8 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
             return ActionBlocker.InventoryFull;
         }
 
-        // Never self-taught (see SkillDefinition.BaseTechnique): a person who was never shown
-        // how to butcher takes nothing off a dead deer, however hungry they are. Asked last, like
-        // every knowledge gate (see ActionBlocker.NotLearned).
+        // Never self-taught: a person who was never shown how to butcher takes nothing off a
+        // dead deer, however hungry they are. Asked last, like every knowledge gate.
         var skillDefinition = world.Configuration.SkillCatalog.Get(Skill);
         return Butcher.KnownTechniques.Contains(skillDefinition.BaseTechnique)
             ? ActionBlocker.None
@@ -91,7 +88,7 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
             }
 
             // A transfer, not a fresh Add: what was already rotting in the carcass keeps rotting
-            // on the same clock in the butcher's pack (docs/todo/fauna-plan.md phase 4c).
+            // on the same clock in the butcher's pack.
             Carcass.Inventory.TransferUpToCapacity(item, available, Butcher.Inventory, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Butcher));
         }
 
@@ -111,9 +108,8 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
             && butcher.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(butcher)));
 
     // Meat and bone come off any carcass a taught butcher touches; rawhide and sinew are worth
-    // ruining in untrained hands, so only efficient_butchering's practiced grip takes them
-    // (docs/todo/fauna-plan.md: "beginner ruins them - this is what the efficient technique
-    // buys").
+    // ruining in untrained hands, so only efficient_butchering's practiced grip takes them - a
+    // beginner ruins them, which is what the efficient technique buys.
     private static IReadOnlyList<ItemKindId> ItemsInOrder(bool hasEfficientTechnique) =>
         hasEfficientTechnique ? [Meat, Rawhide, Sinew, Bone] : [Meat, Bone];
 }

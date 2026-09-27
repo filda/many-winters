@@ -26,7 +26,7 @@ public static class SkySetup
             Environment = new GodotEnvironment
             {
                 BackgroundMode = GodotEnvironment.BGMode.Sky,
-                // Small: with ambient and reflections off (below) nothing samples the radiance cubemap.
+                // Small: with ambient and reflections off, nothing samples the radiance cubemap.
                 Sky = new Sky { SkyMaterial = material, RadianceSize = Sky.RadianceSizeEnum.Size32 },
                 // Ambient/reflected sky lighting would re-light the terrain mesh while unshaded
                 // sprites stayed as they were, so lighting stays the one DirectionalLight.

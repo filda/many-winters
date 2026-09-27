@@ -4,14 +4,14 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Tasks;
 
 // "Stay with this person": walks toward the target whenever the gap opens past `keepWithin`.
-// Used for an infant keeping up with its mother (WorldState.DecideIdleTask), which is what feeds
-// it and keeps it in teaching reach. Never completes; how long to follow is WorldState.Advance's call.
+// Used for an infant keeping up with its mother, which is what feeds it and keeps it in teaching
+// reach. Never completes; how long to follow is decided elsewhere.
 public sealed class FollowTask(Creature target, float keepWithin, float speedPerTick) : CreatureTask
 {
     public Creature Target { get; } = target;
 
     // A gap, not a point to stand on: arriving on top of the target would have the two shoved
-    // apart every tick (WorldState.ResolveCollisions) and walking back together the next.
+    // apart every tick and walking back together the next.
     public float KeepWithin { get; } = keepWithin;
 
     public override bool IsComplete => false;

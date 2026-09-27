@@ -142,9 +142,9 @@ public class EatCommandTests
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
-    // Meat is food for a person (human.json's diet gains a meat entry at digestibility 1 -
-    // docs/todo/fauna-plan.md, phase 3) - a raw carcass haul, not just gathered fruit, is
-    // something a hungry person can eat straight from the pack.
+    // Meat is food for a person (human.json's diet gains a meat entry at digestibility 1) - a raw
+    // carcass haul, not just gathered fruit, is something a hungry person can eat straight from
+    // the pack.
     [Fact]
     public void MeatInThePackIsFoodAHumanCanEat()
     {
@@ -348,9 +348,9 @@ public class EatCommandTests
         Assert.Equal(ActionBlocker.NotHungry, new EatCommand(person, TestCatalogs.AppleItem).Blocker(world));
     }
 
-    // Digestibility, not just nutrition, decides edibility (docs/todo/fauna-plan.md, step 0d): the
-    // same apple is food for a person whose species digests it and not food at all for one whose
-    // species does not, even though the item's own nutrition never changes.
+    // Digestibility, not just nutrition, decides edibility: the same apple is food for a person
+    // whose species digests it and not food at all for one whose species does not, even though
+    // the item's own nutrition never changes.
     [Fact]
     public void ASpeciesWhoseDietLacksAnItemsMaterialCannotEatItButAnOrdinaryPersonCan()
     {

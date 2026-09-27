@@ -3,13 +3,13 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Continuity;
 
-// The facts an epitaph is written from (see Epitaph): what ended, when, who died last, who is
-// left, what lies in the ground. Computed from the world's people and graves, never stored
+// The facts an epitaph is written from: what ended, when, who died last, who is left, what lies
+// in the ground. Computed from the world's people and graves, never stored
 // (see docs/chronicles-and-memory-architecture.md).
 public sealed record BandEnding
 {
-    // When a later band arrives into a world an earlier one died in (docs/todo/todo.md,
-    // "Another band comes"), this becomes that band's own arrival tick.
+    // When a later band arrives into a world an earlier one died in, this becomes that band's
+    // arrival tick.
     private const long FoundingTick = 0;
 
     // Never Living: Of returns null for a band whose line can still go on.

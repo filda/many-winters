@@ -10,25 +10,24 @@ namespace ManyWinters.Godot.Ui;
 internal sealed record SelectionUi(TextureRect Marker, SelectionPanel Panel, BandPanel BandPanel, PersonDetailPanel DetailPanel);
 
 // Everything WorkshopController shows: the workbench itself and the naming question laid over
-// it. The shield that blocks the world while it is open is MainUi's alone to show and hide (see
-// its constructor), so it is not handed down here.
+// it. The shield that blocks the world while it is open is MainUi's alone to show and hide, so
+// it is not handed down here.
 internal sealed record WorkshopUi(WorkshopPanel Panel, NamingPanel NamingPanel);
 
 // The screen's own furniture: the status bar, the debug inspector, the chronicle, the
 // inscription overlay, and the pause and help pages - plus every control SelectionController,
 // WorkshopController, and WorldInputController operate. This is the one place that builds and
 // attaches every one of them, in the order the screen draws them; the controllers above only
-// wire behaviour onto what they are handed (see SelectionUi, WorkshopUi).
+// wire behaviour onto what they are handed.
 internal sealed partial class MainUi : CanvasLayer
 {
     private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
 
     // Every full-screen page or window that asks for the player's whole attention, tagged with
-    // what that means for it. `HoldsClock` says whether it stops the world while it is up (see
-    // SimulationLoop.Update); `BlocksPause` says whether its being up should stop Space from
-    // opening a second window on top of it (see TogglePause). The pause panel holds the clock
-    // but is not its own blocker - TogglePause decides what pressing Space does to the one
-    // already up, not whether it is allowed to be up at all.
+    // what that means for it. `HoldsClock` says whether it stops the world while it is up;
+    // `BlocksPause` says whether its being up should stop Space from opening a second window on
+    // top of it. The pause panel holds the clock but is not its own blocker - TogglePause decides
+    // what pressing Space does to the one already up, not whether it is allowed to be up at all.
     private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
 
     private readonly List<ModalWindow> _modals = [];
@@ -72,7 +71,7 @@ internal sealed partial class MainUi : CanvasLayer
         StatusBar.AddThemeStyleboxOverride("panel", PanelChrome.Background());
         AddChild(StatusBar);
         // Not ticked here: StatusBar builds _tickLabel in its own _Ready, which needs it inside
-        // the tree - not yet true during this constructor (see this type's own _Ready).
+        // the tree - not yet true during this constructor.
 
         Inspector = new InspectorPanel(presentation);
         AddChild(Inspector);
@@ -129,8 +128,8 @@ internal sealed partial class MainUi : CanvasLayer
         AddChild(workshopPanel);
 
         // Added after the workshop, so it lands on top of it rather than beside it - both are
-        // centred on the same spot (PanelPlacement.Centred), which is what makes the one read as
-        // a page laid over the other.
+        // centred on the same spot, which is what makes the one read as a page laid over the
+        // other.
         var namingPanel = new NamingPanel();
         AddChild(namingPanel);
 
@@ -159,7 +158,7 @@ internal sealed partial class MainUi : CanvasLayer
 
         // Built here so callers that only need Show/Record never construct a PausePanel or
         // HelpPanel of their own; the fields stay private since nothing outside this type reads
-        // their visibility directly (see HoldsClock/BlocksPause).
+        // their visibility directly.
         _pausePanel = new PausePanel();
         _helpPanel = new HelpPanel();
 
@@ -246,8 +245,8 @@ internal sealed partial class MainUi : CanvasLayer
 
     // F11 moves between the window and a borderless fullscreen - the whole screen, taskbar
     // included, with no native Windows chrome (WindowMode.Fullscreen rather than the exclusive
-    // video-mode switch, which is the less forgiving kind on Windows). F alone zooms the camera
-    // (FreeCameraRig), so the key is F11; the controls page lists it under Windows.
+    // video-mode switch, which is the less forgiving kind on Windows). F alone zooms the camera,
+    // so the key is F11; the controls page lists it under Windows.
     public static void ToggleFullscreen()
     {
         var mode = DisplayServer.WindowGetMode();

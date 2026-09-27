@@ -151,7 +151,7 @@ public class BindCommandTests
         Assert.True(practisedWork.JointStrength > beginnersWork.JointStrength);
     }
 
-    // Depth: a bound thing is a thing, so it can be bound again (see section 6, no part cap).
+    // Depth: a bound thing is a thing, so it can be bound again - there is no cap on nesting.
     [Fact]
     public void ABoundThingCanItselfBeBoundToSomethingElse()
     {

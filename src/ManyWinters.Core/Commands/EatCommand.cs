@@ -5,28 +5,27 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Gathering food no longer relieves hunger directly (see GatherCommand) - it only fills the
-// gatherer's inventory, so something has to spend it back down again. Eats just enough of the
+// Gathering food no longer relieves hunger directly - it only fills the gatherer's inventory, so
+// something has to spend it back down again. Eats just enough of the
 // given food item to reach zero hunger, or all of it if there isn't that much - not a fixed
 // amount, since a UI "Eat" action shouldn't need the caller to first work out how much hunger
 // is left to satisfy.
 public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
 {
     // A person who never learned even this can be holding a full inventory of food and still
-    // starve - eating (like gathering) has to be taught, not assumed (see
-    // SkillDefinition.BaseTechnique).
+    // starve - eating (like gathering) has to be taught, not assumed.
     public static readonly SkillTypeId Skill = new("eating");
 
     // A better cook/eater gets more out of the same food rather than eating faster or needing
-    // less of it - simplest bonus that still gives EfficientTechnique a real effect, same
-    // pattern as a chopping-scored tool's bonus for gathering (see ItemCatalog.ChoppingScoreFor).
+    // less of it - the simplest bonus that still gives EfficientTechnique a real effect, the
+    // same pattern as a chopping-scored tool's bonus for gathering.
     private const float EfficientHungerRestoredMultiplier = 1.2f;
 
     private const float SkillGainPerMeal = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // The practice curve is not linear any more (see Skills.Increase), so the threshold is
-    // stated as the number of tries it stands for rather than as a level.
+    // The practice curve is not linear, so the threshold is stated as the number of tries it
+    // stands for rather than as a level.
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     public ActionBlocker Blocker(WorldState world) =>
@@ -47,9 +46,9 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
     // Why this meal cannot happen, over `availableUnits` of `food` from wherever they come:
     // EatCommand passes what the eater carries, GatherCommand what the node would give up.
     //
-    // Knowledge is asked last on purpose (see ActionBlocker.NotLearned): a hungry creature with an
-    // empty pack is told the pack is empty, not that they never learned to eat, and the player's
-    // menu can forgive NotLearned without that hiding a second reason underneath.
+    // Knowledge is asked last on purpose: a hungry creature with an empty pack is told the pack
+    // is empty, not that they never learned to eat, and the player's menu can forgive NotLearned
+    // without that hiding a second reason underneath.
     public static ActionBlocker EatingBlocker(WorldState world, Creature actor, ItemKindId food, int availableUnits)
     {
         if (!actor.IsAlive)
@@ -58,8 +57,7 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
         }
 
         // This is what keeps the division in Eat from being by zero - an item nobody described,
-        // or one this creature's species cannot digest, restores nothing at all (see
-        // WorldState.HungerRestoredPerUnitFor).
+        // or one this creature's species cannot digest, restores nothing at all.
         // Stryker disable once Equality: with < instead, a zero rate divides to infinity, which
         // converts to a negative unit count that the caller then refuses anyway - the same
         // answer by a worse route, and not one worth writing a test around
@@ -81,14 +79,14 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
         }
 
         // Find, not Get - a caller with no "eating" skill registered at all (a minimal test
-        // world, say) just means this can never succeed, not a crash.
+        // world) just means this can never succeed, not a crash.
         return world.Configuration.SkillCatalog.Find(Skill) is { } skillDefinition
             && actor.KnownTechniques.Contains(skillDefinition.BaseTechnique)
             ? ActionBlocker.None
             : ActionBlocker.NotLearned;
     }
 
-    // The act of eating itself, apart from where the food comes from: EatCommand feeds from
+    // The act of eating, apart from where the food comes from: EatCommand feeds from
     // the inventory, GatherCommand straight from the source being picked ("into the mouth"),
     // and both have to gate, satisfy and train identically. Eats just enough of the
     // `availableUnits` on offer to reach zero hunger (or all of them if that isn't enough) and

@@ -6,9 +6,8 @@ using ManyWinters.Tests.TestSupport;
 namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
-/// Phase 1's own milestone (docs/todo/fauna-plan.md, phase 1: "stádo přežije rok na trávě a
-/// rozmnoží se; bez trávy vyhyne"): a herd on grass survives a year and grows, the same herd with
-/// no grass dies out, and nobody is born outside the species' breeding climate.
+/// A herd on grass survives a year and grows, the same herd with no grass dies out, and nobody
+/// is born outside the species' breeding climate.
 /// </summary>
 public class DeerHerdMilestoneTests
 {
@@ -115,21 +114,19 @@ public class DeerHerdMilestoneTests
         Assert.Equal(herd.Count, world.Animals.Count);
     }
 
-    // Two fixes made the herd stop dying out (docs/todo/fauna-plan.md phase 1b, "the shipped
-    // map's herds starving"): WorldState.FindNearestGatherableEntity no longer sends a whole herd
-    // at the single node nearest its shared anchor, and its in-home tier now only counts a node
-    // that can still give a full harvest (GatherCommand.WouldYieldAFullHarvest) rather than any
-    // sliver above zero. MapLoader.SpawnAnimalHerds also now places a herd where the grass
-    // actually is (BestHerdCenter), not merely far enough from camp. Even so, the herd still ended
-    // the year down from its starting 17 to 6, despite 5 births along the way - net decline, just
-    // no longer extinction.
+    // Two fixes keep the herd from dying out: WorldState.FindNearestGatherableEntity no longer
+    // sends a whole herd at the single node nearest its shared anchor, and its in-home tier now
+    // only counts a node that can still give a full harvest (GatherCommand.WouldYieldAFullHarvest)
+    // rather than any sliver above zero. MapLoader.SpawnAnimalHerds also places a herd where the
+    // grass actually is (BestHerdCenter), not merely far enough from camp. Even so, the herd still
+    // ends the year down from its starting 17 to 6, despite 5 births along the way - net decline,
+    // just not extinction.
     //
-    // What closed the rest of the gap is the winter reserve (SpeciesDefinition.
-    // HungerPerTickMultiplier, phase 1's "Otevřené ladění" - see TestCatalogs.
-    // DeerHungerPerTickMultiplier for the sweep that picked 0.28): with it, the same shipped year
-    // ends at 18 living deer, one more than the starting 17, and the cutoff is not a knife's edge
-    // - every multiplier from 0.1 up to 0.28 lands on that same 18, while 0.29 already drops back
-    // to 16. That is margin enough to assert "at least as many as it started with" outright.
+    // What closes the rest of the gap is the winter reserve (SpeciesDefinition.
+    // HungerPerTickMultiplier, tuned to 0.28): with it, the same shipped year ends at 18 living
+    // deer, one more than the starting 17, and the cutoff is not a knife's edge - every multiplier
+    // from 0.1 up to 0.28 lands on that same 18, while 0.29 already drops back to 16. That is
+    // margin enough to assert "at least as many as it started with" outright.
     [Fact]
     public void TheShippedWorldEndsTheYearWithAtLeastAsManyLivingDeerAsItStartedWith()
     {

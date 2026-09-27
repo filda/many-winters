@@ -30,8 +30,8 @@ internal sealed class WorldInputController
     private readonly WorldPresenter _presenter;
 
     // Telling a right-click apart from the right-drag that turns the camera, and what the press
-    // landed on until the button comes up (see HandleRightButton). The world's views report the
-    // press; only the release decides whether a menu opens.
+    // landed on until the button comes up. The world's views report the press; only the release
+    // decides whether a menu opens.
     private readonly RightClickGesture _rightClick = new();
     private Func<Person, TargetMenu>? _pointedAt;
 
@@ -83,15 +83,13 @@ internal sealed class WorldInputController
 
     public void CloseContextMenu() => _contextMenu.Close();
 
-    // Pointer events Main._Input hands over once the global keyboard shortcuts have had their
-    // turn.
+    // Pointer events the game hands over once the global keyboard shortcuts have had their turn.
     public void Handle(InputEvent @event, Viewport viewport)
     {
         HandleRightButton(@event);
 
         // Ahead of Godot's physics picking (which runs later, from unhandled input) so it wins
-        // even when the pick would land on something opaque in front of a person - see
-        // PresentationSettings.PersonClickScreenRadius.
+        // even when the pick would land on something opaque in front of a person.
         if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mouseButton
             && viewport.GuiGetHoveredControl() is null)
         {
@@ -139,9 +137,8 @@ internal sealed class WorldInputController
         _selection.Select(person);
     }
 
-    // A left click selects the animal, exactly as a person's does. A right click asks
-    // TargetActions what may be done with it - one offer, Hunt or Butcher depending on whether it
-    // is still alive (docs/todo/fauna-plan.md, phase 3c).
+    // A left click selects the animal, exactly as a person's does. A right click asks what may be
+    // done with it - one offer, Hunt or Butcher depending on whether it is still alive.
     private void OnAnimalClicked(Animal animal, MouseButton button)
     {
         if (button == MouseButton.Right)
@@ -159,8 +156,8 @@ internal sealed class WorldInputController
     // that" is the only thing anybody means by pointing at a bush, and it is how the game is
     // played. Everything else aimed at a target is asked for by name, on the right button.
     //
-    // Depleting a node to zero keeps its view - the plant is still there, fruitless until
-    // RegenPerTick refills it. Only IsAlive turning false (felled or withered) removes it.
+    // Depleting a node to zero keeps its view - the plant is still there, fruitless until it
+    // regenerates. Only IsAlive turning false (felled or withered) removes it.
     private void OnResourceNodeClicked(Entity node, MouseButton button)
     {
         if (button == MouseButton.Right)
@@ -203,13 +200,13 @@ internal sealed class WorldInputController
         }
     }
 
-    // The view has already tried HoverRescue.TryClickElsewhere (a full re-cast of the ray past
-    // everything ruled out) before forwarding here, so this genuinely is a ground click.
+    // The view has already tried a full re-cast of the ray past everything ruled out before
+    // forwarding here, so this genuinely is a ground click.
     //
     // The position handed over is the ray's hit on the view's collision box - up in the air on a
-    // tree-sized box's front face, tens of meters off the ground under the cursor (see
-    // GroundPick) - so only the screen position is reused and the ground re-derived. A click
-    // that finds no ground (sky past the terrain's edge) is dropped rather than guessed.
+    // tree-sized box's front face, tens of meters off the ground under the cursor - so only the
+    // screen position is reused and the ground re-derived. A click that finds no ground (sky past
+    // the terrain's edge) is dropped rather than guessed.
     // ReSharper disable UnusedParameter.Global - position, normal and shapeIndex are unused here,
     // but the method must match CollisionObject3D.InputEventEventHandler to be wired as a view's
     // InputEvent handler.
@@ -237,11 +234,11 @@ internal sealed class WorldInputController
     }
     // ReSharper restore UnusedParameter.Global
 
-    // The right button does two jobs: dragged it turns the camera (FreeCameraRig), pressed and
-    // released in one spot it asks what may be done with whatever is under the cursor. So the
-    // menu waits for the release (RightClickGesture), and what the cursor was over is recorded on
-    // the press - the only half of it a view ever sees, since Godot delivers presses to colliders
-    // through physics picking, which runs after this.
+    // The right button does two jobs: dragged it turns the camera, pressed and released in one
+    // spot it asks what may be done with whatever is under the cursor. So the menu waits for the
+    // release, and what the cursor was over is recorded on the press - the only half of it a view
+    // ever sees, since Godot delivers presses to colliders through physics picking, which runs
+    // after this.
     private void HandleRightButton(InputEvent @event)
     {
         switch (@event)
@@ -266,7 +263,7 @@ internal sealed class WorldInputController
 
     // Opens the menu for whatever the press landed on. An empty one is not opened at all: the one
     // target with nothing to offer is the selected person themselves, whose own card is already on
-    // screen (see TargetActions).
+    // screen.
     private void ShowContextMenu(Vector2 screenPosition)
     {
         if (_pointedAt is not { } menuFor || Acting() is not { } person)
@@ -327,7 +324,7 @@ internal sealed class WorldInputController
     // building belongs - it needs a place chosen rather than a thing pointed at.
     //
     // Reached straight from the terrain's own collider as well as from a view that declined the
-    // click, so the wheel has to be turned away here too (see OrderButtons).
+    // click, so the wheel has to be turned away here too.
     private void OnGroundClicked(Vector3 groundPosition, MouseButton button)
     {
         if (!OrderButtons.Includes(button))

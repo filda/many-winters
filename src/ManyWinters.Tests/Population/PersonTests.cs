@@ -43,8 +43,8 @@ public class PersonTests
         Assert.Same(Person.Unknown, Person.Unknown);
     }
 
-    // Every person is a human today (docs/todo/fauna-plan.md, step 0c) - no draw, no per-instance
-    // choice, just what a Person always is.
+    // Every person is a human today - no draw, no per-instance choice, just what a Person
+    // always is.
     [Fact]
     public void EveryPersonIsTheHumanSpecies()
     {

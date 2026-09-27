@@ -57,10 +57,9 @@ internal sealed record SelectionCard(
             person.Name,
             person.IsAlive
                 ? InspectorText.ForAgeAndSex(world.AgeInYears(person), lifeCycle, person.Sex)
-                // Once WorldState.IsDecayed the world itself has forgotten who this was -
-                // "deceased" still names a person; "bones" is what is left to name
-                // (docs/todo/fauna-plan.md phase 4b). ForDeath below still says how they died:
-                // that is the player's memory, not the world's record.
+                // Once decayed the world itself has forgotten who this was - "deceased" still
+                // names a person; "bones" is what is left to name. ForDeath below still says how
+                // they died: that is the player's memory, not the world's record.
                 : world.IsDecayed(person) ? "bones" : "deceased",
             InspectorText.ForParents(person.Sex, NameOrNull(person.Mother), NameOrNull(person.Father)).TrimEnd('\n'),
             // The one sentence a body can still tell the player. The living have no death to report.

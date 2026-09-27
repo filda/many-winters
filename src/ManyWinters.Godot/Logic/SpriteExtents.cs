@@ -35,8 +35,8 @@ internal static class SpriteExtents
     // every person and tree is scaled from its seed. Unscaled, an anchor floats above a short
     // person and sinks into a tall one.
     //
-    // Same arithmetic as BillboardUv.RenderedSize by construction: BillboardSprite.Apply sets
-    // PixelSize = worldHeight / canvasHeight. SpriteExtentsTests pins that they agree.
+    // Same arithmetic as the billboard's own rendered-size formula by construction: PixelSize is
+    // set to worldHeight / canvasHeight, and a test pins that the two agree.
     internal static Extent Scaled(Extent extent, float scaleX, float scaleY) => new(
         extent.Width * scaleX,
         extent.Height * scaleY,

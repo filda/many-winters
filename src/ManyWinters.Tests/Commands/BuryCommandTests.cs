@@ -121,8 +121,8 @@ public class BuryCommandTests
         Assert.Equal("Sela", grave.MotherName);
     }
 
-    // docs/todo/fauna-plan.md phase 4: a decayed corpse is unmarked whatever the gravedigger
-    // knows - the person who could have been recognised is gone, only bones are left.
+    // A decayed corpse is unmarked whatever the gravedigger knows - the person who could have
+    // been recognised is gone, only bones are left.
     [Fact]
     public void BuryingADecayedCorpseProducesAnAnonymousGraveEvenWithTheTechnique()
     {

@@ -5,11 +5,10 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// The progression docs/todo/fauna-plan.md phase 4d's decision names: hunt, then butcher
-// (efficiently, for the hide), then tan, then warm clothing - now that Tan exists, this exists
-// end to end. Also the reason curing is worth having at all: what it is measured against
-// (rawhide_clothing, made straight off a carcass with no further knowledge) rots a season in,
-// where the cured garment does not.
+// The full hunt-butcher-tan-craft progression: hunt, then butcher (efficiently, for the hide),
+// then tan, then warm clothing. Also the reason curing is worth having at all: what it is
+// measured against (rawhide_clothing, made straight off a carcass with no further knowledge)
+// rots a season in, where the cured garment does not.
 public class HideCuringProgressionTests
 {
     private static Animal DeadDeer(WorldState world, Position position)
@@ -40,8 +39,7 @@ public class HideCuringProgressionTests
         world.Execute(new GrantTechniqueCommand(person, TestCatalogs.BasicTanning));
         MakesEveryTanningAttemptSucceed(person);
 
-        // Two hunts, since warm_clothing wants two hide and a deer gives one each
-        // (docs/todo/fauna-plan.md phase 4).
+        // Two hunts, since warm_clothing wants two hide and a deer gives one each.
         var first = DeadDeer(world, position);
         var second = DeadDeer(world, position);
         world.Execute(new ButcherCommand(person, first));
@@ -73,9 +71,9 @@ public class HideCuringProgressionTests
         var catalog = world.Configuration.ItemCatalog;
         var position = new Position(0, 0);
         var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        // Rawhide clothing needs no further knowledge at all (docs/todo/fauna-plan.md phase 4c) -
-        // straight off a carcass with nothing learned. Warm clothing needs cured hide, which this
-        // test hands over already tanned rather than re-proving TanCommand itself.
+        // Rawhide clothing needs no further knowledge - straight off a carcass with nothing
+        // learned. Warm clothing needs cured hide, which this test hands over already tanned
+        // rather than re-proving TanCommand.
         person.Inventory.Add(TestCatalogs.RawhideItem, TestCatalogs.WarmClothingInputAmount, tick: 0, catalog);
         person.Inventory.Add(TestCatalogs.HideItem, TestCatalogs.WarmClothingInputAmount, tick: 0, catalog);
 

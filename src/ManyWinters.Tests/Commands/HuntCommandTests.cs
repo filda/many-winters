@@ -6,15 +6,15 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Commands;
 
-// HuntCommand (docs/todo/fauna-plan.md, phase 3): always a Person at a living Animal, gated only
-// on knowledge - a bare-handed throw is allowed at HuntingBaseHitChance, so there is no
-// MissingTool blocker the way FellCommand has one.
+// HuntCommand is always a Person at a living Animal, gated only on knowledge - a bare-handed
+// throw is allowed at HuntingBaseHitChance, so there is no MissingTool blocker the way
+// FellCommand has one.
 public class HuntCommandTests
 {
     private static Person Hunter(WorldState world, Position position, bool knowsHunting = true, bool knowsEfficientHunting = false) =>
         Hunter(world, CreatureId.New(), position, knowsHunting, knowsEfficientHunting);
 
-    // With a chosen id - AHitKillsThePreyWithHuntedAsTheCauseAndFillsItsCarcass pins the roll on it.
+    // With a chosen id, so a determinism test can pin the roll on it.
     private static Person Hunter(WorldState world, CreatureId id, Position position, bool knowsHunting = true, bool knowsEfficientHunting = false)
     {
         var person = world.SpawnPerson(id, "Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
@@ -113,8 +113,7 @@ public class HuntCommandTests
     }
 
     // Knowledge is asked last, and range is asked before it - a hunter who has never been shown
-    // how, standing beyond HuntingRange, hears about the distance, not the missing lesson (see
-    // ActionBlocker.NotLearned).
+    // how, standing beyond HuntingRange, hears about the distance, not the missing lesson.
     [Fact]
     public void TooFarIsBlamedBeforeNeverHavingLearnedToHunt()
     {
@@ -142,8 +141,8 @@ public class HuntCommandTests
     {
         // The chance is capped at 0.9 (HuntCommand.MaxHitChance) however generous the rules -
         // there is no configuration that makes a hit literal certainty - so this pins the same
-        // fixed hunter/prey ids TheSameHunterPreyPairAndTickAlwaysRollsTheSameOutcome relies on
-        // for determinism, chosen because they roll a hit at tick 0 against this chance.
+        // fixed hunter/prey ids other determinism tests rely on, chosen because they roll a hit
+        // at tick 0 against this chance.
         var rules = SimulationRules.Default with { HuntingBaseHitChance = 1f };
         var world = new WorldState(TestCatalogs.CreateConfigurationWithDeer() with { Rules = rules });
         var hunter = Hunter(world, CreatureId.New(new Random(1)), new Position(0, 0));
@@ -261,7 +260,7 @@ public class HuntCommandTests
     // The chance arithmetic (SimulationRules.HuntingHitChancePerToolScore): rather than pin one
     // seed that happens to land where expected, this runs many independent (hunter, prey) pairs
     // at the same tick - deterministic (SeedHash, not real randomness) and reproducible every
-    // run - and checks the observed hit rate against what the formula itself predicts.
+    // run - and checks the observed hit rate against what the formula predicts.
     private static float ObservedHitRate(WorldState world, bool giveAxe, bool efficient, int trials)
     {
         var rng = new Random(12345);
@@ -304,8 +303,8 @@ public class HuntCommandTests
         Assert.InRange(observed, expected - 0.045f, expected + 0.045f);
     }
 
-    // The shipped axe-grade sharp hafted tool lands the hit rate SimulationRules.
-    // HuntingHitChancePerToolScore was picked for - see its own doc comment for the arithmetic.
+    // The shipped axe-grade sharp hafted tool lands the hit rate
+    // SimulationRules.HuntingHitChancePerToolScore was picked for.
     [Fact]
     public void TheShippedAxeGradeToolLandsAroundThePickedHitRate()
     {
@@ -317,8 +316,8 @@ public class HuntCommandTests
         var observed = ObservedHitRate(world, giveAxe: true, efficient: false, trials: 2000);
 
         Assert.InRange(observed, expected - 0.045f, expected + 0.045f);
-        // The arithmetic the coefficient was picked around (see SimulationRules' own comment):
-        // bare hands 0.05, the shipped tool lands near 0.35.
+        // The arithmetic the coefficient was picked around: bare hands 0.05, the shipped tool
+        // lands near 0.35.
         Assert.InRange(expected, 0.3f, 0.4f);
     }
 

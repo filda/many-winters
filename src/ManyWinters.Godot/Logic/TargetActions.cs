@@ -23,8 +23,8 @@ internal sealed record TargetMenu(string Heading, IReadOnlyList<ActionOffer> Off
 // than an instruction to the player.
 //
 // Engine-free, so the menu is an ordinary function of world state and can be tested without a
-// running Godot. What a thing is called in English is decided here too, the way InspectorText
-// decides the rest of the player's prose.
+// running Godot. What a thing is called in English is decided here too, the way the rest of the
+// player's prose is decided.
 internal static class TargetActions
 {
     // One overload per kind of thing there is, per EntityCategory, since Entity now covers a
@@ -54,8 +54,8 @@ internal static class TargetActions
         return new TargetMenu(resource.DisplayName, offers);
     }
 
-    // Split out because a left click on a resource means this and nothing else, so Main asks for
-    // it by name rather than by taking whichever offer happens to come first.
+    // Split out because a left click on a resource means this and nothing else, so the click
+    // handler asks for it by name rather than by taking whichever offer happens to come first.
     internal static ActionOffer Gather(WorldState world, Person actor, Entity node) =>
         ActionOffer.For(
             "Gather",
@@ -100,20 +100,19 @@ internal static class TargetActions
         return new TargetMenu(target.Name, offers);
     }
 
-    // The living and the dead are offered entirely different things here too (see the Person
-    // overload above): a live deer is something to hunt, a carcass something to butcher, and
-    // never both at once. Either offer carries a Pursuit task rather than a plain Target position
-    // (see ActionOffer.Pursuit): a deer walks away from where it was pointed at, and a carcass is
-    // reached the same standoff-and-reach way GatherTask reaches a pile, so both are better left
-    // to the loop that already knows how (WorldState.Advance) than to a one-shot walk-then-fire.
+    // The living and the dead are offered entirely different things here too: a live deer is
+    // something to hunt, a carcass something to butcher, and never both at once. Either offer
+    // carries a pursuit task rather than a plain target position: a deer walks away from where it
+    // was pointed at, and a carcass is reached the same standoff-and-reach way a gather task
+    // reaches a pile, so both are better left to the simulation's own tick loop than to a one-shot
+    // walk-then-fire.
     internal static TargetMenu For(WorldState world, Person actor, Animal animal)
     {
         var heading = world.Configuration.SpeciesCatalog.Get(animal.Species).DisplayName;
         var rules = world.Configuration.Rules;
 
         // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own unhurried pace: a
-        // player-issued hunt or butchering walks like every other order the player gives
-        // (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+        // player-issued hunt or butchering walks like every other order the player gives.
         var offer = animal.IsAlive
             ? ActionOffer.For(
                 "Hunt",

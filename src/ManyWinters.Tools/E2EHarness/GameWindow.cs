@@ -16,7 +16,7 @@ namespace ManyWinters.Tools.E2EHarness;
 public sealed class GameWindow : IDisposable
 {
     // Godot passes everything after this separator on to the game as its own user arguments
-    // (OS.GetCmdlineUserArgs) - the channel the session's modes ride on (see LaunchAsync).
+    // (OS.GetCmdlineUserArgs) - the channel the session's modes ride on.
     private const string UserArgsSeparator = "++";
 
     // The client-area size the suite's click targets and pixel baselines are calibrated for:
@@ -54,17 +54,17 @@ public sealed class GameWindow : IDisposable
     /// <summary>
     /// Starts the game and waits for it to report ready. Honors <c>MW_GODOT_EXE</c> (falling
     /// back to "godot" on PATH) — that's the env var the e2e-windows CI job sets to point at
-    /// the downloaded editor binary; see .github/workflows/ci.yml.
+    /// the downloaded editor binary.
     /// </summary>
     public static async Task<GameWindow> LaunchAsync(string godotProjectPath, TimeSpan timeout)
     {
         // The session the tests need is requested on the game's own command line, in terms the
-        // game itself defines (see ManyWinters.Godot/LaunchOptions.cs): the clock held and stepped
-        // by the tests, the log following every input, and nothing on screen moving on real time -
-        // so a captured frame is identical run to run and can be pixel-compared against a
-        // committed baseline. Nothing is set in the environment: a mode asked for on the command
-        // line applies to exactly this launch and nothing inherits it by accident. The window is
-        // asked for its exact calibrated size the same way (see VerifyClientSize).
+        // game defines: the clock held and stepped by the tests, the log following every input,
+        // and nothing on screen moving on real time - so a captured frame is identical run to
+        // run and can be pixel-compared against a committed baseline. Nothing is set in the
+        // environment: a mode asked for on the command line applies to exactly this launch and
+        // nothing inherits it by accident. The window is asked for its exact calibrated size the
+        // same way.
         var godotExe = Environment.GetEnvironmentVariable("MW_GODOT_EXE") ?? "godot";
         KillLeftoverGames();
         var launch = Start(
@@ -88,9 +88,8 @@ public sealed class GameWindow : IDisposable
             // A fresh Process.GetProcessById each poll, not process.Refresh() on the object we
             // already hold: the game's window handle is not set until a frame or two after the
             // window exists, so re-probing each poll catches the moment it appears. The game is
-            // launched via the Task Scheduler (see Start) - a fresh process tree with no calling
-            // job - so its window is ordinary and visible to this host, not hidden by a job's
-            // UI restriction.
+            // launched via the Task Scheduler - a fresh process tree with no calling job - so its
+            // window is ordinary and visible to this host, not hidden by a job's UI restriction.
             using var probe = SafeGetProcessById(process.Id);
             if (probe is null || probe.HasExited)
             {
@@ -183,7 +182,7 @@ public sealed class GameWindow : IDisposable
     /// The game is asked for its window on the command line (--resolution), but the OS can still
     /// have the last word: a screen smaller than the window shrinks it silently, and the only
     /// symptom downstream is every capture differing from every baseline. So the size is verified
-    /// against the OS's own answer the moment the window is drivable, and a mismatch stops the
+    /// against the OS's answer the moment the window is drivable, and a mismatch stops the
     /// suite here, with the numbers that show who shrank what.
     /// </summary>
     private static void VerifyClientSize(IntPtr windowHandle)
@@ -211,13 +210,13 @@ public sealed class GameWindow : IDisposable
 
     /// <summary>
     /// "Main ready." is the last line <c>Main._Ready</c> prints (src/ManyWinters.Godot/Main.cs),
-    /// once the world has finished building synchronously — the window itself can exist well
-    /// before that, still showing the boot splash image. A fresh launch renames the previous
+    /// once the world has finished building synchronously — the window can exist well before
+    /// that, still showing the boot splash image. A fresh launch renames the previous
     /// "godot.log" away and starts a new one near-immediately at boot (see docs/development.md,
     /// "Reading the game's output"), well before the window even exists, so reading the whole
     /// current file rather than tracking a byte offset is safe in practice - an earlier version
-    /// tried to detect the rotation by comparing lengths, but a new run's own log can grow past
-    /// the previous run's final size before "Main ready." appears, which made that offset skip
+    /// tried to detect the rotation by comparing lengths, but a new run's log can grow past the
+    /// previous run's final size before "Main ready." appears, which made that offset skip
     /// straight past the line it was looking for and never find it.
     /// </summary>
     private static bool LogShowsMainReady(string logPath)
@@ -235,25 +234,18 @@ public sealed class GameWindow : IDisposable
     /// <summary>
     /// A plain <see cref="Process.Start(ProcessStartInfo)"/> puts the child in whatever job its
     /// caller belongs to; under a VSTest test host that job carries UI restrictions that make
-    /// the child's own window invisible to window-handle lookups, from any process, once created
-    /// that way (see the comment in <see cref="LaunchAsync"/>). CREATE_BREAKAWAY_FROM_JOB frees
-    /// the child from that job so it gets an ordinary, unrestricted top-level window - and is all
-    /// that's needed on a normal dev machine. On the GitHub-hosted Windows runner it instead
-    /// fails with ERROR_ACCESS_DENIED (Win32 error 5): that job's policy disallows breakaway
-    /// outright, confirmed 2026-09-22 on the e2e-windows CI job. The fallback there is Task
-    /// Scheduler: a task it runs is a fresh process tree with no calling job at all, escaping
-    /// the restriction by construction rather than needing permission to leave it - the price is
-    /// that schtasks doesn't hand back the child's PID, so that path has to find the window by
-    /// title instead (the same way ScreenshotTask.FindWindow does).
+    /// the child's window invisible to window-handle lookups, from any process, once created
+    /// that way. CREATE_BREAKAWAY_FROM_JOB frees the child from that job so it gets an ordinary,
+    /// unrestricted top-level window - and is all that's needed on a normal dev machine. On the
+    /// GitHub-hosted Windows runner it instead fails with ERROR_ACCESS_DENIED (Win32 error 5):
+    /// that job's policy disallows breakaway outright, confirmed 2026-09-22 on the e2e-windows
+    /// CI job. The fallback there is Task Scheduler: a task it runs is a fresh process tree with
+    /// no calling job at all, escaping the restriction by construction rather than needing
+    /// permission to leave it - the price is that schtasks doesn't hand back the child's PID, so
+    /// that path has to find the window by title instead.
     /// </summary>
     private static GameLaunch Start(string fileName, params string[] arguments)
     {
-        // Always launch via the Task Scheduler: a fresh process tree with no calling job gives the
-        // game an ordinary, visible window the test host can find and drive. The
-        // CREATE_BREAKAWAY_FROM_JOB alternative is denied by VSTest's job on the runner (Win32 5),
-        // and on a dev machine where it is allowed the game's window comes up invisible to the test
-        // host anyway (MainWindowHandle 0) - the scheduler path is the only one that reliably yields
-        // a drivable window.
         var (process, launcherScriptPath) = StartViaScheduledTask(fileName, arguments);
         Console.Error.WriteLine($"[GameWindow] launched via Task Scheduler, pid {process.Id}, title '{process.MainWindowTitle}'.");
         return new GameLaunch(process, launcherScriptPath);
@@ -272,7 +264,7 @@ public sealed class GameWindow : IDisposable
             launcherScriptPath,
             // The scheduler runs in its own environment, not this process's, so anything the game
             // needs has to travel on the command line itself - which is where the session's modes
-            // ride anyway (see LaunchAsync).
+            // ride anyway.
             Quote(fileName) + string.Concat(arguments.Select(argument => " " + Quote(argument))) + Environment.NewLine);
 
         RunSchtasks("/Create", "/TN", taskName, "/TR", Quote(launcherScriptPath), "/SC", "ONCE", "/ST", "00:00", "/F");
@@ -284,9 +276,8 @@ public sealed class GameWindow : IDisposable
         }
         finally
         {
-            // Best-effort: a leaked one-off task next to hundreds of others is exactly the kind of
-            // thing nobody notices until it's a mess, but a failure to delete it must not mask the
-            // real result above.
+            // Best-effort: a leaked one-off task among hundreds is easy to miss, but a failed
+            // delete must not mask the real result above.
             try
             {
                 RunSchtasks("/Delete", "/TN", taskName, "/F");
@@ -320,10 +311,10 @@ public sealed class GameWindow : IDisposable
     }
 
     /// <summary>
-    /// Same filter as build/ScreenshotTask.cs.FindWindow: the game's window title starts with
-    /// "ManyWinters Godot", the editor's ends in "- Godot Engine". Only needed by the Task
-    /// Scheduler fallback, which has no PID to poll directly - the CI job it exists for never
-    /// has an editor open on the project, so there's nothing else this could mistakenly match.
+    /// The game's window title starts with "ManyWinters Godot", the editor's ends in "- Godot
+    /// Engine". Only needed by the Task Scheduler fallback, which has no PID to poll directly -
+    /// the CI job it exists for never has an editor open on the project, so there's nothing else
+    /// this could mistakenly match.
     /// </summary>
     private static Process FindWindowByTitle(TimeSpan timeout)
     {

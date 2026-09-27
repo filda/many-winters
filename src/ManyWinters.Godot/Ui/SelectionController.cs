@@ -80,18 +80,18 @@ internal sealed class SelectionController
         _bandPanel.PersonChosen += SelectAndFocus;
 
         // The full page, opened from the name on the selected person's card. Like the workbench
-        // it holds the clock while it is up (see SimulationLoop.Update) and shields everything
-        // under it from the click that would otherwise land on the world or another window
-        // through it - reading or acting on somebody here is meant to have the player's whole
-        // attention, the same as working something over is.
+        // it holds the clock while it is up and shields everything under it from the click that
+        // would otherwise land on the world or another window through it - reading or acting on
+        // somebody here is meant to have the player's whole attention, the same as working
+        // something over is.
         _detailPanel = ui.DetailPanel;
         _detailPanel.Closed += () => Closed?.Invoke();
         _detailPanel.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _detailPanel.PackRequested += OnPackRequested;
 
-        // The world forgets an animal's bones on its own, with nobody asking (see
-        // WorldPresenter.RemoveAnimalView) - if that was the one selected, its card must come
-        // down with it rather than keep showing a corpse whose view is already gone.
+        // The world forgets an animal's bones on its own, with nobody asking - if that was the
+        // one selected, its card must come down with it rather than keep showing a corpse whose
+        // view is already gone.
         world.AnimalRemoved += OnAnimalRemoved;
     }
 
@@ -196,8 +196,8 @@ internal sealed class SelectionController
         }
         else if (_animal is { } animal)
         {
-            // No detail page and no actions for an animal yet (docs/todo/fauna-plan.md, phase 2b):
-            // the card is everything there is to show, so nothing else here has to close.
+            // No detail page and no actions for an animal yet: the card is everything there is
+            // to show, so nothing else here has to close.
             _selectionPanel.ShowAnimal(AnimalCard.For(_world, animal));
         }
         else
@@ -211,8 +211,8 @@ internal sealed class SelectionController
 
     // Placed on the way open rather than once at setup, so it always comes back where the player
     // expects it however far they dragged it last time: mirrored across the screen from the
-    // selection panel, same inset from its own edge (see BandPanel), the band on the left and
-    // whoever is picked out of it on the right.
+    // selection panel, same inset from its own edge, the band on the left and whoever is picked
+    // out of it on the right.
     //
     // Filled on the way open as well as on every tick: the clock can be standing still (a pause,
     // an inscription), and an empty roster is no answer to "where is everybody".
@@ -223,8 +223,8 @@ internal sealed class SelectionController
         RefreshBandPanel();
     }
 
-    // A 2D overlay, not a 3D billboard (see PresentationSettings.SelectionMarkerScreenSize).
-    // Camera3D.UnprojectPosition/IsPositionBehind do the projection; this anchors a Control on it.
+    // A 2D overlay, not a 3D billboard. Camera3D.UnprojectPosition/IsPositionBehind do the
+    // projection; this anchors a Control on it.
     public void UpdateMarker()
     {
         if (SelectedCreature is not { } creature

@@ -8,7 +8,7 @@ namespace ManyWinters.Godot.Views;
 // A person, drawn paper-doll style: body, garment and hairstyle layered on top, each an
 // independent seeded pick, each swapped for its lying-down counterpart on death. Everything
 // about a creature that walks (the walk/idle bob, the per-tick target, the death pose reset) is
-// CreatureView's; this keeps only what is a person's own - the three layers, their looks, and
+// CreatureView's; this keeps only what belongs to a person - the three layers, their looks, and
 // what a click on one means.
 internal partial class PersonView : CreatureView
 {
@@ -35,7 +35,7 @@ internal partial class PersonView : CreatureView
     private Color _aliveBodyModulate;
 
     // Internal, like the HoverArbiter it takes: only WorldPresenter builds views, and the hover
-    // invariant is the presentation layer's own business.
+    // invariant is the presentation layer's business.
     internal PersonView(Person person, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(person, Height, hover, onMissedClick)
     {
@@ -55,7 +55,7 @@ internal partial class PersonView : CreatureView
         SetUpGroundShadow(ShadowDiameter);
 
         // Every layer is excluded from the occlusion fade: a person is too small to hide much, and
-        // a ghosted one reads as a bug - with nobody selected the fade aims at the camera's own
+        // a ghosted one reads as a bug - with nobody selected the fade aims at the camera's
         // target, so at the start whoever stood in front of the band turned see-through.
         var body = BillboardSprite.Create(_standing.Body, Height, AliveColor, excludeFromOcclusionFade: true);
         _aliveBodyModulate = body.Modulate;
@@ -91,9 +91,9 @@ internal partial class PersonView : CreatureView
         _hair.Sprite.Position = offset;
     }
 
-    // Each layer swaps to its own lying-down variant (generate_sprites.py's _lay_down) - the
-    // same hairstyle/clothing this person had standing. Retexture carries the new base colour,
-    // since BillboardSprite.Apply resets Modulate to white.
+    // Each layer swaps to its own generated lying-down variant - the same hairstyle/clothing
+    // this person had standing. Retexture carries the new base colour, since BillboardSprite.Apply
+    // resets Modulate to white.
     protected override void OnAliveChanged(bool isAlive)
     {
         var look = isAlive ? _standing : _lying;
@@ -104,8 +104,8 @@ internal partial class PersonView : CreatureView
     }
 
     // Once WorldState.IsDecayed: the same lying-down layers, tinted one step further towards
-    // bone. There is no bones art of its own (docs/todo/fauna-plan.md phase 4b), and this only
-    // ever fires once a person is already dead, so the lying-down look is already in place.
+    // bone. There is no bones art yet, and this only fires once a person is already dead, so
+    // the lying-down look is already in place.
     protected override void OnDecayedChanged()
     {
         var tint = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;

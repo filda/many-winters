@@ -5,8 +5,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// Phase 1a's milestone (docs/todo/fauna-plan.md): a deer herd grazes when hungry, wanders
-// otherwise, and starves or dies of old age like anyone else.
+// A deer herd grazes when hungry, wanders otherwise, and starves or dies of old age like
+// anyone else.
 public class AnimalSimulationTests
 {
     private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
@@ -75,7 +75,7 @@ public class AnimalSimulationTests
         var rules = world.Configuration.Rules;
         var position = new Position(0, 0);
 
-        // Already at the deer's own MaxLifespanYears (8) - the next tick tips it into old age.
+        // Already at the deer's MaxLifespanYears (8) - the next tick tips it into old age.
         var deer = world.SpawnAnimal(
             TestCatalogs.DeerSpeciesId,
             position,
@@ -92,9 +92,8 @@ public class AnimalSimulationTests
         Assert.True(person.IsAlive);
     }
 
-    // Whatever the cause - hunger here, old age above (docs/todo/fauna-plan.md, phase 3,
-    // "Rozhodnutí předem" item 4: "při smrti") - a dead deer's carcass fills exactly once, with
-    // exactly the species' own numbers.
+    // Whatever the cause - hunger here, old age above - a dead deer's carcass fills exactly once,
+    // with exactly the species' numbers.
     [Fact]
     public void ADeerThatStarvesLeavesExactlyOneCarcassWorthOfMaterialsInItsInventory()
     {
@@ -104,11 +103,9 @@ public class AnimalSimulationTests
 
         world.Advance(400);
 
-        // Meat and rawhide are long gone by now (docs/todo/fauna-plan.md phase 4c: they rot on
-        // their own, much shorter clocks - WorldStateCorpseDecayTests and ButcherCommandTests
-        // pin the amounts FillCarcass actually puts in right at death). Bone and sinew never
-        // spoil, so they are still exactly the carcass's own numbers here - which is what "fills
-        // exactly once, not topped up again and again" over 400 ticks proves.
+        // Meat and rawhide are long gone by now: they rot on much shorter clocks. Bone and sinew
+        // never spoil, so they are still exactly the carcass's numbers here - which is what
+        // "fills exactly once, not topped up again and again" over 400 ticks proves.
         Assert.False(deer.IsAlive);
         Assert.Equal(TestCatalogs.DeerCarcassBone, deer.Inventory.Get(TestCatalogs.BoneItem));
         Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
@@ -121,9 +118,9 @@ public class AnimalSimulationTests
         Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
     }
 
-    // People are not butchered (docs/todo/fauna-plan.md, phase 3): a human's species carries no
-    // Carcass at all, so a dead person's Inventory gets nothing added by dying, whatever they
-    // died of - LootCommand remains the only way to take their possessions.
+    // People are not butchered: a human's species carries no Carcass, so a dead person's
+    // Inventory gets nothing added by dying, whatever they died of - LootCommand remains the
+    // only way to take their possessions.
     [Fact]
     public void AHumansDeathAddsNothingToTheirInventory()
     {
@@ -160,17 +157,16 @@ public class AnimalSimulationTests
 
         world.Advance(1);
 
-        // The gather this same tick executes as eating, not pocketing - see
-        // AGrazingAnimalNeverPocketsWhatItEats. This one only pins the task itself.
+        // The gather this same tick executes as eating, not pocketing; this one only pins the
+        // task itself.
         Assert.IsType<GatherTask>(deer.Tasks.Current);
     }
 
     // WorldState.FindNearestGatherableEntity's in-home tier only counts a node that would still
     // give this deer a full harvest (GatherCommand.WouldYieldAFullHarvest) - a node down to a
     // sliver still passes IsWorthGathering's plain "more than zero left", so without this a herd
-    // would nibble its own barely-regrown home tuft at regen speed forever rather than falling
-    // through to fuller grass further out (docs/todo/fauna-plan.md phase 1b, "the shipped map's
-    // herds starving").
+    // would nibble its barely-regrown home tuft at regen speed forever rather than falling
+    // through to fuller grass further out.
     [Fact]
     public void AHerdWhoseHomeNodesAreNearlyEmptyGoesToTheFullerGrassOutsideTheHome()
     {
@@ -182,7 +178,7 @@ public class AnimalSimulationTests
         nearlyEmptyInsideHome.Growth!.RemainingAmount = 1f;
         var fullOutsideHome = world.SpawnResourceNode(TestCatalogs.Grass, new Position(40, 0), amount: 200f);
 
-        // Standing well out toward the edge of its own territory, close to the outside node -
+        // Standing well out toward the edge of its territory, close to the outside node -
         // both tiers pick nearest-to-the-deer-itself, not nearest-to-the-anchor, so this is what
         // lets the outside node win over the anchor-hugging depleted one once the home tier has
         // ruled the depleted one out.
@@ -198,7 +194,7 @@ public class AnimalSimulationTests
     // WorldState.FindNearestGatherableEntity picks nearest-to-itself among nodes bounded by the
     // shared Home, not nearest-to-the-shared-anchor - the earlier anchor-centred search sent every
     // member of a herd at the single node nearest that one point, which starved the shipped map's
-    // herds even with plenty of grass in aggregate (see DeerHerdMilestoneTests).
+    // herds even with plenty of grass in aggregate.
     [Fact]
     public void AHerdWithSeveralGrassNodesInsideItsHomeEndsUpGatheringFromMoreThanOneNode()
     {
@@ -222,10 +218,9 @@ public class AnimalSimulationTests
         Assert.True(distinctTargets > 1, $"expected more than one distinct grazing target, found {distinctTargets}");
     }
 
-    // The winter reserve (docs/todo/fauna-plan.md, phase 1's "Otevřené ladění"): SpeciesDefinition.
-    // HungerPerTickMultiplier scales SimulationRules.HungerPerTick per species. Human is 1
-    // (unchanged from before this existed), deer is TestCatalogs.DeerHungerPerTickMultiplier
-    // (mirrors deer.json).
+    // The winter reserve: SpeciesDefinition.HungerPerTickMultiplier scales
+    // SimulationRules.HungerPerTick per species. Human is 1, deer is
+    // TestCatalogs.DeerHungerPerTickMultiplier (mirrors deer.json).
     [Fact]
     public void APersonsHungerAccruesAtTheUnscaledRateWhileADeersIsScaledByItsSpecies()
     {
@@ -253,7 +248,7 @@ public class AnimalSimulationTests
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         // A full pack: with no room to pick up grass as raw material either, the only way this
         // person could still end up beside the grass node is if it were mistakenly treated as
-        // food (docs/todo/fauna-plan.md, step 0d).
+        // food.
         person.Inventory.Add(TestCatalogs.WoodItem, 100);
         person.Needs.Hunger = 80f;
 

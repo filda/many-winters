@@ -4,7 +4,7 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Commands;
 
 // Taking something back out of a store. The other half of DepositCommand, and it names what is
-// in the store the same way: both tiers, one type (see CarriedThing).
+// in the store the same way: both tiers, one type.
 public sealed record WithdrawCommand(Person Person, Entity Building, CarriedThing What) : ICommand
 {
     public ActionBlocker Blocker(WorldState world)
@@ -20,7 +20,7 @@ public sealed record WithdrawCommand(Person Person, Entity Building, CarriedThin
         }
 
         // The store's shortage, not the person's - the two read differently to a player standing
-        // at an empty hut (see ActionBlocker.MissingMaterials).
+        // at an empty hut.
         return What switch
         {
             CarriedThing.Stock stock when Building.Storage!.Get(stock.Kind) < stock.Amount => ActionBlocker.StoreIsEmpty,
@@ -40,7 +40,7 @@ public sealed record WithdrawCommand(Person Person, Entity Building, CarriedThin
     }
 
     // Unlike Deposit into a building's uncapped storage, this goes into the person's capped
-    // inventory (see WorldState.MaxCarryWeightFor).
+    // inventory.
     private void Fetch(CarriedThing what, WorldState world)
     {
         var items = world.Configuration.ItemCatalog;
@@ -49,8 +49,8 @@ public sealed record WithdrawCommand(Person Person, Entity Building, CarriedThin
         switch (what)
         {
             case CarriedThing.Stock stock:
-                // What does not fit stays on the shelf. A transfer, preserving whatever age the
-                // stock already carried on the shelf (docs/todo/fauna-plan.md phase 4c).
+                // What does not fit stays on the shelf. A transfer, preserving the age the stock
+                // already carried on the shelf.
                 Building.Storage!.TransferUpToCapacity(stock.Kind, stock.Amount, Person.Inventory, items, room);
                 break;
 

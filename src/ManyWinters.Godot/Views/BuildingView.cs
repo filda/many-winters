@@ -11,8 +11,8 @@ namespace ManyWinters.Godot.Views;
 // as there was no menu to give them from.
 internal partial class BuildingView : SpriteEntityView
 {
-    // A one-room hut should clear a person's head (PersonView.Height) with some roof to spare;
-    // shorter reads as knee-high despite the door in the art.
+    // A one-room hut should clear a person's head with some roof to spare; shorter reads as
+    // knee-high despite the door in the art.
     public const float Size = 2.8f;
     private const float MinScale = 0.9f;
     private const float MaxScale = 1.1f;
@@ -21,7 +21,7 @@ internal partial class BuildingView : SpriteEntityView
     private readonly Entity _building;
     private readonly Action<Entity, MouseButton> _onClicked;
 
-    // Internal for the same reason as PersonView's constructor: only WorldPresenter builds views.
+    // Internal, like other view constructors: only WorldPresenter builds views.
     internal BuildingView(Entity building, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(Size, hover, onMissedClick)
     {

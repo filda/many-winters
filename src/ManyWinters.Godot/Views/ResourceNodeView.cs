@@ -10,8 +10,8 @@ namespace ManyWinters.Godot.Views;
 // without a second whole texture. Being a sprite in the world (hover, clicks, fog fade, shadow,
 // collision shape) is SpriteEntityView's; here is which layers this kind has and what its seed
 // varies. The scattered forest is thousands of these, one node each, and stays that way: every
-// tree and bush is a clickable entity (MapLoader.ScatterDecorations), so instancing them into a
-// MultiMesh would erase exactly what makes them resources.
+// tree and bush is a clickable entity, so instancing them into a MultiMesh would erase exactly
+// what makes them resources.
 internal partial class ResourceNodeView : SpriteEntityView
 {
     // Ordinary resources read as a small icon on the ground. A fellable one is a tree standing
@@ -40,9 +40,9 @@ internal partial class ResourceNodeView : SpriteEntityView
     private const int HeightScaleSalt = 404;
     private const int MirrorSalt = 405;
 
-    // Which hand-authored trunk/canopy shape variant (art/generate_sprites.py, e.g.
-    // apple_tree_trunk_v1.png) this node drew; variant 0 is the unsuffixed original. Probing
-    // stops at the first missing variant, so MaxTreeVariantProbe is an upper bound, not a promise.
+    // Which hand-authored trunk/canopy shape variant (e.g. apple_tree_trunk_v1.png) this node
+    // drew; variant 0 is the unsuffixed original. Probing stops at the first missing variant, so
+    // MaxTreeVariantProbe is an upper bound, not a promise.
     private const int TreeVariantSalt = 406;
     private const int MaxTreeVariantProbe = 8;
 
@@ -58,8 +58,7 @@ internal partial class ResourceNodeView : SpriteEntityView
     private readonly Entity _node;
     private readonly EntityKindId _kind;
 
-    // For WorldPresenter, which sends a view back to pending when its cell is un-revealed
-    // (WorldPresenter.RefreshResourceNodeExploration).
+    // For WorldPresenter, which sends a view back to pending when its cell is un-revealed.
     public Entity Node => _node;
     private readonly Action<Entity, MouseButton> _onClicked;
     private readonly Color _baseColor;
@@ -70,7 +69,8 @@ internal partial class ResourceNodeView : SpriteEntityView
     // (SetHasFruit). Everything else about the layers is SpriteEntityView's job.
     private SpriteLayer? _fruit;
 
-    // Internal for the same reason as PersonView's constructor.
+    // Internal: only WorldPresenter builds views, and the hover invariant is the presentation
+    // layer's business.
     internal ResourceNodeView(Entity node, bool canFell, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
         : base(NominalHeightFor(node.Kind, canFell), hover, onMissedClick)
     {
@@ -105,9 +105,9 @@ internal partial class ResourceNodeView : SpriteEntityView
 
         SetUpGroundShadow(Size * ShadowDiameterRatio);
 
-        // A kind with split art (art/generate_sprites.py's split_trunk_canopy) renders trunk and
-        // canopy as separate layers, so the occlusion fade can ghost the canopy while the trunk
-        // never fades. A kind without gets one combined sprite.
+        // A kind with split art renders trunk and canopy as separate layers, so the occlusion
+        // fade can ghost the canopy while the trunk never fades. A kind without gets one
+        // combined sprite.
         //
         // Registered trunk first, then branches, then canopy: all three share a render priority
         // and roughly a depth, so tree order settles which draws over which.
@@ -127,8 +127,7 @@ internal partial class ResourceNodeView : SpriteEntityView
             canopyTexturePath = CanopyTexturePathFor();
             canopyBrightness = LayerBrightnessVariation(CanopyBrightnessSalt);
 
-            // Bare twig tips poking past the canopy near the trunk (art/generate_sprites.py's
-            // _generic_tree_branch_layer) - wood, so it never fades either.
+            // Bare twig tips poking past the canopy near the trunk - wood, so it never fades either.
             if (HasBranchLayer(_kind))
             {
                 var branchVariantCount = BranchVariantCount(_kind);
@@ -176,7 +175,7 @@ internal partial class ResourceNodeView : SpriteEntityView
     }
 
     // Both buttons, as a person answers to both: left gathers from it, right asks what else may
-    // be done with it (see Main, ContextMenu).
+    // be done with it.
     protected override bool WantsClick(MouseButton button) => true;
 
     protected override bool OnClicked(MouseButton button)
@@ -209,9 +208,8 @@ internal partial class ResourceNodeView : SpriteEntityView
         ? $"res://Content/resources/{kind.Value}/{kind.Value}_tree.png"
         : $"res://Content/resources/{kind.Value}/{kind.Value}.png";
 
-    // Fruit spots are authored per canopy variant (art/generate_sprites.py's
-    // _APPLE_FRUIT_SPOT_VARIANTS/_PEAR_FRUIT_SPOT_VARIANTS), so they land inside the canopy
-    // shape this node actually drew.
+    // Fruit spots are authored per canopy variant, so they land inside the canopy shape this
+    // node actually drew.
     private string FruitOverlayTexturePath() => TexturePaths.VariantSuffixed($"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png", _variantIndex);
 
     // Split filenames sit alongside whatever BaseTexturePathFor uses as the whole tree:
@@ -221,9 +219,8 @@ internal partial class ResourceNodeView : SpriteEntityView
 
     private string CanopyTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
 
-    // Shared, kind-independent asset (art/generate_sprites.py's _generic_tree_branch_layer),
-    // not derived from this kind's texture path. Its anchor positions are pre-computed to clear
-    // the fruit-tree canopy family's shapes (see KindsWithGenericBranches).
+    // Shared, kind-independent asset, not derived from this kind's texture path. Its anchor
+    // positions are pre-computed to clear the fruit-tree canopy family's shapes.
     private const string SharedBranchesBasePath = "res://Content/branches/tree_branches.png";
 
     private string BranchesTexturePathFor() => TexturePaths.VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
@@ -258,10 +255,9 @@ internal partial class ResourceNodeView : SpriteEntityView
         return count;
     }
 
-    // Only kinds sharing the fruit-tree canopy formula (art/generate_sprites.py's
-    // _FRUIT_TREE_CANOPY_VARIANTS), whose shapes the shared branch anchors were computed to
-    // clear. conifer_tree's tiered canopy (random_conifer_tiers) was never checked, so it stays
-    // out rather than risk a branch drawn across its leaves.
+    // Only kinds sharing the fruit-tree canopy formula, whose shapes the shared branch anchors
+    // were computed to clear. conifer_tree's tiered canopy was never checked, so it stays out
+    // rather than risk a branch drawn across its leaves.
     private static readonly HashSet<string> KindsWithGenericBranches = new() { "apple", "pear", "deciduous_tree" };
 
     private static readonly Dictionary<EntityKindId, bool> HasBranchLayerCache = new();
@@ -303,8 +299,7 @@ internal partial class ResourceNodeView : SpriteEntityView
         return count;
     }
 
-    // Cached per kind (see VisualDefinitionCache below for why per-node ResourceLoader calls at
-    // decoration scale are avoided).
+    // Cached per kind, not loaded per node, for the same reason as below.
     private static readonly Dictionary<EntityKindId, bool> HasTreeSpriteCache = new();
     private static readonly Dictionary<EntityKindId, bool> HasFruitOverlayCache = new();
     private static readonly Dictionary<EntityKindId, bool> HasTrunkCanopySplitCache = new();
@@ -347,10 +342,9 @@ internal partial class ResourceNodeView : SpriteEntityView
         return exists;
     }
 
-    // Cached per kind, not loaded per node: thousands of nodes of a handful of kinds
-    // (MapLoader.ScatterDecorations) calling ResourceLoader.Load on the same .tres in one frame
-    // reliably crashed Godot's C# bridge (a GCHandle race in
-    // ScriptManagerBridge.SwapGCHandleForType, "Handle is not initialized").
+    // Cached per kind, not loaded per node: thousands of nodes of a handful of kinds calling
+    // ResourceLoader.Load on the same .tres in one frame reliably crashed Godot's C# bridge (a
+    // GCHandle race, "Handle is not initialized").
     private static readonly Dictionary<EntityKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
 
     private static ResourceVisualDefinition? LoadVisualDefinition(EntityKindId kind)

@@ -6,7 +6,7 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Commands;
 
 // The first of the combinative verbs (section 3): two objects in, one object out, held together
-// by a lashing that is itself consumed. Binary in its operands even though three things go in,
+// by a lashing that is consumed. Binary in its operands even though three things go in,
 // because the cordage is the medium rather than a third thing being joined - which is what
 // keeps assembly depth emergent instead of capped.
 //
@@ -15,10 +15,10 @@ namespace ManyWinters.Core.Commands;
 // nothing else.
 public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing Right) : ICommand
 {
-    // Directing somebody to bind is how they learn to bind (see ActionOffer.TeachFirst).
+    // Directing somebody to bind is how they learn to bind.
     public static readonly SkillTypeId Skill = new("binding");
 
-    // The verb itself, as a joint made by it would be named.
+    // The verb, as a joint made by it would be named.
     public static readonly TechniqueId Verb = new("bind");
 
     private const float SkillGainPerBind = 1f;
@@ -132,7 +132,7 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
     };
 
     // Raw stock becomes a part of the new object as it is taken: unworked, so its soundness is
-    // its substance's and nothing more (Assembly.Durability multiplies quality in).
+    // its substance's and nothing more.
     private Assembly TakeFromPack(CarriedThing target, WorldState world)
     {
         switch (target)

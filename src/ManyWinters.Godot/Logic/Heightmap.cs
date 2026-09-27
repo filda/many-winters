@@ -12,7 +12,7 @@ internal sealed class Heightmap
     // The DEM is a 41x41 grid at 25m spacing (docs/terrain-and-world-scale-architecture.md);
     // bilinear interpolation alone reads as blank ground, so a small bump is laid on top as
     // texture, not new hills. Its wavelength must stay well above the fine grid's vertex
-    // spacing or it aliases into per-vertex jitter (see SubdivisionsPerCell).
+    // spacing or it aliases into per-vertex jitter.
     private const int BumpNoiseSeed = 42;
     private const int BumpOctaves = 3;
     private const double BumpFrequency = 1.0 / 10.0;

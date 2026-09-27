@@ -164,9 +164,8 @@ public class SpawnNewBandTests
         Assert.Equal(expected.Y, camp.Y, 6);
     }
 
-    // A successor band founds its own camp home rather than reusing the old one (docs/todo/
-    // fauna-plan.md, step 1b): the old camp's home stays in the world (graves and huts are
-    // there) but nobody living points at it any more.
+    // A successor band founds its own camp home rather than reusing the old one: the old camp's
+    // home stays in the world (graves and huts are there) but nobody living points at it any more.
     [Fact]
     public void SpawnNewBandFoundsItsOwnHomeAwayFromTheOldOne()
     {

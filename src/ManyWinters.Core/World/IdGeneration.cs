@@ -6,8 +6,8 @@ namespace ManyWinters.Core.World;
 // key off SeedOf.
 public static class IdGeneration
 {
-    // For a creator that needs the same world twice (MapLoader's seeded map): 16 bytes off its
-    // own seeded Random, which is stable for a given seed.
+    // For a creator that needs the same world twice: 16 bytes off its own seeded Random, which
+    // is stable for a given seed.
     public static Guid NextGuid(Random rng)
     {
         var bytes = new byte[16];

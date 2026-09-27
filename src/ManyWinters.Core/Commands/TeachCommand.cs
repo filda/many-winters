@@ -4,10 +4,10 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Passing a technique on face to face - the player's teach action (Main.cs) or WorldState's
-// autonomous pass between neighbours. Teaching is itself a skill (see
-// SkillDefinition.BaseTechnique): the teacher has to know how to teach, not just the thing
-// taught. The "teaching" base technique spreads the same way; there is no separate bootstrap.
+// Passing a technique on face to face - the player's teach action or WorldState's autonomous
+// pass between neighbours. Teaching is itself a skill: the teacher has to know how to teach, not
+// just the thing taught. The "teaching" base technique spreads the same way; there is no
+// separate bootstrap.
 public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Technique) : ICommand
 {
     // Public: WorldState.AutoTeachNearbyPeople skips teachers who cannot teach, and Main.cs
@@ -17,7 +17,7 @@ public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Te
     private const float SkillGainPerLesson = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
+    // Stated in tries, not as a level: the practice curve is not linear.
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     // A teacher who knows the efficient technique reaches a little further - a lesson to a

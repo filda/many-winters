@@ -5,9 +5,9 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Commands;
 
 // Eating straight off a pile somebody put down, the ground's counterpart of GatherCommand's
-// eating at the source. Taking from a pile needs no skill (see PickUpItemCommand), so knowing
-// how to eat is enough: a band can live off what one picker brings back. Only what the meal
-// needs comes off the pile, and the rest stays there for the next hungry person.
+// eating at the source. Taking from a pile needs no skill, so knowing how to eat is enough: a
+// band can live off what one picker brings back. Only what the meal needs comes off the pile,
+// and the rest stays there for the next hungry person.
 public sealed record EatFromPileCommand(Creature Actor, Entity Pile) : ICommand
 {
     public ActionBlocker Blocker(WorldState world)
@@ -41,6 +41,6 @@ public sealed record EatFromPileCommand(Creature Actor, Entity Pile) : ICommand
         }
     }
 
-    // A pile of stock carries the item's own kind (see DropCommand).
+    // A pile of stock carries the item's kind directly.
     public static ItemKindId FoodOf(Entity pile) => new(pile.Kind.Value);
 }

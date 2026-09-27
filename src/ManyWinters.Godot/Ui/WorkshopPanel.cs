@@ -12,20 +12,18 @@ namespace ManyWinters.Godot.Ui;
 // hypothesis and the simulation rules on it, which is the loop worth playing. A menu of
 // Twist/Bind/Knap would hand them the answer before they had the idea.
 //
-// A fixed shape rather than a page that grows and shrinks with what is currently laid on it - the
-// naming question that used to live inside it, since moved to its own page, was what made it
-// lurch every time a thing nobody had a word for came off the bench.
+// A fixed shape rather than a page that grows and shrinks with what is laid on it, so the bench
+// doesn't lurch every time something comes off it or is put down.
 //
 // Time stands still while this is open, the way it does for the pause page - tinkering is meant
 // to be unhurried, not something to rush before the world moves on. Main holds the clock for
 // whichever of those is visible.
 public partial class WorkshopPanel : PaperPanel
 {
-    // Wider than the cards that sit beside the world: this one is the workbench itself, in the
-    // middle of the screen, and what a thing is made of runs long enough that a narrow column
-    // broke half the lines. Wide and low rather than tall - a bench is a surface
-    // things are laid out on, and a column of carried things reaching down the screen reads as an
-    // inventory screen.
+    // Wider than the cards that sit beside the world: this one is the workbench, in the middle
+    // of the screen, and what a thing is made of runs long enough that a narrow column broke
+    // half the lines. Wide and low rather than tall - a bench is a surface things are laid out
+    // on, and a column of carried things reaching down the screen reads as an inventory screen.
     private const float Width = 640f;
     private const float BodyHeight = 280f;
     private const int BodyFontSize = 15;
@@ -35,11 +33,11 @@ public partial class WorkshopPanel : PaperPanel
     // what leaves it fewer columns than it once had.
     private const int Columns = 5;
 
-    // How wide the recipe list's own column is, the rest of the bench going to the pack.
+    // How wide the recipe list's column is, the rest of the bench going to the pack.
     private const float RecipeColumnWidth = 220f;
 
-    // How far either half of the bench may reach before it scrolls within its own column instead
-    // of growing the column - which is what keeps the whole bench a fixed shape.
+    // How far either half of the bench may reach before it scrolls within its column instead of
+    // growing the column - which is what keeps the whole bench a fixed shape.
     private const float MaxPackHeight = 128f;
 
     // One thing's square of bench, how far its picture sits from the edges of that square, and how
@@ -105,8 +103,8 @@ public partial class WorkshopPanel : PaperPanel
         Body.AddChild(columns);
 
         // The pack keeps its own scroll, so a big haul stays inside the bench rather than growing
-        // it - which is what a fixed-size workbench needs, the window's own scroll being for a
-        // page that is allowed to be as tall as what is written on it.
+        // it - which is what a fixed-size workbench needs, the window's scroll being for a page
+        // that is allowed to be as tall as what is written on it.
         var pack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         columns.AddChild(pack);
 
@@ -141,8 +139,8 @@ public partial class WorkshopPanel : PaperPanel
         recipeColumn.AddChild(recipeScroll);
 
         // The same control the selected person's card uses, for the same reason ("same control,
-        // same shape") - only ever holding offers the person can actually carry out, since a
-        // recipe with nothing to explain a grey button is not worth a line.
+        // same shape") - only ever holding offers the person can carry out, since a recipe with
+        // nothing to explain a grey button is not worth a line.
         _recipes = new ActionList();
         _recipes.ActionInvoked += offer => RecipeInvoked?.Invoke(offer);
         recipeScroll.AddChild(_recipes);
@@ -155,8 +153,8 @@ public partial class WorkshopPanel : PaperPanel
 
     // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
     // rather than down in the body - they read on the selection the way the icons on a toolbar
-    // do, not on the pack laid out underneath. Built while the title bar itself is still going
-    // up, so their Pressed handlers are wired here too rather than back in _Ready.
+    // do, not on the pack laid out underneath. Built while the title bar is still going up, so
+    // their Pressed handlers are wired here too rather than back in _Ready.
     protected override void BuildTitleBarExtras(HBoxContainer titleBar)
     {
         _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
@@ -192,8 +190,8 @@ public partial class WorkshopPanel : PaperPanel
     internal void ShowRecipes(IReadOnlyList<ActionOffer> recipes) => _recipes.Show(recipes);
 
     // Pressed on a recipe line. The owner runs it, the same way it runs a line off the person's
-    // own card - this panel knows what an offer is, not what making one means for the rest of
-    // the game.
+    // card - this panel knows what an offer is, not what making one means for the rest of the
+    // game.
     internal event Action<ActionOffer>? RecipeInvoked;
 
     // The clock is held while the bench is out, so the cross cannot simply hide it.
@@ -230,8 +228,8 @@ public partial class WorkshopPanel : PaperPanel
             _tiles[i].Apply(i < carried.Count ? carried[i] : null, i < carried.Count && _picked.Contains(carried[i]));
         }
 
-        // Said only once something has actually been picked - stated up front, before the player
-        // has touched the pack, it is an instruction nobody asked for yet.
+        // Said only once something has been picked - stated up front, before the player has
+        // touched the pack, it is an instruction nobody asked for yet.
         _hint.Text = carried.Count > 0 ? "Take one thing, or two." : "Carrying nothing to work with.";
         _hint.Visible = carried.Count == 0 || _picked.Count > 0;
         // As tall as the pack needs, up to where it starts scrolling instead.
@@ -279,7 +277,7 @@ public partial class WorkshopPanel : PaperPanel
     private void OnTryPressed() => Attempted?.Invoke();
 
     // Raised for Main to ask the world what the current pick would do and to carry it out; the
-    // panel itself holds no world.
+    // panel holds no world.
     internal event Action? Attempted;
 
     // Pressed Eat or Drop on whatever is picked. Main carries it out the same way it does an

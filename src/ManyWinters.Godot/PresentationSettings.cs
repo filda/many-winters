@@ -32,12 +32,12 @@ public sealed record PresentationSettings
     public float SelectionMarkerScreenGap { get; } = 6f;
 
     // A person genuinely behind something opaque (a tree trunk, not just an oversized collision
-    // box - see HoverRescue) is unreachable by raycast: the trunk pixel is a real hit. Screen
-    // distance to the person's projected position ignores 3D occlusion entirely.
+    // box) is unreachable by raycast: the trunk pixel is a real hit. Screen distance to the
+    // person's projected position ignores 3D occlusion entirely.
     //
     // Measured from the origin at mid-body, so it also decides how much ground around a
     // bystander's feet a walk order cannot target; 20 still covers a half-hidden torso. The
-    // selected person is exempt (see Main.FindNearestPersonOnScreen).
+    // selected person is exempt.
     public float PersonClickScreenRadius { get; } = 20f;
 
     // Inside SimulationRules.MaxInteractionDistance (2f), but far enough that the person's sprite
@@ -49,8 +49,8 @@ public sealed record PresentationSettings
     // reach and the order stuck (EatFromPileCommand, PickUpItemCommand).
     public float PileApproachDistance { get; } = 0.6f;
 
-    // The starting band spans roughly 8x4 units centered on the camp (MapLoader.LoadDefault), so
-    // a close zoom fills the frame with it instead of a handful of specks in an empty field.
+    // The starting band spans roughly 8x4 units centered on the camp, so a close zoom fills the
+    // frame with it instead of a handful of specks in an empty field.
     public float InitialZoomDistance { get; init; } = 10f;
 
     public float MinZoom { get; } = 3f;

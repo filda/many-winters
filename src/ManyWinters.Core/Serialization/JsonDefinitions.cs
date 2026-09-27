@@ -3,9 +3,9 @@ using System.Text.Json;
 namespace ManyWinters.Core.Serialization;
 
 // Every content catalog is a directory of <id>/<id>.json files, loadable two ways: off the
-// filesystem (tests, SimulationRunner), or from documents Godot already read, because an
-// exported build keeps content inside ManyWinters.pck where System.IO cannot see it. Splitting
-// "find" from "parse" keeps Core Godot-free.
+// filesystem, or from documents Godot already read, because an exported build keeps content
+// inside a .pck where System.IO cannot see it. Splitting "find" from "parse" keeps Core
+// Godot-free.
 public static class JsonDefinitions
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };

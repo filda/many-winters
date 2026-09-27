@@ -2,9 +2,9 @@ namespace ManyWinters.Godot.Logic;
 
 // How much rendered time has piled up since the last simulation tick, and whether that is
 // enough to owe another one. At most one tick fires per Advance call - a slow frame does not
-// catch the simulation up all at once, it just leaves the remainder waiting for the next call
-// (see SimulationLoop, which also decides not to call Advance at all while a modal holds the
-// clock, so a held clock neither advances nor consumes what has already accumulated).
+// catch the simulation up all at once, it just leaves the remainder waiting for the next call.
+// The caller also decides not to call Advance at all while a modal holds the clock, so a held
+// clock neither advances nor consumes what has already accumulated.
 internal sealed class TickAccumulator(double intervalSeconds)
 {
     private double _accumulated;

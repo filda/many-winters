@@ -3,9 +3,9 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// Mother and Father are required (see Person.Mother); a caller with nobody to name passes
-// Person.Unknown. The id is normally the person's own to draw (see EntityId) - only a creator
-// that must produce the same world twice (MapLoader) names one.
+// Mother and Father are required; a caller with nobody to name passes Person.Unknown. The id is
+// normally the person's to draw - only a creator that must produce the same world twice
+// (MapLoader) names one.
 public sealed record SpawnPersonCommand(
     CreatureId Id,
     string Name,
@@ -13,15 +13,14 @@ public sealed record SpawnPersonCommand(
     Person Mother,
     Person Father,
     long InitialAgeTicks = 0,
-    // Null lets the id decide (see Person.Sex). MapLoader sets it: its family table has already
-    // settled who bore whom.
+    // Null lets the id decide. MapLoader sets it: its family table has already settled who bore
+    // whom.
     Sex? Sex = null,
-    // Null takes the player band's rate from the rules; an NPC band passes its own (see
-    // Person.Curiosity).
+    // Null takes the player band's rate from the rules; an NPC band passes its own.
     float? Curiosity = null,
-    // Null leaves the new person with no home (see Person.Home) - a caller with an opinion
-    // passes one: MapLoader.LoadDefault hands every starting/successor band member the same camp
-    // HomeRange, Main.OnSpawnButtonPressed borrows the nearest living person's.
+    // Null leaves the new person with no home - a caller with an opinion passes one:
+    // MapLoader.LoadDefault hands every starting/successor band member the same camp HomeRange,
+    // Main.OnSpawnButtonPressed borrows the nearest living person's.
     HomeRange? Home = null) : ICommand
 {
     public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0, HomeRange? home = null)

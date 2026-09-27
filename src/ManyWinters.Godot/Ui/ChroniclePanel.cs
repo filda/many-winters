@@ -18,10 +18,9 @@ public partial class ChroniclePanel : PaperPanel
     // Room for the scrollbar the body grows one of once there is more than a screenful.
     private const int ScrollbarWidth = 16;
 
-    // What an entry may actually use. Without it every label wraps to its own minimum, which for
-    // wrapped text is one character - the column of single letters this panel used to print.
-    // Nothing up the chain hands a width down: the ScrollContainer sizes its content to the
-    // content's own minimum.
+    // What an entry may use. Without it every label wraps to its own minimum, which for wrapped
+    // text is one character - a column of single letters instead of prose. Nothing up the chain
+    // hands a width down: the ScrollContainer sizes its content to the content's own minimum.
     private const float TextWidth = Width - (PanelChrome.PaperPadding * 2) - ScrollbarWidth;
 
     public ChroniclePanel()

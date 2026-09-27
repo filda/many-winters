@@ -91,8 +91,9 @@ public partial class TerrainSandbox : Node3D
         }
     }
 
-    // See Main._UnhandledInput for why this isn't _Input and checks GuiGetHoveredControl; this
-    // scene has no UI yet, but keeps the guard for when one is added.
+    // _UnhandledInput, not _Input, for the same reason as in the main scene: _Input fires before
+    // the UI gets the event, so wheel/drag over a Control would also zoom/rotate the camera
+    // underneath. This scene has no UI yet, but keeps the guard for when one is added.
     public override void _UnhandledInput(InputEvent @event)
     {
         if (GetViewport().GuiGetHoveredControl() is not null)

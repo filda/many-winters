@@ -5,10 +5,9 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// WorldState.BreedAnimals (docs/todo/fauna-plan.md, phase 1b, "mnozeni"): a female conceives on a
-// per-tick roll rather than a pair bond, so most tests here pin ConceptionChancePerTick at 1 (a
-// roll that would otherwise conceive) and prove one condition blocks it, rather than searching
-// for a seed/tick that happens to roll true.
+// WorldState.BreedAnimals: a female conceives on a per-tick roll rather than a pair bond, so
+// most tests here pin ConceptionChancePerTick at 1 (a roll that would otherwise conceive) and
+// prove one condition blocks it, rather than searching for a seed/tick that happens to roll true.
 public class WorldStateBreedingTests
 {
     private const long TicksPerYear = 300;
@@ -197,7 +196,7 @@ public class WorldStateBreedingTests
             world.Execute(new SpawnAnimalCommand(motherId, TestCatalogs.DeerSpeciesId, new Position(0, 0), home, Sex.Female, -AdultAgeTicks));
             world.Execute(new SpawnAnimalCommand(maleId, TestCatalogs.DeerSpeciesId, new Position(1, 0), home, Sex.Male, -AdultAgeTicks));
 
-            // A full year at the shipped deer's own (low) conception chance: enough rolls across
+            // A full year at the shipped deer's (low) conception chance: enough rolls across
             // both Mild seasons that two identical worlds either both conceive or both don't -
             // the point is the two runs agreeing, not forcing a particular outcome.
             world.Advance(TicksPerYear);

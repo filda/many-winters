@@ -12,9 +12,9 @@ namespace ManyWinters.Core.Continuity;
 //
 // Held by the world rather than by each person, because there is one band. When there are
 // several, a word will belong to whoever knows it, and words will then be teachable, forgettable
-// and open to being garbled like anything else somebody believes (docs/todo/todo.md, "vznik
-// jazyka"). The shape here does not stand in the way of that: it is a lookup from a pattern to a
-// word, and whose word it is can be added around it.
+// and open to being garbled like anything else somebody believes. The shape here does not stand
+// in the way of that: it is a lookup from a pattern to a word, and whose word it is can be added
+// around it.
 public sealed class Vocabulary
 {
     private readonly Dictionary<string, string> _words = new(StringComparer.Ordinal);

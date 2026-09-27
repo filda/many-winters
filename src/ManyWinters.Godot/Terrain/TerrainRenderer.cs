@@ -6,8 +6,8 @@ using ManyWinters.Godot.Sprites;
 namespace ManyWinters.Godot.Terrain;
 
 // Real-terrain rendering (docs/terrain-and-world-scale-architecture.md): loads one
-// elevation/waterway patch and builds it into its own subtree. Shared by
-// Prototypes/TerrainSandbox.cs and Main.cs so both render identical terrain.
+// elevation/waterway patch and builds it into its own subtree. Shared by the terrain sandbox
+// prototype and the game's own entry point so both render identical terrain.
 public sealed partial class TerrainRenderer : Node3D
 {
     // Published rather than taken as a constructor callback: a click on the ground body is
@@ -15,8 +15,8 @@ public sealed partial class TerrainRenderer : Node3D
     public event CollisionObject3D.InputEventEventHandler? GroundInputEvent;
 
     // The one terrain patch the game ships, owned here rather than by whichever entry point
-    // happens to construct it - Main and TerrainSandbox both render this same patch, and neither
-    // is where the shipped asset paths belong.
+    // constructs it - more than one caller renders this same patch, and neither is where the
+    // shipped asset paths belong.
     private const string DefaultHeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
     private const string DefaultWaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
     private const string DefaultGroundTexturePath = "res://Content/terrain/ground.png";
@@ -72,8 +72,8 @@ public sealed partial class TerrainRenderer : Node3D
         LoadHeightmap(heightmapPath);
     }
 
-    // The shipped terrain patch, mesh and waterways already built - unattached, ready for
-    // composition code to AddChild once and never construct a second one from these same paths.
+    // The shipped terrain patch, mesh and waterways built - unattached, ready for composition
+    // code to AddChild once and never construct a second one from these same paths.
     public static TerrainRenderer CreateDefault()
     {
         var terrain = new TerrainRenderer(DefaultHeightmapPath, DefaultWaterwaysPath, DefaultGroundTexturePath);
@@ -171,10 +171,10 @@ public sealed partial class TerrainRenderer : Node3D
     {
         var heightRange = Math.Max(0.001f, _heightmap.MaxHeight - _heightmap.MinHeight);
 
-        // The heightmap is a 41x41 grid at 25m - far too coarse for the bump's wavelength (see
-        // Heightmap), so each source cell is subdivided (Heightmap.SubdivisionsPerCell) without
-        // changing the source data. RawAt + BumpAt per vertex, not SampleHeight: HeightAt blends
-        // between these very vertices, so calling it here would add a pointless interpolation.
+        // The heightmap is a 41x41 grid at 25m - far too coarse for the bump's wavelength, so
+        // each source cell is subdivided without changing the source data. RawAt + BumpAt per
+        // vertex, not SampleHeight: HeightAt blends between these very vertices, so calling it
+        // here would add a pointless interpolation.
         var fineGridSize = FineGridSize;
         var fineCellSize = FineCellSize;
 
@@ -337,9 +337,9 @@ public sealed partial class TerrainRenderer : Node3D
         for (var i = 0; i < count; i++)
         {
             // Uniform over the disk, not a square: sqrt(u) compensates for outer rings covering
-            // more area, so points do not bunch toward the centre. Retried up to
-            // MaxPlacementAttempts when too close to an existing decoration, then falls back to
-            // the last attempt rather than skipping (don't loop forever).
+            // more area, so points do not bunch toward the centre. Retried a bounded number of
+            // times when too close to an existing decoration, then falls back to the last
+            // attempt rather than skipping.
             var position = new Vector2(centerX, centerZ);
             for (var attempt = 0; attempt < MaxPlacementAttempts; attempt++)
             {

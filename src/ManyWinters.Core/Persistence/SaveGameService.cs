@@ -161,9 +161,9 @@ public static class SaveGameService
         _ => throw new InvalidDataException("A worked thing in the save states neither a part nor a joint."),
     };
 
-    // The FIFO age ledger for one kind (docs/todo/fauna-plan.md phase 4c, Inventory.Ages) - null
-    // if that kind carries no age at all (non-perishable, or added untimed), so an unremarkable
-    // stack does not grow a pointless empty list in every save.
+    // The FIFO age ledger for one kind - null if that kind carries no age at all (non-perishable,
+    // or added untimed), so an unremarkable stack does not grow a pointless empty list in every
+    // save.
     private static List<AgedEntrySaveData>? ToAgedEntries(Inventory? inventory, ItemKindId kind) =>
         inventory is not null && inventory.Ages.TryGetValue(kind, out var entries) && entries.Count > 0
             ? entries.Select(entry => new AgedEntrySaveData(entry.Tick, entry.Count)).ToList()
@@ -175,8 +175,7 @@ public static class SaveGameService
         world.Clock.Advance(data.Tick);
 
         // Built before any person, unlike Animal's own home ranges below: a person's Home is
-        // resolved while restoring the person (see RestorePerson), not in a second pass, so it
-        // has to exist first.
+        // resolved while restoring the person, not in a second pass, so it has to exist first.
         var homeRangesById = new Dictionary<Guid, HomeRange>();
         foreach (var homeRangeData in data.HomeRanges)
         {
@@ -281,7 +280,7 @@ public static class SaveGameService
         }
 
         // A mother always precedes her young in save order (world.Animals is insertion order),
-        // exactly the "parents before children" guarantee RestorePerson relies on above.
+        // the same parents-before-children guarantee relied on above.
         var animalsById = new Dictionary<Guid, Animal>();
         foreach (var animalData in data.Animals)
         {

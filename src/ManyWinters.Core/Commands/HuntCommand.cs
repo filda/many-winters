@@ -5,11 +5,11 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Commands;
 
-// A thrown attempt at a deer within reach (docs/todo/fauna-plan.md, phase 3): always a Person at
-// a living Animal, gated only on knowledge - bare hands are allowed at HuntingBaseHitChance, so
-// there is no MissingTool blocker the way FellCommand has one. A hit kills the prey outright and
-// fills its carcass (the same yield a death from hunger or old age gets - WorldState.FillCarcass);
-// a miss sends it fleeing even from beyond its own FleeDistance, because it saw the throw.
+// A thrown attempt at a deer within reach: always a Person at a living Animal, gated only on
+// knowledge - bare hands are allowed at HuntingBaseHitChance, so there is no MissingTool blocker
+// the way FellCommand has one. A hit kills the prey outright and fills its carcass with the same
+// yield a death from hunger or old age gets; a miss sends it fleeing even from beyond its own
+// FleeDistance, because it saw the throw.
 public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
 {
     public static readonly SkillTypeId Skill = new("hunting");
@@ -17,11 +17,11 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
     private const float SkillGainPerAttempt = 1f;
     private const int PracticesBeforeDiscovery = 5;
 
-    // Stated in tries, not as a level: the practice curve is not linear (see Skills.Increase).
+    // Stated in tries, not as a level: the practice curve is not linear.
     private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     // Nothing scales past this - even a master hunter with the best tool in the game misses one
-    // throw in ten (docs/todo/fauna-plan.md phase 3).
+    // throw in ten.
     private const float MaxHitChance = 0.9f;
 
     public ActionBlocker Blocker(WorldState world)
@@ -44,11 +44,9 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
             return ActionBlocker.TooFar;
         }
 
-        // Never self-taught (see SkillDefinition.BaseTechnique): a person nobody ever showed how
-        // to hunt does not throw at all, however close the deer stands. No tool blocker above
-        // this - a bare-handed throw is allowed, just a nearly hopeless one (see
-        // SimulationRules.HuntingBaseHitChance). Asked last, like every knowledge gate (see
-        // ActionBlocker.NotLearned).
+        // Never self-taught: a person nobody ever showed how to hunt does not throw at all,
+        // however close the deer stands. No tool blocker above this - a bare-handed throw is
+        // allowed, just a nearly hopeless one. Asked last, like every knowledge gate.
         var skillDefinition = world.Configuration.SkillCatalog.Get(Skill);
         return Hunter.KnownTechniques.Contains(skillDefinition.BaseTechnique)
             ? ActionBlocker.None
@@ -68,8 +66,7 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
 
         // A sharp stone hafted on a stick is scored the same way an axe is - it is a spear as
         // much as an axe until form recognition can tell the two apart (see
-        // docs/materials-and-crafting-architecture.md section 8; a piercing-specific score is
-        // noted as future work in docs/todo/fauna-plan.md phase 5).
+        // docs/materials-and-crafting-architecture.md section 8).
         var toolScore = Hunter.Inventory.BestChoppingScore(world.Configuration.ItemCatalog);
         var chance = rules.HuntingBaseHitChance + (toolScore * rules.HuntingHitChancePerToolScore);
         if (hasEfficientTechnique)
@@ -88,9 +85,8 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
         }
         else
         {
-            // Seen the throw and bolts, however far the hunter actually stood - the "Útěk dřív
-            // než lov" rule from phase 2 still applies to what triggers it, not to how far a
-            // miss is felt.
+            // Seen the throw and bolts, however far the hunter actually stood - fleeing depends
+            // on what triggers it, not on how far a miss is felt.
             if (world.Configuration.SpeciesCatalog.Get(Prey.Species).Flee is { } flee)
             {
                 Prey.Tasks.Interrupt(new FleeTask(Hunter, flee));
@@ -104,9 +100,9 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
         }
     }
 
-    // Deterministic from the pair and the tick, the same construction as
-    // WorldState.PassesIdleDiscoveryRoll: a throw is a roll over (hunter, prey, tick), not a
-    // shared Random, so a replay throws the same way twice.
+    // Deterministic from the pair and the tick, the same construction every roll in the game
+    // uses: a throw is a roll over (hunter, prey, tick), not a shared Random, so a replay throws
+    // the same way twice.
     private static bool PassesHuntRoll(Person hunter, Animal prey, long tick, float chance)
     {
         var mixed = unchecked((uint)(hunter.Id.Seed * 2654435761u) ^ (uint)(prey.Id.Seed * 40503) ^ ((uint)tick * 73856093u));

@@ -87,8 +87,7 @@ public class SpeciesCatalogTests
         }
     }
 
-    // A dead deer's carcass (docs/todo/fauna-plan.md, phase 3): what WorldState.FillCarcass reads
-    // to stock a dead animal's Inventory.
+    // A dead deer's carcass: what WorldState.FillCarcass reads to stock a dead animal's Inventory.
     [Fact]
     public void LoadFromDirectoryReadsTheCarcass()
     {
@@ -128,8 +127,8 @@ public class SpeciesCatalogTests
         }
     }
 
-    // A human carries no Carcass block at all (SpeciesDefinition.Carcass defaults to empty) -
-    // people are not butchered, and this is what keeps FillCarcass from adding anything to one.
+    // A human carries no Carcass block (SpeciesDefinition.Carcass defaults to empty) - people
+    // are not butchered, and this is what keeps FillCarcass from adding anything to one.
     [Fact]
     public void ASpeciesDescribedWithNoCarcassHasAnEmptyOne()
     {
