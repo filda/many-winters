@@ -6,27 +6,14 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Commands;
 
 // Gathering food no longer relieves hunger directly - it only fills the gatherer's inventory, so
-// something has to spend it back down again. Eats just enough of the
-// given food item to reach zero hunger, or all of it if there isn't that much - not a fixed
-// amount, since a UI "Eat" action shouldn't need the caller to first work out how much hunger
-// is left to satisfy.
+// something has to spend it back down again. Eats just enough of the given food item to reach zero hunger,
+// or all of it if there isn't that much - not a fixed amount, since a UI "Eat" action shouldn't need
+// the caller to first work out how much hunger is left to satisfy.
 public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
 {
     // A person who never learned even this can be holding a full inventory of food and still
     // starve - eating (like gathering) has to be taught, not assumed.
     public static readonly SkillTypeId Skill = new("eating");
-
-    // A better cook/eater gets more out of the same food rather than eating faster or needing
-    // less of it - the simplest bonus that still gives EfficientTechnique a real effect, the
-    // same pattern as a chopping-scored tool's bonus for gathering.
-    private const float EfficientHungerRestoredMultiplier = 1.2f;
-
-    private const float SkillGainPerMeal = 1f;
-    private const int PracticesBeforeDiscovery = 5;
-
-    // The practice curve is not linear, so the threshold is stated as the number of tries it
-    // stands for rather than as a level.
-    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
 
     public ActionBlocker Blocker(WorldState world) =>
         EatingBlocker(world, Actor, FoodItem, Actor.Inventory.Get(FoodItem));
@@ -39,7 +26,7 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
         }
 
         // Unguarded: removing zero units leaves the count exactly as it was, so there is
-        // nothing for an "did we actually eat" check to save.
+        // nothing for a "did we actually eat" check to save.
         Actor.Inventory.Remove(FoodItem, Eat(world, Actor, FoodItem, Actor.Inventory.Get(FoodItem)));
     }
 
@@ -102,7 +89,7 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
         var restoredPerUnit = world.HungerRestoredPerUnitFor(actor, food);
         if (actor.KnownTechniques.Contains(skillDefinition.EfficientTechnique))
         {
-            restoredPerUnit *= EfficientHungerRestoredMultiplier;
+            restoredPerUnit *= world.Configuration.Rules.EfficientHungerRestoredMultiplier;
         }
 
         // At least one: EatingBlocker has already refused both a creature with no hunger to put
@@ -112,8 +99,8 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
 
         actor.Needs.Hunger = Math.Max(0f, actor.Needs.Hunger - (unitsEaten * restoredPerUnit));
 
-        actor.Skills.Increase(Skill, SkillGainPerMeal);
-        if (actor.Skills.Get(Skill) >= DiscoveryThreshold)
+        actor.Skills.Increase(Skill, world.Configuration.Rules.SkillGainPerMeal);
+        if (actor.Skills.Get(Skill) >= Skills.LevelAfter(world.Configuration.Rules.PracticesBeforeDiscovery))
         {
             actor.KnownTechniques.Add(skillDefinition.EfficientTechnique);
         }
