@@ -153,6 +153,7 @@ public sealed class InspectCodeTask : FrostingTask<BuildContext>
         {
             "jb", "inspectcode", context.SolutionPath, "--swea", "--no-build", "--severity=WARNING",
             "--properties:Configuration=" + context.BuildConfiguration, "-f=Xml", "-o=" + report,
+            "--caches-home=" + context.InspectCodeCacheDirectory,
         };
 
         if (OperatingSystem.IsWindows())
@@ -168,6 +169,21 @@ public sealed class InspectCodeTask : FrostingTask<BuildContext>
         if (issueCount != 0)
         {
             throw new InvalidOperationException($"InspectCode reported {issueCount} issue(s). See {report}.");
+        }
+    }
+}
+
+// Deliberately not a dependency of InspectCode: a warm cache is what keeps that target at
+// seconds instead of a minute. Run this first when InspectCode reports CSharpErrors on code
+// that builds - the cache has fallen out of step with the sources, not the other way round.
+[TaskName("InspectCodeClean")]
+public sealed class InspectCodeCleanTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        if (Directory.Exists(context.InspectCodeCacheDirectory))
+        {
+            Directory.Delete(context.InspectCodeCacheDirectory, recursive: true);
         }
     }
 }

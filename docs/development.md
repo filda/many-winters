@@ -276,6 +276,8 @@ Which inspections count is decided in `.editorconfig`: the dead-code family (`re
 
 If the tool aborts with "MSBuild process was started ... but the IDE failed to connect to it" on Windows, it picked up a Visual Studio Build Tools MSBuild; point it at the SDK's instead, e.g. `--toolset-path="C:\Program Files\dotnet\sdk\8.0.424\MSBuild.dll"`. The `InspectCode` target of the Cake build does this itself from `dotnet --list-sdks`.
 
+If it reports `CSharpErrors` — "Cannot resolve symbol", "has no constructors defined" — on code that `dotnet build` and CI accept, its per-solution cache has fallen out of step with the sources (a large reflow across many files is enough). CI never sees this because every run starts on a fresh runner. The `InspectCode` target keeps that cache at `artifacts/inspectcode-cache` (`--caches-home`) rather than the tool's default under `%LOCALAPPDATA%\JetBrains\Transient`; `--target=InspectCodeClean` deletes it, after which `--target=InspectCode` rebuilds it in about a minute instead of the usual seconds. Bare `dotnet jb inspectcode` still uses the default location.
+
 ## Development notes
 
 - Keep simulation logic out of `ManyWinters.Godot` — the presentation layer only reads simulation state and sends commands (see the plan's "Commands Instead of Direct Manipulation" section). Never mutate simulation state directly from UI code.

@@ -23,4 +23,9 @@ public sealed class BuildContext(ICakeContext context) : FrostingContext(context
     // Reports a failing task leaves behind for a human to read. Inside the repository rather than
     // the temp directory, so ci.yml can upload the folder as a job artifact; git ignores it.
     public string ArtifactsDirectory => Path.Combine(RootDirectory, "artifacts");
+
+    // InspectCode's per-solution cache. Left to its default it lands under %LOCALAPPDATA% and
+    // outlives the checkout it describes; a stale one reports "Cannot resolve symbol" on code
+    // that builds. Kept here so InspectCodeClean knows what to delete.
+    public string InspectCodeCacheDirectory => Path.Combine(ArtifactsDirectory, "inspectcode-cache");
 }
