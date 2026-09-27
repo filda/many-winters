@@ -272,6 +272,28 @@ public sealed class WorldState(WorldConfiguration configuration)
                     take.Execute(this);
                 }
 
+                // A throw is only attempted once in range, and costs time like a workbench
+                // attempt (SimulationRules.TicksPerWorkAttempt) - HuntTask only ever walks
+                // (docs/todo/fauna-plan.md phase 3). Only a Person ever hunts (nothing grants
+                // basic_hunting to an animal), so the type check here is the same guard
+                // ButcherCommand's own doc comment relies on.
+                if (creature.Tasks.Current is HuntTask activeHunt
+                    && creature is Person hunter
+                    && Distance(creature.Position, activeHunt.Prey.Position) <= activeHunt.Range
+                    && currentTick >= activeHunt.NextAttemptTick)
+                {
+                    new HuntCommand(hunter, activeHunt.Prey).Execute(this);
+                    activeHunt.NextAttemptTick = currentTick + rules.TicksPerWorkAttempt;
+                }
+
+                // Every tick a butcher order is active, not once on arrival - exactly the
+                // GatherTask/pile pattern above, and ButcherCommand's own Blocker no-ops while
+                // still out of reach.
+                if (creature.Tasks.Current is ButcherTask activeButcher && creature is Person butcher)
+                {
+                    new ButcherCommand(butcher, activeButcher.Carcass).Execute(this);
+                }
+
                 // An infant at its mother's side is fed and not hungry; the cost lands on her
                 // as NursingHungerMultiplier below. Once she dies or leaves it behind, the
                 // countdown is real.
@@ -304,6 +326,7 @@ public sealed class WorldState(WorldConfiguration configuration)
                     creature.IsAlive = false;
                     creature.DeathTick = currentTick;
                     creature.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
+                    FillCarcass(creature);
                 }
             }
 
@@ -379,6 +402,25 @@ public sealed class WorldState(WorldConfiguration configuration)
         // A threat closing in is worth dropping a gather order for, same as urgent hunger - see
         // NearbyThreatTo.
         GatherTask gather => !IsWorthTakingFrom(creature, gather.Target) || NeedsToSeekFoodUrgently(creature) || NearbyThreatTo(creature) is not null,
+        // The prey died (to this hunter or anyone else), wandered out of the search radius, or
+        // hunger is (still) urgent - mirroring GatherTask's own NeedsToSeekFoodUrgently branch
+        // above, which re-derives the best option every tick while hungry rather than committing
+        // to one target. For a hunter this matters more than it does for a gatherer: the one
+        // deer they picked may since have bolted from a miss (SpeciesDefinition.FleeDefinition
+        // sends it well past HuntingRange, faster than a hunter can close on foot - see
+        // deer.json), so re-deriving finds whichever living animal is nearest right now rather
+        // than a dogged, unwinnable chase; a hungry hunter who has since come to carry food
+        // (TryAutoEat eats it down every tick regardless of task) is also dropped here rather
+        // than hunting on for more (docs/todo/fauna-plan.md phase 3).
+        HuntTask hunt => !hunt.Prey.IsAlive
+            || Distance(creature.Position, hunt.Prey.Position) > Configuration.Rules.IdleSearchRadius
+            || creature.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold,
+        // No *meat* left, specifically - not "the carcass is totally empty": a carcass a
+        // beginner stripped of meat but left hide and sinew on (ButcherCommand's own
+        // beginner/efficient split) still has a nonzero inventory, and a hungry butcher parked
+        // beside it forever would starve next to something that can no longer feed them
+        // (mirrors FindNearestDeadAnimalWithMeat's own "worth walking to" test).
+        ButcherTask butcher => butcher.Carcass.Inventory.Get(ButcherCommand.Meat) <= 0,
         _ => false,
     };
 
@@ -393,6 +435,8 @@ public sealed class WorldState(WorldConfiguration configuration)
         (IdleTask, IdleTask) => true,
         (FollowTask running, FollowTask fresh) => ReferenceEquals(running.Target, fresh.Target),
         (FleeTask running, FleeTask fresh) => ReferenceEquals(running.Threat, fresh.Threat),
+        (HuntTask running, HuntTask fresh) => ReferenceEquals(running.Prey, fresh.Prey),
+        (ButcherTask running, ButcherTask fresh) => ReferenceEquals(running.Carcass, fresh.Carcass),
         _ => false,
     };
 
@@ -473,6 +517,20 @@ public sealed class WorldState(WorldConfiguration configuration)
                 // at the wider tree/building reach and never get close enough to take anything.
                 var reach = food.Category == EntityCategory.Pile ? Configuration.Rules.PileReachDistance : reachDistance;
                 return new GatherTask(food, reach);
+            }
+
+            // Butchering before hunting when both are known: a carcass already on the ground is
+            // a meal without the risk of a miss, and wiping out a whole hunt's worth of throws
+            // over a herd that already has food lying around would be busywork
+            // (docs/todo/fauna-plan.md phase 3).
+            if (IsKnownSkill(creature, ButcherCommand.Skill) && FindNearestDeadAnimalWithMeat(searchOrigin) is { } carcass)
+            {
+                return new ButcherTask(carcass, Configuration.Rules.PileReachDistance);
+            }
+
+            if (IsKnownSkill(creature, HuntCommand.Skill) && FindNearestHuntablePrey(searchOrigin) is { } prey)
+            {
+                return new HuntTask(prey, Configuration.Rules.HuntingRange);
             }
         }
 
@@ -599,6 +657,25 @@ public sealed class WorldState(WorldConfiguration configuration)
             .Where(pile => IsFoodPile(creature, pile))
             .Where(pile => Distance(origin, pile.Position) <= Configuration.Rules.IdleSearchRadius)
             .MinBy(pile => Distance(origin, pile.Position));
+
+    // A carcass worth walking to for its meat, nearest to `origin` first (docs/todo/fauna-plan.md
+    // phase 3) - "worth" meaning ButcherCommand would actually find something, not merely that an
+    // animal died here once. Only meat is asked about: a picked-clean carcass still holding hide
+    // or bone but no meat is not a meal.
+    private Animal? FindNearestDeadAnimalWithMeat(Position origin) =>
+        _animals
+            .Where(animal => !animal.IsAlive && animal.Inventory.Get(ButcherCommand.Meat) > 0)
+            .Where(animal => Distance(origin, animal.Position) <= Configuration.Rules.IdleSearchRadius)
+            .MinBy(animal => Distance(origin, animal.Position));
+
+    // Living prey worth a throw, nearest to `origin` first: a species whose carcass would hold
+    // no meat at all is not worth hunting (docs/todo/fauna-plan.md phase 3) - nothing here checks
+    // FleeDistance or HuntingRange, since HuntTask itself closes whatever gap remains.
+    private Animal? FindNearestHuntablePrey(Position origin) =>
+        _animals
+            .Where(animal => animal.IsAlive && Configuration.SpeciesCatalog.Get(animal.Species).Carcass.Any(yield => yield.Item == ButcherCommand.Meat && yield.Amount > 0))
+            .Where(animal => Distance(origin, animal.Position) <= Configuration.Rules.IdleSearchRadius)
+            .MinBy(animal => Distance(origin, animal.Position));
 
     private static Entity? NearerOf(Position origin, Entity? a, Entity? b) => (a, b) switch
     {
@@ -1164,6 +1241,23 @@ public sealed class WorldState(WorldConfiguration configuration)
         }
 
         return hash;
+    }
+
+    // What a dead creature leaves behind, put into its own Inventory once at the moment it dies
+    // (docs/todo/fauna-plan.md, phase 3, "Rozhodnutí předem" item 4) - whatever the cause,
+    // hunger and old age included, and however starved or old it died: scaling the yield by
+    // condition is left for later, noted but not solved here. A human's species carries no
+    // Carcass at all (SpeciesDefinition.Carcass), so this adds nothing to a dead person; taking
+    // a dead person's possessions stays LootCommand's job.
+    // Internal rather than private: HuntCommand's kill is a death caused by a command rather
+    // than by this Advance's own hunger/old-age check, but it fills a carcass exactly the same
+    // way (docs/todo/fauna-plan.md phase 3).
+    internal void FillCarcass(Creature creature)
+    {
+        foreach (var yield in Configuration.SpeciesCatalog.Get(creature.Species).Carcass)
+        {
+            creature.Inventory.Add(yield.Item, yield.Amount);
+        }
     }
 
     // Same behaviour as the player's Eat button: eats through whatever food is on hand until no

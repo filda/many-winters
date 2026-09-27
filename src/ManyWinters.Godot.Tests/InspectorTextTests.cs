@@ -99,6 +99,32 @@ public class InspectorTextTests
         Assert.Equal("Fleeing", InspectorText.ForTask(deer));
     }
 
+    // Directed hunting and butchering (docs/todo/fauna-plan.md, phase 3c) - only a Person ever
+    // runs either task, but ForTask reads Creature.Tasks.Current alone, so a bare HuntTask/
+    // ButcherTask on any creature is enough to test the wording.
+    [Fact]
+    public void AHunterIsSaidToBeHunting()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
+        person.Tasks.Interrupt(new HuntTask(deer, range: world.Configuration.Rules.HuntingRange));
+
+        Assert.Equal("Hunting", InspectorText.ForTask(person));
+    }
+
+    [Fact]
+    public void AButcherIsSaidToBeButchering()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
+        deer.IsAlive = false;
+        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance));
+
+        Assert.Equal("Butchering", InspectorText.ForTask(person));
+    }
+
     [Fact]
     public void AnUnmarkedGraveRecordsNothingAboutWhoLiesThere()
     {
@@ -177,6 +203,7 @@ public class InspectorTextTests
     {
         Assert.Contains("of hunger", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.Hunger)), StringComparison.Ordinal);
         Assert.Contains("of old age", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.OldAge)), StringComparison.Ordinal);
+        Assert.Contains("hunter's spear", InspectorText.ForGrave(NewGrave(causeOfDeath: DeathCause.Hunted)), StringComparison.Ordinal);
     }
 
     // Every winter of the default ten-winter life, so a moved threshold shows up here as the word
@@ -228,6 +255,14 @@ public class InspectorTextTests
     public void ForDeathNamesTheCauseWhenOneIsRecorded()
     {
         Assert.Equal("Died at 5 winters of old age.", InspectorText.ForDeath(5, DeathCause.OldAge));
+    }
+
+    // Only an Animal is ever hunted today (DeathCause.Hunted), but the card must not throw or
+    // fall silent if that ever changes for a Person (docs/todo/fauna-plan.md phase 3).
+    [Fact]
+    public void ForDeathNamesHuntedAsItsOwnCause()
+    {
+        Assert.Equal("Died at 5 winters to a hunter's spear.", InspectorText.ForDeath(5, DeathCause.Hunted));
     }
 
     [Fact]

@@ -1,0 +1,1 @@
+{ "id": "sinew", "displayName": "Sinew", "material": "sinew", "form": "fibre", "volume": 1, "transitions": [{ "verb": "twist", "form": "cord", "inputAmount": 3 }] }

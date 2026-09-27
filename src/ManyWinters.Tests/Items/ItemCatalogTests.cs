@@ -1,4 +1,5 @@
 using ManyWinters.Core.Items;
+using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
 
 namespace ManyWinters.Tests.Items;
@@ -314,6 +315,79 @@ public class ItemCatalogTests
             catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Head(), Haft())),
             catalog.ChoppingScoreOf(new Assembly.Joined(1f, 0.5f, Head(), longer)),
             5);
+    }
+
+    // The exact content shipped for the carcass items (docs/todo/fauna-plan.md, phase 3):
+    // meat/hide/bone/sinew, each mirroring what ButcherCommand and the diet system expect.
+    [Fact]
+    public void MeatIsALumpOfMeatThatRestoresHunger()
+    {
+        var meat = new ItemKindId("meat");
+        var meatMaterial = new MaterialId("meat");
+        var catalog = new ItemCatalog(
+        [
+            new ItemDefinition(meat, "Meat", meatMaterial, Lump, Volume: 1f, HungerRestoredPerUnit: 5f),
+        ], new MaterialCatalog([new MaterialDefinition(meatMaterial, "Meat", Density: 1f)]), Forms());
+
+        var definition = catalog.Get(meat);
+
+        Assert.Equal(meatMaterial, definition.Material);
+        Assert.Equal(Lump, definition.Form);
+        Assert.Equal(5f, catalog.HungerRestoredPerUnitFor(meat));
+    }
+
+    [Fact]
+    public void HideIsAWholeHideMadeOfHideMaterial()
+    {
+        var hideItem = new ItemKindId("hide");
+        var whole = new FormId("whole");
+        var catalog = new ItemCatalog(
+        [
+            new ItemDefinition(hideItem, "Hide", Hide, whole, Volume: 3f),
+        ], Materials(), new FormCatalog([new FormDefinition(whole, "Whole")]));
+
+        var definition = catalog.Get(hideItem);
+
+        Assert.Equal(Hide, definition.Material);
+        Assert.Equal(whole, definition.Form);
+        Assert.Equal(0f, catalog.HungerRestoredPerUnitFor(hideItem));
+    }
+
+    [Fact]
+    public void BoneIsAStickShapedItemThatIsNeitherKnappableNorSharpenable()
+    {
+        var boneItem = new ItemKindId("bone");
+        var boneMaterial = new MaterialId("bone");
+        var catalog = new ItemCatalog(
+        [
+            new ItemDefinition(boneItem, "Bone", boneMaterial, Stick, Volume: 1f),
+        ], new MaterialCatalog([new MaterialDefinition(boneMaterial, "Bone", Density: 1.3f, Hardness: 0.75f, Toughness: 0.6f)]), Forms());
+
+        var definition = catalog.Get(boneItem);
+
+        Assert.Equal(boneMaterial, definition.Material);
+        Assert.Equal(Stick, definition.Form);
+    }
+
+    [Fact]
+    public void SinewTwistsIntoACordJustLikeGrass()
+    {
+        var sinewItem = new ItemKindId("sinew");
+        var sinewMaterial = new MaterialId("sinew");
+        var cord = new FormId("cord");
+        var twist = new TechniqueId("twist");
+        var catalog = new ItemCatalog(
+        [
+            new ItemDefinition(sinewItem, "Sinew", sinewMaterial, new FormId("fibre"), Volume: 1f,
+                Transitions: [new FormTransition(twist, cord, 3)]),
+        ], Materials(), Forms());
+
+        var definition = catalog.Get(sinewItem);
+
+        var transition = Assert.Single(definition.Transitions);
+        Assert.Equal(twist, transition.Verb);
+        Assert.Equal(cord, transition.Form);
+        Assert.Equal(3, transition.InputAmount);
     }
 
     [Fact]

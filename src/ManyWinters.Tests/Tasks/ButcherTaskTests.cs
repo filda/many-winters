@@ -1,0 +1,84 @@
+using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
+using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
+
+namespace ManyWinters.Tests.Tasks;
+
+// ButcherTask walks to a carcass exactly the way GatherTask walks to a pile
+// (docs/todo/fauna-plan.md, phase 3) - a carcass lies where it fell, it does not move.
+public class ButcherTaskTests
+{
+    private static readonly Position CarcassPosition = new(10, 10);
+
+    private static readonly float Reach = SimulationRules.Default.PileReachDistance;
+
+    private static Person NewButcher(Position position) =>
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+
+    private static Animal NewCarcass() =>
+        new(TestCatalogs.DeerSpeciesId, new HomeRange(CarcassPosition) { Radius = 10f, DriftMetresPerSeason = 0f })
+        {
+            BirthTick = 0,
+            Sex = Sex.Female,
+            Position = CarcassPosition,
+            IsAlive = false,
+        };
+
+    private static ButcherTask NewTask(float? reach = null, Animal? carcass = null) => new(carcass ?? NewCarcass(), reach ?? Reach);
+
+    [Fact]
+    public void IsNeverComplete()
+    {
+        var task = NewTask();
+        var butcher = NewButcher(new Position(30, 10));
+
+        for (var i = 0; i < 200; i++)
+        {
+            task.Advance(butcher);
+            Assert.False(task.IsComplete);
+        }
+    }
+
+    [Fact]
+    public void RemembersWhatItWasSentTo()
+    {
+        var carcass = NewCarcass();
+
+        var task = NewTask(carcass: carcass);
+
+        Assert.Same(carcass, task.Carcass);
+        Assert.Equal(Reach, task.Reach);
+    }
+
+    [Fact]
+    public void WalksIntoReachOfTheCarcass()
+    {
+        var butcher = NewButcher(new Position(30, 10));
+        var task = NewTask();
+
+        for (var i = 0; i < 200; i++)
+        {
+            task.Advance(butcher);
+        }
+
+        Assert.True(
+            WorldState.Distance(butcher.Position, CarcassPosition) <= Reach,
+            $"Ended up {WorldState.Distance(butcher.Position, CarcassPosition)} away, out of butchering reach.");
+    }
+
+    [Fact]
+    public void StaysPutWhenItStartsWithinReach()
+    {
+        var start = new Position(CarcassPosition.X + (Reach * 0.5), CarcassPosition.Y);
+        var butcher = NewButcher(start);
+        var task = NewTask();
+
+        for (var i = 0; i < 20; i++)
+        {
+            task.Advance(butcher);
+        }
+
+        Assert.Equal(start, butcher.Position);
+    }
+}

@@ -1,6 +1,7 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 
@@ -548,5 +549,126 @@ public class TargetActionsTests
         Assert.Equal(
             Labels(TargetActions.For(world, ava, hut)),
             Labels(TargetActions.For(world, ava, hut)));
+    }
+
+    // A living deer and its own carcass are offered entirely different things (docs/todo/fauna-
+    // plan.md, phase 3c) - the same "living and dead never share a list" rule as a Person target.
+    [Fact]
+    public void ALivingAnimalIsOfferedHuntAndNothingElse()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+
+        var menu = TargetActions.For(world, person, deer);
+
+        Assert.Equal("Deer", menu.Heading);
+        Assert.Equal(["Hunt"], Labels(menu));
+    }
+
+    [Fact]
+    public void ADeadAnimalIsOfferedButcherAndNothingElse()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+
+        Assert.Equal(["Butcher"], Labels(TargetActions.For(world, person, deer)));
+    }
+
+    // Pointing at the deer is itself how the person is shown how to hunt it, exactly as pointing
+    // at a tree teaches gathering - never having been shown cannot be what stops the order.
+    [Fact]
+    public void HuntTeachesItsOwnSkill()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+
+        var hunt = Labelled(TargetActions.For(world, person, deer), "Hunt");
+
+        Assert.Empty(person.KnownTechniques);
+        Assert.Equal(HuntCommand.Skill, hunt.TeachFirst);
+        Assert.True(hunt.IsAvailable);
+    }
+
+    [Fact]
+    public void ButcherTeachesItsOwnSkill()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+
+        var butcher = Labelled(TargetActions.For(world, person, deer), "Butcher");
+
+        Assert.Empty(person.KnownTechniques);
+        Assert.Equal(ButcherCommand.Skill, butcher.TeachFirst);
+        Assert.True(butcher.IsAvailable);
+    }
+
+    // Both carry the animal itself as what pursues rather than a fixed spot - a deer moves, and a
+    // carcass is reached with the pile's own standoff, so both are handed to the simulation's own
+    // tick loop instead of a one-shot walk-then-fire (ActionOffer.Pursuit).
+    [Fact]
+    public void HuntCarriesAPursuitTaskForTheDeerItself()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, FarAway);
+
+        var hunt = Labelled(TargetActions.For(world, person, deer), "Hunt");
+
+        var pursuit = Assert.IsType<HuntTask>(hunt.Pursuit);
+        Assert.Same(deer, pursuit.Prey);
+        Assert.Equal(world.Configuration.Rules.HuntingRange, pursuit.Range);
+    }
+
+    [Fact]
+    public void ButcherCarriesAPursuitTaskForTheCarcassItself()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, FarAway);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+
+        var butcher = Labelled(TargetActions.For(world, person, deer), "Butcher");
+
+        var pursuit = Assert.IsType<ButcherTask>(butcher.Pursuit);
+        Assert.Same(deer, pursuit.Carcass);
+        Assert.Equal(world.Configuration.Rules.PileReachDistance, pursuit.Reach);
+    }
+
+    // A carcass a butcher cannot reach into (nothing left, or their pack already full) is refused
+    // rather than sent on a pointless walk - the same "walking will not mend it" rule a resource's
+    // own refusal follows.
+    [Fact]
+    public void AnEmptyCarcassRefusesButchering()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+        deer.IsAlive = false;
+
+        var butcher = Labelled(TargetActions.For(world, person, deer), "Butcher");
+
+        Assert.Equal(ActionBlocker.NothingLeft, butcher.Blocker);
+        Assert.False(butcher.IsAvailable);
+    }
+
+    // Butchering something still on its feet is refused outright, the same "still alive" wording
+    // LootCommand gives a looter standing over somebody who is not dead yet.
+    [Fact]
+    public void HuntingACarcassIsNotOnOffer()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+
+        Assert.DoesNotContain(TargetActions.For(world, person, deer).Offers, offer => offer.Label == "Butcher");
     }
 }

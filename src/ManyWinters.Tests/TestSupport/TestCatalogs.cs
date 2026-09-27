@@ -38,6 +38,8 @@ public static class TestCatalogs
     private static readonly SkillTypeId Sharpening = new("sharpening");
     private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
+    private static readonly SkillTypeId Butchering = new("butchering");
+    private static readonly SkillTypeId Hunting = new("hunting");
 
     // Nobody is born knowing how to eat or teach either - see SkillDefinition.BaseTechnique.
     private static readonly SkillTypeId Eating = new("eating");
@@ -57,6 +59,8 @@ public static class TestCatalogs
     private static readonly TechniqueId BasicBurial = new("basic_burial");
     public static readonly TechniqueId BasicEating = new("basic_eating");
     public static readonly TechniqueId BasicTeaching = new("basic_teaching");
+    public static readonly TechniqueId BasicButchering = new("basic_butchering");
+    public static readonly TechniqueId BasicHunting = new("basic_hunting");
 
     public static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     public static readonly TechniqueId EfficientMushroomForaging = new("efficient_mushroom_foraging");
@@ -70,6 +74,8 @@ public static class TestCatalogs
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
     public static readonly TechniqueId EfficientEating = new("efficient_eating");
     public static readonly TechniqueId EfficientTeaching = new("efficient_teaching");
+    public static readonly TechniqueId EfficientButchering = new("efficient_butchering");
+    public static readonly TechniqueId EfficientHunting = new("efficient_hunting");
 
     public static readonly ItemKindId WoodItem = new("wood");
     public static readonly ItemKindId Axe = new("axe");
@@ -84,6 +90,13 @@ public static class TestCatalogs
     private static readonly ItemKindId Bag = new("bag");
     public static readonly ItemKindId StorageHutItem = new("storage_hut");
 
+    // A dead animal's carcass (docs/todo/fauna-plan.md, phase 3): what ButcherCommand takes off
+    // it, one item kind each - matching the well-known ids ButcherCommand itself asks for.
+    public static readonly ItemKindId MeatItem = new("meat");
+    public static readonly ItemKindId HideItem = new("hide");
+    public static readonly ItemKindId BoneItem = new("bone");
+    public static readonly ItemKindId SinewItem = new("sinew");
+
     private static readonly MaterialId WoodMaterial = new("wood");
     private static readonly MaterialId StoneMaterial = new("stone");
     private static readonly MaterialId PlantFibreMaterial = new("plant_fibre");
@@ -92,6 +105,9 @@ public static class TestCatalogs
     private static readonly MaterialId PearMaterial = new("pear");
     private static readonly MaterialId PotatoMaterial = new("potato");
     private static readonly MaterialId MushroomMaterial = new("mushroom");
+    private static readonly MaterialId MeatMaterial = new("meat");
+    private static readonly MaterialId BoneMaterial = new("bone");
+    private static readonly MaterialId SinewMaterial = new("sinew");
 
     private static readonly FormId Whole = new("whole");
     private static readonly FormId Stick = new("stick");
@@ -144,12 +160,47 @@ public static class TestCatalogs
     // what makes a deer's diet (above) able to restore hunger from it.
     private const float GrassHungerRestoredPerUnit = 0.5f;
 
+    // Mirrors meat.json (docs/todo/fauna-plan.md, phase 3): meat is roughly five times as
+    // calorie-dense as a piece of fruit (apple/pear/potato/mushroom all restore
+    // FoodHungerRestoredPerUnit=1 per unit), the same order of magnitude real meat and fruit
+    // differ by. A typical meal (TryAutoEat fires at Rules.HungerEatThreshold=25 and eats down
+    // to zero) needs 25 apple units but only 5 meat units, so a deer's carcass (30 meat) covers
+    // about six such meals - a real meal for a shipped band, not just one person's dinner.
+    private const float MeatHungerRestoredPerUnit = 5f;
+
+    // Mirrors bone.json (docs/todo/fauna-plan.md, phase 3): hard and tough like stone
+    // (StoneHardness=1, StoneToughness=0.15 above) but noticeably lighter, and - unlike stone -
+    // too tough to fracture into an edge (MaterialAffordances.CanKnap needs Toughness < 0.3), so
+    // it comes out not-knappable and not-sharpenable from the properties alone, no special case
+    // needed.
+    private const float BoneDensity = 1.3f;
+    private const float BoneHardness = 0.75f;
+    private const float BoneToughness = 0.6f;
+    private const float BoneFlexibility = 0.1f;
+    private const float BoneElasticity = 0.05f;
+    private const float BoneFibrousness = 0.1f;
+
+    // Mirrors sinew.json (docs/todo/fauna-plan.md, phase 3): fibrous and flexible enough to
+    // twist (MaterialAffordances.CanTwist needs Fibrousness > 0.5 and Flexibility > 0.4) and
+    // elastic enough to hold tension (MaterialAffordances.HoldsTension needs Elasticity > 0.6) -
+    // the bow/snare material the crafting doc names, and "sinew twisted is a sinew cord" (see
+    // sinew's own twist FormTransition below).
+    private const float SinewDensity = 0.9f;
+    private const float SinewToughness = 0.5f;
+    private const float SinewFlexibility = 0.6f;
+    private const float SinewElasticity = 0.7f;
+    private const float SinewFibrousness = 0.85f;
+
     private const float FoodVolume = 1f;
     private const float WoodVolume = 2f;
     private const float StoneVolume = 1f;
     private const float GrassVolume = 5f;
     private const float AxeVolume = 2.5f;
     private const float WarmClothingVolume = 4f;
+    private const float HideVolume = 3f;
+    private const float BoneVolume = 1f;
+    private const float SinewVolume = 1f;
+    public const int SinewPerCord = 3;
 
     // Basket (wood) and bag (grass, lighter but holds less); CarryCapacityBonus is applied in
     // WorldState.MaxCarryWeightFor.
@@ -215,6 +266,7 @@ public static class TestCatalogs
         new(PearMaterial, 1f),
         new(MushroomMaterial, 1f),
         new(PotatoMaterial, 1f),
+        new(MeatMaterial, 1f),
     ];
 
     private static readonly SpeciesDefinition HumanSpecies = new(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet);
@@ -263,6 +315,21 @@ public static class TestCatalogs
 
     public static readonly SpeciesId DeerSpeciesId = new("deer");
 
+    // Mirrors deer.json's carcass block (docs/todo/fauna-plan.md, phase 3): what ButcherCommand
+    // finds in a dead deer's Inventory.
+    public const int DeerCarcassMeat = 30;
+    public const int DeerCarcassHide = 1;
+    public const int DeerCarcassBone = 4;
+    public const int DeerCarcassSinew = 2;
+
+    private static readonly IReadOnlyList<SpeciesDefinition.CarcassYield> DeerCarcass =
+    [
+        new(MeatItem, DeerCarcassMeat),
+        new(HideItem, DeerCarcassHide),
+        new(BoneItem, DeerCarcassBone),
+        new(SinewItem, DeerCarcassSinew),
+    ];
+
     private static readonly SpeciesDefinition DeerSpecies = new(
         DeerSpeciesId,
         "Deer",
@@ -274,7 +341,8 @@ public static class TestCatalogs
         Herd: new SpeciesDefinition.HerdDefinition(DeerHerdMinSize, DeerHerdMaxSize, DeerHerdHomeRadius, DeerHerdDriftMetresPerSeason),
         Breeding: new SpeciesDefinition.BreedingDefinition(Climate.Mild, DeerGestationTicks, DeerConceptionChancePerTick, DeerSatietyHungerBelow),
         HungerPerTickMultiplier: DeerHungerPerTickMultiplier,
-        Flee: new SpeciesDefinition.FleeDefinition(DeerFleeDistance, DeerSafeDistance, DeerFleeSpeedPerTick));
+        Flee: new SpeciesDefinition.FleeDefinition(DeerFleeDistance, DeerSafeDistance, DeerFleeSpeedPerTick),
+        Carcass: DeerCarcass);
 
     private static SpeciesCatalog CreateSpeciesCatalog(SpeciesDefinition humanSpecies, SpeciesDefinition? deerSpecies = null) =>
         deerSpecies is null ? new([humanSpecies]) : new([humanSpecies, deerSpecies]);
@@ -315,6 +383,8 @@ public static class TestCatalogs
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
         new SkillDefinition(Eating, "Eating", BasicEating, EfficientEating),
         new SkillDefinition(Teaching, "Teaching", BasicTeaching, EfficientTeaching),
+        new SkillDefinition(Butchering, "Butchering", BasicButchering, EfficientButchering),
+        new SkillDefinition(Hunting, "Hunting", BasicHunting, EfficientHunting),
     });
 
     private static RecipeCatalog CreateRecipeCatalog() => new(new[]
@@ -357,6 +427,9 @@ public static class TestCatalogs
         new MaterialDefinition(PearMaterial, "Pear Flesh", FoodDensity),
         new MaterialDefinition(PotatoMaterial, "Potato Flesh", FoodDensity),
         new MaterialDefinition(MushroomMaterial, "Mushroom Flesh", FoodDensity),
+        new MaterialDefinition(MeatMaterial, "Meat", FoodDensity),
+        new MaterialDefinition(BoneMaterial, "Bone", BoneDensity, Hardness: BoneHardness, Toughness: BoneToughness, Flexibility: BoneFlexibility, Elasticity: BoneElasticity, Fibrousness: BoneFibrousness),
+        new MaterialDefinition(SinewMaterial, "Sinew", SinewDensity, Toughness: SinewToughness, Flexibility: SinewFlexibility, Elasticity: SinewElasticity, Fibrousness: SinewFibrousness),
     });
 
     // The axe is stone and the warm clothing hide although both are crafted from wood: the
@@ -375,6 +448,10 @@ public static class TestCatalogs
         new ItemDefinition(Basket, "Basket", WoodMaterial, Vessel, BasketVolume, CarryCapacityBonus: BasketCarryCapacityBonus),
         new ItemDefinition(Bag, "Bag", PlantFibreMaterial, Vessel, BagVolume, CarryCapacityBonus: BagCarryCapacityBonus),
         new ItemDefinition(StorageHutItem, "Storage Hut", WoodMaterial, Shelter, StorageHutVolume),
+        new ItemDefinition(MeatItem, "Meat", MeatMaterial, Lump, FoodVolume, MeatHungerRestoredPerUnit),
+        new ItemDefinition(HideItem, "Hide", HideMaterial, Whole, HideVolume),
+        new ItemDefinition(BoneItem, "Bone", BoneMaterial, Stick, BoneVolume),
+        new ItemDefinition(SinewItem, "Sinew", SinewMaterial, Fibre, SinewVolume, Transitions: [new FormTransition(TwistVerb, Cord, SinewPerCord)]),
     }, materials, forms);
 
     public static WorldConfiguration CreateConfiguration()
@@ -429,4 +506,27 @@ public static class TestCatalogs
     // condition can be proven with a handful of ticks instead of replaying the real numbers.
     public static WorldConfiguration CreateConfigurationWithDeerBreeding(SpeciesDefinition.BreedingDefinition breeding) =>
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies with { Breeding = breeding }) };
+
+    // The shipped axe-grade sharp hafted tool HuntCommand's own arithmetic is pinned against
+    // (docs/todo/fauna-plan.md phase 3, SimulationRules.HuntingHitChancePerToolScore): a knapped
+    // wedge lashed to a stick, both practised to mastery (WorkAttempt.QualityFor is 1 at
+    // Skills.LevelAfter(50) - see MakingAnAxeTests.Toolmaker). Built directly from the parts
+    // rather than by executing Knap/Twist/Bind, so a test can pin its exact chopping score
+    // without also depending on those commands' own dice.
+    //
+    // ChoppingScoreOf works out to EdgeSharpness(Wedge=1) * Hardness(Stone=1) * sqrt(weight
+    // density(Stone=2)*volume(1)=2) * (1 + HaftLeverage(Stick=1) * JointStrength(0.5)) ~= 2.121 -
+    // the haft side scores nothing on its own (Stick has no EdgeSharpness), so the max in
+    // ItemCatalog.ChoppingScoreOf always picks the head's own reading.
+    public static Assembly CreateTestAxe(WorldState world)
+    {
+        var itemCatalog = world.Configuration.ItemCatalog;
+        var axe = itemCatalog.Get(Axe);
+        var wood = itemCatalog.Get(WoodItem);
+
+        var head = new Assembly.Part(axe.Material, axe.Form, Quality: 1f, Volume: StonePerWedge * StoneVolume);
+        var haft = new Assembly.Part(wood.Material, wood.Form, Quality: 1f, Volume: WoodVolume);
+
+        return new Assembly.Joined(JointStrength: 0.5f, JointWeight: 0f, head, haft);
+    }
 }

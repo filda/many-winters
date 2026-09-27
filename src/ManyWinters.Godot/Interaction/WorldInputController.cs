@@ -139,15 +139,14 @@ internal sealed class WorldInputController
         _selection.Select(person);
     }
 
-    // A left click selects the animal, exactly as a person's does. A right click still only
-    // records what was pointed at - TargetActions has no offers for an animal yet
-    // (docs/todo/fauna-plan.md, phase 2b), so ShowContextMenu's own "an empty menu is not opened"
-    // rule keeps the menu from appearing rather than this deciding not to record it.
+    // A left click selects the animal, exactly as a person's does. A right click asks
+    // TargetActions what may be done with it - one offer, Hunt or Butcher depending on whether it
+    // is still alive (docs/todo/fauna-plan.md, phase 3c).
     private void OnAnimalClicked(Animal animal, MouseButton button)
     {
         if (button == MouseButton.Right)
         {
-            _pointedAt = _ => new TargetMenu(_world.Configuration.SpeciesCatalog.Get(animal.Species).DisplayName, []);
+            _pointedAt = actor => TargetActions.For(_world, actor, animal);
             return;
         }
 

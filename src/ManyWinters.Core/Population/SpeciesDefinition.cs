@@ -1,3 +1,4 @@
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.World;
@@ -45,9 +46,18 @@ public sealed record SpeciesDefinition(
     // Null for a species that never flees anyone - a human, today. Present for a species that
     // breaks off whatever it is doing the moment a living person comes within FleeDistance
     // (WorldState.DecideIdleTask, FleeTask) - docs/todo/fauna-plan.md, "Útěk dřív než lov".
-    SpeciesDefinition.FleeDefinition? Flee = null)
+    SpeciesDefinition.FleeDefinition? Flee = null,
+    // What a dead creature of this species leaves behind, put into its Inventory once at the
+    // moment it dies, whatever the cause (WorldState.Advance - docs/todo/fauna-plan.md, phase 3,
+    // "Rozhodnutí předem" item 4). Empty for a human: people are not butchered, and LootCommand
+    // remains the way to take a dead person's possessions.
+    IReadOnlyList<SpeciesDefinition.CarcassYield>? Carcass = null)
 {
     public sealed record DietEntry(MaterialId Material, float Digestibility);
+
+    // One item kind and how much of it a carcass of this species holds - ButcherCommand takes it
+    // off in the fixed order the species lists it (deer.json: meat, hide, bone, sinew).
+    public sealed record CarcassYield(ItemKindId Item, int Amount);
 
     // Group size and the shared HomeRange it spawns with - MinSize/MaxSize (MapLoader draws a
     // herd's actual size from this range), HomeRadius (IdleTask's wander radius around the
@@ -72,6 +82,8 @@ public sealed record SpeciesDefinition(
     public IReadOnlyList<DietEntry> Diet { get; } = Diet ?? [];
 
     public IReadOnlyList<TechniqueId> InnateTechniques { get; } = InnateTechniques ?? [];
+
+    public IReadOnlyList<CarcassYield> Carcass { get; } = Carcass ?? [];
 
     // How well this species digests the given material - 0 (cannot eat it at all) for anything
     // not in the diet.

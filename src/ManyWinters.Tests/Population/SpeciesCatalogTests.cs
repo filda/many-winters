@@ -1,3 +1,4 @@
+using ManyWinters.Core.Items;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 
@@ -84,6 +85,58 @@ public class SpeciesCatalogTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    // A dead deer's carcass (docs/todo/fauna-plan.md, phase 3): what WorldState.FillCarcass reads
+    // to stock a dead animal's Inventory.
+    [Fact]
+    public void LoadFromDirectoryReadsTheCarcass()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"manywinters-speciescatalog-{Guid.NewGuid():N}");
+        var deerDir = Path.Combine(root, "deer");
+        Directory.CreateDirectory(deerDir);
+        File.WriteAllText(
+            Path.Combine(deerDir, "deer.json"),
+            """
+            {
+              "id": "deer",
+              "displayName": "Deer",
+              "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 2, "elderAgeYears": 6, "maxLifespanYears": 8 },
+              "carcass": [
+                { "item": "meat", "amount": 30 },
+                { "item": "hide", "amount": 1 },
+                { "item": "bone", "amount": 4 },
+                { "item": "sinew", "amount": 2 }
+              ]
+            }
+            """);
+
+        try
+        {
+            var catalog = SpeciesCatalog.LoadFromDirectory(root);
+
+            var definition = catalog.Get(new SpeciesId("deer"));
+            Assert.Equal(4, definition.Carcass.Count);
+            Assert.Equal(new ItemKindId("meat"), definition.Carcass[0].Item);
+            Assert.Equal(30, definition.Carcass[0].Amount);
+            Assert.Equal(new ItemKindId("sinew"), definition.Carcass[3].Item);
+            Assert.Equal(2, definition.Carcass[3].Amount);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    // A human carries no Carcass block at all (SpeciesDefinition.Carcass defaults to empty) -
+    // people are not butchered, and this is what keeps FillCarcass from adding anything to one.
+    [Fact]
+    public void ASpeciesDescribedWithNoCarcassHasAnEmptyOne()
+    {
+        var lifeCycle = new LifeCycle(1, 4, 7, 10);
+        var catalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", lifeCycle)]);
+
+        Assert.Empty(catalog.Get(Person.HumanSpecies).Carcass);
     }
 
     [Fact]

@@ -100,6 +100,57 @@ public class MaterialCatalogTests
         }
     }
 
+    // The exact content shipped in Content/materials/sinew/sinew.json (docs/todo/fauna-plan.md,
+    // phase 3): fibrous and flexible enough to twist, elastic enough to hold tension - the
+    // bow/snare material the crafting doc names.
+    [Fact]
+    public void LoadFromDirectoryReadsASinewDefinitionThatHoldsTensionAndCanTwist()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"manywinters-materialcatalog-{Guid.NewGuid():N}");
+        WriteDefinition(root, "sinew", """{ "id": "sinew", "displayName": "Sinew", "density": 0.9, "toughness": 0.5, "flexibility": 0.6, "elasticity": 0.7, "fibrousness": 0.85 }""");
+
+        try
+        {
+            var catalog = MaterialCatalog.LoadFromDirectory(root);
+
+            var sinew = catalog.Find(new MaterialId("sinew"));
+            Assert.NotNull(sinew);
+            Assert.True(MaterialAffordances.HoldsTension(sinew));
+            Assert.True(MaterialAffordances.CanTwist(sinew));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    // The exact content shipped in Content/materials/bone/bone.json (docs/todo/fauna-plan.md,
+    // phase 3): hard and tough like stone but lighter, and - unlike stone - too tough to
+    // fracture into an edge, so it comes out neither knappable nor sharpenable from the
+    // properties alone.
+    [Fact]
+    public void LoadFromDirectoryReadsABoneDefinitionThatIsNotKnappable()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"manywinters-materialcatalog-{Guid.NewGuid():N}");
+        WriteDefinition(root, "bone", """{ "id": "bone", "displayName": "Bone", "density": 1.3, "hardness": 0.75, "toughness": 0.6, "flexibility": 0.1, "elasticity": 0.05, "fibrousness": 0.1 }""");
+
+        try
+        {
+            var catalog = MaterialCatalog.LoadFromDirectory(root);
+
+            var bone = catalog.Find(new MaterialId("bone"));
+            Assert.NotNull(bone);
+            // Stone's own shipped density (Content/materials/stone/stone.json) is 2 - bone is
+            // meant to read as noticeably lighter than that, not just numerically less.
+            Assert.True(bone.Density < 2f, "Bone should be lighter than stone.");
+            Assert.False(MaterialAffordances.CanKnap(bone));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static string WriteDefinition(string root, string id, string json)
     {
         var materialDir = Path.Combine(root, id);

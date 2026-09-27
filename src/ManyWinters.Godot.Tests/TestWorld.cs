@@ -32,6 +32,17 @@ internal static class TestWorld
     private static readonly TechniqueId BasicEating = new("basic_eating");
     internal static readonly TechniqueId BasicTeaching = new("basic_teaching");
 
+    // Mirrors Content/skills/{hunting,butchering}/*.json and Content/items/{meat,hide,bone,sinew}
+    // (docs/todo/fauna-plan.md, phase 3c) - only what TargetActionsTests and AnimalCardTests read:
+    // the ids HuntCommand/ButcherCommand ask for and a carcass's own item kinds, named the way the
+    // player reads them.
+    private static readonly TechniqueId BasicHunting = new("basic_hunting");
+    private static readonly TechniqueId BasicButchering = new("basic_butchering");
+    internal static readonly ItemKindId Meat = new("meat");
+    internal static readonly ItemKindId Hide = new("hide");
+    internal static readonly ItemKindId Bone = new("bone");
+    internal static readonly ItemKindId Sinew = new("sinew");
+
     private static readonly EntityKindId StorageHut = new("storage_hut");
     private static readonly ItemKindId StorageHutItem = new("storage_hut");
 
@@ -82,6 +93,13 @@ internal static class TestWorld
             new MaterialDefinition(new MaterialId("apple"), "Apple Flesh", 1f),
             new MaterialDefinition(new MaterialId("stone"), "Stone", 2f, Hardness: 1f, Toughness: 0.15f),
             new MaterialDefinition(new MaterialId("plant_fibre"), "Plant Fibre", 0.2f, Toughness: 0.5f, Flexibility: 0.7f, Fibrousness: 0.9f),
+            // A carcass's own materials (mirrors Content/materials/{meat,bone,sinew}), narrowed to
+            // the density AnimalCard/ItemCatalog need - a display name and a weight are all this
+            // test world asks a carcass's leavings for.
+            new MaterialDefinition(new MaterialId("meat"), "Meat", 1f),
+            new MaterialDefinition(new MaterialId("hide"), "Hide", 0.75f),
+            new MaterialDefinition(new MaterialId("bone"), "Bone", 1.3f),
+            new MaterialDefinition(new MaterialId("sinew"), "Sinew", 0.9f),
         ]);
 
         var forms = new FormCatalog([
@@ -107,6 +125,13 @@ internal static class TestWorld
                     Transitions: [new FormTransition(TwistCommand.Verb, Cord, GrassPerCord)]),
                 new ItemDefinition(Stone, "Stone", new MaterialId("stone"), new FormId("lump"), 1f,
                     Transitions: [new FormTransition(KnapCommand.Verb, Wedge, 1)]),
+                // A carcass's own leavings (mirrors Content/items/{meat,hide,bone,sinew}) - food
+                // only for meat, the same as production content, though no test here needs it
+                // edible.
+                new ItemDefinition(Meat, "Meat", new MaterialId("meat"), new FormId("whole"), 1f, HungerRestoredPerUnit: 5f),
+                new ItemDefinition(Hide, "Hide", new MaterialId("hide"), new FormId("whole"), 3f),
+                new ItemDefinition(Bone, "Bone", new MaterialId("bone"), new FormId("whole"), 1f),
+                new ItemDefinition(Sinew, "Sinew", new MaterialId("sinew"), new FormId("whole"), 1f),
             ],
             materials,
             forms);
@@ -130,6 +155,8 @@ internal static class TestWorld
                 new SkillDefinition(BindCommand.Skill, "Binding", BasicBinding, new TechniqueId("efficient_binding")),
                 new SkillDefinition(KnapCommand.Skill, "Knapping", BasicKnapping, new TechniqueId("efficient_knapping")),
                 new SkillDefinition(SharpenCommand.Skill, "Sharpening", BasicSharpening, new TechniqueId("efficient_sharpening")),
+                new SkillDefinition(HuntCommand.Skill, "Hunting", BasicHunting, new TechniqueId("efficient_hunting")),
+                new SkillDefinition(ButcherCommand.Skill, "Butchering", BasicButchering, new TechniqueId("efficient_butchering")),
             ]),
             new RecipeCatalog([
                 new RecipeDefinition(Axe, Wood, AxeInputAmount),

@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 24;
+    private const int CurrentVersion = 25;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -102,7 +102,8 @@ public static class SaveGameService
         animal.Sex,
         animal.Home.Id.Value,
         animal.Mother?.Id.Value,
-        animal.PregnantSinceTick);
+        animal.PregnantSinceTick,
+        animal.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList());
 
     private static PersonSaveData ToPersonSaveData(Person person) => new(
         person.Id.Value,
@@ -299,6 +300,11 @@ public static class SaveGameService
         foreach (var technique in animalData.KnownTechniques)
         {
             animal.KnownTechniques.Add(technique);
+        }
+
+        foreach (var stack in animalData.Inventory ?? [])
+        {
+            animal.Inventory.Add(stack.Kind, stack.Count);
         }
 
         animalsById[animalData.Id] = animal;

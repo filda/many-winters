@@ -1,6 +1,7 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
@@ -97,6 +98,36 @@ internal static class TargetActions
         }
 
         return new TargetMenu(target.Name, offers);
+    }
+
+    // The living and the dead are offered entirely different things here too (see the Person
+    // overload above): a live deer is something to hunt, a carcass something to butcher, and
+    // never both at once. Either offer carries a Pursuit task rather than a plain Target position
+    // (see ActionOffer.Pursuit): a deer walks away from where it was pointed at, and a carcass is
+    // reached the same standoff-and-reach way GatherTask reaches a pile, so both are better left
+    // to the loop that already knows how (WorldState.Advance) than to a one-shot walk-then-fire.
+    internal static TargetMenu For(WorldState world, Person actor, Animal animal)
+    {
+        var heading = world.Configuration.SpeciesCatalog.Get(animal.Species).DisplayName;
+        var rules = world.Configuration.Rules;
+
+        var offer = animal.IsAlive
+            ? ActionOffer.For(
+                "Hunt",
+                new HuntCommand(actor, animal),
+                world,
+                HuntCommand.Skill,
+                animal.Position,
+                new HuntTask(animal, rules.HuntingRange))
+            : ActionOffer.For(
+                "Butcher",
+                new ButcherCommand(actor, animal),
+                world,
+                ButcherCommand.Skill,
+                animal.Position,
+                new ButcherTask(animal, rules.PileReachDistance));
+
+        return new TargetMenu(heading, [offer]);
     }
 
     // A pile is one kind of stock or one made thing, so the heading already

@@ -142,6 +142,27 @@ public class EatCommandTests
         Assert.Equal(20, person.Inventory.Get(TestCatalogs.WoodItem));
     }
 
+    // Meat is food for a person (human.json's diet gains a meat entry at digestibility 1 -
+    // docs/todo/fauna-plan.md, phase 3) - a raw carcass haul, not just gathered fruit, is
+    // something a hungry person can eat straight from the pack.
+    [Fact]
+    public void MeatInThePackIsFoodAHumanCanEat()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 20;
+        person.Inventory.Add(TestCatalogs.MeatItem, 20);
+        var command = new EatCommand(person, TestCatalogs.MeatItem);
+
+        Assert.Equal(ActionBlocker.None, command.Blocker(world));
+        world.Execute(command);
+
+        Assert.Equal(0f, person.Needs.Hunger);
+        // Meat restores more hunger per unit than fruit, so far fewer than 20 units are spent.
+        Assert.True(person.Inventory.Get(TestCatalogs.MeatItem) > 0);
+    }
+
     [Fact]
     public void EatingByADeadPersonDoesNothing()
     {

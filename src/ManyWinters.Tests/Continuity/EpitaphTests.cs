@@ -240,6 +240,7 @@ public class EpitaphTests
     {
         var hungry = OverManyDeaths(last => Ending(lastToDie: last)).SelectMany(inscription => inscription.Lines).ToList();
         var old = OverManyDeaths(last => Ending(lastToDie: last), cause: DeathCause.OldAge).SelectMany(inscription => inscription.Lines).ToList();
+        var hunted = OverManyDeaths(last => Ending(lastToDie: last), cause: DeathCause.Hunted).SelectMany(inscription => inscription.Lines).ToList();
 
         Assert.Contains(hungry, line => line.Contains("starved"));
         Assert.Contains(hungry, line => line.Contains("died hungry"));
@@ -247,6 +248,13 @@ public class EpitaphTests
         Assert.Contains(old, line => line.Contains("died old"));
         Assert.Contains(old, line => line.Contains("died full of years"));
         Assert.Contains(old, line => line.Contains("died of nothing but years"));
+
+        // Only an Animal is ever hunted today (DeathCause.Hunted), but the switch Died reads it
+        // through must not fall back to "starved" if a Person ever is.
+        Assert.Contains(hunted, line => line.Contains("was hunted down"));
+        Assert.Contains(hunted, line => line.Contains("fell to a hunter"));
+        Assert.Contains(hunted, line => line.Contains("was brought down by a hunter"));
+        Assert.DoesNotContain(hunted, line => line.Contains("starved"));
     }
 
     [Fact]

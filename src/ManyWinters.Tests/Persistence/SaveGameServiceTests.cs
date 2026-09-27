@@ -518,6 +518,37 @@ public class SaveGameServiceTests
         }
     }
 
+    // DeathCause.Hunted (docs/todo/fauna-plan.md, phase 3) is serialised by name like every
+    // other enum here, but it is new enough - and only ever set by a command rather than by
+    // Advance's own hunger/old-age check - that it earns its own round-trip test.
+    [Fact]
+    public void RoundTripPreservesAnAnimalHuntedToDeath()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var home = new HomeRange(new Position(0, 0)) { Radius = 15f, DriftMetresPerSeason = 0f };
+        world.AddHomeRange(home);
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0, 0), home);
+        deer.IsAlive = false;
+        deer.DeathTick = 7;
+        deer.CauseOfDeath = DeathCause.Hunted;
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfigurationWithDeer());
+
+            var restoredDeer = restored.Animals.Single(a => a.Id == deer.Id);
+            Assert.False(restoredDeer.IsAlive);
+            Assert.Equal(7, restoredDeer.DeathTick);
+            Assert.Equal(DeathCause.Hunted, restoredDeer.CauseOfDeath);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // Animal.PregnantSinceTick (docs/todo/fauna-plan.md, phase 1b, "mnozeni"): a mother mid-way
     // through gestation has to still be pregnant, at the same tick, after a reload - a silent
     // omission here would end every pregnancy in progress the moment somebody saved.

@@ -1,5 +1,6 @@
 using ManyWinters.Core.Commands;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
@@ -9,13 +10,14 @@ namespace ManyWinters.Godot.Logic;
 // what the world allows are the same question asked once.
 internal readonly record struct ActionOffer
 {
-    private ActionOffer(string label, ICommand command, ActionBlocker blocker, SkillTypeId? teachFirst, Position? target)
+    private ActionOffer(string label, ICommand command, ActionBlocker blocker, SkillTypeId? teachFirst, Position? target, CreatureTask? pursuit)
     {
         Label = label;
         Command = command;
         Blocker = blocker;
         TeachFirst = teachFirst;
         Target = target;
+        Pursuit = pursuit;
     }
 
     public string Label { get; }
@@ -34,6 +36,14 @@ internal readonly record struct ActionOffer
     // dead end into a walk.
     public Position? Target { get; }
 
+    // The task that chases this offer down rather than a one-shot walk to a fixed spot - set only
+    // for an offer aimed at something that moves or that the simulation's own tick loop already
+    // knows how to keep at (HuntTask, ButcherTask: WorldState.Advance runs their command every
+    // tick the task is current, walking or not). OrderCoordinator installs this directly via
+    // Tasks.Interrupt instead of a MoveTask, so there is nothing for PendingOrders to re-check -
+    // the loop owns the attempt from here on.
+    public CreatureTask? Pursuit { get; }
+
     // Refused for distance alone, and the distance is somewhere the person can be sent. That is
     // the one refusal the player need not do anything about: walking over is part of the order,
     // not a chore to carry out first.
@@ -49,7 +59,8 @@ internal readonly record struct ActionOffer
         ICommand command,
         WorldState world,
         SkillTypeId? teachFirst = null,
-        Position? target = null)
+        Position? target = null,
+        CreatureTask? pursuit = null)
     {
         var blocker = command.Blocker(world);
         if (teachFirst is not null && blocker is ActionBlocker.NotLearned)
@@ -57,12 +68,12 @@ internal readonly record struct ActionOffer
             blocker = ActionBlocker.None;
         }
 
-        return new ActionOffer(label, command, blocker, teachFirst, target);
+        return new ActionOffer(label, command, blocker, teachFirst, target, pursuit);
     }
 
     // The same offer asked again of a world that has moved on since it was made - for an order
     // given to somebody who had to walk there first, and is only now in a position to carry it
     // out. Goes through For, so a teaching action is forgiven NotLearned on arrival exactly as it
     // was when the order was given.
-    public ActionOffer Refreshed(WorldState world) => For(Label, Command, world, TeachFirst, Target);
+    public ActionOffer Refreshed(WorldState world) => For(Label, Command, world, TeachFirst, Target, Pursuit);
 }

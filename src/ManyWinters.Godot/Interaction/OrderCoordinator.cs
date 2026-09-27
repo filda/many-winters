@@ -53,22 +53,35 @@ internal sealed class OrderCoordinator(
             TeachBaseTechniqueIfNeeded(person, skill);
         }
 
-        if (offer.NeedsWalkingTo && offer.Target is { } target)
+        switch (OrderPlan.For(offer))
         {
-            // A pile is taken from at the tighter PileReachDistance (see SimulationRules), so the
-            // walk has to stop closer too, or the order would arrive out of reach and never fire.
-            var approachDistance = offer.Command is EatFromPileCommand or PickUpItemCommand
-                ? presentation.PileApproachDistance
-                : presentation.ApproachDistance;
-            _pendingOrders.Add(person, offer);
-            world.Execute(new MoveCommand(person, Position.Approach(person.Position, target, approachDistance)));
-        }
-        else
-        {
-            // A new order replaces whatever they were on their way to do - including a plain walk,
-            // which is the player changing their mind.
-            _pendingOrders.Forget(person);
-            Execute(offer.Command);
+            case OrderDispatch.InstallPursuit:
+                // Hunt and Butcher both work this way (docs/todo/fauna-plan.md, phase 3c): the
+                // task walks (or does not need to) and WorldState.Advance runs the command itself
+                // every tick the task stays current, so there is nothing here to remember and
+                // re-check on arrival - unlike every other directed action, which is a single
+                // attempt once the walk ends.
+                _pendingOrders.Forget(person);
+                person.Tasks.Interrupt(offer.Pursuit!);
+                break;
+
+            case OrderDispatch.WalkThenExecute:
+                // A pile is taken from at the tighter PileReachDistance (see SimulationRules), so
+                // the walk has to stop closer too, or the order would arrive out of reach and
+                // never fire.
+                var approachDistance = offer.Command is EatFromPileCommand or PickUpItemCommand
+                    ? presentation.PileApproachDistance
+                    : presentation.ApproachDistance;
+                _pendingOrders.Add(person, offer);
+                world.Execute(new MoveCommand(person, Position.Approach(person.Position, offer.Target!.Value, approachDistance)));
+                break;
+
+            default:
+                // A new order replaces whatever they were on their way to do - including a plain
+                // walk, which is the player changing their mind.
+                _pendingOrders.Forget(person);
+                Execute(offer.Command);
+                break;
         }
 
         WorldChanged?.Invoke();

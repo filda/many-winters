@@ -172,6 +172,29 @@ public sealed record SimulationRules
     // a hijacked walk order; someone deeply stuck clears over a few ticks instead.
     public float MaxCollisionPushPerTick { get; } = 1f;
 
+    // A throw's reach (HuntCommand, docs/todo/fauna-plan.md phase 3) - deliberately beyond a
+    // deer's own FleeDistance (SpeciesDefinition.FleeDefinition, 8m in the shipped deer), so a
+    // hunter who closes the gap before being noticed can still get a throw off.
+    public float HuntingRange { get; } = 10f;
+
+    // A thrown stone in bare hands: nearly hopeless.
+    public float HuntingBaseHitChance { get; init; } = 0.05f;
+
+    // Scales Inventory.BestChoppingScore into a hit chance on top of the base above - a sharp
+    // stone hafted on a stick is a spear as much as an axe until form recognition tells them
+    // apart (docs/materials-and-crafting-architecture.md section 8; a piercing-specific score is
+    // noted as future work in docs/todo/fauna-plan.md phase 5). Picked so the shipped axe-grade
+    // sharp hafted tool - a knapped wedge lashed to a stick, both practised to mastery - lands
+    // around 0.35 per attempt (see HuntCommandTests for the exact arithmetic): that tool scores
+    // ChoppingScoreOf ~= EdgeSharpness(1) * Hardness(1) * sqrt(weight 2) * (1 + HaftLeverage(1) *
+    // JointStrength(0.5)) ~= 2.121, so (0.35 - 0.05) / 2.121 ~= 0.14.
+    public float HuntingHitChancePerToolScore { get; init; } = 0.14f;
+
+    // efficient_hunting's bonus (HuntCommand): applied to the whole chance rather than added
+    // flat, so a practised hunter is proportionally better with whatever they carry, bare hands
+    // included.
+    public float HuntingEfficientMultiplier { get; init; } = 1.5f;
+
     public long TicksPerYear => TicksPerSeason * SeasonsPerYear;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);

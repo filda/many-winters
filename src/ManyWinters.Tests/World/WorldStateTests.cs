@@ -438,6 +438,27 @@ public class WorldStateTests
         Assert.IsType<IdleTask>(person.Tasks.Current);
     }
 
+    // HasEdibleFood asks the diet about a pack's contents, meat included (docs/todo/fauna-plan.md,
+    // phase 3): a hungry person already holding a haul of meat is not sent off after some other
+    // food source, the same forgiveness AdvanceLetsAPersonWalkAwayFromAPileOfFoodOnceFed gives
+    // somebody who has simply eaten already. A pile, not a resource node: a node the person
+    // could forage from would be sought as ordinary idle work regardless of hunger, which would
+    // confound the very thing this proves.
+    [Fact]
+    public void AdvanceDoesNotSendAHungryPersonAlreadyCarryingMeatAfterAFarOffFoodSource()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 60f;
+        person.Inventory.Add(TestCatalogs.MeatItem, 20);
+        world.SpawnItemPile(TestCatalogs.AppleItem, new Position(50, 0), 20);
+
+        world.Advance(1);
+
+        Assert.IsNotType<GatherTask>(person.Tasks.Current);
+    }
+
     [Fact]
     public void AdvanceDoesNotSendSomebodyWhoNeverLearnedToEatToAPileOfFood()
     {
@@ -485,6 +506,24 @@ public class WorldStateTests
         Assert.IsType<MoveTask>(person.Tasks.Current);
         Assert.Equal(0f, person.Needs.Hunger);
         Assert.True(person.Inventory.Get(TestCatalogs.AppleItem) < 50);
+    }
+
+    // Meat is food like any other once a species digests it (docs/todo/fauna-plan.md, phase 3):
+    // a starving person with a raw carcass haul in their pack eats it the same way TryAutoEat
+    // already handles apples, with no cooking step required.
+    [Fact]
+    public void AStarvingPersonWithMeatInThePackEatsItAutonomously()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Needs.Hunger = 30f;
+        person.Inventory.Add(TestCatalogs.MeatItem, 50);
+
+        world.Advance(1);
+
+        Assert.Equal(0f, person.Needs.Hunger);
+        Assert.True(person.Inventory.Get(TestCatalogs.MeatItem) < 50);
     }
 
     [Theory]

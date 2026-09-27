@@ -92,6 +92,50 @@ public class AnimalSimulationTests
         Assert.True(person.IsAlive);
     }
 
+    // Whatever the cause - hunger here, old age above (docs/todo/fauna-plan.md, phase 3,
+    // "Rozhodnutí předem" item 4: "při smrti") - a dead deer's carcass fills exactly once, with
+    // exactly the species' own numbers.
+    [Fact]
+    public void ADeerThatStarvesLeavesExactlyOneCarcassWorthOfMaterialsInItsInventory()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var position = new Position(0, 0);
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position, NewHome(position));
+
+        world.Advance(400);
+
+        Assert.False(deer.IsAlive);
+        Assert.Equal(TestCatalogs.DeerCarcassMeat, deer.Inventory.Get(TestCatalogs.MeatItem));
+        Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(TestCatalogs.DeerCarcassBone, deer.Inventory.Get(TestCatalogs.BoneItem));
+        Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
+
+        // Ticks keep advancing after death (the herd around it is still alive) - the carcass
+        // must not be topped up again and again.
+        world.Advance(50);
+
+        Assert.Equal(TestCatalogs.DeerCarcassMeat, deer.Inventory.Get(TestCatalogs.MeatItem));
+        Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(TestCatalogs.DeerCarcassBone, deer.Inventory.Get(TestCatalogs.BoneItem));
+        Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
+    }
+
+    // People are not butchered (docs/todo/fauna-plan.md, phase 3): a human's species carries no
+    // Carcass at all, so a dead person's Inventory gets nothing added by dying, whatever they
+    // died of - LootCommand remains the only way to take their possessions.
+    [Fact]
+    public void AHumansDeathAddsNothingToTheirInventory()
+    {
+        var world = new WorldState(TestCatalogs.CreateConfigurationWithLifeCycle(new LifeCycle(1, 4, 7, 4)));
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: SimulationRules.Default.TicksPerYear * 4);
+
+        world.Advance(1);
+
+        Assert.False(person.IsAlive);
+        Assert.Equal(DeathCause.OldAge, person.CauseOfDeath);
+        Assert.Empty(person.Inventory.Counts);
+    }
+
     [Fact]
     public void AnAnimalNeverRevealsExploration()
     {

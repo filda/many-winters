@@ -222,6 +222,13 @@ public static class Epitaph
                 "died old",
                 "died full of years",
                 "died of nothing but years"),
+            // Only an Animal dies this way today (see DeathCause.Hunted), so no epitaph has ever
+            // exercised this, but a switch over the enum has to say something sensible for it
+            // rather than falling through to "starved".
+            DeathCause.Hunted => draw.Pick(
+                "was hunted down",
+                "fell to a hunter",
+                "was brought down by a hunter"),
             _ => draw.Pick(
                 "starved",
                 "died hungry",

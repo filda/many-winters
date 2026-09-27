@@ -92,6 +92,43 @@ public class AnimalCardTests
         Assert.Equal(string.Empty, AnimalCard.For(world, deer).Task);
     }
 
+    // Nothing on a live deer to take yet, so the panel has no dead line to hide - AnimalCard
+    // leaves it empty rather than saying "nothing left" of something still on its feet.
+    [Fact]
+    public void ALivingAnimalHasNoCarcassLine()
+    {
+        var world = TestWorld.Create();
+        var deer = TestWorld.AddAdultAnimal(world, new Position(0, 0));
+
+        Assert.Equal(string.Empty, AnimalCard.For(world, deer).Carcass);
+    }
+
+    [Fact]
+    public void ACarcassListsWhatIsLeftOnIt()
+    {
+        var world = TestWorld.Create();
+        var deer = TestWorld.AddAdultAnimal(world, new Position(0, 0));
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+        deer.Inventory.Add(TestWorld.Hide, 1);
+        deer.Inventory.Add(TestWorld.Bone, 4);
+        deer.Inventory.Add(TestWorld.Sinew, 2);
+
+        Assert.Equal("Carcass: Bone 4, Hide 1, Meat 30, Sinew 2", AnimalCard.For(world, deer).Carcass);
+    }
+
+    // A butchered-out carcass is worth saying so about, rather than an empty "Carcass: " that
+    // reads like a bug.
+    [Fact]
+    public void AnEmptyCarcassSaysNothingIsLeft()
+    {
+        var world = TestWorld.Create();
+        var deer = TestWorld.AddAdultAnimal(world, new Position(0, 0));
+        deer.IsAlive = false;
+
+        Assert.Equal("Nothing left", AnimalCard.For(world, deer).Carcass);
+    }
+
     [Fact]
     public void TheFedMeterEmptiesAsHungerRises()
     {

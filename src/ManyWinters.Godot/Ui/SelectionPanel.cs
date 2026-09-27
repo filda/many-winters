@@ -44,6 +44,7 @@ internal partial class SelectionPanel : PaperPanel
     private Label _graveRecord = null!;
     private VBoxContainer _animalBody = null!;
     private Label _animalTask = null!;
+    private Label _animalCarcass = null!;
 
     private MeterRows _meterRows = null!;
     private MeterRows _animalMeterRows = null!;
@@ -130,6 +131,11 @@ internal partial class SelectionPanel : PaperPanel
 
         _animalTask = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _animalBody.AddChild(_animalTask);
+
+        // Only ever shown for a carcass (AnimalCard leaves Carcass empty for the living), so a
+        // deer's own card carries no dead line to hide.
+        _animalCarcass = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
+        _animalBody.AddChild(_animalCarcass);
     }
 
     // Main holds the selection, so the cross only says the player asked for it to go.
@@ -250,6 +256,8 @@ internal partial class SelectionPanel : PaperPanel
         _death.Visible = false;
         _animalTask.Text = $"Doing: {card.Task}";
         _animalTask.Visible = card.Task.Length > 0;
+        _animalCarcass.Text = card.Carcass;
+        _animalCarcass.Visible = card.Carcass.Length > 0;
 
         _animalMeterRows.Sync([card.Fed]);
     }

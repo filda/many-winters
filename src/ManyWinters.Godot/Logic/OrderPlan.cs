@@ -1,0 +1,35 @@
+namespace ManyWinters.Godot.Logic;
+
+// What Perform does with an accepted offer, worked out as a plain function of the offer alone -
+// pulled out of OrderCoordinator (Node-bound through WorldPresenter, so untestable without an
+// engine: see docs/development.md on Godot-layer testability) so this one decision can be tested
+// without one.
+internal enum OrderDispatch
+{
+    // The offer carries its own task (ActionOffer.Pursuit): install it and let the simulation's
+    // own tick loop own the attempt from here on, walking or not - Hunt and Butcher both work this
+    // way (docs/todo/fauna-plan.md, phase 3c).
+    InstallPursuit,
+
+    // The one distance the person can be sent to close themselves: walk first, and remember the
+    // order for PendingOrders to fire once they arrive.
+    WalkThenExecute,
+
+    // Nothing stands between the order and carrying it out.
+    ExecuteNow,
+}
+
+internal static class OrderPlan
+{
+    internal static OrderDispatch For(ActionOffer offer)
+    {
+        if (offer.Pursuit is not null)
+        {
+            return OrderDispatch.InstallPursuit;
+        }
+
+        return offer.NeedsWalkingTo && offer.Target is not null
+            ? OrderDispatch.WalkThenExecute
+            : OrderDispatch.ExecuteNow;
+    }
+}

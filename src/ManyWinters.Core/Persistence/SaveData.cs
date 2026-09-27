@@ -140,6 +140,11 @@ public sealed record AnimalSaveData(
     // set once a fawn is born (phase 1b).
     Guid? MotherId,
     // Null for a male and for a female not currently carrying (Animal.PregnantSinceTick).
-    long? PregnantSinceTick = null);
+    long? PregnantSinceTick = null,
+    // What a dead animal's carcass still holds (docs/todo/fauna-plan.md, phase 3) - null for one
+    // still alive, since a living animal never carries anything (SpeciesDefinition.CanCarry is
+    // false for every animal today). Last and nullable so a save written before butchering
+    // existed still reads.
+    IReadOnlyList<ItemStackSaveData>? Inventory = null);
 
 public sealed record HomeRangeSaveData(Guid Id, double AnchorX, double AnchorY, float Radius, float DriftMetresPerSeason);

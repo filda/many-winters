@@ -26,6 +26,8 @@ internal static class InspectorText
         // A species' own flight rule (WorldState.DecideIdleTask, FleeTask) - no human ever runs
         // one, so this only ever fires for an animal.
         FleeTask => "Fleeing",
+        HuntTask => "Hunting",
+        ButcherTask => "Butchering",
         _ => "Idle",
     };
 
@@ -107,6 +109,9 @@ internal static class InspectorText
         {
             DeathCause.Hunger => " of hunger",
             DeathCause.OldAge => " of old age",
+            // Only an Animal dies this way today (DeathCause.Hunted), but a person's card must
+            // not throw or fall back to silence if that ever changes.
+            DeathCause.Hunted => " to a hunter's spear",
             _ => string.Empty,
         };
 
@@ -200,6 +205,9 @@ internal static class InspectorText
         {
             DeathCause.Hunger => " of hunger",
             DeathCause.OldAge => " of old age",
+            // As above (ForDeath): only an Animal is hunted today, but the debug inspector must
+            // still say something sensible if a grave ever records it.
+            DeathCause.Hunted => " to a hunter's spear",
             _ => string.Empty,
         };
         return
