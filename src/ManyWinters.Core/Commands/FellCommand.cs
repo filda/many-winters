@@ -8,10 +8,6 @@ namespace ManyWinters.Core.Commands;
 // be gathered - unlike GatherCommand, which takes from the node repeatedly and leaves it standing.
 public sealed record FellCommand(Person Person, Entity Node) : ICommand
 {
-    // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in its
-    // spot - lands from where the tree stood, so the two don't sit exactly on top of each other.
-    private const double SubsequentLeftoverDistance = 1.4;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -67,18 +63,18 @@ public sealed record FellCommand(Person Person, Entity Node) : ICommand
                 continue;
             }
 
-            var position = i == 0 ? Node.Position : OffsetPosition(Node.Position, Node.Id.Seed, i);
+            var position = i == 0 ? Node.Position : OffsetPosition(Node.Position, Node.Id.Seed, i, world.Configuration.Rules.SubsequentLeftoverDistance);
             new SpawnResourceNodeCommand(leftover.Kind, position, leftover.Amount).Execute(world);
         }
     }
 
     // Deterministic from the node's id and the leftover's index, not a shared mutable Random -
     // the same felled tree drops its log in the same spot on replay.
-    private static Position OffsetPosition(Position origin, int nodeSeed, int index)
+    private static Position OffsetPosition(Position origin, int nodeSeed, int index, double subsequentLeftoverDistance)
     {
         var rng = new Random(SeedHash.Avalanche(unchecked((uint)nodeSeed + ((uint)index * 2654435761u))));
         var angle = rng.NextDouble() * Math.Tau;
-        return new Position(origin.X + (SubsequentLeftoverDistance * Math.Cos(angle)),
-            origin.Y + (SubsequentLeftoverDistance * Math.Sin(angle)));
+        return new Position(origin.X + (subsequentLeftoverDistance * Math.Cos(angle)),
+            origin.Y + (subsequentLeftoverDistance * Math.Sin(angle)));
     }
 }

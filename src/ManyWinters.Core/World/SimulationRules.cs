@@ -213,5 +213,9 @@ public sealed record SimulationRules
     public float EfficientHungerRestoredMultiplier { get; } = 1.2f;
     public float SkillGainPerMeal { get; } = 1f;
 
+    // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in its
+    // spot - lands from where the tree stood, so the two don't sit exactly on top of each other.
+    public double SubsequentLeftoverDistance { get; } = 1.4;
+
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }
