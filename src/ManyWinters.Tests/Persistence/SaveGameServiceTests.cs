@@ -88,6 +88,39 @@ public class SaveGameServiceTests
         }
     }
 
+    // docs/todo/fauna-plan.md phase 4c: a perishable stack's age ledger has to survive a save, or
+    // reloading would make everything spoiled or fresh forget the difference - it should spoil at
+    // the same tick before and after.
+    [Fact]
+    public void RoundTripPreservesAPerishableStacksAgeSoItSpoilsAtTheSameTick()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var catalog = world.Configuration.ItemCatalog;
+        var ava = world.SpawnPerson("Ava", new Position(0, 0));
+        ava.Inventory.Add(TestCatalogs.MeatItem, 5, tick: 0, catalog);
+        world.Advance(10);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+            var restoredAva = restored.People.Single(p => p.Name == "Ava");
+
+            Assert.Equal(5, restoredAva.Inventory.Get(TestCatalogs.MeatItem));
+
+            restored.Advance(TestCatalogs.MeatShelfLifeTicks - 10 - 1);
+            Assert.Equal(5, restoredAva.Inventory.Get(TestCatalogs.MeatItem));
+
+            restored.Advance(1);
+            Assert.Equal(0, restoredAva.Inventory.Get(TestCatalogs.MeatItem));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public void RoundTripPreservesFamilyTiesAndCauseOfDeath()
     {
@@ -542,6 +575,51 @@ public class SaveGameServiceTests
             Assert.False(restoredDeer.IsAlive);
             Assert.Equal(7, restoredDeer.DeathTick);
             Assert.Equal(DeathCause.Hunted, restoredDeer.CauseOfDeath);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    // docs/todo/fauna-plan.md phase 4c: a carcass's meat no longer decays with the body
+    // (CorpseDecayTicks) - it rots on its own material's shelf life, tracked in the age ledger
+    // (Inventory.Ages), which itself has to survive a save/load and still fire exactly once, not
+    // once on load and once again when Advance revisits the same tick.
+    [Fact]
+    public void RoundTripSurvivesMeatSpoilageFiringExactlyOnceAcrossASaveAndLoad()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var catalog = world.Configuration.ItemCatalog;
+        var home = new HomeRange(new Position(0, 0)) { Radius = 15f, DriftMetresPerSeason = 0f };
+        world.AddHomeRange(home);
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0, 0), home);
+        deer.IsAlive = false;
+        deer.DeathTick = 0;
+        deer.Inventory.Add(TestCatalogs.MeatItem, TestCatalogs.DeerCarcassMeat, tick: 0, catalog);
+        deer.Inventory.Add(TestCatalogs.BoneItem, TestCatalogs.DeerCarcassBone);
+
+        world.Advance(TestCatalogs.MeatShelfLifeTicks - 1);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfigurationWithDeer());
+            var restoredDeer = restored.Animals.Single(a => a.Id == deer.Id);
+
+            // Not spoiled yet at load - meat is still there.
+            Assert.Equal(TestCatalogs.DeerCarcassMeat, restoredDeer.Inventory.Get(TestCatalogs.MeatItem));
+
+            restored.Advance(1);
+
+            Assert.Equal(0, restoredDeer.Inventory.Get(TestCatalogs.MeatItem));
+            Assert.Equal(TestCatalogs.DeerCarcassBone, restoredDeer.Inventory.Get(TestCatalogs.BoneItem));
+
+            // Advancing further must not remove anything a second time - there is nothing left
+            // to remove twice, but the bone must not vanish either.
+            restored.Advance(10);
+            Assert.Equal(TestCatalogs.DeerCarcassBone, restoredDeer.Inventory.Get(TestCatalogs.BoneItem));
         }
         finally
         {

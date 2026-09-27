@@ -49,9 +49,9 @@ public sealed record WithdrawCommand(Person Person, Entity Building, CarriedThin
         switch (what)
         {
             case CarriedThing.Stock stock:
-                // What does not fit stays on the shelf.
-                var added = Person.Inventory.AddUpToCapacity(stock.Kind, stock.Amount, items, room);
-                Building.Storage!.Remove(stock.Kind, added);
+                // What does not fit stays on the shelf. A transfer, preserving whatever age the
+                // stock already carried on the shelf (docs/todo/fauna-plan.md phase 4c).
+                Building.Storage!.TransferUpToCapacity(stock.Kind, stock.Amount, Person.Inventory, items, room);
                 break;
 
             case CarriedThing.Worked worked:

@@ -14,6 +14,11 @@ internal readonly record struct PersonLook(string Body, string Clothing, Color C
     // multi-toned body enough to read as lifeless without a shader.
     internal static readonly Color DeadTint = new(0.5f, 0.5f, 0.52f);
 
+    // Once WorldState.IsDecayed - there is no bones art (docs/todo/fauna-plan.md phase 4b), so
+    // the corpse's own dead look is pushed one step further: paler and greyer than DeadTint,
+    // toward the bleached, colourless grey of bone rather than DeadTint's faint blue-grey cast.
+    internal static readonly Color BonesTint = new(0.74f, 0.735f, 0.73f);
+
     private const string People = "res://Content/people/";
 
     // Each lying-down layer is the standing one laid on its side (generate_sprites.py's
@@ -59,4 +64,11 @@ internal readonly record struct PersonLook(string Body, string Clothing, Color C
     }
 
     private static string Path(string name, string suffix) => $"{People}{name}{suffix}.png";
+
+    // Which tint a creature's own colour is replaced by for its current state, kept here rather
+    // than in the views (see CreatureView.OnDecayedChanged) so it is a plain function of the two
+    // facts the simulation already knows and can be tested without a scene tree. Null for the
+    // living: their colour is their own, not a tint this looks up.
+    internal static Color? TintFor(bool isAlive, bool isDecayed) =>
+        isAlive ? null : isDecayed ? BonesTint : DeadTint;
 }

@@ -35,6 +35,7 @@ public static class TestCatalogs
     private static readonly SkillTypeId Twisting = new("twisting");
     private static readonly SkillTypeId Binding = new("binding");
     private static readonly SkillTypeId Knapping = new("knapping");
+    private static readonly SkillTypeId Tanning = new("tanning");
     private static readonly SkillTypeId Sharpening = new("sharpening");
     private static readonly SkillTypeId Mining = new("mining");
     public static readonly SkillTypeId Burial = new("burial");
@@ -54,6 +55,7 @@ public static class TestCatalogs
     public static readonly TechniqueId BasicTwisting = new("basic_twisting");
     public static readonly TechniqueId BasicBinding = new("basic_binding");
     public static readonly TechniqueId BasicKnapping = new("basic_knapping");
+    public static readonly TechniqueId BasicTanning = new("basic_tanning");
     public static readonly TechniqueId BasicSharpening = new("basic_sharpening");
     public static readonly TechniqueId BasicMining = new("basic_mining");
     private static readonly TechniqueId BasicBurial = new("basic_burial");
@@ -69,6 +71,7 @@ public static class TestCatalogs
     private static readonly TechniqueId EfficientTwisting = new("efficient_twisting");
     private static readonly TechniqueId EfficientBinding = new("efficient_binding");
     private static readonly TechniqueId EfficientKnapping = new("efficient_knapping");
+    private static readonly TechniqueId EfficientTanning = new("efficient_tanning");
     private static readonly TechniqueId EfficientSharpening = new("efficient_sharpening");
     private static readonly TechniqueId EfficientMining = new("efficient_mining");
     public static readonly TechniqueId EfficientBurial = new("efficient_burial");
@@ -80,6 +83,7 @@ public static class TestCatalogs
     public static readonly ItemKindId WoodItem = new("wood");
     public static readonly ItemKindId Axe = new("axe");
     public static readonly ItemKindId WarmClothing = new("warm_clothing");
+    public static readonly ItemKindId RawhideClothing = new("rawhide_clothing");
     public static readonly ItemKindId AppleItem = new("apple");
     private static readonly ItemKindId PearItem = new("pear");
     private static readonly ItemKindId MushroomItem = new("mushroom");
@@ -94,6 +98,9 @@ public static class TestCatalogs
     // it, one item kind each - matching the well-known ids ButcherCommand itself asks for.
     public static readonly ItemKindId MeatItem = new("meat");
     public static readonly ItemKindId HideItem = new("hide");
+    // Raw off the animal, not the tanned hide warm_clothing is made from - the only one of the
+    // two that spoils (docs/todo/fauna-plan.md phase 4c).
+    public static readonly ItemKindId RawhideItem = new("rawhide");
     public static readonly ItemKindId BoneItem = new("bone");
     public static readonly ItemKindId SinewItem = new("sinew");
 
@@ -101,6 +108,7 @@ public static class TestCatalogs
     private static readonly MaterialId StoneMaterial = new("stone");
     private static readonly MaterialId PlantFibreMaterial = new("plant_fibre");
     private static readonly MaterialId HideMaterial = new("hide");
+    private static readonly MaterialId RawhideMaterial = new("rawhide");
     private static readonly MaterialId AppleMaterial = new("apple");
     private static readonly MaterialId PearMaterial = new("pear");
     private static readonly MaterialId PotatoMaterial = new("potato");
@@ -125,9 +133,14 @@ public static class TestCatalogs
     // One lump makes one wedge: knapping takes a stone whole rather than a handful, the way
     // twisting takes several blades of grass.
     public const int StonePerWedge = 1;
+    // One rawhide cures into one hide - curing changes the substance, not the amount.
+    private const int RawhidePerHide = 1;
     private static readonly TechniqueId TwistVerb = new("twist");
     private static readonly TechniqueId KnapVerb = new("knap");
-    private const int WarmClothingInputAmount = 10;
+    private static readonly TechniqueId TanVerb = new("tan");
+    // Two hide - a deer gives one, so it takes two deer to clothe one person
+    // (docs/todo/fauna-plan.md phase 4).
+    public const int WarmClothingInputAmount = 2;
     private const float FoodHungerRestoredPerUnit = 1f;
 
     // Mirrors Content/materials/{id}/{id}.json. Weight is density times volume
@@ -154,6 +167,16 @@ public static class TestCatalogs
     private const float HideFibrousness = 0.4f;
     private const float FoodDensity = 1f;
     private const float HideInsulation = 1f;
+
+    // Mirrors the shelf life every perishable material's own json carries (docs/todo/fauna-plan.md
+    // phase 4c). Hide (tanned), bone, wood, stone and plant_fibre have none - rawhide is what
+    // spoils, hide is what tanning (phase 4d) turns it into.
+    public const long MeatShelfLifeTicks = 30;
+    public const long RawhideShelfLifeTicks = 75;
+    public const long AppleShelfLifeTicks = 150;
+    private const long PearShelfLifeTicks = 150;
+    private const long MushroomShelfLifeTicks = 40;
+    private const long PotatoShelfLifeTicks = 300;
 
     // Mirrors grass.json's own hungerRestoredPerUnit (docs/todo/fauna-plan.md, step 0d): the
     // item's own nutrition, harmless to a human whose diet has no plant_fibre entry at all, is
@@ -325,7 +348,7 @@ public static class TestCatalogs
     private static readonly IReadOnlyList<SpeciesDefinition.CarcassYield> DeerCarcass =
     [
         new(MeatItem, DeerCarcassMeat),
-        new(HideItem, DeerCarcassHide),
+        new(RawhideItem, DeerCarcassHide),
         new(BoneItem, DeerCarcassBone),
         new(SinewItem, DeerCarcassSinew),
     ];
@@ -378,6 +401,7 @@ public static class TestCatalogs
         new SkillDefinition(Twisting, "Twisting", BasicTwisting, EfficientTwisting),
         new SkillDefinition(Binding, "Binding", BasicBinding, EfficientBinding),
         new SkillDefinition(Knapping, "Knapping", BasicKnapping, EfficientKnapping),
+        new SkillDefinition(Tanning, "Tanning", BasicTanning, EfficientTanning),
         new SkillDefinition(Sharpening, "Sharpening", BasicSharpening, EfficientSharpening),
         new SkillDefinition(Mining, "Mining", BasicMining, EfficientMining),
         new SkillDefinition(Burial, "Burial", BasicBurial, EfficientBurial),
@@ -390,7 +414,10 @@ public static class TestCatalogs
     private static RecipeCatalog CreateRecipeCatalog() => new(new[]
     {
         new RecipeDefinition(Axe, WoodItem, AxeInputAmount),
-        new RecipeDefinition(WarmClothing, WoodItem, WarmClothingInputAmount),
+        new RecipeDefinition(WarmClothing, HideItem, WarmClothingInputAmount),
+        // Rawhide clothing needs no further knowledge and shrivels each season
+        // (docs/todo/fauna-plan.md phase 4c) - the same two-hide amount as warm_clothing.
+        new RecipeDefinition(RawhideClothing, RawhideItem, WarmClothingInputAmount),
         new RecipeDefinition(Basket, WoodItem, BasketInputAmount),
         new RecipeDefinition(Bag, GrassItem, BagInputAmount),
         new RecipeDefinition(StorageHutItem, WoodItem, StorageHutInputAmount),
@@ -422,21 +449,26 @@ public static class TestCatalogs
         new MaterialDefinition(WoodMaterial, "Wood", WoodDensity, Hardness: WoodHardness, Toughness: WoodToughness, Flexibility: WoodFlexibility, Fibrousness: WoodFibrousness),
         new MaterialDefinition(StoneMaterial, "Stone", StoneDensity, Hardness: StoneHardness, Toughness: StoneToughness),
         new MaterialDefinition(PlantFibreMaterial, "Plant Fibre", PlantFibreDensity, Toughness: PlantFibreToughness, Flexibility: PlantFibreFlexibility, Fibrousness: PlantFibreFibrousness),
+        // Tanned, so it never spoils - rawhide below is what a fresh carcass gives instead.
         new MaterialDefinition(HideMaterial, "Hide", HideDensity, HideInsulation, Toughness: HideToughness, Flexibility: HideFlexibility, Elasticity: HideElasticity, Fibrousness: HideFibrousness),
-        new MaterialDefinition(AppleMaterial, "Apple Flesh", FoodDensity),
-        new MaterialDefinition(PearMaterial, "Pear Flesh", FoodDensity),
-        new MaterialDefinition(PotatoMaterial, "Potato Flesh", FoodDensity),
-        new MaterialDefinition(MushroomMaterial, "Mushroom Flesh", FoodDensity),
-        new MaterialDefinition(MeatMaterial, "Meat", FoodDensity),
+        new MaterialDefinition(RawhideMaterial, "Rawhide", HideDensity, HideInsulation, Toughness: HideToughness, Flexibility: HideFlexibility, Elasticity: HideElasticity, Fibrousness: HideFibrousness, ShelfLifeTicks: RawhideShelfLifeTicks),
+        new MaterialDefinition(AppleMaterial, "Apple Flesh", FoodDensity, ShelfLifeTicks: AppleShelfLifeTicks),
+        new MaterialDefinition(PearMaterial, "Pear Flesh", FoodDensity, ShelfLifeTicks: PearShelfLifeTicks),
+        new MaterialDefinition(PotatoMaterial, "Potato Flesh", FoodDensity, ShelfLifeTicks: PotatoShelfLifeTicks),
+        new MaterialDefinition(MushroomMaterial, "Mushroom Flesh", FoodDensity, ShelfLifeTicks: MushroomShelfLifeTicks),
+        new MaterialDefinition(MeatMaterial, "Meat", FoodDensity, ShelfLifeTicks: MeatShelfLifeTicks),
         new MaterialDefinition(BoneMaterial, "Bone", BoneDensity, Hardness: BoneHardness, Toughness: BoneToughness, Flexibility: BoneFlexibility, Elasticity: BoneElasticity, Fibrousness: BoneFibrousness),
+        // Dried sinew keeps (docs/todo/fauna-plan.md phase 4c: "sinew was perishable in 4a; dried
+        // sinew keeps") - no longer perishable.
         new MaterialDefinition(SinewMaterial, "Sinew", SinewDensity, Toughness: SinewToughness, Flexibility: SinewFlexibility, Elasticity: SinewElasticity, Fibrousness: SinewFibrousness),
     });
 
-    // The axe is stone and the warm clothing hide although both are crafted from wood: the
-    // single-input recipes are placeholders, and a wooden garment would make wood itself warm.
+    // The axe is stone and, since docs/todo/fauna-plan.md phase 4, the warm clothing recipe
+    // itself asks for hide (Content/recipes/warm_clothing/warm_clothing.json).
     private static ItemCatalog CreateItemCatalog(MaterialCatalog materials, FormCatalog forms) => new(new[]
     {
         new ItemDefinition(WarmClothing, "Warm Clothing", HideMaterial, Garment, WarmClothingVolume),
+        new ItemDefinition(RawhideClothing, "Rawhide Clothing", RawhideMaterial, Garment, WarmClothingVolume),
         new ItemDefinition(WoodItem, "Wood", WoodMaterial, Stick, WoodVolume),
         new ItemDefinition(Axe, "Axe", StoneMaterial, Wedge, AxeVolume),
         new ItemDefinition(AppleItem, "Apple", AppleMaterial, Whole, FoodVolume, FoodHungerRestoredPerUnit),
@@ -450,6 +482,7 @@ public static class TestCatalogs
         new ItemDefinition(StorageHutItem, "Storage Hut", WoodMaterial, Shelter, StorageHutVolume),
         new ItemDefinition(MeatItem, "Meat", MeatMaterial, Lump, FoodVolume, MeatHungerRestoredPerUnit),
         new ItemDefinition(HideItem, "Hide", HideMaterial, Whole, HideVolume),
+        new ItemDefinition(RawhideItem, "Rawhide", RawhideMaterial, Whole, HideVolume, Transitions: [new FormTransition(TanVerb, Whole, RawhidePerHide, HideMaterial)]),
         new ItemDefinition(BoneItem, "Bone", BoneMaterial, Stick, BoneVolume),
         new ItemDefinition(SinewItem, "Sinew", SinewMaterial, Fibre, SinewVolume, Transitions: [new FormTransition(TwistVerb, Cord, SinewPerCord)]),
     }, materials, forms);
@@ -500,6 +533,14 @@ public static class TestCatalogs
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies) };
 
     public static WorldState CreateWorldWithDeer() => new(CreateConfigurationWithDeer());
+
+    // For tests about corpse decay and bones (docs/todo/fauna-plan.md phase 4) that shrink
+    // CorpseDecayTicks/BonesLingerTicks rather than simulating hundreds of ticks to reach them.
+    private static WorldConfiguration CreateConfigurationWithShortCorpseDecay(long corpseDecayTicks, long bonesLingerTicks) =>
+        CreateConfigurationWithDeer() with { Rules = SimulationRules.Default with { CorpseDecayTicks = corpseDecayTicks, BonesLingerTicks = bonesLingerTicks } };
+
+    public static WorldState CreateWorldWithShortCorpseDecay(long corpseDecayTicks, long bonesLingerTicks) =>
+        new(CreateConfigurationWithShortCorpseDecay(corpseDecayTicks, bonesLingerTicks));
 
     // For tests about WorldState.BreedAnimals (docs/todo/fauna-plan.md, phase 1b, "mnozeni") that
     // need a chance, gestation or satiety threshold other than the shipped deer.json's, so a

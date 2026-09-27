@@ -48,13 +48,19 @@ public sealed record DropCommand(Person Person, CarriedThing What) : ICommand
         switch (What)
         {
             case CarriedThing.Stock stock:
-                Person.Inventory.Remove(stock.Kind, stock.Amount);
+                // The pile's clock is the OLDEST of the units going into it, not "now"
+                // (docs/todo/fauna-plan.md phase 4c): a pile is one tick for the whole drop, but
+                // stamping it fresh would refresh every unit's age and let dropping-then-picking-
+                // up launder a nearly-spoiled stack back to brand new. Null (no ledger entries at
+                // all - non-perishable, or added untimed) means it does not matter.
+                var removed = Person.Inventory.RemoveDated(stock.Kind, stock.Amount)!;
                 return new Entity
                 {
                     Kind = new EntityKindId(stock.Kind.Value),
                     Category = EntityCategory.Pile,
                     Position = Person.Position,
                     StaticAmount = stock.Amount,
+                    DroppedTick = removed.Count > 0 ? removed.Min(entry => entry.Tick) : null,
                 };
 
             case CarriedThing.Worked worked:

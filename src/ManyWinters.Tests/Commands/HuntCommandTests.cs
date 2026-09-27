@@ -155,7 +155,7 @@ public class HuntCommandTests
         Assert.Equal(DeathCause.Hunted, deer.CauseOfDeath);
         Assert.Equal(world.Clock.CurrentTick, deer.DeathTick);
         Assert.Equal(TestCatalogs.DeerCarcassMeat, deer.Inventory.Get(TestCatalogs.MeatItem));
-        Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.RawhideItem));
         Assert.Equal(TestCatalogs.DeerCarcassBone, deer.Inventory.Get(TestCatalogs.BoneItem));
         Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
     }

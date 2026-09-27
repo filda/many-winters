@@ -14,6 +14,17 @@ public sealed record SimulationRules
 
     public long TicksPerSeason { get; init; } = 75;
 
+    // Ticks after death (Creature.DeathTick) before a corpse's perishable contents rot away
+    // (WorldState.IsDecayed, docs/todo/fauna-plan.md phase 4) - two seasons, so a band that
+    // cannot reach a carcass in a season still has one more to try before its meat is gone.
+    public long CorpseDecayTicks { get; init; } = 150;
+
+    // Ticks after a corpse decays before its bones themselves are gone (a dead, unburied Animal
+    // is removed from the world - a person's bones never are, since the record of a band is its
+    // graves; see docs/chronicles-and-memory-architecture.md). A year, so a season missed still
+    // leaves the rest of one to find the bones.
+    public long BonesLingerTicks { get; init; } = 300;
+
     public float HungerPerTick { get; init; } = 1f;
 
     // What one directed attempt at the workbench costs in time. Working a thing over is not

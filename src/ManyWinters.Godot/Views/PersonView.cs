@@ -97,8 +97,20 @@ internal partial class PersonView : CreatureView
     protected override void OnAliveChanged(bool isAlive)
     {
         var look = isAlive ? _standing : _lying;
-        Retexture(_body, look.Body, isAlive ? _aliveBodyModulate : PersonLook.DeadTint, AliveColor);
-        Retexture(_clothing, look.Clothing, isAlive ? SpriteTint.ModulateFor(look.ClothingColor) : PersonLook.DeadTint, look.ClothingColor);
-        Retexture(_hair, look.Hair, isAlive ? SpriteTint.ModulateFor(look.HairColor) : PersonLook.DeadTint, look.HairColor);
+        var tint = PersonLook.TintFor(isAlive, isDecayed: false);
+        Retexture(_body, look.Body, tint ?? _aliveBodyModulate, AliveColor);
+        Retexture(_clothing, look.Clothing, tint ?? SpriteTint.ModulateFor(look.ClothingColor), look.ClothingColor);
+        Retexture(_hair, look.Hair, tint ?? SpriteTint.ModulateFor(look.HairColor), look.HairColor);
+    }
+
+    // Once WorldState.IsDecayed: the same lying-down layers, tinted one step further towards
+    // bone. There is no bones art of its own (docs/todo/fauna-plan.md phase 4b), and this only
+    // ever fires once a person is already dead, so the lying-down look is already in place.
+    protected override void OnDecayedChanged()
+    {
+        var tint = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;
+        Retexture(_body, _lying.Body, tint, AliveColor);
+        Retexture(_clothing, _lying.Clothing, tint, _lying.ClothingColor);
+        Retexture(_hair, _lying.Hair, tint, _lying.HairColor);
     }
 }

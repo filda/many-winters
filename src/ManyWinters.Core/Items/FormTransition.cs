@@ -9,7 +9,9 @@ namespace ManyWinters.Core.Items;
 // docs/materials-and-crafting-architecture.md section 3, "Where a verb lands is the item's own
 // business").
 //
-// Only the resulting Form is stated: the material carries over unchanged, and the worked piece's
-// bulk is what went into it, so weight is conserved without a second number to author and keep
-// in step.
-public sealed record FormTransition(TechniqueId Verb, FormId Form, int InputAmount);
+// The resulting Form is always stated; the material carries over unchanged unless the verb
+// changes the substance itself, which is what curing does (rawhide tanned into hide) - that is
+// why Material is here at all, a fifth fact only for the one class of verb that needs it. Either
+// way the worked piece's bulk is what went into it, so weight is conserved without a second
+// number to author and keep in step.
+public sealed record FormTransition(TechniqueId Verb, FormId Form, int InputAmount, MaterialId? Material = null);

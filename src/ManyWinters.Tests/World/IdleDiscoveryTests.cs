@@ -51,6 +51,21 @@ public class IdleDiscoveryTests
         Assert.Contains(TestCatalogs.BasicTwisting, person.KnownTechniques);
     }
 
+    // Tan is a reductive verb exactly like Twist (docs/todo/fauna-plan.md phase 4d): idle hands
+    // reach it too, since ReductiveVerbs.For is the one place DiscoverByFiddling asks and it now
+    // knows a third verb.
+    [Fact]
+    public void SomebodyIdlingWithRawhideEventuallyWorksOutHowToTan()
+    {
+        var world = WorldWhereIdlingAlwaysTeaches();
+        var person = Idler(world);
+        person.Inventory.Add(TestCatalogs.RawhideItem, 5);
+
+        world.Advance(20);
+
+        Assert.Contains(TestCatalogs.BasicTanning, person.KnownTechniques);
+    }
+
     // The rule is "what you could have done, if only you had known how" - so an empty pack
     // teaches nothing, however long somebody stands about.
     [Fact]

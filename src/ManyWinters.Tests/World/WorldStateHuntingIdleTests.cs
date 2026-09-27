@@ -217,4 +217,22 @@ public class WorldStateHuntingIdleTests
         Assert.Empty(carcass.Inventory.Counts);
         Assert.IsNotType<ButcherTask>(butcher.Tasks.Current);
     }
+
+    // docs/todo/fauna-plan.md phase 4: a decayed carcass holds only bone, and bone is never a
+    // meal - nobody idle should be sent to one (WorldState.FindNearestDeadAnimalWithMeat only
+    // asks about meat).
+    [Fact]
+    public void AHungryPersonIsNeverSentToButcherAMeatlessCarcass()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var position = new Position(0, 0);
+        var carcass = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(3, 0), NewHome(new Position(3, 0)));
+        carcass.IsAlive = false;
+        carcass.Inventory.Add(TestCatalogs.BoneItem, TestCatalogs.DeerCarcassBone);
+        var person = NewPerson(world, position, butcheringKnown: true, hunger: 80f);
+
+        world.Advance(1);
+
+        Assert.IsNotType<ButcherTask>(person.Tasks.Current);
+    }
 }

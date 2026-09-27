@@ -96,9 +96,40 @@ public sealed class ItemCatalog
             ? definition.Transitions.FirstOrDefault(transition => transition.Verb == verb)
             : null;
 
+    // The one stock item, if any, already described by exactly this material and this form -
+    // asked only by curing (ReductiveWork), which exchanges one already-known substance for
+    // another rather than fashioning a new individual object (docs/todo/fauna-plan.md phase 4d,
+    // "ReductiveWork picks the output item by (material, form)").
+    public ItemKindId? KindFor(MaterialId material, FormId form) =>
+        _definitions.Values.FirstOrDefault(d => d.Material == material && d.Form == form)?.Id;
+
     private float WeightOf(ItemDefinition definition) => (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume;
 
     public float HungerRestoredPerUnitFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.HungerRestoredPerUnit : 0f;
+
+    // How long a thing of this kind lasts once it exists, from the material it was made of -
+    // null if it never spoils. An undescribed item never spoils, the same forgiveness
+    // InsulationFor and WeightFor give it (docs/todo/fauna-plan.md phase 4c).
+    public long? ShelfLifeFor(ItemKindId id) =>
+        _definitions.TryGetValue(id, out var definition) ? _materials.Find(definition.Material)?.ShelfLifeTicks : null;
+
+    // The shortest shelf life among a worked object's own parts' materials, or null if none of
+    // them spoil - the whole thing rots at its most perishable part (docs/todo/fauna-plan.md
+    // phase 4c, "assembly spoils when currentTick - MadeTick >= min(...)").
+    public long? ShelfLifeTicksOf(Assembly assembly) => assembly switch
+    {
+        Assembly.Part part => _materials.Find(part.Material)?.ShelfLifeTicks,
+        Assembly.Joined joined => ShorterOf(ShelfLifeTicksOf(joined.Left), ShelfLifeTicksOf(joined.Right)),
+        _ => null,
+    };
+
+    private static long? ShorterOf(long? a, long? b) => (a, b) switch
+    {
+        (null, null) => null,
+        (null, { } bv) => bv,
+        ({ } av, null) => av,
+        ({ } av, { } bv) => Math.Min(av, bv),
+    };
 
     public float CarryCapacityBonusFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.CarryCapacityBonus : 0f;
 

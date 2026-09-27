@@ -27,7 +27,7 @@ public class ButcherCommandTests
 
         if (hide > 0)
         {
-            deer.Inventory.Add(TestCatalogs.HideItem, hide);
+            deer.Inventory.Add(TestCatalogs.RawhideItem, hide);
         }
 
         if (bone > 0)
@@ -94,6 +94,36 @@ public class ButcherCommandTests
         var carcass = DeadDeer(world, new Position(0, 0), meat: 0, hide: 0, bone: 0, sinew: 0);
 
         Assert.Equal(ActionBlocker.NothingLeft, new ButcherCommand(butcher, carcass).Blocker(world));
+    }
+
+    // What is left of a decayed carcass (docs/todo/fauna-plan.md phase 4: the perishables are
+    // gone, only bone remains) - a beginner takes it exactly as they always could, since bone was
+    // always the beginner's share.
+    [Fact]
+    public void ABeginnerButcherTakesOnlyBoneFromABoneOnlyCarcass()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var butcher = Butcher(world, new Position(0, 0));
+        var carcass = DeadDeer(world, new Position(0, 0), meat: 0, hide: 0, bone: TestCatalogs.DeerCarcassBone, sinew: 0);
+
+        world.Execute(new ButcherCommand(butcher, carcass));
+
+        Assert.Equal(TestCatalogs.DeerCarcassBone, butcher.Inventory.Get(TestCatalogs.BoneItem));
+        Assert.Equal(0, carcass.Inventory.Get(TestCatalogs.BoneItem));
+    }
+
+    // Same, with the efficient technique already known - it changes nothing about a carcass
+    // that only ever had bone to give.
+    [Fact]
+    public void AnExpertButcherAlsoTakesOnlyBoneFromABoneOnlyCarcass()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var butcher = Butcher(world, new Position(0, 0), knowsEfficientButchering: true);
+        var carcass = DeadDeer(world, new Position(0, 0), meat: 0, hide: 0, bone: TestCatalogs.DeerCarcassBone, sinew: 0);
+
+        world.Execute(new ButcherCommand(butcher, carcass));
+
+        Assert.Equal(TestCatalogs.DeerCarcassBone, butcher.Inventory.Get(TestCatalogs.BoneItem));
     }
 
     [Fact]
@@ -168,12 +198,12 @@ public class ButcherCommandTests
 
         Assert.Equal(TestCatalogs.DeerCarcassMeat, butcher.Inventory.Get(TestCatalogs.MeatItem));
         Assert.Equal(TestCatalogs.DeerCarcassBone, butcher.Inventory.Get(TestCatalogs.BoneItem));
-        Assert.Equal(0, butcher.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(0, butcher.Inventory.Get(TestCatalogs.RawhideItem));
         Assert.Equal(0, butcher.Inventory.Get(TestCatalogs.SinewItem));
 
         Assert.Equal(0, carcass.Inventory.Get(TestCatalogs.MeatItem));
         Assert.Equal(0, carcass.Inventory.Get(TestCatalogs.BoneItem));
-        Assert.Equal(TestCatalogs.DeerCarcassHide, carcass.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(TestCatalogs.DeerCarcassHide, carcass.Inventory.Get(TestCatalogs.RawhideItem));
         Assert.Equal(TestCatalogs.DeerCarcassSinew, carcass.Inventory.Get(TestCatalogs.SinewItem));
     }
 
@@ -187,7 +217,7 @@ public class ButcherCommandTests
         world.Execute(new ButcherCommand(butcher, carcass));
 
         Assert.Equal(TestCatalogs.DeerCarcassMeat, butcher.Inventory.Get(TestCatalogs.MeatItem));
-        Assert.Equal(TestCatalogs.DeerCarcassHide, butcher.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(TestCatalogs.DeerCarcassHide, butcher.Inventory.Get(TestCatalogs.RawhideItem));
         Assert.Equal(TestCatalogs.DeerCarcassBone, butcher.Inventory.Get(TestCatalogs.BoneItem));
         Assert.Equal(TestCatalogs.DeerCarcassSinew, butcher.Inventory.Get(TestCatalogs.SinewItem));
         Assert.Empty(carcass.Inventory.Counts);

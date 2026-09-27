@@ -59,6 +59,7 @@ internal abstract partial class CreatureView : SpriteEntityView
     // idle bob, whose weight fades the other way, so the hand-over is never a jump.
     private Vector3 _stepOffset;
     private bool _isAlive = true;
+    private bool _isDecayed;
 
     protected CreatureView(Creature creature, float nominalHeight, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
         : base(nominalHeight, hover, onMissedClick)
@@ -186,6 +187,28 @@ internal abstract partial class CreatureView : SpriteEntityView
     // texture for its lying-down counterpart; AnimalView, with no corpse art of its own, only
     // retints (see AnimalView.OnAliveChanged). Nothing by default.
     protected virtual void OnAliveChanged(bool isAlive)
+    {
+    }
+
+    // Called every tick for every creature, whether or not WorldState.IsDecayed changed, the same
+    // way SetAlive is - the guard below is what makes the no-change case cost nothing. One-way:
+    // there is no coming back from a decayed corpse, so a caller passing false once true is
+    // already the case is simply ignored rather than un-deciding it.
+    public void SetDecayed(bool isDecayed)
+    {
+        if (_isDecayed || !isDecayed)
+        {
+            return;
+        }
+
+        _isDecayed = true;
+        OnDecayedChanged();
+    }
+
+    // What a subclass does the moment its corpse decays past recognition - there is no bones art,
+    // so both PersonView and AnimalView only deepen the tint their own dead look already applied
+    // (see PersonLook.TintFor). Nothing by default.
+    protected virtual void OnDecayedChanged()
     {
     }
 }

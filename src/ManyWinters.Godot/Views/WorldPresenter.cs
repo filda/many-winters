@@ -91,6 +91,10 @@ public sealed partial class WorldPresenter : Node3D
         // Only a pile-category entity ever fires this: a felled or withered resource stays in
         // Entities with Growth.IsAlive false instead, and a building is never removed.
         world.EntityRemoved += entity => RemoveItemPileView(entity.Id);
+        // A dead, unburied animal's bones themselves vanish SimulationRules.BonesLingerTicks past
+        // decay (docs/todo/fauna-plan.md phase 4b) - the corpse the presenter has been dimming
+        // through fog of war for a season is finally gone from the world, not merely marked.
+        world.AnimalRemoved += animal => RemoveAnimalView(animal.Id);
 
         foreach (var person in world.People)
         {
@@ -138,6 +142,35 @@ public sealed partial class WorldPresenter : Node3D
         if (_animalViews.TryGetValue(id, out var view))
         {
             view.SetAlive(isAlive);
+        }
+    }
+
+    public void SetPersonDecayed(CreatureId id, bool isDecayed)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.SetDecayed(isDecayed);
+        }
+    }
+
+    public void SetAnimalDecayed(CreatureId id, bool isDecayed)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetDecayed(isDecayed);
+        }
+    }
+
+    // Driven by WorldState.AnimalRemoved (subscribed in the constructor): unlike RemovePersonView
+    // (a buried person, an order the player gave, so OrderCoordinator calls it), nothing outside
+    // this class asks for this - the world forgets the animal's bones on its own once they have
+    // lingered long enough.
+    private void RemoveAnimalView(CreatureId id)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _animalViews.Remove(id);
         }
     }
 

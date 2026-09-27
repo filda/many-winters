@@ -71,6 +71,11 @@ public sealed class WorldState(WorldConfiguration configuration)
     // Only a pile-category entity fires this today.
     public event Action<Entity>? EntityRemoved;
 
+    // A dead, unburied animal whose bones have finally lingered past
+    // SimulationRules.BonesLingerTicks (docs/todo/fauna-plan.md phase 4) - fired by the decay
+    // pass in Advance, mirroring EntityRemoved.
+    public event Action<Animal>? AnimalRemoved;
+
     // Add* take a finished object: what it is made of is the caller's business
     // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
     // presentation layer. Ids are drawn by the entity itself.
@@ -123,6 +128,15 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         _entities.Remove(entity);
         EntityRemoved?.Invoke(entity);
+    }
+
+    // Bones gone into the ground: the corpse's own decay pass (Advance) calls this once its
+    // bones have lingered past SimulationRules.BonesLingerTicks. Never called for a Person - see
+    // AnimalRemoved.
+    private void RemoveAnimal(Animal animal)
+    {
+        _animals.Remove(animal);
+        AnimalRemoved?.Invoke(animal);
     }
 
     public void Execute(ICommand command) => command.Execute(this);
@@ -327,6 +341,53 @@ public sealed class WorldState(WorldConfiguration configuration)
                     creature.DeathTick = currentTick;
                     creature.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
                     FillCarcass(creature);
+                }
+            }
+
+            // A year further on, a dead animal's bones themselves are gone - a person's never
+            // are (see AnimalRemoved). Snapshotted: RemoveAnimal mutates _animals mid-iteration
+            // otherwise.
+            foreach (var animal in _animals.ToList())
+            {
+                if (animal.IsAlive || animal.DeathTick is not { } deathTick)
+                {
+                    continue;
+                }
+
+                if (currentTick - deathTick == rules.CorpseDecayTicks + rules.BonesLingerTicks)
+                {
+                    RemoveAnimal(animal);
+                }
+            }
+
+            // Spoilage (docs/todo/fauna-plan.md phase 4c): every stack and worked object, in
+            // every creature's pack (alive or dead - a corpse's meat rots on its own clock, not
+            // at CorpseDecayTicks), in every building's storage, and on every ground pile or
+            // Made thing lying loose. Replaces 4a's single corpse-wide strip entirely: what a
+            // resource node itself holds never spoils - it grows.
+            foreach (var creature in AllCreatures())
+            {
+                creature.Inventory.Expire(currentTick, itemCatalog);
+            }
+
+            foreach (var entity in _entities.ToList())
+            {
+                entity.Storage?.Expire(currentTick, itemCatalog);
+
+                if (entity.Made is { } made
+                    && itemCatalog.ShelfLifeTicksOf(made) is { } madeShelfLife
+                    && currentTick - made.MadeTick >= madeShelfLife)
+                {
+                    RemoveEntity(entity);
+                    continue;
+                }
+
+                if (entity is { Category: EntityCategory.Pile, Made: null, StaticAmount: > 0, DroppedTick: { } droppedTick }
+                    && itemCatalog.ShelfLifeFor(new ItemKindId(entity.Kind.Value)) is { } pileShelfLife
+                    && currentTick - droppedTick >= pileShelfLife)
+                {
+                    entity.StaticAmount = 0;
+                    RemoveEntity(entity);
                 }
             }
 
@@ -1285,11 +1346,25 @@ public sealed class WorldState(WorldConfiguration configuration)
     // way (docs/todo/fauna-plan.md phase 3).
     internal void FillCarcass(Creature creature)
     {
+        // The moment these came to be as things (docs/todo/fauna-plan.md phase 4c) is the death
+        // itself, whichever path set it moments ago - hunger/old age (Advance, using the tick
+        // this death happened on) or a hunt (HuntCommand, which only has world.Clock.CurrentTick
+        // to hand). Falls back to now only if somehow called before DeathTick was set.
+        var tick = creature.DeathTick ?? Clock.CurrentTick;
+        var itemCatalog = Configuration.ItemCatalog;
         foreach (var yield in Configuration.SpeciesCatalog.Get(creature.Species).Carcass)
         {
-            creature.Inventory.Add(yield.Item, yield.Amount);
+            creature.Inventory.Add(yield.Item, yield.Amount, tick, itemCatalog);
         }
     }
+
+    // Whether this creature's corpse has crossed SimulationRules.CorpseDecayTicks - derived
+    // rather than stored (docs/todo/fauna-plan.md phase 4). A living creature, or one that never
+    // died in this world (no DeathTick), is never decayed. BuryCommand asks this to tell an
+    // unmarked grave from a marked one; the >= here (as opposed to Advance's own one-time ==)
+    // is deliberate, since a caller may ask on any tick, not just the one decay happened on.
+    public bool IsDecayed(Creature creature) =>
+        creature.DeathTick is { } deathTick && Clock.CurrentTick - deathTick >= Configuration.Rules.CorpseDecayTicks;
 
     // Same behaviour as the player's Eat button: eats through whatever food is on hand until no
     // longer hungry. Runs every tick whatever task is active, even a player-issued one - a

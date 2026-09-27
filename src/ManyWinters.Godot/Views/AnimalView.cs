@@ -79,7 +79,12 @@ internal partial class AnimalView : CreatureView
     // job) and drains to the same dead tint a person's corpse takes - PersonLook.DeadTint, not a
     // fresh one, since it is already the game's one answer to "this body is not alive".
     protected override void OnAliveChanged(bool isAlive) =>
-        _body.BaseModulate = isAlive ? _aliveModulate : PersonLook.DeadTint;
+        _body.BaseModulate = PersonLook.TintFor(isAlive, isDecayed: false) ?? _aliveModulate;
+
+    // Once WorldState.IsDecayed: the one layer tinted one step further, the same as a person's
+    // corpse (see PersonView.OnDecayedChanged) - no bones art exists here either.
+    protected override void OnDecayedChanged() =>
+        _body.BaseModulate = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;
 
     // A kind with a species PNG (res://Content/species/{id}/{id}.png) draws it; absent,
     // BillboardSprite.Create already falls back to a flat tinted quad, which is the whole point -

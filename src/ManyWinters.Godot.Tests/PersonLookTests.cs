@@ -80,4 +80,41 @@ public class PersonLookTests
     }
 
     private static string Path(string layer, string variant) => $"res://Content/people/{layer}_{variant}.png";
+
+    // Which tint replaces a creature's own colour for its state (docs/todo/fauna-plan.md phase
+    // 4b) - null for the living, since their colour is their own rather than something looked up
+    // here.
+    [Fact]
+    public void TheLivingHaveNoTint()
+    {
+        Assert.Null(PersonLook.TintFor(isAlive: true, isDecayed: false));
+    }
+
+    [Fact]
+    public void TheDeadAreTintedDead()
+    {
+        Assert.Equal(PersonLook.DeadTint, PersonLook.TintFor(isAlive: false, isDecayed: false));
+    }
+
+    [Fact]
+    public void TheDecayedAreTintedFurtherToBones()
+    {
+        Assert.Equal(PersonLook.BonesTint, PersonLook.TintFor(isAlive: false, isDecayed: true));
+    }
+
+    // Paler and greyer than the dead tint, not merely a different colour - a corpse whose record
+    // has decayed reads as further gone, not as something else entirely.
+    [Fact]
+    public void BonesAreAPalerGreyerTintThanDead()
+    {
+        Assert.True(PersonLook.BonesTint.R > PersonLook.DeadTint.R);
+        Assert.True(PersonLook.BonesTint.G > PersonLook.DeadTint.G);
+        Assert.True(PersonLook.BonesTint.B > PersonLook.DeadTint.B);
+
+        var deadSpread = Math.Max(Math.Max(PersonLook.DeadTint.R, PersonLook.DeadTint.G), PersonLook.DeadTint.B)
+            - Math.Min(Math.Min(PersonLook.DeadTint.R, PersonLook.DeadTint.G), PersonLook.DeadTint.B);
+        var bonesSpread = Math.Max(Math.Max(PersonLook.BonesTint.R, PersonLook.BonesTint.G), PersonLook.BonesTint.B)
+            - Math.Min(Math.Min(PersonLook.BonesTint.R, PersonLook.BonesTint.G), PersonLook.BonesTint.B);
+        Assert.True(bonesSpread <= deadSpread);
+    }
 }

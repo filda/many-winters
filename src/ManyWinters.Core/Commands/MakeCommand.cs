@@ -48,7 +48,9 @@ public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Pos
 
         if (FitsInInventory(world))
         {
-            Person.Inventory.Add(Output, 1);
+            // Comes into being right now (docs/todo/fauna-plan.md phase 4c) - matters once a
+            // recipe's own output has a shelf life (rawhide_clothing).
+            Person.Inventory.Add(Output, 1, world.Clock.CurrentTick, world.Configuration.ItemCatalog);
             return;
         }
 

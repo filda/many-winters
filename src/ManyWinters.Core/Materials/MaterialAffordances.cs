@@ -16,6 +16,13 @@ public static class MaterialAffordances
     public static bool CanKnap(MaterialDefinition material) =>
         material.Hardness > 0.7f && material.Toughness < 0.3f;
 
+    // Curing is for whatever would otherwise rot: a material with a shelf life
+    // (MaterialDefinition.ShelfLifeTicks) is what tanning turns into something that does not
+    // (docs/todo/fauna-plan.md phase 4d). No new property - the same number spoilage already
+    // reads.
+    public static bool CanCure(MaterialDefinition material) =>
+        material.ShelfLifeTicks is not null;
+
     // Too brittle to survive a blow intact - crumbles rather than deforms.
     public static bool CanCrush(MaterialDefinition material) =>
         material.Toughness < 0.4f;

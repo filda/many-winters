@@ -2,8 +2,11 @@
 
 ## Status
 
-**Steps 1-6 of section 11 are implemented and step 7 has begun** (one verb of it),
-though the labels below do not say so.
+**Steps 1-6 of section 11 are implemented and step 7 has begun** (three verbs of it -
+`Knap`, `Sharpen`, and now `Tan`), though the labels below do not say so. `Tan`
+(docs/todo/fauna-plan.md phase 4d) turns rawhide into hide and is the first verb whose
+transition names a target material, since curing changes the substance rather than the
+shape.
 
 ### A note on the numbering
 
@@ -418,7 +421,8 @@ clothing, storage hut) is still visibly at odds with its materials, the warm clo
 but made out of wood. Each goes the way the axe went, when the verbs that would make it exist.
 Hide gets its source, and the warm clothing its correct recipe, under the fauna plan
 (`docs/todo/fauna-plan.md`, phases 3 and 4), along with meat, bone and sinew as materials -
-not planned again here.
+not planned again here. That has now happened: warm clothing is made from hide, so it is no
+longer at odds with its material - bag, basket and storage hut still are.
 
 Already replaced, and no longer to be planned for: `SkillDefinition.Tool` /
 `ToolHarvestBonus` (the whitelist saying "this item kind is the tool for this skill") went in
@@ -547,6 +551,14 @@ each material becomes, without either inventing a parallel form-state-machine or
 falling back to an authored `RecipeDefinition`-style per-outcome table: the predicate
 that gates *whether* the verb is even offered still comes from properties (section
 2), only the *result* is authored per item.
+
+Almost every verb only reshapes: grass twisted is still plant fibre, a stone lump
+knapped is still stone. Curing is the one exception - rawhide tanned is no longer
+rawhide, because what tanning does *is* change the substance, not the shape (a
+tanned hide and the rawhide it came from share a form throughout). That is why a
+transition may also name a target material, a fifth fact authored only where a verb
+actually crosses this line; every verb that only reshapes leaves it unstated and
+keeps carrying its own material over unchanged, exactly as before.
 
 ---
 

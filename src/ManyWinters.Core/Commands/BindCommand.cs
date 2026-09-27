@@ -71,7 +71,10 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
                 StrengthOf(binding, world),
                 world.Configuration.ItemCatalog.WeightOf(binding),
                 left,
-                right));
+                right)
+            {
+                MadeTick = world.Clock.CurrentTick,
+            });
         }
 
         Person.Skills.Increase(Skill, SkillGainPerBind);

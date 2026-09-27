@@ -45,6 +45,22 @@ public class SelectionCardTests
         Assert.Equal("deceased", SelectionCard.For(world, person).Beside);
     }
 
+    // Once WorldState.IsDecayed the world itself has forgotten who this was
+    // (docs/todo/fauna-plan.md phase 4b) - there is nothing left to call it but its bones.
+    [Fact]
+    public void TheDecayedSayBonesInsteadOfDeceased()
+    {
+        var world = TestWorld.CreateWithShortCorpseDecay(corpseDecayTicks: 1);
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.IsAlive = false;
+        person.DeathTick = world.Clock.CurrentTick;
+
+        world.Advance(world.Configuration.Rules.CorpseDecayTicks);
+
+        Assert.True(world.IsDecayed(person));
+        Assert.Equal("bones", SelectionCard.For(world, person).Beside);
+    }
+
     [Fact]
     public void ParentsAreNamedUnderneath()
     {

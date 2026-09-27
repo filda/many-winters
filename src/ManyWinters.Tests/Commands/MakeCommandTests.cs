@@ -82,6 +82,76 @@ public class MakeCommandTests
         Assert.Equal(ActionBlocker.MissingMaterials, new MakeCommand(person, TestCatalogs.Axe).Blocker(world));
     }
 
+    // docs/todo/fauna-plan.md phase 4: warm clothing is made from hide, not wood.
+    [Fact]
+    public void MakingWarmClothingFromHideSucceeds()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.HideItem, TestCatalogs.WarmClothingInputAmount);
+
+        world.Execute(new MakeCommand(person, TestCatalogs.WarmClothing));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.HideItem));
+        Assert.Equal(1, person.Inventory.Get(TestCatalogs.WarmClothing));
+    }
+
+    // docs/todo/fauna-plan.md phase 4c: a second garment recipe, from the carcass's own rawhide
+    // rather than tanned hide - no further knowledge needed, unlike TanCommand's own future recipe.
+    [Fact]
+    public void MakingRawhideClothingFromRawhideSucceeds()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.RawhideItem, TestCatalogs.WarmClothingInputAmount);
+
+        world.Execute(new MakeCommand(person, TestCatalogs.RawhideClothing));
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.RawhideItem));
+        Assert.Equal(1, person.Inventory.Get(TestCatalogs.RawhideClothing));
+    }
+
+    // The whole reason for two garments (docs/todo/fauna-plan.md phase 4c): the rawhide one is
+    // gone after a season, the tanned one is not - both made as stock, so both age through
+    // Inventory's own ledger rather than needing an Assembly.
+    [Fact]
+    public void RawhideClothingSpoilsAfterASeasonWhileWarmClothingDoesNot()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.RawhideItem, TestCatalogs.WarmClothingInputAmount);
+        person.Inventory.Add(TestCatalogs.HideItem, TestCatalogs.WarmClothingInputAmount);
+
+        world.Execute(new MakeCommand(person, TestCatalogs.RawhideClothing));
+        world.Execute(new MakeCommand(person, TestCatalogs.WarmClothing));
+
+        world.Advance(TestCatalogs.RawhideShelfLifeTicks);
+
+        Assert.Equal(0, person.Inventory.Get(TestCatalogs.RawhideClothing));
+        Assert.Equal(1, person.Inventory.Get(TestCatalogs.WarmClothing));
+    }
+
+    // Insulation is read off the material, whatever the garment (ItemCatalog.InsulationFor) - a
+    // band making do with rawhide is exactly as warm as one with tanned hide.
+    [Fact]
+    public void RawhideClothingInsulatesExactlyAsMuchAsWarmClothing()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var catalog = world.Configuration.ItemCatalog;
+
+        Assert.Equal(catalog.InsulationFor(TestCatalogs.WarmClothing), catalog.InsulationFor(TestCatalogs.RawhideClothing));
+    }
+
+    [Fact]
+    public void MakingWarmClothingFromWoodFailsAsMissingMaterials()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+        person.Inventory.Add(TestCatalogs.WoodItem, 100);
+
+        Assert.Equal(ActionBlocker.MissingMaterials, new MakeCommand(person, TestCatalogs.WarmClothing).Blocker(world));
+    }
+
     [Fact]
     public void ADeadPersonIsBlockedFromMaking()
     {

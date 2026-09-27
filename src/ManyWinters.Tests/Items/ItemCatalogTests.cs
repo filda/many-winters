@@ -68,6 +68,32 @@ public class ItemCatalogTests
         Assert.Equal(1f, catalog.InsulationFor(WarmClothing));
     }
 
+    // docs/todo/fauna-plan.md phase 4c: how long an item lasts comes from its material, whatever
+    // it was made into - the same rule InsulationFor and WeightFor follow.
+    [Fact]
+    public void ShelfLifeForComesFromTheMaterialRatherThanTheItem()
+    {
+        var materials = new MaterialCatalog([
+            new MaterialDefinition(Hide, "Hide", Density: 0.75f, Insulation: 1f, ShelfLifeTicks: 75),
+            new MaterialDefinition(WoodMaterial, "Wood", Density: 0.5f, Hardness: 0.4f),
+        ]);
+        var catalog = new ItemCatalog([
+            new ItemDefinition(WarmClothing, "Warm Clothing", Hide, Garment, Volume: 4f),
+            new ItemDefinition(Wood, "Wood", WoodMaterial, Stick, Volume: 2f),
+        ], materials, Forms());
+
+        Assert.Equal(75L, catalog.ShelfLifeFor(WarmClothing));
+        Assert.Null(catalog.ShelfLifeFor(Wood));
+    }
+
+    [Fact]
+    public void ShelfLifeForIsNullForAnUndescribedItem()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+
+        Assert.Null(catalog.ShelfLifeFor(WarmClothing));
+    }
+
     [Fact]
     public void InsulationForReturnsZeroForAMaterialThatInsulatesNothing()
     {
@@ -388,6 +414,54 @@ public class ItemCatalogTests
         Assert.Equal(twist, transition.Verb);
         Assert.Equal(cord, transition.Form);
         Assert.Equal(3, transition.InputAmount);
+    }
+
+    // A transition with no "material" carries the item's own material over unchanged - twist and
+    // knap's existing shape, and every FormTransition before this one (docs/todo/fauna-plan.md
+    // phase 4d).
+    [Fact]
+    public void ATransitionWithNoMaterialInJsonCarriesTheItemsOwnMaterialOver()
+    {
+        var json = """{ "id": "rawhide", "displayName": "Rawhide", "material": "hide", "form": "whole", "volume": 3, "transitions": [{ "verb": "twist", "form": "whole", "inputAmount": 1 }] }""";
+
+        var catalog = ItemCatalog.LoadFromJson([("rawhide.json", json)], Materials(), Forms());
+
+        var transition = Assert.Single(catalog.Get(new ItemKindId("rawhide")).Transitions);
+        Assert.Null(transition.Material);
+    }
+
+    // A transition that does name one is curing's own fifth fact: the verb changes the
+    // substance, and this is where content says what into (docs/todo/fauna-plan.md phase 4d).
+    [Fact]
+    public void ATransitionWithAMaterialInJsonNamesItsTargetMaterial()
+    {
+        var json = """{ "id": "rawhide", "displayName": "Rawhide", "material": "hide", "form": "whole", "volume": 3, "transitions": [{ "verb": "tan", "form": "whole", "material": "hide", "inputAmount": 1 }] }""";
+
+        var catalog = ItemCatalog.LoadFromJson([("rawhide.json", json)], Materials(), Forms());
+
+        var transition = Assert.Single(catalog.Get(new ItemKindId("rawhide")).Transitions);
+        Assert.Equal(Hide, transition.Material);
+    }
+
+    // What curing asks for (docs/todo/fauna-plan.md phase 4d): the one stock item already
+    // described by exactly this material and this form.
+    [Fact]
+    public void KindForFindsTheItemMatchingAMaterialAndForm()
+    {
+        var catalog = new ItemCatalog(
+        [
+            new ItemDefinition(new ItemKindId("hide"), "Hide", Hide, Garment, Volume: 4f),
+        ], Materials(), Forms());
+
+        Assert.Equal(new ItemKindId("hide"), catalog.KindFor(Hide, Garment));
+    }
+
+    [Fact]
+    public void KindForReturnsNullWhenNothingMatches()
+    {
+        var catalog = new ItemCatalog([], Materials(), Forms());
+
+        Assert.Null(catalog.KindFor(Hide, Garment));
     }
 
     [Fact]

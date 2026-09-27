@@ -104,9 +104,12 @@ public class AnimalSimulationTests
 
         world.Advance(400);
 
+        // Meat and rawhide are long gone by now (docs/todo/fauna-plan.md phase 4c: they rot on
+        // their own, much shorter clocks - WorldStateCorpseDecayTests and ButcherCommandTests
+        // pin the amounts FillCarcass actually puts in right at death). Bone and sinew never
+        // spoil, so they are still exactly the carcass's own numbers here - which is what "fills
+        // exactly once, not topped up again and again" over 400 ticks proves.
         Assert.False(deer.IsAlive);
-        Assert.Equal(TestCatalogs.DeerCarcassMeat, deer.Inventory.Get(TestCatalogs.MeatItem));
-        Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.HideItem));
         Assert.Equal(TestCatalogs.DeerCarcassBone, deer.Inventory.Get(TestCatalogs.BoneItem));
         Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
 
@@ -114,8 +117,6 @@ public class AnimalSimulationTests
         // must not be topped up again and again.
         world.Advance(50);
 
-        Assert.Equal(TestCatalogs.DeerCarcassMeat, deer.Inventory.Get(TestCatalogs.MeatItem));
-        Assert.Equal(TestCatalogs.DeerCarcassHide, deer.Inventory.Get(TestCatalogs.HideItem));
         Assert.Equal(TestCatalogs.DeerCarcassBone, deer.Inventory.Get(TestCatalogs.BoneItem));
         Assert.Equal(TestCatalogs.DeerCarcassSinew, deer.Inventory.Get(TestCatalogs.SinewItem));
     }

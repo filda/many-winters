@@ -46,7 +46,10 @@ public sealed record BuryCommand(Person BuryingPerson, Person Deceased) : IComma
 
         var skillDefinition = world.Configuration.SkillCatalog.Get(BurialSkill);
         var technique = skillDefinition.EfficientTechnique;
-        var isMarked = BuryingPerson.KnownTechniques.Contains(technique);
+        // A decayed corpse is unmarked whatever the gravedigger knows (docs/todo/fauna-plan.md
+        // phase 4): the person who could have been recognised is gone, only bones are left, and
+        // the technique they dug the grave with does not bring an identity back.
+        var isMarked = BuryingPerson.KnownTechniques.Contains(technique) && !world.IsDecayed(Deceased);
 
         var deathTick = Deceased.DeathTick ?? world.Clock.CurrentTick;
         var ageAtDeath = (int)world.AgeInYearsAt(Deceased, deathTick);

@@ -11,8 +11,9 @@ public class MaterialAffordancesTests
         float toughness = 0f,
         float flexibility = 0f,
         float elasticity = 0f,
-        float fibrousness = 0f) =>
-        new(Id, "Test Material", Hardness: hardness, Toughness: toughness, Flexibility: flexibility, Elasticity: elasticity, Fibrousness: fibrousness);
+        float fibrousness = 0f,
+        long? shelfLifeTicks = null) =>
+        new(Id, "Test Material", Hardness: hardness, Toughness: toughness, Flexibility: flexibility, Elasticity: elasticity, Fibrousness: fibrousness, ShelfLifeTicks: shelfLifeTicks);
 
     [Fact]
     public void GrassLikePropertiesCanTwist()
@@ -109,9 +110,28 @@ public class MaterialAffordancesTests
         Assert.False(MaterialAffordances.CanKnap(undescribed));
         Assert.False(MaterialAffordances.CanBend(undescribed));
         Assert.False(MaterialAffordances.HoldsTension(undescribed));
+        Assert.False(MaterialAffordances.CanCure(undescribed));
         // CanCrush is the one predicate a bare-zero material passes - Toughness 0 is brittle by
         // definition, not "undescribed". Documented here rather than left to look like an
         // oversight.
         Assert.True(MaterialAffordances.CanCrush(undescribed));
+    }
+
+    // Whatever would otherwise rot is what curing is for: a shelf life, nothing else
+    // (docs/todo/fauna-plan.md phase 4d) - rawhide and meat both qualify, hide and wood do not.
+    [Fact]
+    public void AMaterialWithAShelfLifeCanBeCured()
+    {
+        var rawhide = With(shelfLifeTicks: 75);
+
+        Assert.True(MaterialAffordances.CanCure(rawhide));
+    }
+
+    [Fact]
+    public void ATannedOrNeverSpoilingMaterialCannotBeCured()
+    {
+        var tannedHide = With(flexibility: 0.8f);
+
+        Assert.False(MaterialAffordances.CanCure(tannedHide));
     }
 }

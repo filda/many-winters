@@ -17,7 +17,10 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
     // Public: HuntCommand and WorldState.DecideIdleTask both ask "does this carcass hold meat"
     // (docs/todo/fauna-plan.md phase 3) without needing a second, private copy of the id.
     public static readonly ItemKindId Meat = new("meat");
-    private static readonly ItemKindId Hide = new("hide");
+    // Raw off the animal, not the tanned hide warm_clothing is made from (docs/todo/fauna-plan.md
+    // phase 4c: "kůže je perishable jen surová") - TanCommand (phase 4d) will turn one into the
+    // other.
+    private static readonly ItemKindId Rawhide = new("rawhide");
     private static readonly ItemKindId Sinew = new("sinew");
     private static readonly ItemKindId Bone = new("bone");
 
@@ -87,13 +90,9 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
                 continue;
             }
 
-            var taken = Butcher.Inventory.AddUpToCapacity(item, available, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Butcher));
-            // Stryker disable once Equality: removing zero units leaves the count exactly as it
-            // was, so skipping the call and making it are indistinguishable
-            if (taken > 0)
-            {
-                Carcass.Inventory.Remove(item, taken);
-            }
+            // A transfer, not a fresh Add: what was already rotting in the carcass keeps rotting
+            // on the same clock in the butcher's pack (docs/todo/fauna-plan.md phase 4c).
+            Carcass.Inventory.TransferUpToCapacity(item, available, Butcher.Inventory, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Butcher));
         }
 
         Butcher.Skills.Increase(Skill, SkillGainPerButchering);
@@ -111,10 +110,10 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
             carcass.Inventory.Get(item) > 0
             && butcher.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(butcher)));
 
-    // Meat and bone come off any carcass a taught butcher touches; hide and sinew are worth
+    // Meat and bone come off any carcass a taught butcher touches; rawhide and sinew are worth
     // ruining in untrained hands, so only efficient_butchering's practiced grip takes them
     // (docs/todo/fauna-plan.md: "beginner ruins them - this is what the efficient technique
     // buys").
     private static IReadOnlyList<ItemKindId> ItemsInOrder(bool hasEfficientTechnique) =>
-        hasEfficientTechnique ? [Meat, Hide, Sinew, Bone] : [Meat, Bone];
+        hasEfficientTechnique ? [Meat, Rawhide, Sinew, Bone] : [Meat, Bone];
 }

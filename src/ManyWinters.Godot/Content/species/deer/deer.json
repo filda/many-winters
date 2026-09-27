@@ -34,7 +34,7 @@
   },
   "carcass": [
     { "item": "meat", "amount": 30 },
-    { "item": "hide", "amount": 1 },
+    { "item": "rawhide", "amount": 1 },
     { "item": "bone", "amount": 4 },
     { "item": "sinew", "amount": 2 }
   ]

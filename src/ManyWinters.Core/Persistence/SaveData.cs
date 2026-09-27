@@ -61,7 +61,13 @@ public sealed record SkillLevelSaveData(SkillTypeId Type, float Level);
 // whole point of a belief is that it need not match the world.
 public sealed record BeliefSaveData(MaterialId Material, MaterialProperty Property, float Value, float Confidence);
 
-public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
+// `Ages` is the FIFO age ledger for a perishable kind (docs/todo/fauna-plan.md phase 4c,
+// Inventory.Ages) - null for a kind that carries no age at all (non-perishable, or added
+// untimed), which is every stack written before this existed, so an old save still reads.
+public sealed record ItemStackSaveData(ItemKindId Kind, int Count, IReadOnlyList<AgedEntrySaveData>? Ages = null);
+
+// One batch of units that came into being on the same tick.
+public sealed record AgedEntrySaveData(long Tick, int Count);
 
 // One worked object out of the instance tier, mirroring Assembly's two cases as two nullable
 // blocks - the same shape GrowthSaveData uses for "only some entities have one", and the reason
@@ -69,9 +75,11 @@ public sealed record ItemStackSaveData(ItemKindId Kind, int Count);
 // not round-trip at all rather than round-tripping as half of itself.
 public sealed record AssemblySaveData(PartSaveData? Part, JointSaveData? Joint);
 
-public sealed record PartSaveData(MaterialId Material, FormId Form, float Quality, float Volume);
+// MadeTick defaults to 0, so a save written before it existed still reads as "always was old" -
+// harmless, since it only matters once a part's material has a shelf life (nothing does yet).
+public sealed record PartSaveData(MaterialId Material, FormId Form, float Quality, float Volume, long MadeTick = 0);
 
-public sealed record JointSaveData(float Strength, float Weight, AssemblySaveData Left, AssemblySaveData Right);
+public sealed record JointSaveData(float Strength, float Weight, AssemblySaveData Left, AssemblySaveData Right, long MadeTick = 0);
 
 // Nested rather than flattened onto EntitySaveData: only a Growable entity has one, and its
 // fields (IsAlive, DeathTick, CauseOfDeath, ColdStress) previously fell out of ResourceNodeSaveData
@@ -101,7 +109,10 @@ public sealed record EntitySaveData(
     // The worked things on a store's shelves, beside the counted stock in Storage. Same reason
     // a person's inventory needs two lists: a count is no truth at all about two axes of
     // different quality.
-    IReadOnlyList<AssemblySaveData>? StorageWorkedThings = null);
+    IReadOnlyList<AssemblySaveData>? StorageWorkedThings = null,
+    // When a stock pile came to be, for the spoilage pass (docs/todo/fauna-plan.md phase 4c) -
+    // null for anything that isn't a stock pile, or for one saved before this existed.
+    long? DroppedTick = null);
 
 public sealed record GraveSaveData(
     Guid Id,

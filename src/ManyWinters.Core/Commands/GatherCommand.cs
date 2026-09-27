@@ -83,7 +83,10 @@ public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
             // autonomous pass (WorldState.IsHungryEnoughToEat), or a picker at a food source
             // would eat one unit every tick and practice forever.
             var eaten = world.IsHungryEnoughToEat(Actor) ? EatCommand.Eat(world, Actor, item, availableUnits) : 0;
-            var added = Actor.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Actor));
+            // A freshly picked unit comes into being right now (docs/todo/fauna-plan.md phase 4c) -
+            // unlike a transfer, there is no earlier age to preserve: the node it came off grows
+            // rather than spoiling.
+            var added = Actor.Inventory.AddUpToCapacity(item, availableUnits - eaten, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Actor), world.Clock.CurrentTick);
             var taken = eaten + added;
 
             growth.RemainingAmount -= taken;

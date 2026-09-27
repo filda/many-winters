@@ -76,6 +76,10 @@ internal sealed class SimulationLoop(
         foreach (var person in world.People)
         {
             presenter.SetPersonAlive(person.Id, person.IsAlive);
+            // Never true before IsAlive is false (WorldState.IsDecayed), so this is always the
+            // second of the two - a dead person's bones never vanish (docs/todo/fauna-plan.md
+            // phase 4b), only their look deepens once the record of them has decayed.
+            presenter.SetPersonDecayed(person.Id, world.IsDecayed(person));
             // A person who dies mid-stride still tweens to that tick's final position over the
             // next second - one last visible step. Snapping (overSeconds: 0) once dead pins the
             // corpse there with nothing left to glide.
@@ -85,6 +89,7 @@ internal sealed class SimulationLoop(
         foreach (var animal in world.Animals)
         {
             presenter.SetAnimalAlive(animal.Id, animal.IsAlive);
+            presenter.SetAnimalDecayed(animal.Id, world.IsDecayed(animal));
             presenter.SetAnimalPosition(animal.Id, animal.Position, animal.IsAlive ? (float)pacing.TickIntervalSeconds : 0f);
         }
 

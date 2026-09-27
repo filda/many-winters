@@ -88,6 +88,11 @@ internal sealed class SelectionController
         _detailPanel.Closed += () => Closed?.Invoke();
         _detailPanel.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
         _detailPanel.PackRequested += OnPackRequested;
+
+        // The world forgets an animal's bones on its own, with nobody asking (see
+        // WorldPresenter.RemoveAnimalView) - if that was the one selected, its card must come
+        // down with it rather than keep showing a corpse whose view is already gone.
+        world.AnimalRemoved += OnAnimalRemoved;
     }
 
     public void Select(Person person)
@@ -141,6 +146,14 @@ internal sealed class SelectionController
         _animal = null;
         _grave = null;
         Refresh();
+    }
+
+    private void OnAnimalRemoved(Animal animal)
+    {
+        if (ReferenceEquals(_animal, animal))
+        {
+            Clear();
+        }
     }
 
     // Every window that shows something about whoever is selected or was, closed together so a

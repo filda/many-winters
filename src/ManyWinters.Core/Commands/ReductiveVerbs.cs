@@ -30,6 +30,11 @@ public static class ReductiveVerbs
             return (KnapCommand.Skill, new KnapCommand(person, kind));
         }
 
+        if (items.TransitionFor(kind, TanCommand.Verb) is not null)
+        {
+            return (TanCommand.Skill, new TanCommand(person, kind));
+        }
+
         return null;
     }
 }

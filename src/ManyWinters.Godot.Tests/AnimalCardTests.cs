@@ -38,6 +38,22 @@ public class AnimalCardTests
         Assert.Equal("deceased", AnimalCard.For(world, deer).Beside);
     }
 
+    // As SelectionCard's own wording for a person (docs/todo/fauna-plan.md phase 4b): once
+    // WorldState.IsDecayed there is nothing left to call it but its bones.
+    [Fact]
+    public void TheDecayedSayBonesInsteadOfDeceased()
+    {
+        var world = TestWorld.CreateWithShortCorpseDecay(corpseDecayTicks: 1);
+        var deer = TestWorld.AddAdultAnimal(world, new Position(0, 0));
+        deer.IsAlive = false;
+        deer.DeathTick = world.Clock.CurrentTick;
+
+        world.Advance(world.Configuration.Rules.CorpseDecayTicks);
+
+        Assert.True(world.IsDecayed(deer));
+        Assert.Equal("Bones", AnimalCard.For(world, deer).Beside);
+    }
+
     [Fact]
     public void SomethingWithNothingToDoIsIdle()
     {

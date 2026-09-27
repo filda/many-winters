@@ -1,0 +1,1 @@
+{ "id": "rawhide", "displayName": "Rawhide", "material": "rawhide", "form": "whole", "volume": 3, "transitions": [{ "verb": "tan", "form": "whole", "material": "hide", "inputAmount": 1 }] }

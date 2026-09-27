@@ -36,6 +36,27 @@ public class MaterialCatalogTests
 
         Assert.Equal(0f, definition?.Density);
         Assert.Equal(0f, definition?.Insulation);
+        Assert.Null(definition?.ShelfLifeTicks);
+    }
+
+    // docs/todo/fauna-plan.md phase 4c: the spoilage pass reads this number off the material a
+    // perishable item is made of, whatever the item is (rawhide/meat and the plant foods).
+    [Fact]
+    public void LoadFromDirectoryReadsAShelfLifeDefinition()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"manywinters-materialcatalog-{Guid.NewGuid():N}");
+        WriteDefinition(root, "meat", """{ "id": "meat", "displayName": "Meat", "density": 1, "shelfLifeTicks": 30 }""");
+
+        try
+        {
+            var catalog = MaterialCatalog.LoadFromDirectory(root);
+
+            Assert.Equal(30L, catalog.Find(new MaterialId("meat"))?.ShelfLifeTicks);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

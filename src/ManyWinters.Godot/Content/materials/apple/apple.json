@@ -1,1 +1,1 @@
-{ "id": "apple", "displayName": "Apple Flesh", "density": 1 }
+{ "id": "apple", "displayName": "Apple Flesh", "density": 1, "shelfLifeTicks": 150 }

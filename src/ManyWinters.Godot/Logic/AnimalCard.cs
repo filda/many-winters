@@ -19,7 +19,11 @@ internal sealed record AnimalCard(string Title, string Beside, string Task, Mete
 
         return new AnimalCard(
             world.Configuration.SpeciesCatalog.Get(animal.Species).DisplayName,
-            animal.IsAlive ? InspectorText.ForAgeAndSex(world.AgeInYears(animal), lifeCycle, animal.Sex) : "deceased",
+            animal.IsAlive
+                ? InspectorText.ForAgeAndSex(world.AgeInYears(animal), lifeCycle, animal.Sex)
+                // As SelectionCard's own wording for a person (docs/todo/fauna-plan.md phase 4b):
+                // once WorldState.IsDecayed there is nothing left to call it but its bones.
+                : world.IsDecayed(animal) ? "Bones" : "deceased",
             animal.IsAlive ? InspectorText.ForTask(animal) : string.Empty,
             SelectionCard.FedFor(animal, world.Configuration.Rules.HungerSeekFoodThreshold),
             animal.IsAlive ? string.Empty : CarcassLine(world.Configuration.ItemCatalog, animal));

@@ -82,7 +82,9 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
             : worn;
 
         Person.Inventory.RemoveAssembly(Thing);
-        Person.Inventory.AddAssembly(WithReplaced(Thing, edge, reworked));
+        // A sharpen is one of the four verbs that "make" a thing (docs/todo/fauna-plan.md phase
+        // 4c), so the whole object's age resets here even though only its edge changed.
+        Person.Inventory.AddAssembly(WithReplaced(Thing, edge, reworked) with { MadeTick = world.Clock.CurrentTick });
 
         Person.Skills.Increase(Skill, SkillGainPerAttempt);
     }

@@ -121,6 +121,48 @@ public class BuryCommandTests
         Assert.Equal("Sela", grave.MotherName);
     }
 
+    // docs/todo/fauna-plan.md phase 4: a decayed corpse is unmarked whatever the gravedigger
+    // knows - the person who could have been recognised is gone, only bones are left.
+    [Fact]
+    public void BuryingADecayedCorpseProducesAnAnonymousGraveEvenWithTheTechnique()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
+        deceased.KnownTechniques.Add(TestCatalogs.EfficientForaging);
+        deceased.IsAlive = false;
+        deceased.DeathTick = world.Clock.CurrentTick;
+        world.Clock.Advance(world.Configuration.Rules.CorpseDecayTicks);
+
+        world.Execute(new BuryCommand(buryingPerson, deceased));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.False(grave.IsMarked);
+        Assert.Null(grave.Name);
+        Assert.Empty(grave.KnownTechniques);
+    }
+
+    // Same corpse, buried before decay: the technique still works.
+    [Fact]
+    public void BuryingTheSameCorpseBeforeDecayIsStillMarked()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
+        buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);
+        var deceased = world.SpawnPerson("Ava", new Position(1, 1));
+        deceased.KnownTechniques.Add(TestCatalogs.EfficientForaging);
+        deceased.IsAlive = false;
+        deceased.DeathTick = world.Clock.CurrentTick;
+        world.Clock.Advance(world.Configuration.Rules.CorpseDecayTicks - 1);
+
+        world.Execute(new BuryCommand(buryingPerson, deceased));
+
+        var grave = Assert.Single(world.Graves);
+        Assert.True(grave.IsMarked);
+        Assert.Equal("Ava", grave.Name);
+    }
+
     [Fact]
     public void BuryingWithoutTheTechniqueLeavesCauseOfDeathAndParentNamesNullEvenWhenRecorded()
     {

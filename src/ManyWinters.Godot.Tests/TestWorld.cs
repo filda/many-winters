@@ -86,7 +86,16 @@ internal static class TestWorld
     // (docs/todo/fauna-plan.md, step 0d) - all that is edible in this test world today.
     private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet = [new(new MaterialId("apple"), 1f)];
 
-    internal static WorldState Create()
+    internal static WorldState Create() => Create(SimulationRules.Default);
+
+    // A short decay window, for SelectionCard/AnimalCard tests that need a creature past
+    // WorldState.IsDecayed without simulating a season of ticks - mirrors
+    // ManyWinters.Tests.TestCatalogs.CreateWorldWithShortCorpseDecay (see its own comment); a
+    // deliberate copy, like every other catalog here, rather than a shared one with that project.
+    internal static WorldState CreateWithShortCorpseDecay(long corpseDecayTicks) =>
+        Create(SimulationRules.Default with { CorpseDecayTicks = corpseDecayTicks });
+
+    private static WorldState Create(SimulationRules rules)
     {
         var materials = new MaterialCatalog([
             new MaterialDefinition(new MaterialId("wood"), "Wood", 0.5f),
@@ -168,7 +177,7 @@ internal static class TestWorld
             forms,
             items,
             SeasonParameters.Default,
-            SimulationRules.Default));
+            rules));
     }
 
     // Born to two named parents, for the card that says whose child somebody is.

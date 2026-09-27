@@ -72,13 +72,30 @@ internal sealed record ReductiveWork(
 
         if (WorkAttempt.Succeeds(person, Skill, Verb, world.Clock.CurrentTick))
         {
-            // Bulk carries over from what went in, so working a thing down neither creates nor
-            // destroys weight (see FormTransition).
-            person.Inventory.AddAssembly(new Assembly.Part(
-                definition.Material,
-                transition.Form,
-                WorkAttempt.QualityFor(person, Skill),
-                definition.Volume * transition.InputAmount));
+            if (transition.Material is { } curedMaterial)
+            {
+                // Curing exchanges one already-known substance for another rather than
+                // fashioning a new individual object - rawhide and hide are both stock, the same
+                // tier meat and bone come off a carcass as, so what comes out lands back there
+                // too rather than becoming a worked object with a quality nobody reads
+                // (docs/todo/fauna-plan.md phase 4d). The stock item is found by the very
+                // (material, form) pair the transition names.
+                var cured = world.Configuration.ItemCatalog.KindFor(curedMaterial, transition.Form)!.Value;
+                person.Inventory.Add(cured, transition.InputAmount, world.Clock.CurrentTick, world.Configuration.ItemCatalog);
+            }
+            else
+            {
+                // Bulk carries over from what went in, so working a thing down neither creates
+                // nor destroys weight (see FormTransition).
+                person.Inventory.AddAssembly(new Assembly.Part(
+                    definition.Material,
+                    transition.Form,
+                    WorkAttempt.QualityFor(person, Skill),
+                    definition.Volume * transition.InputAmount)
+                {
+                    MadeTick = world.Clock.CurrentTick,
+                });
+            }
         }
 
         person.Skills.Increase(Skill, SkillGainPerAttempt);

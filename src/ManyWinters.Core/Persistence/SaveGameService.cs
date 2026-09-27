@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 25;
+    private const int CurrentVersion = 26;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,9 +34,10 @@ public static class SaveGameService
                     : null,
                 entity.StaticAmount,
                 entity.Condition,
-                entity.Storage?.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
+                entity.Storage?.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value, ToAgedEntries(entity.Storage, kv.Key))).ToList(),
                 entity.Made is { } made ? ToAssemblySaveData(made) : null,
-                entity.Storage?.Assemblies.Select(ToAssemblySaveData).ToList()))
+                entity.Storage?.Assemblies.Select(ToAssemblySaveData).ToList(),
+                entity.DroppedTick))
             .ToList();
 
         var graves = world.Graves
@@ -103,7 +104,7 @@ public static class SaveGameService
         animal.Home.Id.Value,
         animal.Mother?.Id.Value,
         animal.PregnantSinceTick,
-        animal.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList());
+        animal.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value, ToAgedEntries(animal.Inventory, kv.Key))).ToList());
 
     private static PersonSaveData ToPersonSaveData(Person person) => new(
         person.Id.Value,
@@ -118,7 +119,7 @@ public static class SaveGameService
         person.Beliefs.Held
             .Select(held => new BeliefSaveData(held.Key.Material, held.Key.Property, held.Value.Value, held.Value.Confidence))
             .ToList(),
-        person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value)).ToList(),
+        person.Inventory.Counts.Select(kv => new ItemStackSaveData(kv.Key, kv.Value, ToAgedEntries(person.Inventory, kv.Key))).ToList(),
         person.Inventory.Assemblies.Select(ToAssemblySaveData).ToList(),
         person.BirthTick,
         person.DeathTick,
@@ -133,27 +134,39 @@ public static class SaveGameService
     // depth.
     private static AssemblySaveData ToAssemblySaveData(Assembly assembly) => assembly switch
     {
-        Assembly.Part part => new AssemblySaveData(new PartSaveData(part.Material, part.Form, part.Quality, part.Volume), null),
+        Assembly.Part part => new AssemblySaveData(new PartSaveData(part.Material, part.Form, part.Quality, part.Volume, part.MadeTick), null),
         Assembly.Joined joined => new AssemblySaveData(
             null,
             new JointSaveData(
                 joined.JointStrength,
                 joined.JointWeight,
                 ToAssemblySaveData(joined.Left),
-                ToAssemblySaveData(joined.Right))),
+                ToAssemblySaveData(joined.Right),
+                joined.MadeTick)),
         _ => throw new ArgumentOutOfRangeException(nameof(assembly), assembly, "Unknown kind of worked thing."),
     };
 
     private static Assembly FromAssemblySaveData(AssemblySaveData data) => data switch
     {
-        { Part: { } part } => new Assembly.Part(part.Material, part.Form, part.Quality, part.Volume),
+        { Part: { } part } => new Assembly.Part(part.Material, part.Form, part.Quality, part.Volume) { MadeTick = part.MadeTick },
         { Joint: { } joint } => new Assembly.Joined(
             joint.Strength,
             joint.Weight,
             FromAssemblySaveData(joint.Left),
-            FromAssemblySaveData(joint.Right)),
+            FromAssemblySaveData(joint.Right))
+        {
+            MadeTick = joint.MadeTick,
+        },
         _ => throw new InvalidDataException("A worked thing in the save states neither a part nor a joint."),
     };
+
+    // The FIFO age ledger for one kind (docs/todo/fauna-plan.md phase 4c, Inventory.Ages) - null
+    // if that kind carries no age at all (non-perishable, or added untimed), so an unremarkable
+    // stack does not grow a pointless empty list in every save.
+    private static List<AgedEntrySaveData>? ToAgedEntries(Inventory? inventory, ItemKindId kind) =>
+        inventory is not null && inventory.Ages.TryGetValue(kind, out var entries) && entries.Count > 0
+            ? entries.Select(entry => new AgedEntrySaveData(entry.Tick, entry.Count)).ToList()
+            : null;
 
     private static WorldState FromSaveData(SaveData data, WorldConfiguration configuration)
     {
@@ -196,6 +209,7 @@ public static class SaveGameService
                 Condition = entityData.Condition,
                 Storage = entityData.Storage is not null ? new Inventory() : null,
                 Made = entityData.Made is { } made ? FromAssemblySaveData(made) : null,
+                DroppedTick = entityData.DroppedTick,
             };
 
             if (entityData.Storage is { } storage)
@@ -203,6 +217,10 @@ public static class SaveGameService
                 foreach (var stack in storage)
                 {
                     entity.Storage!.Add(stack.Kind, stack.Count);
+                    foreach (var age in stack.Ages ?? [])
+                    {
+                        entity.Storage!.RestoreAgedEntry(stack.Kind, age.Tick, age.Count);
+                    }
                 }
             }
 
@@ -305,6 +323,10 @@ public static class SaveGameService
         foreach (var stack in animalData.Inventory ?? [])
         {
             animal.Inventory.Add(stack.Kind, stack.Count);
+            foreach (var age in stack.Ages ?? [])
+            {
+                animal.Inventory.RestoreAgedEntry(stack.Kind, age.Tick, age.Count);
+            }
         }
 
         animalsById[animalData.Id] = animal;
@@ -352,6 +374,10 @@ public static class SaveGameService
         foreach (var stack in personData.Inventory)
         {
             person.Inventory.Add(stack.Kind, stack.Count);
+            foreach (var age in stack.Ages ?? [])
+            {
+                person.Inventory.RestoreAgedEntry(stack.Kind, age.Tick, age.Count);
+            }
         }
 
         foreach (var worked in personData.WorkedThings)
