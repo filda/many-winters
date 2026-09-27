@@ -217,14 +217,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     // all - an animal's CanCarry is false, so it never pockets what it grazes.
     public float MaxCarryWeightFor(Creature creature)
     {
-        if (!Configuration.SpeciesCatalog.Get(creature.Species).CanCarry)
-        {
-            return 0f;
-        }
-
-        var baseWeight = CarryCapacity.BaseWeightFor(AgeInYears(creature), LifeCycleOf(creature));
-        var gearBonus = creature.Inventory.Counts.Keys.Sum(Configuration.ItemCatalog.CarryCapacityBonusFor);
-        return baseWeight + gearBonus;
+        return CarryCapacity.MaxCarryWeightFor(creature, Configuration, AgeInYears(creature), LifeCycleOf(creature));
     }
 
     // Every living Person then every living Animal, for the per-creature passes in Advance and

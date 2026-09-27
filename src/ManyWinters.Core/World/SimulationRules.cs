@@ -204,6 +204,9 @@ public sealed record SimulationRules
     public float HuntingEfficientMultiplier { get; init; } = 1.5f;
 
     public long TicksPerYear => TicksPerSeason * SeasonsPerYear;
+    public float AdultBaseWeight { get; } = 50f;
+    public float NewbornFraction { get; } = 0.2f;
+    public float ElderEndFraction { get; } = 0.85f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

@@ -1,60 +1,64 @@
-using ManyWinters.Core.Population;
+using ManyWinters.Core.World;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Population;
 
 public class CarryCapacityTests
 {
-    // The same ages the LifeCycle boundary tests use: the two curves turn at the same points,
-    // on purpose.
-    private static readonly LifeCycle Standard = new(WeaningAgeYears: 1, AdultAgeYears: 4, ElderAgeYears: 7, MaxLifespanYears: 10);
+    private static long AgeTicksFor(long ageInYears) => SimulationRules.Default.TicksPerYear * ageInYears;
+
+    private static float MaxCarryWeightAt(long ageInYears)
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: AgeTicksFor(ageInYears));
+        return world.MaxCarryWeightFor(person);
+    }
 
     [Fact]
     public void ANewbornCarriesOnlyAFractionOfTheAdultBaseline()
     {
-        Assert.Equal(10f, CarryCapacity.BaseWeightFor(ageInYears: 0, Standard));
+        Assert.Equal(10f, MaxCarryWeightAt(ageInYears: 0));
     }
 
     [Fact]
     public void CapacityGrowsLinearlyBetweenBirthAndAdulthood()
     {
-        Assert.Equal(20f, CarryCapacity.BaseWeightFor(ageInYears: 1, Standard));
+        Assert.Equal(20f, MaxCarryWeightAt(ageInYears: 1));
     }
 
     [Fact]
     public void CapacityReachesTheAdultBaselineAtAdultAge()
     {
-        Assert.Equal(CarryCapacity.AdultBaseWeight, CarryCapacity.BaseWeightFor(ageInYears: 4, Standard));
+        Assert.Equal(50f, MaxCarryWeightAt(ageInYears: TestCatalogs.AdultAgeYears));
     }
 
     [Fact]
     public void CapacityStaysAtTheAdultBaselineThroughThePrimeYears()
     {
-        Assert.Equal(CarryCapacity.AdultBaseWeight, CarryCapacity.BaseWeightFor(ageInYears: 6, Standard));
+        Assert.Equal(50f, MaxCarryWeightAt(ageInYears: 6));
     }
 
     [Fact]
     public void CapacityHasNotYetDeclinedRightAtTheStartOfOldAge()
     {
-        Assert.Equal(CarryCapacity.AdultBaseWeight, CarryCapacity.BaseWeightFor(ageInYears: 7, Standard));
+        Assert.Equal(50f, MaxCarryWeightAt(ageInYears: TestCatalogs.ElderAgeYears));
     }
 
     [Fact]
     public void CapacityDeclinesGraduallyThroughOldAge()
     {
-        var atElderStart = CarryCapacity.BaseWeightFor(ageInYears: 7, Standard);
-        var midway = CarryCapacity.BaseWeightFor(ageInYears: 8, Standard);
-        var atMaxLifespan = CarryCapacity.BaseWeightFor(ageInYears: 10, Standard);
+        var atElderStart = MaxCarryWeightAt(ageInYears: TestCatalogs.ElderAgeYears);
+        var midway = MaxCarryWeightAt(ageInYears: 8);
+        var atMaxLifespan = MaxCarryWeightAt(ageInYears: 10);
 
         Assert.True(midway < atElderStart);
         Assert.True(atMaxLifespan < midway);
-        Assert.Equal(CarryCapacity.AdultBaseWeight * 0.85f, atMaxLifespan);
+        Assert.Equal(50f * 0.85f, atMaxLifespan);
     }
 
     [Fact]
     public void CapacityNeverDeclinesBelowTheElderFloorEvenPastMaxLifespan()
     {
-        Assert.Equal(
-            CarryCapacity.AdultBaseWeight * 0.85f,
-            CarryCapacity.BaseWeightFor(ageInYears: 50, Standard));
+        Assert.Equal(50f * 0.85f, MaxCarryWeightAt(ageInYears: 50));
     }
 }

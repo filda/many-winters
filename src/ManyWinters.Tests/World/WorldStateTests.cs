@@ -231,7 +231,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 
-        Assert.Equal(CarryCapacity.AdultBaseWeight, world.MaxCarryWeightFor(person));
+        Assert.Equal(50f, world.MaxCarryWeightFor(person));
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public class WorldStateTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 1);
 
-        Assert.Equal(CarryCapacity.AdultBaseWeight + 20f, world.MaxCarryWeightFor(person));
+        Assert.Equal(50f + 20f, world.MaxCarryWeightFor(person));
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public class WorldStateTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.Inventory.Add(bag, 3);
 
-        Assert.Equal(CarryCapacity.AdultBaseWeight + 20f, world.MaxCarryWeightFor(person));
+        Assert.Equal(50f + 20f, world.MaxCarryWeightFor(person));
     }
 
     [Fact]
