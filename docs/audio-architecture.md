@@ -105,7 +105,7 @@ The shape instead is a **pool**: a fixed number of players (say 32), lent out on
 
 ### 3.4 It fits the presenter the project already has
 
-`WorldPresenter` already consumes simulation events (`ResourceNodeAdded` and friends) and turns them into Godot nodes. Sound is the same kind of work with a different output. `ManyWinters.Core` keeps knowing nothing about Godot — it reports that a person felled a tree at a position; the presentation layer decides whether that is audible.
+`WorldPresenter` already consumes simulation events (`EntityAdded`, `PersonAdded` and friends) and turns them into Godot nodes. Sound is the same kind of work with a different output. `ManyWinters.Core` keeps knowing nothing about Godot — it reports that a person felled a tree at a position; the presentation layer decides whether that is audible.
 
 No new architectural layer, just another consumer of events that already exist.
 
@@ -148,13 +148,87 @@ Caveat: `pitch_scale` on a player changes pitch **and speed** together, tape-sty
 
 **Offline generation.** `art/generate_sprites.py` has an obvious sibling: a script that generates sample variants at build time. Procedural where it is useful, paid once, and an ordinary sample at runtime. This fits how the project already works.
 
-**Runtime synthesis, if it is ever warranted.** `AudioStreamGenerator` with `push_buffer()` hands over a raw PCM buffer. Notably, the documentation says it is best used from C# or a compiled language — from GDScript the mix rate has to drop to 11 or 22 kHz to keep up — and this project is C#, which is the right side of that line. But it means writing a synthesiser: a project in itself, and one generator per player, so not a route to thirty concurrent voices.
+**Runtime synthesis.** Section 5. It turns out to be three different techniques, and only one of them has the "one generator per player" limit.
 
-## 5. Open questions
+## 5. Runtime synthesis for effects
+
+Section 4 dismissed synthesis in a paragraph as "a synthesiser project, one generator per player". That is true of exactly one of three ways to use a synthesiser, and it is the one the game needs least. Music stays parked; this section is about effects only.
+
+### 5.1 Why bother
+
+Samples answer "what does an axe sound like". They cannot answer "what does *this* axe, made of *this* stone, hitting *this* wood, sound like", except by recording every combination. The game is built around material properties (`Hardness`, `Toughness`, `Density`, `Flexibility`, `Fibrousness` — `docs/materials-and-crafting-architecture.md` §8) and around things that change slowly — season, weather, a fire dying, a person ageing. Those are parameters. A synthesiser takes parameters; a sample does not.
+
+The second argument is the art direction. The sprites are woodcuts. A photorealistic field recording next to a woodcut is a mismatch; a stylised sound next to a woodcut is coherent. Synthesis is stylised by nature, so the thing it does worst — realism — is the thing the project does not want.
+
+### 5.2 Three techniques, one synthesiser
+
+All three run the same DSP code. They differ in *when* it runs and what it produces.
+
+| technique | when it runs | output | Godot side | voices |
+| --- | --- | --- | --- | --- |
+| **bake at load** | startup or first use | pool of variant `AudioStreamWav` | `AudioStreamRandomizer`, as §4 | unlimited |
+| **bake on trigger** | the moment an event fires | one short `AudioStreamWav` | pooled `AudioStreamPlayer3D`, as §3.3 | unlimited |
+| **stream** | continuously | PCM pushed into `AudioStreamGenerator` | one generator per player | a handful |
+
+**Bake at load** is §4's "offline generation" done in-process instead of in Python. Same result — a variant pool — but no WAVs in git and no re-import on every CI run, which §3.1 named as the cost that actually bites. Deterministic given a seed, so the pool is identical on every machine.
+
+**Bake on trigger** is the one §4 missed. A half-second effect at 22 050 Hz is 11 000 samples. Running a noise burst through a few filters over 11 000 samples costs well under a millisecond in C#. So: an event arrives with its parameters, the synthesiser renders the whole sound into a `float[]`, that is converted to 16-bit PCM and set as `AudioStreamWav.Data` (`Format16Bits`, mono, `MixRate` 22050), and a pooled 3D player plays it exactly like an imported sample. No streaming, no audio thread, no per-player generator, and the pool/eviction design of §3.3 is untouched. Every hit is different, and different *because of the game state* rather than by dice. A small cache keyed by quantised parameters is an optimisation for later, not a requirement.
+
+**Stream** is for sounds that never end and evolve while they play — wind, fire, rain, running water. There are few of these at once (§3.5 already caps ambient at a handful of emitters), so one generator each is fine. `AudioStreamGenerator` (Godot 4.7): `buffer_length` default 0.5 s, `mix_rate_mode` defaults to `Custom`; set it to `Output` to skip resampling. Fill from `_Process` with `push_buffer()` and keep the buffer at 100–200 ms — 0.5 s makes a gust land half a second after the weather changed. The engine documentation says this class is best used from C# or a compiled language; the project is C#.
+
+### 5.3 What synthesis does well, and what it does not
+
+The procedural-audio literature (Farnell, *Designing Sound*) is consistent on this, and it maps cleanly onto the game.
+
+**Good — noise-shaped and physical.** Wind, fire, rain, streams, footsteps, impacts, knapping, creaking wood, rustling, insects, stylised bird calls. These are what synthesis is *for*; a filtered noise model of wind is better than a looped recording because it never loops.
+
+**Bad — voices the ear knows.** Human speech, a realistic wolf or deer. The ear has a lifetime of training on these and hears a synth immediately.
+
+The way out for voices is not samples but stylisation: gibberish speech from a pulse train through two or three formant filters (the Animal Crossing / Sims register). Whether that fits the game's tone is a taste decision, not a technical one. If it does not, voices become the one class that uses recorded samples and the hybrid is still simple: synth for the physical world, samples for mouths.
+
+### 5.4 What the game state can drive
+
+Concretely, with the models that produce each:
+
+- **Impacts** — *modal synthesis*: a bank of damped resonators (frequency, decay, amplitude per mode) struck by a short noise burst. `Hardness` sets the burst's brightness and length; `Toughness` sets the decay (brittle rings, tough thuds); `Density` and the item's volume set the base frequency (bigger and denser is lower). A stone wedge on wood, stone on stone, wood on wood all fall out of the material table, and a material added later — clay, bone, antler — has a sound the day it exists. Audio becomes one more *reader* of the material properties, which is exactly the rule §8 of the materials document uses to justify a property's existence.
+- **Knapping** — the same model with a brittle material: a short high click plus the ring of the flake.
+- **Felling** — stick-slip creak (a slow sawtooth exciting the resonator bank), a crack, then a cascade of impacts. Bigger tree, lower creak.
+- **Weather and season** — wind is bandpassed noise whose centre, width and gustiness follow a slow random-walk LFO driven by `SeasonParameters`; rain is a Poisson stream of droplet clicks whose rate is the rain intensity. Winter thins the birds and insects and swaps the footstep to snow (dense lowpassed crunch).
+- **Fire** — crackle rate and hiss level from fuel; a dying hearth audibly dies.
+- **Footsteps** — the terrain under the foot picks the model: grass swish, stone click, mud, snow.
+- **Identity** — `EntityVisualVariation.RangeFor(seed, salt, …)` from §4 supplies base pitch and formant set from a `CreatureId`, so a person has *their* voice and a wolf *its* howl, with nothing stored and nothing to save. Age scales the formants (child to adult), old age adds tremor, hunger lowers and weakens it. Death removes the voice with the id.
+
+Every one of those is a parameter change on a model that already exists. With samples each is a new recording session.
+
+### 5.5 Cost
+
+The synthesiser core is small and boring: white and pink noise, a biquad filter (low/band/high-pass), an envelope, a sine and sawtooth oscillator with pitch glide, a damped-resonator bank, a Poisson impulse generator, a random-walk LFO. Three to five hundred lines of C#. Each sound model on top is thirty to eighty lines.
+
+It is pure code — `float[]` in, `float[]` out, no Godot types — so it is testable the way `docs/conventions.md` asks for and the Godot layer is not: determinism given a seed, duration, no clipping, and *ordering* assertions such as "stone is brighter than wood" via a spectral-centroid helper. The Godot side is a thin wrapper that turns a `float[]` into an `AudioStreamWav` or pushes it into a generator, and lives with the presenter.
+
+The real cost is not code, it is ears. A modal impact with the wrong mode ratios sounds like a toy, and the only fix is listening and adjusting. Budget the prototype as mostly tuning time.
+
+### 5.6 Risks
+
+- **Cheapness.** Under-designed synthesis sounds 8-bit. Mitigations are the ones the field uses: layer two or three models per event, decorrelate with noise, never let two hits be identical, and compare against Farnell's reference patches while tuning.
+- **Streaming underruns.** A stalled `_Process` frame empties the generator buffer and crackles. Only the streamed ambient layers are exposed; baked sounds are not. Keep the buffer above 100 ms and fill it every frame.
+- **GC pressure.** Bake-on-trigger allocates a buffer per hit — about 22 KB for half a second at 22 050 Hz, 16-bit. Negligible at the event rates §3.3 allows; reuse a scratch `float[]` if it ever shows.
+- **Scope creep.** A synthesiser invites building instruments. The line is: models for events the simulation already emits, nothing speculative.
+
+### 5.7 Recommendation
+
+The step-by-step plan is `docs/audio-synthesis-prototype-plan.md`. Prototype bake-on-trigger first, because it answers §4's open question — "characterful or cheap" — with the least construction, and because it is the technique with no concurrency limit and no audio thread.
+
+- One modal impact model driven by `MaterialDefinition`, rendered for stone-on-wood, stone-on-stone and wood-on-wood.
+- One streamed wind layer driven by season, to exercise `AudioStreamGenerator` once and settle the buffer size.
+- Success criterion: a blind listener ranks the three impacts by material. If that fails after a day of tuning, synthesis stays for ambient and impacts go to samples, and nothing built is wasted because the wind layer stands on its own.
+
+## 6. Open questions
 
 - **Runtime soundfont switching** (2.3). Undocumented in every addon. Load-bearing. Prototype before writing music. Bank switching is the fallback design and may be the better one anyway.
 - **Listener placement under zoom** (3.6). Needs tuning by ear against the real camera.
 - **Which MIDI addon.** Depends on 2.3 and on how much the C#-only property of `FluidSynthGodot` is worth against the maturity of the alternatives.
 - **How many eras/moods**, and therefore how many instrument sets the program map has to serve. Affects authoring cost far more than runtime cost.
-- **Synthesised effects from the music synth.** Once a soundfont synthesiser is in the project, a bird call is a short phrase on a flute preset — infinite variation, shared infrastructure. Whether it sounds characterful or cheap is unknown and only answerable by trying it.
+- **Synthesised effects — characterful or cheap.** Section 5.7 is the experiment that answers it. A separate variant — bird calls as flute phrases on the music soundfont, once one exists — shares infrastructure with the music but waits on section 2.
+- **Voices.** Stylised formant gibberish or recorded samples (5.3). A taste decision that decides whether the effects pipeline is all-synth or hybrid.
 - **Pool size and eviction policy** (3.3). 32 is a guess; the priority rule needs to be written down once there are real sounds competing.
