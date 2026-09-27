@@ -288,7 +288,11 @@ public sealed class WorldState(WorldConfiguration configuration)
                         hungerMultiplier *= rules.NursingHungerMultiplier;
                     }
 
-                    creature.Needs.Hunger = Math.Min(creature.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier), creature.MaxHunger);
+                    // The species' own winter reserve (SpeciesDefinition.HungerPerTickMultiplier) -
+                    // 1 for a human, so this changes nothing about a person.
+                    var speciesHungerMultiplier = Configuration.SpeciesCatalog.Get(creature.Species).HungerPerTickMultiplier;
+
+                    creature.Needs.Hunger = Math.Min(creature.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier * speciesHungerMultiplier), creature.MaxHunger);
                 }
 
                 TryAutoEat(creature);
@@ -367,18 +371,28 @@ public sealed class WorldState(WorldConfiguration configuration)
         IdleTask => true,
         // FollowTask never completes, so this is what notices an infant has been weaned.
         FollowTask => true,
-        GatherTask gather => !IsWorthTakingFrom(creature, gather.Target) || NeedsToSeekFoodUrgently(creature),
+        // Reconsidered every tick like IdleTask/FollowTask, but DecideIdleTask's own flee check
+        // hands back the very same FleeTask while it is still running (see there) rather than
+        // re-deriving completion from FleeDistance, which would cut the flee short the moment the
+        // gap merely passes FleeDistance on the way out to the wider SafeDistance.
+        FleeTask => true,
+        // A threat closing in is worth dropping a gather order for, same as urgent hunger - see
+        // NearbyThreatTo.
+        GatherTask gather => !IsWorthTakingFrom(creature, gather.Target) || NeedsToSeekFoodUrgently(creature) || NearbyThreatTo(creature) is not null,
         _ => false,
     };
 
     // Whether the freshly decided autonomous task is the one already running, so it is dropped
     // rather than installed. IdleTask carries per-instance state (anchor, leg, pause) that
     // replacing it every tick would throw away; churning a FollowTask for the same mother is
-    // pointless. A change of task type always interrupts.
+    // pointless. A change of task type always interrupts. FleeTask keeps running against the same
+    // threat rather than restarting every tick - restarting would not change anything (Advance
+    // recomputes the direction every tick regardless), but it would be needless churn.
     private static bool KeepsCurrentTask(CreatureTask? current, CreatureTask decided) => (current, decided) switch
     {
         (IdleTask, IdleTask) => true,
         (FollowTask running, FollowTask fresh) => ReferenceEquals(running.Target, fresh.Target),
+        (FleeTask running, FleeTask fresh) => ReferenceEquals(running.Threat, fresh.Threat),
         _ => false,
     };
 
@@ -415,6 +429,27 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         var reachDistance = Configuration.Rules.MaxInteractionDistance;
         var searchOrigin = creature.Home?.Anchor ?? creature.Position;
+
+        // A threat wins over everything else, including an infant's own mother and hunger: a
+        // species that never notices a person standing next to it reads as broken
+        // (docs/todo/fauna-plan.md, "Útěk dřív než lov"). Species data (SpeciesDefinition.Flee),
+        // not a type check on the creature - a human never has one.
+        if (Configuration.SpeciesCatalog.Get(creature.Species).Flee is { } flee)
+        {
+            // Already running from something and not yet clear of it (FleeTask.IsComplete) -
+            // hand back the same instance rather than re-deriving from FleeDistance, or a flee
+            // already under way would be cut short the moment the gap merely passes FleeDistance
+            // on the way out to the wider SafeDistance.
+            if (creature.Tasks.Current is FleeTask activeFlee)
+            {
+                return activeFlee;
+            }
+
+            if (NearbyThreatTo(creature) is { } threat)
+            {
+                return new FleeTask(threat, flee);
+            }
+        }
 
         // An infant has no skill and nothing to gather, so it keeps up with its mother instead -
         // that is what feeds it and what keeps it within teaching reach. An orphan falls through
@@ -458,6 +493,21 @@ public sealed class WorldState(WorldConfiguration configuration)
     {
         var definition = Configuration.SkillCatalog.Find(skill);
         return definition is not null && creature.KnownTechniques.Contains(definition.BaseTechnique);
+    }
+
+    // Null for a species with no Flee (every human), or one with Flee but nobody living within
+    // FleeDistance right now. The nearest living person, not merely "any" - so a herd scattered
+    // beside several people always flees the closer one, which is also who KeepsCurrentTask
+    // compares against to avoid restarting a flee that is already running from the same threat.
+    private Person? NearbyThreatTo(Creature creature)
+    {
+        if (Configuration.SpeciesCatalog.Get(creature.Species).Flee is not { } flee)
+        {
+            return null;
+        }
+
+        var nearest = _people.Where(p => p.IsAlive).MinBy(p => Distance(creature.Position, p.Position));
+        return nearest is not null && Distance(creature.Position, nearest.Position) < flee.FleeDistance ? nearest : null;
     }
 
     private bool IsNursedBy(Creature creature, Creature? mother) =>

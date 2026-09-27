@@ -25,5 +25,11 @@
     "gestationTicks": 150,
     "conceptionChancePerTick": 0.02,
     "satietyHungerBelow": 40
+  },
+  "hungerPerTickMultiplier": 0.28,
+  "flee": {
+    "fleeDistance": 8,
+    "safeDistance": 16,
+    "speedPerTick": 0.6
   }
 }

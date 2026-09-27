@@ -177,6 +177,26 @@ public class AnimalSimulationTests
         Assert.True(distinctTargets > 1, $"expected more than one distinct grazing target, found {distinctTargets}");
     }
 
+    // The winter reserve (docs/todo/fauna-plan.md, phase 1's "Otevřené ladění"): SpeciesDefinition.
+    // HungerPerTickMultiplier scales SimulationRules.HungerPerTick per species. Human is 1
+    // (unchanged from before this existed), deer is TestCatalogs.DeerHungerPerTickMultiplier
+    // (mirrors deer.json).
+    [Fact]
+    public void APersonsHungerAccruesAtTheUnscaledRateWhileADeersIsScaledByItsSpecies()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var rules = world.Configuration.Rules;
+        // Tick 0 is Spring (Mild, hunger multiplier 1 - SeasonParameters.Default) and far apart
+        // enough, with nothing edible nearby, that neither creature's task or diet affects hunger.
+        var person = world.SpawnPerson("Ava", new Position(-500, -500), TestCatalogs.AdultAgeTicks);
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(500, 500), NewHome(new Position(500, 500)));
+
+        world.Advance(3);
+
+        Assert.Equal(rules.HungerPerTick * 3, person.Needs.Hunger, precision: 4);
+        Assert.Equal(rules.HungerPerTick * 3 * TestCatalogs.DeerHungerPerTickMultiplier, deer.Needs.Hunger, precision: 4);
+    }
+
     [Fact]
     public void AHungryPersonWhoKnowsForagingDoesNotTreatGrassAsFood()
     {

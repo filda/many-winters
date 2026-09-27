@@ -71,17 +71,23 @@ public class DeerHerdMilestoneTests
         Assert.Contains(world.Animals, a => a.BirthTick > 0);
     }
 
+    // No food anywhere, so this is entirely SimulationRules.HungerPerTick (1) against MaxHunger
+    // (~100, plus up to 20% variation) scaled down by the deer's own winter reserve
+    // (TestCatalogs.DeerHungerPerTickMultiplier 0.28) - the same arithmetic
+    // WinterSurvivalMilestoneTests relies on for a person, just stretched out by the multiplier.
+    // A year's worth of season-weighted hunger (three Mild/Hot seasons at 1x plus one Cold at 2x,
+    // 75 ticks apiece) comes to 375 effective ticks, times 0.28 is only ~105 - close enough to
+    // MaxHunger's ceiling with variation (up to 120) that a single year is not a safe margin
+    // anymore (unlike before this reserve existed), so this runs two years to be sure everyone's
+    // clear of it well before the check.
     [Fact]
-    public void TheSameHerdWithNoGrassAnywhereDiesOutWellBeforeTheYearIsOut()
+    public void TheSameHerdWithNoGrassAnywhereEventuallyStarvesOutWithNothingLeftInReserve()
     {
         var world = TestCatalogs.CreateWorldWithDeer();
         var home = NewHome(new Position(0, 0), 15f);
         SpawnHerd(world, home, femaleCount: 4, maleCount: 4);
 
-        // No food anywhere: HungerPerTick 1 against MaxHunger ~100 (SimulationRules.Default)
-        // starves everyone out well inside a year, the same arithmetic
-        // WinterSurvivalMilestoneTests relies on for a person.
-        world.Advance(200);
+        world.Advance(2 * TicksPerYear);
 
         Assert.DoesNotContain(world.Animals, a => a.IsAlive);
     }
@@ -109,28 +115,30 @@ public class DeerHerdMilestoneTests
         Assert.Equal(herd.Count, world.Animals.Count);
     }
 
-    // Two fixes made this hold (docs/todo/fauna-plan.md phase 1b, "the shipped map's herds
-    // starving"): WorldState.FindNearestGatherableEntity no longer sends a whole herd at the
-    // single node nearest its shared anchor, and its in-home tier now only counts a node that can
-    // still give a full harvest (GatherCommand.WouldYieldAFullHarvest) rather than any sliver
-    // above zero - a home tuft regrown to a crumb was "matching" and got nibbled at regen speed
-    // forever. MapLoader.SpawnAnimalHerds also now places a herd where the grass actually is
-    // (BestHerdCenter), not merely far enough from camp.
+    // Two fixes made the herd stop dying out (docs/todo/fauna-plan.md phase 1b, "the shipped
+    // map's herds starving"): WorldState.FindNearestGatherableEntity no longer sends a whole herd
+    // at the single node nearest its shared anchor, and its in-home tier now only counts a node
+    // that can still give a full harvest (GatherCommand.WouldYieldAFullHarvest) rather than any
+    // sliver above zero. MapLoader.SpawnAnimalHerds also now places a herd where the grass
+    // actually is (BestHerdCenter), not merely far enough from camp. Even so, the herd still ended
+    // the year down from its starting 17 to 6, despite 5 births along the way - net decline, just
+    // no longer extinction.
     //
-    // Not asserted as "more than it started with": the two shipped herds (18 deer total measured
-    // by hand) still end the year down to 6, despite 5 births along the way - net decline, just
-    // no longer extinction. GroundCoverAmount (100) and RegenPerTick (1) are still sized for
-    // scattered individual foragers, not a dozen-odd deer sharing a neighbourhood, so a herd still
-    // outstrips its own patch faster than it regrows even once spread across several nodes and
-    // placed where grass is dense. That remaining gap is food-density/regen tuning, out of this
-    // task's scope - reported rather than chased here.
+    // What closed the rest of the gap is the winter reserve (SpeciesDefinition.
+    // HungerPerTickMultiplier, phase 1's "Otevřené ladění" - see TestCatalogs.
+    // DeerHungerPerTickMultiplier for the sweep that picked 0.28): with it, the same shipped year
+    // ends at 18 living deer, one more than the starting 17, and the cutoff is not a knife's edge
+    // - every multiplier from 0.1 up to 0.28 lands on that same 18, while 0.29 already drops back
+    // to 16. That is margin enough to assert "at least as many as it started with" outright.
     [Fact]
-    public void TheShippedWorldStillHasLivingDeerAfterAYear()
+    public void TheShippedWorldEndsTheYearWithAtLeastAsManyLivingDeerAsItStartedWith()
     {
         var map = MapLoader.LoadDefault(TestCatalogs.CreateConfigurationWithDeer());
+        var starting = map.World.Animals.Count(a => a.IsAlive);
 
         map.World.Advance(TicksPerYear);
 
-        Assert.Contains(map.World.Animals, a => a.IsAlive);
+        var living = map.World.Animals.Count(a => a.IsAlive);
+        Assert.True(living >= starting, $"expected at least the starting {starting} deer alive, found {living}");
     }
 }

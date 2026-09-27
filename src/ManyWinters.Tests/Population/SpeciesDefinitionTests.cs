@@ -33,4 +33,24 @@ public class SpeciesDefinitionTests
         Assert.Empty(species.Diet);
         Assert.Equal(0f, species.DigestibilityOf(Apple));
     }
+
+    // The winter reserve (docs/todo/fauna-plan.md, phase 1's "Otevřené ladění"): a species with no
+    // opinion runs at exactly the human rate, unchanged from before this existed.
+    [Fact]
+    public void HungerPerTickMultiplierDefaultsToOne()
+    {
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle);
+
+        Assert.Equal(1f, species.HungerPerTickMultiplier);
+    }
+
+    // "Útěk dřív než lov" (docs/todo/fauna-plan.md): a species with no opinion never flees, which
+    // is what keeps a human out of WorldState.DecideIdleTask's flee check entirely.
+    [Fact]
+    public void FleeDefaultsToNull()
+    {
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle);
+
+        Assert.Null(species.Flee);
+    }
 }

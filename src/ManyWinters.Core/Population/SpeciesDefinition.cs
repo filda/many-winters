@@ -35,7 +35,17 @@ public sealed record SpeciesDefinition(
     // Null for a species that does not breed through this rule - a human, today (people breed
     // through Affections/BirthCommand instead). Present for a species whose females conceive on
     // a per-tick roll (docs/todo/fauna-plan.md, phase 1b, "mnozeni").
-    SpeciesDefinition.BreedingDefinition? Breeding = null)
+    SpeciesDefinition.BreedingDefinition? Breeding = null,
+    // Multiplies SimulationRules.HungerPerTick for every creature of this species
+    // (WorldState.Advance) - the shipped map's winter reserve (docs/todo/fauna-plan.md, phase 1's
+    // "Otevřené ladění": a herd that ran on the human rate halved every winter). 1 for a human, so
+    // nothing about a person changes; below 1 for a species that needs to run leaner through a
+    // lean season.
+    float HungerPerTickMultiplier = 1f,
+    // Null for a species that never flees anyone - a human, today. Present for a species that
+    // breaks off whatever it is doing the moment a living person comes within FleeDistance
+    // (WorldState.DecideIdleTask, FleeTask) - docs/todo/fauna-plan.md, "Útěk dřív než lov".
+    SpeciesDefinition.FleeDefinition? Flee = null)
 {
     public sealed record DietEntry(MaterialId Material, float Digestibility);
 
@@ -50,6 +60,11 @@ public sealed record SpeciesDefinition(
     // chance an eligible female conceives, and how well fed (Needs.Hunger below this) she must
     // be to count as eligible at all.
     public sealed record BreedingDefinition(Climate Climate, long GestationTicks, float ConceptionChancePerTick, float SatietyHungerBelow);
+
+    // A species' own flight rule (WorldState.DecideIdleTask, FleeTask): break off and move
+    // directly away from the nearest living person once one is closer than FleeDistance, until
+    // the gap reaches SafeDistance, at SpeedPerTick.
+    public sealed record FleeDefinition(float FleeDistance, float SafeDistance, float SpeedPerTick);
 
     // C# does not allow a collection-expression default on the primary constructor parameters
     // above, so the empty-collection normalization happens here instead (see

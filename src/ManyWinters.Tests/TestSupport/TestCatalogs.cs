@@ -248,6 +248,19 @@ public static class TestCatalogs
     private const float DeerConceptionChancePerTick = 0.02f;
     private const float DeerSatietyHungerBelow = 40f;
 
+    // The shipped map's winter reserve (docs/todo/fauna-plan.md, phase 1's "Otevřené ladění"):
+    // the largest multiplier at which the same herd, run through the shipped map's own year
+    // (MapLoader.LoadDefault, see DeerHerdMilestoneTests), still ends up at or above where it
+    // started (start 17, 5 births, end 18 at 0.28; end 16 already at 0.29 - a sharp cutoff, not a
+    // knife-edge value, since 0.1 through 0.28 all land on the same 18).
+    public const float DeerHungerPerTickMultiplier = 0.28f;
+
+    // Faster than a person's own fastest walk (MoveCommand.SpeedPerTick 1f is a player-directed
+    // walk; a deer clearly outrunning that on FleeDistance/SafeDistance mirrors deer.json).
+    public const float DeerFleeDistance = 8f;
+    private const float DeerSafeDistance = 16f;
+    private const float DeerFleeSpeedPerTick = 0.6f;
+
     public static readonly SpeciesId DeerSpeciesId = new("deer");
 
     private static readonly SpeciesDefinition DeerSpecies = new(
@@ -259,7 +272,9 @@ public static class TestCatalogs
         CanCarry: false,
         CollisionRadius: DeerCollisionRadius,
         Herd: new SpeciesDefinition.HerdDefinition(DeerHerdMinSize, DeerHerdMaxSize, DeerHerdHomeRadius, DeerHerdDriftMetresPerSeason),
-        Breeding: new SpeciesDefinition.BreedingDefinition(Climate.Mild, DeerGestationTicks, DeerConceptionChancePerTick, DeerSatietyHungerBelow));
+        Breeding: new SpeciesDefinition.BreedingDefinition(Climate.Mild, DeerGestationTicks, DeerConceptionChancePerTick, DeerSatietyHungerBelow),
+        HungerPerTickMultiplier: DeerHungerPerTickMultiplier,
+        Flee: new SpeciesDefinition.FleeDefinition(DeerFleeDistance, DeerSafeDistance, DeerFleeSpeedPerTick));
 
     private static SpeciesCatalog CreateSpeciesCatalog(SpeciesDefinition humanSpecies, SpeciesDefinition? deerSpecies = null) =>
         deerSpecies is null ? new([humanSpecies]) : new([humanSpecies, deerSpecies]);
