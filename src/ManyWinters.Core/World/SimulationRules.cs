@@ -219,6 +219,11 @@ public sealed record SimulationRules
     public float EfficientHarvestAmount { get; } = 40f;
     public float BaseHarvestAmount { get; } = 20f;
     public float SkillGainPerGather { get; } = 1f;
+    public float SkillGainPerHuntAttempt { get; } = 1f;
+
+    // Nothing scales past this - even a master hunter with the best tool in the game misses one
+    // throw in ten.
+    public float HuntingMaxHitChance { get; } = 0.9f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

@@ -14,16 +14,6 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
 {
     public static readonly SkillTypeId Skill = new("hunting");
 
-    private const float SkillGainPerAttempt = 1f;
-    private const int PracticesBeforeDiscovery = 5;
-
-    // Stated in tries, not as a level: the practice curve is not linear.
-    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
-
-    // Nothing scales past this - even a master hunter with the best tool in the game misses one
-    // throw in ten.
-    private const float MaxHitChance = 0.9f;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Hunter.IsAlive)
@@ -74,7 +64,7 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
             chance *= rules.HuntingEfficientMultiplier;
         }
 
-        chance = Math.Min(chance, MaxHitChance);
+        chance = Math.Min(chance, rules.HuntingMaxHitChance);
 
         if (PassesHuntRoll(Hunter, Prey, world.Clock.CurrentTick, chance))
         {
@@ -93,8 +83,8 @@ public sealed record HuntCommand(Person Hunter, Animal Prey) : ICommand
             }
         }
 
-        Hunter.Skills.Increase(Skill, SkillGainPerAttempt);
-        if (Hunter.Skills.Get(Skill) >= DiscoveryThreshold)
+        Hunter.Skills.Increase(Skill, rules.SkillGainPerHuntAttempt);
+        if (Hunter.Skills.Get(Skill) >= Skills.LevelAfter(rules.PracticesBeforeDiscovery))
         {
             Hunter.KnownTechniques.Add(skillDefinition.EfficientTechnique);
         }
