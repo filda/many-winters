@@ -7,14 +7,6 @@ namespace ManyWinters.Core.Commands;
 // - only its species' known techniques and carry capacity differ, both already read off Creature.
 public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
 {
-    private const float BaseHarvestAmount = 20f;
-    private const float EfficientHarvestAmount = 40f;
-    private const float SkillGainPerGather = 1f;
-    private const int PracticesBeforeDiscovery = 5;
-
-    // Stated in tries, not as a level: the practice curve is not linear.
-    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Actor.IsAlive)
@@ -95,8 +87,8 @@ public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
             Actor.Needs.Hunger = Math.Max(0f, Actor.Needs.Hunger - potentialConsumed);
         }
 
-        Actor.Skills.Increase(skill, SkillGainPerGather);
-        if (Actor.Skills.Get(skill) >= DiscoveryThreshold)
+        Actor.Skills.Increase(skill, world.Configuration.Rules.SkillGainPerGather);
+        if (Actor.Skills.Get(skill) >= Skills.LevelAfter(world.Configuration.Rules.PracticesBeforeDiscovery))
         {
             Actor.KnownTechniques.Add(technique);
         }
@@ -150,7 +142,7 @@ public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
     {
         var skillDefinition = world.Configuration.SkillCatalog.Get(resource.Skill);
         var technique = skillDefinition.EfficientTechnique;
-        var harvestAmount = actor.KnownTechniques.Contains(technique) ? EfficientHarvestAmount : BaseHarvestAmount;
+        var harvestAmount = actor.KnownTechniques.Contains(technique) ? world.Configuration.Rules.EfficientHarvestAmount : world.Configuration.Rules.BaseHarvestAmount;
         if (skillDefinition.UsesChoppingScore)
         {
             harvestAmount += actor.Inventory.BestChoppingScore(world.Configuration.ItemCatalog);

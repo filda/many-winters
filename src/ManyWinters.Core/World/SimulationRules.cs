@@ -216,6 +216,9 @@ public sealed record SimulationRules
     // How far a second (or later) leftover - a fallen log next to the stump a tree leaves in its
     // spot - lands from where the tree stood, so the two don't sit exactly on top of each other.
     public double SubsequentLeftoverDistance { get; } = 1.4;
+    public float EfficientHarvestAmount { get; } = 40f;
+    public float BaseHarvestAmount { get; } = 20f;
+    public float SkillGainPerGather { get; } = 1f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }
