@@ -61,6 +61,55 @@ public class WorldStateHuntingIdleTests
         Assert.IsNotType<HuntTask>(hunter.Tasks.Current);
     }
 
+    // Change B (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27"): the two animal food
+    // steps trigger at HungerEatThreshold (25) rather than waiting for HungerSeekFoodThreshold
+    // (50) - "would eat if they had something", not "must go find something now". A hunt is a
+    // long trip, worth setting out on early.
+    [Fact]
+    public void AHunterHungryEnoughToEatButNotYetUrgentIsSentToHunt()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var position = new Position(0, 0);
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
+        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 30f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<HuntTask>(hunter.Tasks.Current);
+        Assert.Same(deer, task.Prey);
+    }
+
+    [Fact]
+    public void AButcherHungryEnoughToEatButNotYetUrgentGoesToACarcass()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var position = new Position(0, 0);
+        var carcass = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(3, 0), NewHome(new Position(3, 0)));
+        carcass.IsAlive = false;
+        carcass.Inventory.Add(TestCatalogs.MeatItem, TestCatalogs.DeerCarcassMeat);
+        var person = NewPerson(world, position, butcheringKnown: true, hunger: 30f);
+
+        world.Advance(1);
+
+        var task = Assert.IsType<ButcherTask>(person.Tasks.Current);
+        Assert.Same(carcass, task.Carcass);
+    }
+
+    // Below HungerEatThreshold: "would eat if they had something" does not hold at all yet, so
+    // hunting still waits.
+    [Fact]
+    public void APersonBelowTheEatThresholdDoesNotHunt()
+    {
+        var world = TestCatalogs.CreateWorldWithDeer();
+        var position = new Position(0, 0);
+        world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
+        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 24f);
+
+        world.Advance(1);
+
+        Assert.IsNotType<HuntTask>(hunter.Tasks.Current);
+    }
+
     // TryAutoEat, not a fresh hunt: someone hungry who already carries food eats it down rather
     // than being sent after more.
     [Fact]

@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
@@ -12,6 +13,11 @@ namespace ManyWinters.Tests.Tasks;
 public class HuntTaskTests
 {
     private const float Range = 10f;
+
+    // Most tests here are about the walk itself, not about which speed installed it, so they all
+    // share the idle AI's own unhurried pace (WorldState.DecideIdleTask) unless the test says
+    // otherwise.
+    private const float IdleSpeed = GatherTask.SpeedPerTick;
 
     private static Person NewHunter(Position position) =>
         new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
@@ -28,7 +34,7 @@ public class HuntTaskTests
     public void IsNeverComplete()
     {
         var prey = NewPrey(new Position(30, 10));
-        var task = new HuntTask(prey, Range);
+        var task = new HuntTask(prey, Range, IdleSpeed);
         var hunter = NewHunter(new Position(0, 0));
 
         for (var i = 0; i < 200; i++)
@@ -43,16 +49,38 @@ public class HuntTaskTests
     {
         var prey = NewPrey(new Position(30, 10));
 
-        var task = new HuntTask(prey, Range);
+        var task = new HuntTask(prey, Range, IdleSpeed);
 
         Assert.Same(prey, task.Prey);
         Assert.Equal(Range, task.Range);
+        Assert.Equal(IdleSpeed, task.SpeedPerTick);
+    }
+
+    // The bug this constructor parameter fixes (docs/todo/fauna-plan.md, phase 3, "rozhodnuto
+    // 2026-09-27"): a player-directed hunt (TargetActions, MoveCommand.SpeedPerTick) has to close
+    // the gap faster than the autonomous idle AI's own unhurried pace (WorldState.DecideIdleTask,
+    // GatherTask.SpeedPerTick) - both used to hard-code the slower one regardless of who sent the
+    // hunter.
+    [Fact]
+    public void ADirectedHuntClosesTheDistanceFasterThanAnIdleOne()
+    {
+        var directedTask = new HuntTask(NewPrey(new Position(30, 0)), Range, MoveCommand.SpeedPerTick);
+        var directedHunter = NewHunter(new Position(0, 0));
+        var idleTask = new HuntTask(NewPrey(new Position(30, 0)), Range, IdleSpeed);
+        var idleHunter = NewHunter(new Position(0, 0));
+
+        directedTask.Advance(directedHunter);
+        idleTask.Advance(idleHunter);
+
+        Assert.True(
+            directedHunter.Position.X > idleHunter.Position.X,
+            $"Directed hunter reached x={directedHunter.Position.X}, no further than idle hunter's x={idleHunter.Position.X}.");
     }
 
     [Fact]
     public void StartsWithNoAttemptMadeYet()
     {
-        var task = new HuntTask(NewPrey(new Position(30, 10)), Range);
+        var task = new HuntTask(NewPrey(new Position(30, 10)), Range, IdleSpeed);
 
         Assert.Equal(0, task.NextAttemptTick);
     }
@@ -61,7 +89,7 @@ public class HuntTaskTests
     public void StandsStillOnceAlreadyWithinRange()
     {
         var prey = NewPrey(new Position(5, 0));
-        var task = new HuntTask(prey, Range);
+        var task = new HuntTask(prey, Range, IdleSpeed);
         var hunter = NewHunter(new Position(0, 0));
 
         task.Advance(hunter);
@@ -73,7 +101,7 @@ public class HuntTaskTests
     public void ClosesInOnPreyThatIsOutOfRange()
     {
         var prey = NewPrey(new Position(30, 0));
-        var task = new HuntTask(prey, Range);
+        var task = new HuntTask(prey, Range, IdleSpeed);
         var hunter = NewHunter(new Position(0, 0));
 
         for (var i = 0; i < 200; i++)
@@ -92,7 +120,7 @@ public class HuntTaskTests
     public void FollowsPreyThatIsStillMoving()
     {
         var prey = NewPrey(new Position(0, 0));
-        var task = new HuntTask(prey, Range);
+        var task = new HuntTask(prey, Range, IdleSpeed);
         var hunter = NewHunter(new Position(0, 0));
 
         // Slower than HuntTask's own walking speed (0.3/tick), the same "the target itself

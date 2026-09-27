@@ -111,6 +111,9 @@ internal static class TargetActions
         var heading = world.Configuration.SpeciesCatalog.Get(animal.Species).DisplayName;
         var rules = world.Configuration.Rules;
 
+        // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own unhurried pace: a
+        // player-issued hunt or butchering walks like every other order the player gives
+        // (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
         var offer = animal.IsAlive
             ? ActionOffer.For(
                 "Hunt",
@@ -118,14 +121,14 @@ internal static class TargetActions
                 world,
                 HuntCommand.Skill,
                 animal.Position,
-                new HuntTask(animal, rules.HuntingRange))
+                new HuntTask(animal, rules.HuntingRange, MoveCommand.SpeedPerTick))
             : ActionOffer.For(
                 "Butcher",
                 new ButcherCommand(actor, animal),
                 world,
                 ButcherCommand.Skill,
                 animal.Position,
-                new ButcherTask(animal, rules.PileReachDistance));
+                new ButcherTask(animal, rules.PileReachDistance, MoveCommand.SpeedPerTick));
 
         return new TargetMenu(heading, [offer]);
     }

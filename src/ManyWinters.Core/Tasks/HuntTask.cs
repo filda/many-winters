@@ -9,15 +9,20 @@ namespace ManyWinters.Core.Tasks;
 // sees only the Creature and a throw costs time (NextAttemptTick) the way a workbench attempt
 // does (SimulationRules.TicksPerWorkAttempt). Never completes on its own - the loop in
 // WorldState.ShouldReconsiderIdleTask decides when hunting this prey stops being worth it.
-public sealed class HuntTask(Animal prey, float range) : CreatureTask
+// speedPerTick comes from whoever installs this task: a player-directed hunt (TargetActions)
+// walks at MoveCommand's own directed speed like every other order, while the autonomous idle AI
+// (WorldState.DecideIdleTask) passes GatherTask's unhurried pace - the same asymmetry every other
+// directed order already has against IdleTask (docs/todo/fauna-plan.md, phase 3, "rozhodnuto
+// 2026-09-27").
+public sealed class HuntTask(Animal prey, float range, float speedPerTick) : CreatureTask
 {
-    // Mirrors GatherTask's own walking speed - closing in on prey is not a purposeful sprint any
-    // more than gathering from a resource is.
-    private const float SpeedPerTick = 0.3f;
-
     public Animal Prey { get; } = prey;
 
     public float Range { get; } = range;
+
+    // Read-only: exposed only so TargetActionsTests can assert a directed hunt carries the
+    // directed speed rather than the idle one.
+    public float SpeedPerTick { get; } = speedPerTick;
 
     // Ticks (WorldState.Clock.CurrentTick) before which WorldState.Advance won't throw again -
     // an attempt costs time, same as SimulationRules.TicksPerWorkAttempt does at the workbench.

@@ -625,6 +625,10 @@ public class TargetActionsTests
         var pursuit = Assert.IsType<HuntTask>(hunt.Pursuit);
         Assert.Same(deer, pursuit.Prey);
         Assert.Equal(world.Configuration.Rules.HuntingRange, pursuit.Range);
+        // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
+        // player-directed hunt walks like every other order the player gives
+        // (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+        Assert.Equal(MoveCommand.SpeedPerTick, pursuit.SpeedPerTick);
     }
 
     [Fact]
@@ -641,6 +645,10 @@ public class TargetActionsTests
         var pursuit = Assert.IsType<ButcherTask>(butcher.Pursuit);
         Assert.Same(deer, pursuit.Carcass);
         Assert.Equal(world.Configuration.Rules.PileReachDistance, pursuit.Reach);
+        // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
+        // player-directed butchering walks like every other order the player gives
+        // (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+        Assert.Equal(MoveCommand.SpeedPerTick, pursuit.SpeedPerTick);
     }
 
     // A carcass a butcher cannot reach into (nothing left, or their pack already full) is refused

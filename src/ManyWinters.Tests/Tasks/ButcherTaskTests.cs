@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
@@ -13,6 +14,11 @@ public class ButcherTaskTests
 
     private static readonly float Reach = SimulationRules.Default.PileReachDistance;
 
+    // Most tests here are about the walk itself, not about which speed installed it, so they all
+    // share the idle AI's own unhurried pace (WorldState.DecideIdleTask) unless the test says
+    // otherwise.
+    private const float IdleSpeed = GatherTask.SpeedPerTick;
+
     private static Person NewButcher(Position position) =>
         new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
 
@@ -25,7 +31,8 @@ public class ButcherTaskTests
             IsAlive = false,
         };
 
-    private static ButcherTask NewTask(float? reach = null, Animal? carcass = null) => new(carcass ?? NewCarcass(), reach ?? Reach);
+    private static ButcherTask NewTask(float? reach = null, Animal? carcass = null, float speedPerTick = IdleSpeed) =>
+        new(carcass ?? NewCarcass(), reach ?? Reach, speedPerTick);
 
     [Fact]
     public void IsNeverComplete()
@@ -49,6 +56,28 @@ public class ButcherTaskTests
 
         Assert.Same(carcass, task.Carcass);
         Assert.Equal(Reach, task.Reach);
+        Assert.Equal(IdleSpeed, task.SpeedPerTick);
+    }
+
+    // The bug this constructor parameter fixes (docs/todo/fauna-plan.md, phase 3, "rozhodnuto
+    // 2026-09-27"): a player-directed butchering (TargetActions, MoveCommand.SpeedPerTick) has to
+    // close the gap faster than the autonomous idle AI's own unhurried pace
+    // (WorldState.DecideIdleTask, GatherTask.SpeedPerTick) - both used to hard-code the slower one
+    // regardless of who sent the butcher.
+    [Fact]
+    public void ADirectedButcheringClosesTheDistanceFasterThanAnIdleOne()
+    {
+        var directedTask = NewTask(speedPerTick: MoveCommand.SpeedPerTick);
+        var directedButcher = NewButcher(new Position(30, 10));
+        var idleTask = NewTask();
+        var idleButcher = NewButcher(new Position(30, 10));
+
+        directedTask.Advance(directedButcher);
+        idleTask.Advance(idleButcher);
+
+        Assert.True(
+            directedButcher.Position.X < idleButcher.Position.X,
+            $"Directed butcher reached x={directedButcher.Position.X}, no closer than idle butcher's x={idleButcher.Position.X}.");
     }
 
     [Fact]

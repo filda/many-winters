@@ -8,10 +8,13 @@ namespace ManyWinters.Core.Tasks;
 // of it (docs/todo/fauna-plan.md, phase 3). Only walks; WorldState.Advance runs ButcherCommand
 // every tick this task is current, exactly as it runs EatFromPileCommand for a pile, and that
 // command's own Blocker no-ops while still out of reach. Never completes on its own.
-public sealed class ButcherTask(Animal carcass, float reach) : CreatureTask
+// speedPerTick comes from whoever installs this task: a player-directed butchering
+// (TargetActions) walks at MoveCommand's own directed speed like every other order, while the
+// autonomous idle AI (WorldState.DecideIdleTask) passes GatherTask's unhurried pace - the same
+// asymmetry every other directed order already has against IdleTask (docs/todo/fauna-plan.md,
+// phase 3, "rozhodnuto 2026-09-27").
+public sealed class ButcherTask(Animal carcass, float reach, float speedPerTick) : CreatureTask
 {
-    private const float SpeedPerTick = 0.3f;
-
     // Stop short of the carcass rather than on it, the same standoff GatherTask uses.
     private const float ApproachFractionOfReach = 0.6f;
 
@@ -21,6 +24,10 @@ public sealed class ButcherTask(Animal carcass, float reach) : CreatureTask
     public Animal Carcass { get; } = carcass;
 
     public float Reach { get; } = reach;
+
+    // Read-only: exposed only so TargetActionsTests can assert a directed butchering carries the
+    // directed speed rather than the idle one.
+    public float SpeedPerTick { get; } = speedPerTick;
 
     public override bool IsComplete => false;
 

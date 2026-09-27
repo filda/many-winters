@@ -405,13 +405,19 @@ public sealed class WorldState(WorldConfiguration configuration)
         // The prey died (to this hunter or anyone else), wandered out of the search radius, or
         // hunger is (still) urgent - mirroring GatherTask's own NeedsToSeekFoodUrgently branch
         // above, which re-derives the best option every tick while hungry rather than committing
-        // to one target. For a hunter this matters more than it does for a gatherer: the one
-        // deer they picked may since have bolted from a miss (SpeciesDefinition.FleeDefinition
-        // sends it well past HuntingRange, faster than a hunter can close on foot - see
-        // deer.json), so re-deriving finds whichever living animal is nearest right now rather
-        // than a dogged, unwinnable chase; a hungry hunter who has since come to carry food
-        // (TryAutoEat eats it down every tick regardless of task) is also dropped here rather
-        // than hunting on for more (docs/todo/fauna-plan.md phase 3).
+        // to one target. Deliberately still HungerSeekFoodThreshold here, not WouldEatIfTheyCould's
+        // lower one, even though a hunt can now start there (docs/todo/fauna-plan.md, phase 3,
+        // "rozhodnuto 2026-09-27"): measured against HuntingMilestoneTests, re-deriving from the
+        // lower threshold thrashes rather than helps - a hunter closing on one deer keeps getting
+        // handed whichever different deer FindNearestHuntablePrey now calls nearest (the herd
+        // scatters as the hunter's own approach spooks it, so "nearest" keeps changing faster than
+        // any one chase can finish), which starves them worse than committing to one target
+        // between hunger 25 and 50 would. Below 50 a freshly installed hunt is left to run
+        // uninterrupted (HuntTask.Advance itself still re-aims at its own single Prey every tick,
+        // same as always) rather than re-picking a target on every tick; above 50 this re-derives
+        // as before, and a hungry hunter who has since come to carry food (TryAutoEat eats it down
+        // every tick regardless of task) is dropped here rather than hunting on for more
+        // (docs/todo/fauna-plan.md phase 3).
         HuntTask hunt => !hunt.Prey.IsAlive
             || Distance(creature.Position, hunt.Prey.Position) > Configuration.Rules.IdleSearchRadius
             || creature.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold,
@@ -419,7 +425,10 @@ public sealed class WorldState(WorldConfiguration configuration)
         // beginner stripped of meat but left hide and sinew on (ButcherCommand's own
         // beginner/efficient split) still has a nonzero inventory, and a hungry butcher parked
         // beside it forever would starve next to something that can no longer feed them
-        // (mirrors FindNearestDeadAnimalWithMeat's own "worth walking to" test).
+        // (mirrors FindNearestDeadAnimalWithMeat's own "worth walking to" test). No hunger term
+        // here either, for the same reason HuntTask above stays off WouldEatIfTheyCould: a carcass
+        // does not move, so there is less to gain from re-deriving mid-walk, and nothing to lose
+        // by not doing so.
         ButcherTask butcher => butcher.Carcass.Inventory.Get(ButcherCommand.Meat) <= 0,
         _ => false,
     };
@@ -442,6 +451,21 @@ public sealed class WorldState(WorldConfiguration configuration)
 
     private bool NeedsToSeekFoodUrgently(Creature creature) =>
         creature.Needs.Hunger >= Configuration.Rules.HungerSeekFoodThreshold
+        && KnowsHowToEat(creature)
+        && !HasEdibleFood(creature);
+
+    // The same "hungry, knows how to eat, empty-handed" test as NeedsToSeekFoodUrgently, at
+    // HungerEatThreshold rather than HungerSeekFoodThreshold - "would eat if they had something"
+    // rather than "must go find something now". Used only for the two animal food steps
+    // (DecideIdleTask's carcass and hunt branches, and ShouldReconsiderIdleTask's matching
+    // HuntTask/ButcherTask cases): a hunt is a long trip - closing on prey, then walking to and
+    // butchering the carcass - that a person already committed to gathering nearby plant food or
+    // a pile would not be worth interrupting for, but is worth setting out on well before hunger
+    // becomes urgent, unlike a two-step trip to a nearby tree. Gathering plant food and piles keep
+    // NeedsToSeekFoodUrgently's higher threshold unchanged - that pacing is a separate decision the
+    // family milestone depends on (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27").
+    private bool WouldEatIfTheyCould(Creature creature) =>
+        creature.Needs.Hunger >= Configuration.Rules.HungerEatThreshold
         && KnowsHowToEat(creature)
         && !HasEdibleFood(creature);
 
@@ -518,19 +542,26 @@ public sealed class WorldState(WorldConfiguration configuration)
                 var reach = food.Category == EntityCategory.Pile ? Configuration.Rules.PileReachDistance : reachDistance;
                 return new GatherTask(food, reach);
             }
+        }
 
-            // Butchering before hunting when both are known: a carcass already on the ground is
-            // a meal without the risk of a miss, and wiping out a whole hunt's worth of throws
-            // over a herd that already has food lying around would be busywork
-            // (docs/todo/fauna-plan.md phase 3).
+        // The two animal food steps trigger earlier, at WouldEatIfTheyCould's lower threshold
+        // (see there): a hunt is a long trip, worth setting out on well before hunger turns
+        // urgent, unlike the plant food/pile search just above (which keeps the higher threshold
+        // on purpose - docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27"). Still tried
+        // only once the plant food/pile search above has come up with nothing, and butchering
+        // before hunting when both are known: a carcass already on the ground is a meal without
+        // the risk of a miss, and wiping out a whole hunt's worth of throws over a herd that
+        // already has food lying around would be busywork (docs/todo/fauna-plan.md phase 3).
+        if (WouldEatIfTheyCould(creature))
+        {
             if (IsKnownSkill(creature, ButcherCommand.Skill) && FindNearestDeadAnimalWithMeat(searchOrigin) is { } carcass)
             {
-                return new ButcherTask(carcass, Configuration.Rules.PileReachDistance);
+                return new ButcherTask(carcass, Configuration.Rules.PileReachDistance, GatherTask.SpeedPerTick);
             }
 
             if (IsKnownSkill(creature, HuntCommand.Skill) && FindNearestHuntablePrey(searchOrigin) is { } prey)
             {
-                return new HuntTask(prey, Configuration.Rules.HuntingRange);
+                return new HuntTask(prey, Configuration.Rules.HuntingRange, GatherTask.SpeedPerTick);
             }
         }
 

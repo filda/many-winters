@@ -9,7 +9,11 @@ namespace ManyWinters.Core.Tasks;
 // `reachDistance` is SimulationRules.MaxInteractionDistance, passed in as Advance has no world.
 public sealed class GatherTask(Entity target, float reachDistance) : CreatureTask
 {
-    private const float SpeedPerTick = 0.3f;
+    // Public: WorldState.DecideIdleTask reuses this exact number for the autonomous HuntTask and
+    // ButcherTask it installs, so the three autonomous foraging tasks all walk at the same
+    // unhurried pace (docs/todo/fauna-plan.md, phase 3, "rozhodnuto 2026-09-27"); tests reuse it
+    // too, to build an idle-speed task without duplicating the number.
+    public const float SpeedPerTick = 0.3f;
 
     // Stop short of the resource rather than on it, the same standoff as a player-directed
     // gather-walk (PresentationSettings.ApproachDistance via Position.Approach). A fraction of

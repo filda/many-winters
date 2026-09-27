@@ -1,3 +1,4 @@
+using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Materials;
@@ -108,7 +109,7 @@ public class InspectorTextTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
-        person.Tasks.Interrupt(new HuntTask(deer, range: world.Configuration.Rules.HuntingRange));
+        person.Tasks.Interrupt(new HuntTask(deer, range: world.Configuration.Rules.HuntingRange, speedPerTick: MoveCommand.SpeedPerTick));
 
         Assert.Equal("Hunting", InspectorText.ForTask(person));
     }
@@ -120,7 +121,7 @@ public class InspectorTextTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
         deer.IsAlive = false;
-        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance));
+        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance, speedPerTick: MoveCommand.SpeedPerTick));
 
         Assert.Equal("Butchering", InspectorText.ForTask(person));
     }
