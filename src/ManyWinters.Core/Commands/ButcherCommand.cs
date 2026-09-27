@@ -23,12 +23,6 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
     private static readonly ItemKindId Sinew = new("sinew");
     private static readonly ItemKindId Bone = new("bone");
 
-    private const float SkillGainPerButchering = 1f;
-    private const int PracticesBeforeDiscovery = 5;
-
-    // Stated in tries, not as a level: the practice curve is not linear.
-    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Butcher.IsAlive)
@@ -92,8 +86,8 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
             Carcass.Inventory.TransferUpToCapacity(item, available, Butcher.Inventory, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Butcher));
         }
 
-        Butcher.Skills.Increase(Skill, SkillGainPerButchering);
-        if (Butcher.Skills.Get(Skill) >= DiscoveryThreshold)
+        Butcher.Skills.Increase(Skill, world.Configuration.Rules.SkillGainPerButchering);
+        if (Butcher.Skills.Get(Skill) >= Skills.LevelAfter(world.Configuration.Rules.PracticesBeforeDiscovery))
         {
             Butcher.KnownTechniques.Add(skillDefinition.EfficientTechnique);
         }

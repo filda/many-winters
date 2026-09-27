@@ -209,6 +209,7 @@ public sealed record SimulationRules
     public float ElderEndFraction { get; } = 0.85f;
     public float SkillGainPerBurial { get; } = 1f;
     public int PracticesBeforeDiscovery { get; } = 5;
+    public float SkillGainPerButchering { get; } = 1f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }
