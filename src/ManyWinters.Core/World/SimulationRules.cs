@@ -233,6 +233,11 @@ public sealed record SimulationRules
     public float SkillGainPerAttempt { get; } = 1f;
     public float RepairConditionAmount { get; } = 25f;
     public float MaxCondition { get; } = 100f;
+    public float SkillGainPerLesson { get; } = 1f;
+
+    // A teacher who knows the efficient technique reaches a little further - a lesson to a
+    // small group, not a whisper.
+    public float EfficientTeachingRangeMultiplier { get; } = 2f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

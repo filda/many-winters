@@ -14,16 +14,6 @@ public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Te
     // grants it the first time the player directs someone to teach.
     public static readonly SkillTypeId TeachingSkill = new("teaching");
 
-    private const float SkillGainPerLesson = 1f;
-    private const int PracticesBeforeDiscovery = 5;
-
-    // Stated in tries, not as a level: the practice curve is not linear.
-    private static readonly float DiscoveryThreshold = Skills.LevelAfter(PracticesBeforeDiscovery);
-
-    // A teacher who knows the efficient technique reaches a little further - a lesson to a
-    // small group, not a whisper.
-    private const float EfficientTeachingRangeMultiplier = 2f;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Teacher.IsAlive)
@@ -49,7 +39,7 @@ public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Te
             return ActionBlocker.NotLearned;
         }
 
-        return world.IsWithinReach(Teacher.Position, Student.Position, RangeMultiplier(teachingDefinition))
+        return world.IsWithinReach(Teacher.Position, Student.Position, RangeMultiplier(teachingDefinition, world.Configuration.Rules.EfficientTeachingRangeMultiplier))
             ? ActionBlocker.None
             : ActionBlocker.TooFar;
     }
@@ -64,15 +54,15 @@ public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Te
         Student.KnownTechniques.Add(Technique);
 
         var teachingDefinition = world.Configuration.SkillCatalog.Get(TeachingSkill);
-        Teacher.Skills.Increase(TeachingSkill, SkillGainPerLesson);
-        if (Teacher.Skills.Get(TeachingSkill) >= DiscoveryThreshold)
+        Teacher.Skills.Increase(TeachingSkill, world.Configuration.Rules.SkillGainPerLesson);
+        if (Teacher.Skills.Get(TeachingSkill) >= Skills.LevelAfter(world.Configuration.Rules.PracticesBeforeDiscovery))
         {
             Teacher.KnownTechniques.Add(teachingDefinition.EfficientTechnique);
         }
     }
 
-    private float RangeMultiplier(SkillDefinition teachingDefinition) =>
+    private float RangeMultiplier(SkillDefinition teachingDefinition, float efficientTeachingRangeMultiplier) =>
         Teacher.KnownTechniques.Contains(teachingDefinition.EfficientTechnique)
-            ? EfficientTeachingRangeMultiplier
+            ? efficientTeachingRangeMultiplier
             : 1f;
 }
