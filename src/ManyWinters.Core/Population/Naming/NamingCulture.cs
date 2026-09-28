@@ -2,14 +2,8 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Population.Naming;
 
-public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Person> forebears)
+public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Person> forebears, float CultureDecayPerObservation, int RecentTrendWindow)
 {
-    // Slow enough that no single generation overwrites the naming tradition it was handed
-    // (docs/Procedural Name Generation Plan.md, "Cultural Memory"); the last ~12 births (roughly
-    // one generation under the default simulation rules) count for the separate NamingTrend on top.
-    private const float CultureDecayPerObservation = 0.98f;
-    private const int RecentTrendWindow = 12;
-
     private int _namingHistoryVersion = -1;
     private CultureProfile? _cachedCultureProfile;
     private CultureProfile? _cachedTrendProfile;

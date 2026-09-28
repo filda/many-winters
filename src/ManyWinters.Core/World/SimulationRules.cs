@@ -239,5 +239,12 @@ public sealed record SimulationRules
     // small group, not a whisper.
     public float EfficientTeachingRangeMultiplier { get; } = 2f;
 
+    // Slow enough that no single generation overwrites the naming tradition it was handed
+    // (docs/Procedural Name Generation Plan.md, "Cultural Memory"); the last ~12 births (roughly
+    // one generation under the default simulation rules) count for the separate NamingTrend on top.
+    public float CultureDecayPerObservation { get; } = 0.98f;
+
+    public int RecentTrendWindow { get; } = 12;
+
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }
