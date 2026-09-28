@@ -6,6 +6,16 @@ namespace ManyWinters.Core.World;
 // home shifts slowly and reproducibly and never jumps mid-season.
 public sealed class HomeRange
 {
+    // The home of the unknown person, who needs one only so that no creature's Home is ever null:
+    // the empty id, never in any world, and no ground at all - radius 0 at the origin, never
+    // drifting - so anything that ever did read it would stand still rather than wander off.
+    public static HomeRange Unknown { get; } = new(new Position(0, 0))
+    {
+        Id = new HomeRangeId(Guid.Empty),
+        Radius = 0f,
+        DriftMetresPerSeason = 0f,
+    };
+
     public HomeRangeId Id { get; init; } = HomeRangeId.New();
 
     public Position Anchor { get; private set; }

@@ -16,6 +16,7 @@ public class PersonSexTests
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = Sex.Male,
+            Home = TestPeople.AnyHome,
         };
 
         Assert.Equal(Sex.Male, person.Sex);

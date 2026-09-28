@@ -40,21 +40,6 @@ public class PersonHomeRangeTests
             $"Ended {WorldState.Distance(home.Anchor, person.Position):0.0} m from the anchor, outside the {home.Radius} m radius.");
     }
 
-    [Fact]
-    public void APersonWithNoHomeWandersFromWhereverTheyStandInsteadOfAnAnchor()
-    {
-        var world = NewWorldWithoutHunger();
-        var start = new Position(100, 100);
-        var person = world.SpawnPerson("Ava", start, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-
-        world.Advance(500);
-
-        Assert.Null(person.Home);
-        // IdleTask's default band (3..8 m); this only confirms WorldState still hands a homeless
-        // person a no-home IdleTask.
-        Assert.True(WorldState.Distance(start, person.Position) <= 8f + 0.01f);
-    }
-
     // The fallback food search bounds its search by IdleSearchRadius from the creature's home
     // anchor, not from wherever the creature is standing - built explicitly here: a tree much
     // nearer to the person than the camp is, but far enough from camp to fall outside

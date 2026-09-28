@@ -77,20 +77,6 @@ public class BirthCommandTests
         Assert.Same(home, world.People[^1].Home);
     }
 
-    // A mother with no home of her own (built outside any map, or the debug spawn with nobody
-    // nearby) leaves her child in the same state, not somehow inventing one.
-    [Fact]
-    public void AChildOfAHomelessMotherHasNoHomeEither()
-    {
-        var world = TestCatalogs.CreateWorld();
-        var mother = SpawnMother(world, new Position(0, 0));
-        var father = SpawnFather(world, new Position(1, 0));
-
-        world.Execute(new BirthCommand("Bran", mother, father));
-
-        Assert.Null(world.People[^1].Home);
-    }
-
     // Knowledge in this game is taught, never inherited.
     [Fact]
     public void TheChildInheritsNoTechniquesSkillsOrBelongings()

@@ -17,7 +17,7 @@ public class HuntTaskTests
     private const float IdleSpeed = 0.3f;
 
     private static Person NewHunter(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
     private static Animal NewPrey(Position position) =>
         new(TestCatalogs.DeerSpeciesId, new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f })

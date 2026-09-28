@@ -16,7 +16,7 @@ public class InspectorTextTests
     // Sex is required of every Person but none of the inspector's wording reads it. Fixed
     // rather than drawn from the id so it is the same person on every run.
     private static Person NewPerson() =>
-        new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female };
+        new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female, Home = TestWorld.AnyHome };
 
     private static Grave NewGrave(
         bool isMarked = true,
@@ -67,7 +67,7 @@ public class InspectorTextTests
     public void AnInfantNamesTheMotherItIsKeepingUpWith()
     {
         var person = NewPerson();
-        var mother = new Person { Name = "Sela", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female };
+        var mother = new Person { Name = "Sela", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female, Home = TestWorld.AnyHome };
         person.Tasks.Interrupt(new FollowTask(mother, keepWithin: 2f, speedPerTick: 0.25f));
 
         Assert.Equal("Keeping up with Sela", InspectorText.ForTask(person));

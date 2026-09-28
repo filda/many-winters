@@ -10,7 +10,7 @@ public class FleeTaskTests
     private static readonly SpeciesDefinition.FleeDefinition Flee = new(FleeDistance: 8f, SafeDistance: 16f, SpeedPerTick: 0.6f);
 
     private static Person NewPerson(string name, Position position) =>
-        new() { Name = name, BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        new() { Name = name, BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
     [Fact]
     public void RemembersItsThreat()

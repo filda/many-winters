@@ -256,8 +256,12 @@ public sealed record SimulationRules
     // installs, so the three autonomous foraging tasks all walk at the same unhurried pace; tests
     // reuse it too, to build an idle-speed task without duplicating the number.
     public float GatherSpeedPerTick { get; } = 0.3f;
-    public float MinWanderRadius { get; } = 3f;
-    public float MaxWanderRadius { get; } = 8f;
+
+    // How far a band's camp reaches: people wander within it and search for food from its centre.
+    // Public: whoever founds a camp - the map at load, the debug spawn button, the simulation
+    // runner - uses the same one.
+    public float CampHomeRadius { get; } = 8f;
+
     public float IdleSpeedPerTick { get; } = 0.15f;
 
     // A pause between wander legs (and before the first), or idle reads as restless constant

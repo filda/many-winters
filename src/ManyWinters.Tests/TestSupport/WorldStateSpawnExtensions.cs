@@ -37,10 +37,16 @@ public static class WorldStateSpawnExtensions
         Sex? sex = null,
         // One is the rate the shipped band works things out at; tests about idle discovery turn it.
         float curiosity = 1f,
-        // Null (the default) leaves the person with no home; a test that cares about
-        // camp-anchored wandering hands one in.
+        // Null (the default) founds a camp of the rules' radius where the person stands, added to
+        // the world so a save can find it; a test that cares about a shared camp hands one in.
         HomeRange? home = null)
     {
+        if (home is null)
+        {
+            home = new HomeRange(position) { Radius = world.Configuration.Rules.CampHomeRadius, DriftMetresPerSeason = 0f };
+            world.AddHomeRange(home);
+        }
+
         var person = new Person
         {
             Id = id,
@@ -91,6 +97,9 @@ public static class WorldStateSpawnExtensions
     // A dead-before-the-story parent: born and dead before tick 0.
     public static Person SpawnForebear(this WorldState world, string name)
     {
+        // In the world, so a save can find it.
+        var home = TestPeople.AnyHome;
+        world.AddHomeRange(home);
         var forebear = new Person
         {
             Name = name,
@@ -102,6 +111,7 @@ public static class WorldStateSpawnExtensions
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = TestPeople.AnySex,
+            Home = home,
         };
 
         world.AddForebear(forebear);

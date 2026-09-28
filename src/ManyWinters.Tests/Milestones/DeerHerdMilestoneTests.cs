@@ -77,8 +77,11 @@ public class DeerHerdMilestoneTests
     // A year's worth of season-weighted hunger (three Mild/Hot seasons at 1x plus one Cold at 2x,
     // 75 ticks apiece) comes to 375 effective ticks, times 0.28 is only ~105 - close enough to
     // MaxHunger's ceiling with variation (up to 120) that a single year is not a safe margin
-    // anymore (unlike before this reserve existed), so this runs two years to be sure everyone's
-    // clear of it well before the check.
+    // anymore (unlike before this reserve existed). Nor are two: the herd conceives while still
+    // fed, and a fawn born around tick 150-225 is kept fed at its mother's side until she
+    // starves, so its own countdown starts late - the last of them died as late as tick 650 over
+    // 200 runs. Three
+    // years clears that with room to spare.
     [Fact]
     public void TheSameHerdWithNoGrassAnywhereEventuallyStarvesOutWithNothingLeftInReserve()
     {
@@ -86,7 +89,7 @@ public class DeerHerdMilestoneTests
         var home = NewHome(new Position(0, 0), 15f);
         SpawnHerd(world, home, femaleCount: 4, maleCount: 4);
 
-        world.Advance(2 * TicksPerYear);
+        world.Advance(3 * TicksPerYear);
 
         Assert.DoesNotContain(world.Animals, a => a.IsAlive);
     }

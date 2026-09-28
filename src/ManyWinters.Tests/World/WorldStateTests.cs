@@ -49,7 +49,7 @@ public class WorldStateTests
     public void AddPersonTracksThemInPeople()
     {
         var world = TestCatalogs.CreateWorld();
-        var ava = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var ava = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
         world.AddPerson(ava);
 
@@ -60,7 +60,7 @@ public class WorldStateTests
     public void AddForebearTracksThemInForebearsNotPeople()
     {
         var world = TestCatalogs.CreateWorld();
-        var forebear = new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var forebear = new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
         world.AddForebear(forebear);
 
@@ -75,7 +75,7 @@ public class WorldStateTests
         var raised = false;
         world.PersonAdded += _ => raised = true;
 
-        world.AddForebear(new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex });
+        world.AddForebear(new Person { Name = "Orla", BirthTick = -100, IsAlive = false, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome });
 
         Assert.False(raised);
         Assert.Empty(world.Exploration.Explored);
@@ -85,7 +85,7 @@ public class WorldStateTests
     public void AddForebearRejectsALivingPerson()
     {
         var world = TestCatalogs.CreateWorld();
-        var alive = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var alive = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
         var ex = Assert.Throws<ArgumentException>(() => world.AddForebear(alive));
 
@@ -100,7 +100,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Position = new Position(0, 0), Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex });
+        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Position = new Position(0, 0), Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome });
 
         Assert.NotEmpty(world.Exploration.Explored);
     }
@@ -122,6 +122,48 @@ public class WorldStateTests
         world.Advance(5);
 
         Assert.Equal(5, world.Clock.CurrentTick);
+    }
+
+    // A kill stamps its death tick from the clock, so a hunt shows whether a long Advance lets
+    // the clock run ahead of the tick being played. Pinned ids: the rolls and the wandering run
+    // on them, so the two worlds are one replay.
+    [Fact]
+    public void AdvancingManyTicksAtOncePlaysOutExactlyAsAdvancingThemOneByOne()
+    {
+        static (WorldState World, Person Hunter) HuntingWorld()
+        {
+            var world = TestCatalogs.CreateWorldWithDeer();
+            var home = new HomeRange(new Position(0, 0)) { Radius = 5f, DriftMetresPerSeason = 0f };
+            for (var i = 0; i < 6; i++)
+            {
+                world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(i, 0), home, initialAgeTicks: 900, id: TestIds.Animal(i + 1));
+            }
+
+            var hunter = world.SpawnPerson(TestIds.Person(100), "Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+            hunter.KnownTechniques.Add(TestCatalogs.BasicEating);
+            hunter.KnownTechniques.Add(TestCatalogs.BasicHunting);
+            hunter.KnownTechniques.Add(TestCatalogs.EfficientHunting);
+            hunter.Inventory.AddAssembly(TestCatalogs.CreateTestAxe(world));
+            hunter.Needs.Hunger = 49.5f;
+            return (world, hunter);
+        }
+
+        var (batched, batchedHunter) = HuntingWorld();
+        var (stepped, steppedHunter) = HuntingWorld();
+
+        batched.Advance(100);
+        for (var i = 0; i < 100; i++)
+        {
+            stepped.Advance(1);
+        }
+
+        static List<(CreatureId Id, long? DeathTick)> Kills(WorldState world) =>
+            world.Animals.Where(deer => deer.CauseOfDeath == DeathCause.Hunted).Select(deer => (deer.Id, deer.DeathTick)).ToList();
+
+        Assert.NotEmpty(Kills(stepped));
+        Assert.All(Kills(batched), kill => Assert.True(kill.DeathTick < 100, $"A kill was stamped tick {kill.DeathTick}, the end of the batch."));
+        Assert.Equal(Kills(stepped), Kills(batched));
+        Assert.Equal(steppedHunter.Position, batchedHunter.Position);
     }
 
     [Fact]
@@ -1426,7 +1468,7 @@ public class WorldStateTests
         var world = TestCatalogs.CreateWorld();
         Person? raised = null;
         world.PersonAdded += p => raised = p;
-        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
         world.AddPerson(person);
 
@@ -1438,7 +1480,7 @@ public class WorldStateTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex });
+        world.AddPerson(new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome });
     }
 
     [Fact]

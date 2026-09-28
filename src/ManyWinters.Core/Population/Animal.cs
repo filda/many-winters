@@ -6,21 +6,15 @@ namespace ManyWinters.Core.Population;
 // wanders (HomeRange) and, for a young one, its mother.
 public sealed class Animal : Creature
 {
-    private readonly HomeRange _home;
-
     public Animal(SpeciesId species, HomeRange home)
     {
         Species = species;
-        _home = home;
+        Home = home;
     }
 
     public override SpeciesId Species { get; }
 
-    // Covariant override of the base Home property (Person leaves it null): every Animal always
-    // has one, unlike a Person, who gets one only once born or placed in a band. Manually backed,
-    // not an auto-property, because only the getter is needed here - the base property's init
-    // accessor exists for Person's benefit; an Animal's home is fixed at construction.
-    public override HomeRange Home => _home;
+    public override HomeRange Home { get; init; }
 
     // Unlike a person's Mother, which is required and never null, an animal spawned as an adult
     // starting member of a herd has none to point at.

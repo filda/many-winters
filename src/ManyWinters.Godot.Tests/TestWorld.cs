@@ -28,6 +28,10 @@ internal static class TestWorld
     private static readonly SkillTypeId Foraging = new("foraging");
     private static readonly SkillTypeId Teaching = new("teaching");
     internal static readonly TechniqueId BasicForaging = new("basic_foraging");
+
+    // Home is required of every Person but none of the presentation logic reads it: a fresh camp
+    // each time, in no world.
+    internal static HomeRange AnyHome => new(new Position(0, 0)) { Radius = 8f, DriftMetresPerSeason = 0f };
     internal static readonly TechniqueId EfficientForaging = new("efficient_foraging");
     private static readonly TechniqueId BasicEating = new("basic_eating");
     internal static readonly TechniqueId BasicTeaching = new("basic_teaching");
@@ -192,6 +196,7 @@ internal static class TestWorld
             Mother = mother,
             Father = father,
             Sex = Sex.Male,
+            Home = mother.Home,
         };
 
         world.AddPerson(child);
@@ -254,6 +259,7 @@ internal static class TestWorld
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = sex,
+            Home = AnyHome,
         };
 
         world.AddPerson(person);

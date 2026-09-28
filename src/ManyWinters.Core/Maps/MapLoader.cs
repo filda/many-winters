@@ -78,17 +78,13 @@ public static class MapLoader
     private const int GroveFallenLogCount = 4;
     private const int GroveMushroomCount = 6;
 
-    // Wild food growing right where the band settled, scattered over a radius small enough that
-    // the starting crowd has food within a short walk - the open world's food is far too thin to
-    // count on in the first winter.
-    // The band's HomeRange radius: the wander radius people already had before there was a
-    // shared anchor to give them one - the idle wander radius tops out at 8.
-    private const float CampHomeRadius = 8f;
-
     // Distinguishes the camp home's id draw from every other thing seeded off a tick elsewhere
     // in this file.
     private const uint CampHomeIdSalt = 10;
 
+    // Wild food growing right where the band settled, scattered over a radius small enough that
+    // the starting crowd has food within a short walk - the open world's food is far too thin to
+    // count on in the first winter.
     private const float CampFoodRadius = 12f;
     private const int CampAppleCount = 2;
     private const int CampPearCount = 2;
@@ -390,7 +386,7 @@ public static class MapLoader
         var campHome = new HomeRange(campCenter)
         {
             Id = HomeRangeId.New(campHomeIdRng),
-            Radius = CampHomeRadius,
+            Radius = rules.CampHomeRadius,
             DriftMetresPerSeason = 0f,
         };
         world.AddHomeRange(campHome);
@@ -436,6 +432,7 @@ public static class MapLoader
                 Sex = sex,
                 MaxHunger = rules.MaxHungerFor(id),
                 Curiosity = rules.StartingBandCuriosity,
+                Home = campHome,
             };
 
             world.AddForebear(forebear);
@@ -458,9 +455,9 @@ public static class MapLoader
                 positions[index],
                 mother,
                 father,
+                campHome,
                 initialAgeTicks,
-                StartingSexFor(index),
-                Home: campHome));
+                StartingSexFor(index)));
 
             // Commands are plain data (ICommand) and return nothing; the person just added is the
             // newest in People.

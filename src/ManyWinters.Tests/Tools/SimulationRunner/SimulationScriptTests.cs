@@ -62,6 +62,19 @@ public class SimulationScriptTests
         Assert.Contains("Created 2 people. Population is now 2.", output);
     }
 
+    // People created together are one band: one camp for the batch, in the world so a save can
+    // find it.
+    [Fact]
+    public void CreatePutsTheWholeBatchOnOneCampInTheWorld()
+    {
+        var script = new SimulationScript(TestCatalogs.CreateConfiguration());
+
+        script.Run(["create 3"]);
+
+        var camp = Assert.Single(script.World.HomeRanges);
+        Assert.All(script.World.People, person => Assert.Same(camp, person.Home));
+    }
+
     [Fact]
     public void StartsWithAFreshEmptyWorld()
     {

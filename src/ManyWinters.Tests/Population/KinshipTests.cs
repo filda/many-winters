@@ -13,6 +13,7 @@ public class KinshipTests
             Mother = mother ?? Person.Unknown,
             Father = father ?? Person.Unknown,
             Sex = TestPeople.AnySex,
+            Home = TestPeople.AnyHome,
         };
 
     [Fact]

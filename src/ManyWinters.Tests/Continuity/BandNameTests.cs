@@ -16,6 +16,7 @@ public class BandNameTests
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = TestPeople.AnySex,
+            Home = TestPeople.AnyHome,
         };
 
     [Fact]

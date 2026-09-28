@@ -73,11 +73,19 @@ public class MapLoaderTests
         var map = LoadDefault();
 
         var homes = map.World.People.Select(person => person.Home).ToList();
-        Assert.All(homes, home => Assert.NotNull(home));
         Assert.All(homes, home => Assert.Same(homes[0], home));
-        Assert.Equal(map.CampCenter, homes[0]!.Anchor);
-        Assert.Equal(0f, homes[0]!.DriftMetresPerSeason);
+        Assert.Equal(map.CampCenter, homes[0].Anchor);
+        Assert.Equal(0f, homes[0].DriftMetresPerSeason);
         Assert.Contains(homes[0], map.World.HomeRanges);
+    }
+
+    // Dead before the story began, but still of this band: they share its camp.
+    [Fact]
+    public void LoadDefaultGivesForebearsTheBandsCamp()
+    {
+        var map = LoadDefault();
+
+        Assert.All(map.World.Forebears, forebear => Assert.Same(map.World.People[0].Home, forebear.Home));
     }
 
     // DriftMetresPerSeason 0 means exactly that: the camp anchor must still be sitting on
@@ -90,7 +98,7 @@ public class MapLoaderTests
 
         map.World.Advance(ticksPerYear);
 
-        Assert.Equal(map.CampCenter, map.World.People[0].Home!.Anchor);
+        Assert.Equal(map.CampCenter, map.World.People[0].Home.Anchor);
     }
 
     // Every id in this game drives per-entity variation off its own seed, so the camp home's id
@@ -99,8 +107,8 @@ public class MapLoaderTests
     [Fact]
     public void LoadDefaultGivesTheCampsHomeTheSameIdOnEveryNewGame()
     {
-        var first = LoadDefault().World.People[0].Home!.Id;
-        var second = LoadDefault().World.People[0].Home!.Id;
+        var first = LoadDefault().World.People[0].Home.Id;
+        var second = LoadDefault().World.People[0].Home.Id;
 
         Assert.Equal(first, second);
     }
@@ -111,11 +119,11 @@ public class MapLoaderTests
     public void ASuccessorBandsCampHomeHasADifferentIdFromTheFirstBands()
     {
         var map = LoadDefault();
-        var startingHomeId = map.World.People[0].Home!.Id;
+        var startingHomeId = map.World.People[0].Home.Id;
 
         map.World.Advance(50);
         var newCampCenter = MapLoader.SpawnNewBand(map.World, new Random(1), map.CampCenter);
-        var successorHomeId = map.World.People.First(p => p.Home!.Anchor == newCampCenter).Home!.Id;
+        var successorHomeId = map.World.People.First(p => p.Home.Anchor == newCampCenter).Home.Id;
 
         Assert.NotEqual(startingHomeId, successorHomeId);
     }

@@ -19,6 +19,7 @@ public class PrologueTests
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = sex,
+            Home = TestPeople.AnyHome,
         };
 
     private static BandArrival Arrival(

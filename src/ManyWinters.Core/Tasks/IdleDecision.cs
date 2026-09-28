@@ -123,12 +123,11 @@ public static class IdleDecision
 
     // "Idle" means "use a known skill, or seek food if hungry and empty-handed"; plain wandering
     // (IdleTask) is the fallback. Hunger wins over a known skill. A search centres on the
-    // creature's own HomeRange anchor when it has one (an animal) rather than on where it
-    // happens to be standing (a person, today).
+    // creature's own HomeRange anchor rather than on where it happens to be standing.
     private static CreatureTask DecideIdleTask(WorldState world, Creature creature)
     {
         var reachDistance = world.Configuration.Rules.MaxInteractionDistance;
-        var searchOrigin = creature.Home?.Anchor ?? creature.Position;
+        var searchOrigin = creature.Home.Anchor;
 
         // A threat wins over everything else, including an infant's own mother and hunger: a
         // species that never notices a person standing next to it reads as broken. Species data,
@@ -163,7 +162,7 @@ public static class IdleDecision
         {
             // A food resource this creature never learned to gather is as unreachable as none,
             // but food somebody put down needs no skill to take. Nearest wins.
-            var foodNode = FindNearestGatherableEntity(world, creature, searchOrigin, definition => IsFoodResource(world, creature, definition) && IsKnownSkill(world, creature, definition.Skill));
+            var foodNode = FindNearestGatherableEntity(world, creature, definition => IsFoodResource(world, creature, definition) && IsKnownSkill(world, creature, definition.Skill));
             var food = NearerOf(searchOrigin, foodNode, FindNearestFoodPile(world, creature, searchOrigin));
             if (food is not null)
             {
@@ -197,18 +196,14 @@ public static class IdleDecision
 
         // Nearest wins regardless of which known skill it needs. IsKnownSkill checks the skill's
         // BaseTechnique, since KnownTechniques holds arbitrary techniques rather than skills.
-        var node = FindNearestGatherableEntity(world, creature, searchOrigin, definition => IsKnownSkill(world, creature, definition.Skill));
+        var node = FindNearestGatherableEntity(world, creature, definition => IsKnownSkill(world, creature, definition.Skill));
         if (node is not null)
         {
             return new GatherTask(node, reachDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
         }
 
-        // Null for a creature with no home (every Person today), exactly IdleTask's own default;
-        // an Animal's home range is what its wander legs and radius come from instead.
         return new IdleTask(
             creature.Home,
-            world.Configuration.Rules.MinWanderRadius,
-            world.Configuration.Rules.MaxWanderRadius,
             world.Configuration.Rules.IdleSpeedPerTick,
             world.Configuration.Rules.MinPauseTicks,
             world.Configuration.Rules.MaxPauseTicks
@@ -245,12 +240,11 @@ public static class IdleDecision
 
     // Depleted-but-alive nodes (RemainingAmount 0, regenerating) are skipped - a fuller one of
     // the same kind is normally nearby - and so is anything this creature could not take from:
-    // nobody walks to a source to gather nothing. `origin` only bounds the *fallback* search's
-    // reach - the creature's own position for a Person, its HomeRange anchor for an Animal with
-    // nothing matching inside its home - the *nearest* pick in both tiers is always
-    // nearest-to-the-creature-itself, not to the anchor.
+    // nobody walks to a source to gather nothing. The home's anchor only bounds each tier's
+    // reach - the *nearest* pick in both tiers is always nearest-to-the-creature-itself, not to
+    // the anchor.
     //
-    // An animal with a Home searches nearest-to-itself among nodes bounded by its Home (radius
+    // A creature searches nearest-to-itself among nodes bounded by its Home (radius
     // plus a small margin for its own footprint), not nearest-to-the-shared-anchor: the anchor
     // bounds where the herd may graze, it is not everybody's common destination. Picking nearest
     // to the anchor instead sent every member of a herd at the single node nearest that one point,
@@ -265,26 +259,18 @@ public static class IdleDecision
     // IdleSearchRadius tier, at the any-amount-left rule - still picking whichever match is
     // nearest to the creature itself (not to the anchor), or a herd already scattered across its
     // own ground by the first tier would regroup on a single depleted tuft nearest the anchor the
-    // moment it fell through to this one. For a Person (no Home) `origin` is its own position
-    // anyway, so both tiers agree.
-    private static Entity? FindNearestGatherableEntity(WorldState world, Creature creature, Position origin, Func<ResourceDefinition, bool> matches)
+    // moment it fell through to this one.
+    private static Entity? FindNearestGatherableEntity(WorldState world, Creature creature, Func<ResourceDefinition, bool> matches)
     {
-        if (creature.Home is { } home)
-        {
-            var margin = world.Configuration.SpeciesCatalog.Get(creature.Species).CollisionRadius * 2f;
-            var nearestAtHome = NearestGatherableEntity(
+        var home = creature.Home;
+        var margin = world.Configuration.SpeciesCatalog.Get(creature.Species).CollisionRadius * 2f;
+        return NearestGatherableEntity(
                 world,
                 creature,
                 nearestTo: creature.Position,
                 matches,
-                inBounds: entity => WorldState.Distance(home.Anchor, entity.Position) <= home.Radius + margin && HasAFullHarvestFor(world, creature, entity));
-            if (nearestAtHome is not null)
-            {
-                return nearestAtHome;
-            }
-        }
-
-        return NearestGatherableEntity(world, creature, nearestTo: creature.Position, matches, inBounds: entity => WorldState.Distance(origin, entity.Position) <= world.Configuration.Rules.IdleSearchRadius);
+                inBounds: entity => WorldState.Distance(home.Anchor, entity.Position) <= home.Radius + margin && HasAFullHarvestFor(world, creature, entity))
+            ?? NearestGatherableEntity(world, creature, nearestTo: creature.Position, matches, inBounds: entity => WorldState.Distance(home.Anchor, entity.Position) <= world.Configuration.Rules.IdleSearchRadius);
     }
 
     // IsWorthGathering has already confirmed entity.Growth is alive by the time this runs

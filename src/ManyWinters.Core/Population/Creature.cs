@@ -63,10 +63,8 @@ public abstract class Creature
     // age bands and lifespan.
     public abstract SpeciesId Species { get; }
 
-    // The shared ground this creature wanders around, if it has one. An Animal always has one; a
-    // Person has one once born or spawned into a real band and null otherwise - a person built
-    // outside any map, or the sentinel unknown person, wanders from wherever they stand instead.
-    // Exposed here as a covariant override the same way NursingMother is, so callers never have
-    // to ask "is this an Animal" to find it.
-    public virtual HomeRange? Home { get; init; }
+    // The ground this creature wanders around and searches for food from: a herd's shared range
+    // for an animal, the band's camp for a person. Never null - the unknown person has the unknown
+    // home range.
+    public abstract HomeRange Home { get; init; }
 }

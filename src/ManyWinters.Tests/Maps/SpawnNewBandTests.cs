@@ -177,7 +177,7 @@ public class SpawnNewBandTests
         var camp = MapLoader.SpawnNewBand(world, new Random(1), oldCamp);
 
         Assert.All(world.People, person => Assert.NotSame(oldHome, person.Home));
-        Assert.All(world.People, person => Assert.Equal(camp, person.Home!.Anchor));
+        Assert.All(world.People, person => Assert.Equal(camp, person.Home.Anchor));
         Assert.Contains(oldHome, world.HomeRanges);
     }
 

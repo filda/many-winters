@@ -310,11 +310,22 @@ public partial class Main : Node3D
         var name = _world.Naming.GenerateUnrelatedName(Random.Shared);
         var position = FindFreeSpawnPosition();
 
-        // Borrows the nearest living person's home rather than founding a new one: a
-        // debug-spawned person joins whichever band is closest, or wanders from wherever they
-        // stand if nobody living has one.
+        // Joins whichever band is closest; with nobody alive, founds a camp of their own where
+        // they stand.
         var nearest = _world.People.Where(person => person.IsAlive).MinBy(person => WorldState.Distance(position, person.Position));
-        _world.Execute(new SpawnPersonCommand(name, position, Person.Unknown, Person.Unknown, home: nearest?.Home));
+        var home = nearest?.Home ?? FoundCamp(position);
+        _world.Execute(new SpawnPersonCommand(name, position, Person.Unknown, Person.Unknown, home));
+    }
+
+    private HomeRange FoundCamp(Position anchor)
+    {
+        var camp = new HomeRange(anchor)
+        {
+            Radius = _world.Configuration.Rules.CampHomeRadius,
+            DriftMetresPerSeason = 0f,
+        };
+        _world.AddHomeRange(camp);
+        return camp;
     }
 
     private void OnExtinguishButtonPressed()

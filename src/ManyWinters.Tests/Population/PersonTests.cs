@@ -15,8 +15,8 @@ public class PersonTests
     [Fact]
     public void ANewPersonDrawsItsOwnIdDistinctFromEveryOther()
     {
-        var first = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
-        var second = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var first = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+        var second = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
         Assert.NotEqual(first.Id, second.Id);
         Assert.NotEqual(Person.Unknown.Id, first.Id);
@@ -38,6 +38,21 @@ public class PersonTests
     }
 
     [Fact]
+    public void UnknownLivesOnTheUnknownHomeRange()
+    {
+        Assert.Same(HomeRange.Unknown, Person.Unknown.Home);
+    }
+
+    // No ground at all, so anything that ever did read it would stand still rather than wander.
+    [Fact]
+    public void TheUnknownHomeRangeHasTheEmptyIdAndNoGround()
+    {
+        Assert.Equal(new HomeRangeId(Guid.Empty), HomeRange.Unknown.Id);
+        Assert.Equal(0f, HomeRange.Unknown.Radius);
+        Assert.Equal(0f, HomeRange.Unknown.DriftMetresPerSeason);
+    }
+
+    [Fact]
     public void UnknownIsOneSharedInstance()
     {
         Assert.Same(Person.Unknown, Person.Unknown);
@@ -48,7 +63,7 @@ public class PersonTests
     [Fact]
     public void EveryPersonIsTheHumanSpecies()
     {
-        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var person = new Person { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
         Assert.Equal(new SpeciesId("human"), person.Species);
         Assert.Equal(Person.HumanSpecies, person.Species);

@@ -11,7 +11,7 @@ public class FollowTaskTests
     private const float Speed = 0.25f;
 
     private static Person NewPerson(string name, Position position) =>
-        new() { Name = name, BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        new() { Name = name, BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
     [Fact]
     public void IsNeverComplete()

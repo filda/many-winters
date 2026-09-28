@@ -9,7 +9,7 @@ namespace ManyWinters.Core.Persistence;
 
 public static class SaveGameService
 {
-    private const int CurrentVersion = 27;
+    private const int CurrentVersion = 28;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -129,7 +129,7 @@ public static class SaveGameService
         person.Father.Id.Value,
         person.Sex,
         person.Curiosity,
-        person.Home?.Id.Value);
+        person.Home.Id.Value);
 
     // Recursive both ways, because an assembly is: a bound thing holds two more of them, to any
     // depth.
@@ -357,7 +357,7 @@ public static class SaveGameService
             Father = ParentById(personData.FatherId, peopleById),
             Sex = personData.Sex,
             Curiosity = personData.Curiosity,
-            Home = personData.HomeRangeId is { } homeRangeId ? homeRangesById[homeRangeId] : null,
+            Home = homeRangesById[personData.HomeRangeId],
 
             // Not saved: it is redrawn from the id.
             MaxHunger = rules.MaxHungerFor(id),

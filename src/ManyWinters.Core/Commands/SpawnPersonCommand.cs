@@ -12,19 +12,17 @@ public sealed record SpawnPersonCommand(
     Position Position,
     Person Mother,
     Person Father,
+    // The band's camp this person joins.
+    HomeRange Home,
     long InitialAgeTicks = 0,
     // Null lets the id decide. MapLoader sets it: its family table has already settled who bore
     // whom.
     Sex? Sex = null,
     // Null takes the player band's rate from the rules; an NPC band passes its own.
-    float? Curiosity = null,
-    // Null leaves the new person with no home - a caller with an opinion passes one:
-    // loading a fresh map hands every starting/successor band member the same camp HomeRange,
-    // spawning a new person during play borrows the nearest living person's.
-    HomeRange? Home = null) : ICommand
+    float? Curiosity = null) : ICommand
 {
-    public SpawnPersonCommand(string name, Position position, Person mother, Person father, long initialAgeTicks = 0, HomeRange? home = null)
-        : this(CreatureId.New(), name, position, mother, father, initialAgeTicks, Home: home)
+    public SpawnPersonCommand(string name, Position position, Person mother, Person father, HomeRange home, long initialAgeTicks = 0)
+        : this(CreatureId.New(), name, position, mother, father, home, initialAgeTicks)
     {
     }
 

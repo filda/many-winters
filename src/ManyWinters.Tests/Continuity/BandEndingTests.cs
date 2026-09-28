@@ -19,6 +19,7 @@ public class BandEndingTests
             Mother = Person.Unknown,
             Father = Person.Unknown,
             Sex = sex,
+            Home = TestPeople.AnyHome,
         };
 
     private static Person Dead(Person person, long deathTick, DeathCause cause = DeathCause.Hunger, bool buried = false)

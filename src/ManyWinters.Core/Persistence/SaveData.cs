@@ -45,10 +45,9 @@ public sealed record PersonSaveData(
     Sex Sex,
     // Set per band rather than per rules, so it has to survive a reload.
     float Curiosity,
-    // The shared camp anchor this person wanders around - null for one with none, which is every
-    // save written before this existed. Resolved against HomeRangeSaveData the same way an
+    // The camp this person wanders around, resolved against HomeRangeSaveData the same way an
     // animal's save data does.
-    Guid? HomeRangeId = null);
+    Guid HomeRangeId);
 
 // One bond per pair, not per direction - Affections is symmetric; which id is A is storage
 // order.

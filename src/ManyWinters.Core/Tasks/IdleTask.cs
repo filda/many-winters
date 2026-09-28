@@ -6,27 +6,19 @@ namespace ManyWinters.Core.Tasks;
 // A small aimless walk, one leg at a time via an internal MoveTask. Never completes; a real
 // order replaces it.
 //
-// Without a home (every Person today): anchored wherever the creature happened to be standing on
-// the first Advance, radius drawn once from its own id. With one (every Animal): anchored on the
-// home range's own drifting Anchor, re-read every leg so the wander follows it, and radius is the
-// home's own.
+// Anchored on the home range's own drifting Anchor, re-read every leg so the wander follows it,
+// within the home's own radius.
 public sealed class IdleTask(
-    HomeRange? home,
-    float minWanderRadius,
-    float maxWanderRadius,
+    HomeRange home,
     float speedPerTick,
     int minPauseTicks,
     int maxPauseTicks
     ) : CreatureTask
 {
-    // Seeded from the person, so a wander path is reproducible from a start tick regardless of
+    // Seeded from the creature, so a wander path is reproducible from a start tick regardless of
     // simulation order.
     private Random? _rng;
 
-    // Only ever set (and read) when home is null - a homed creature's anchor is home.Anchor
-    // itself, read fresh every leg rather than cached here.
-    private Position? _anchor;
-    private float _wanderRadius;
     private MoveTask? _currentLeg;
     private int _pauseTicksRemaining;
 
@@ -37,17 +29,6 @@ public sealed class IdleTask(
         if (_rng is null)
         {
             _rng = new Random(SeedFor(creature.Id.Seed));
-            if (home is null)
-            {
-                _anchor = creature.Position;
-                // Drawn once per person, not per leg: how far this one tends to roam.
-                _wanderRadius = minWanderRadius + ((float)_rng.NextDouble() * (maxWanderRadius - minWanderRadius));
-            }
-            else
-            {
-                _wanderRadius = home.Radius;
-            }
-
             _pauseTicksRemaining = NextPauseTicks();
         }
 
@@ -59,7 +40,7 @@ public sealed class IdleTask(
                 return;
             }
 
-            _currentLeg = new MoveTask(NextWanderDestination(home?.Anchor ?? _anchor!.Value), speedPerTick);
+            _currentLeg = new MoveTask(NextWanderDestination(home.Anchor), speedPerTick);
         }
 
         _currentLeg.Advance(creature);
@@ -77,7 +58,7 @@ public sealed class IdleTask(
     private Position NextWanderDestination(Position anchor)
     {
         var angle = _rng!.NextDouble() * Math.Tau;
-        var distance = _wanderRadius * Math.Sqrt(_rng.NextDouble());
+        var distance = home.Radius * Math.Sqrt(_rng.NextDouble());
         return new Position(anchor.X + (distance * Math.Cos(angle)), anchor.Y + (distance * Math.Sin(angle)));
     }
 

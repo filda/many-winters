@@ -224,7 +224,6 @@ public class SaveGameServiceTests
         var home = new HomeRange(new Position(10, 20)) { Radius = 8f, DriftMetresPerSeason = 0f };
         world.AddHomeRange(home);
         world.SpawnPerson("Ava", new Position(11, 21), home: home);
-        world.SpawnPerson("Bran", new Position(-3f, 0f));
 
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
         try
@@ -233,11 +232,9 @@ public class SaveGameServiceTests
             var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
 
             var restoredAva = restored.People.Single(p => p.Name == "Ava");
-            var restoredBran = restored.People.Single(p => p.Name == "Bran");
             var restoredHome = Assert.Single(restored.HomeRanges);
 
             Assert.Same(restoredHome, restoredAva.Home);
-            Assert.Null(restoredBran.Home);
         }
         finally
         {
@@ -457,8 +454,8 @@ public class SaveGameServiceTests
         // stored ahead of its mother has nothing to point at. Refusing beats silently losing the
         // lineage.
         var world = TestCatalogs.CreateWorld();
-        var mother = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
-        var child = new Person { Name = "Ava", BirthTick = 0, Mother = mother, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        var mother = new Person { Name = "Orla", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+        var child = new Person { Name = "Ava", BirthTick = 0, Mother = mother, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
         world.AddPerson(child);
         world.AddPerson(mother);
         var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");

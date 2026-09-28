@@ -12,7 +12,7 @@ public class SpawnPersonCommandTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.Execute(new SpawnPersonCommand("Ava", new Position(3, 4), Person.Unknown, Person.Unknown));
+        world.Execute(new SpawnPersonCommand("Ava", new Position(3, 4), Person.Unknown, Person.Unknown, TestPeople.AnyHome));
 
         var person = Assert.Single(world.People);
         Assert.Equal("Ava", person.Name);
@@ -25,7 +25,7 @@ public class SpawnPersonCommandTests
         var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(1000);
 
-        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, initialAgeTicks: 300));
+        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, TestPeople.AnyHome, initialAgeTicks: 300));
 
         var person = Assert.Single(world.People);
         Assert.Equal(700, person.BirthTick);
@@ -37,7 +37,7 @@ public class SpawnPersonCommandTests
         var world = TestCatalogs.CreateWorld();
         world.Clock.Advance(1000);
 
-        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown));
+        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, TestPeople.AnyHome));
 
         var person = Assert.Single(world.People);
         Assert.Equal(1000, person.BirthTick);
@@ -50,7 +50,7 @@ public class SpawnPersonCommandTests
         var mother = world.SpawnPerson("Sela", new Position(0, 0));
         var father = world.SpawnPerson("Bran", new Position(0, 0));
 
-        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), mother, father));
+        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), mother, father, TestPeople.AnyHome));
 
         var child = world.People.Single(p => p.Name == "Ava");
         Assert.Same(mother, child.Mother);
@@ -58,12 +58,23 @@ public class SpawnPersonCommandTests
     }
 
     [Fact]
+    public void ExecuteGivesThePersonTheGivenHome()
+    {
+        var world = TestCatalogs.CreateWorld();
+        var camp = TestPeople.AnyHome;
+
+        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, camp));
+
+        Assert.Same(camp, Assert.Single(world.People).Home);
+    }
+
+    [Fact]
     public void ExecutingTwiceAddsTwoDistinctPeople()
     {
         var world = TestCatalogs.CreateWorld();
 
-        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown));
-        world.Execute(new SpawnPersonCommand("Bran", new Position(1, 1), Person.Unknown, Person.Unknown));
+        world.Execute(new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, TestPeople.AnyHome));
+        world.Execute(new SpawnPersonCommand("Bran", new Position(1, 1), Person.Unknown, Person.Unknown, TestPeople.AnyHome));
 
         Assert.Equal(2, world.People.Count);
         Assert.NotEqual(world.People[0].Id, world.People[1].Id);
@@ -75,7 +86,7 @@ public class SpawnPersonCommandTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        var command = new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown);
+        var command = new SpawnPersonCommand("Ava", new Position(0, 0), Person.Unknown, Person.Unknown, TestPeople.AnyHome);
 
         Assert.Equal(ActionBlocker.None, command.Blocker(world));
     }

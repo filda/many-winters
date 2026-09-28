@@ -85,9 +85,16 @@ public sealed class SimulationScript
                     break;
                 }
 
+                // One camp for the whole batch: people created together are one band.
+                var camp = new HomeRange(new Position(0, 0))
+                {
+                    Radius = World.Configuration.Rules.CampHomeRadius,
+                    DriftMetresPerSeason = 0f,
+                };
+                World.AddHomeRange(camp);
                 for (var i = 0; i < createCount; i++)
                 {
-                    World.Execute(new SpawnPersonCommand($"Person {World.People.Count + 1}", new Position(0, 0), Person.Unknown, Person.Unknown));
+                    World.Execute(new SpawnPersonCommand($"Person {World.People.Count + 1}", new Position(0, 0), Person.Unknown, Person.Unknown, camp));
                 }
 
                 output.Add($"Created {createCount} people. Population is now {World.People.Count}.");

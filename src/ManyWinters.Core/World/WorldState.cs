@@ -246,13 +246,15 @@ public sealed class WorldState
         var rules = Configuration.Rules;
         var seasonParameters = Configuration.SeasonParameters;
 
-        var startTick = Clock.CurrentTick;
-        Clock.Advance(ticks);
-
         for (var i = 0L; i < ticks; i++)
         {
-            var currentTick = startTick + i + 1;
-            var climate = seasonParameters.ClimateFor(rules.SeasonAt(startTick + i));
+            // One tick at a time, not the whole batch up front: everything below that reads the
+            // clock - a kill's death tick, meat's age, a carcass's decay - has to see the tick it
+            // happens on, or a long Advance plays out differently from the same ticks one by one.
+            var previousTick = Clock.CurrentTick;
+            Clock.Advance();
+            var currentTick = Clock.CurrentTick;
+            var climate = seasonParameters.ClimateFor(rules.SeasonAt(previousTick));
             var baseHungerMultiplier = seasonParameters.HungerMultiplierFor(climate);
             var regenMultiplier = seasonParameters.RegenMultiplierFor(climate);
 

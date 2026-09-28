@@ -18,7 +18,7 @@ public class ButcherTaskTests
     private const float IdleSpeed = 0.3f;
 
     private static Person NewButcher(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 
     private static Animal NewCarcass() =>
         new(TestCatalogs.DeerSpeciesId, new HomeRange(CarcassPosition) { Radius = 10f, DriftMetresPerSeason = 0f })

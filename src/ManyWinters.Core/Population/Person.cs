@@ -28,6 +28,7 @@ public sealed class Person : Creature
         IsBuried = true;
         Mother = this;
         Father = this;
+        Home = HomeRange.Unknown;
 
         // Never read: dead, nobody's parent, never in a world. Drawn from the id
         // rather than written as a literal so it is not a claim about anything.
@@ -62,13 +63,8 @@ public sealed class Person : Creature
     // NursingMother uniformly while a Person's own callers keep using Mother directly.
     public override Person NursingMother => Mother;
 
-    // Covariant override of the base class's Home: unlike an animal's Home, settable and
-    // nullable, because a person built outside any map (most tests) and the sentinel unknown
-    // person have none and behave exactly as before - idle wandering anchors wherever they
-    // stand and the idle food search centres on themselves. Every member of a real band gets
-    // one, inherited at birth and, for a
-    // debug-spawned person, borrowed from the nearest living person.
-    public override HomeRange? Home { get; init; }
+    // The band's camp: inherited at birth, handed out by whoever founds the band.
+    public override required HomeRange Home { get; init; }
 
     // A well-known id, declared once rather than drawn or configured per instance. Every Person
     // is this species.
