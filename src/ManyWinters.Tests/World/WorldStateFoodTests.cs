@@ -22,7 +22,8 @@ public class WorldStateFoodTests
     public void HalfDigestibilityHalvesWhatTheItemWouldOtherwiseRestore()
     {
         var species = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle,
-            [new SpeciesDefinition.DietEntry(new MaterialId("apple"), 0.5f)]);
+            [new SpeciesDefinition.DietEntry(new MaterialId("apple"), 0.5f)])
+        { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
         var configuration = TestCatalogs.CreateConfigurationWithSpecies(species);
         var world = new WorldState(configuration);
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
@@ -33,7 +34,7 @@ public class WorldStateFoodTests
     [Fact]
     public void AMaterialOutsideTheDietRestoresNothing()
     {
-        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle);
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
         var configuration = TestCatalogs.CreateConfigurationWithSpecies(species);
         var world = new WorldState(configuration);
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);

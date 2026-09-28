@@ -267,6 +267,9 @@ public static class TestCatalogs
 
     public static readonly LifeCycle HumanLifeCycle = new(WeaningAgeYears, AdultAgeYears, ElderAgeYears, HumanMaxLifespanYears);
 
+    public const float HumanCollisionRadius = 0.35f;
+    public const float HumanHungerPerTickMultiplier = 1f;
+
     // Mirrors Content/species/human/human.json's diet: every material whose item has a
     // HungerRestoredPerUnit above zero, at digestibility 1 - exactly what is edible, so no test's
     // behaviour changes.
@@ -279,7 +282,11 @@ public static class TestCatalogs
         new(MeatMaterial, 1f),
     ];
 
-    private static readonly SpeciesDefinition HumanSpecies = new(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet);
+    private static readonly SpeciesDefinition HumanSpecies = new(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet)
+    {
+        CollisionRadius = HumanCollisionRadius,
+        HungerPerTickMultiplier = HumanHungerPerTickMultiplier,
+    };
 
     // Mirrors Content/species/deer/deer.json: only defined when a test opts into having deer, so
     // every test that doesn't care about animals keeps the human-only catalog.
@@ -343,12 +350,14 @@ public static class TestCatalogs
         DeerDiet,
         InnateTechniques: [BasicEating, BasicForaging],
         CanCarry: false,
-        CollisionRadius: DeerCollisionRadius,
         Herd: new SpeciesDefinition.HerdDefinition(DeerHerdMinSize, DeerHerdMaxSize, DeerHerdHomeRadius, DeerHerdDriftMetresPerSeason),
         Breeding: new SpeciesDefinition.BreedingDefinition(Climate.Mild, DeerGestationTicks, DeerConceptionChancePerTick, DeerSatietyHungerBelow),
-        HungerPerTickMultiplier: DeerHungerPerTickMultiplier,
         Flee: new SpeciesDefinition.FleeDefinition(DeerFleeDistance, DeerSafeDistance, DeerFleeSpeedPerTick),
-        Carcass: DeerCarcass);
+        Carcass: DeerCarcass)
+    {
+        CollisionRadius = DeerCollisionRadius,
+        HungerPerTickMultiplier = DeerHungerPerTickMultiplier,
+    };
 
     private static SpeciesCatalog CreateSpeciesCatalog(SpeciesDefinition humanSpecies, SpeciesDefinition? deerSpecies = null) =>
         deerSpecies is null ? new([humanSpecies]) : new([humanSpecies, deerSpecies]);

@@ -191,7 +191,8 @@ public class EatCommandTests
         var stewMaterial = new MaterialId("stew");
         var materials = new MaterialCatalog([new MaterialDefinition(stewMaterial, "Stew", Density: 1f)]);
         var species = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle,
-            [new SpeciesDefinition.DietEntry(stewMaterial, 1f)]);
+            [new SpeciesDefinition.DietEntry(stewMaterial, 1f)])
+        { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
         var configuration = TestCatalogs.CreateConfigurationWithSpecies(species) with
         {
             MaterialCatalog = materials,
@@ -360,7 +361,7 @@ public class EatCommandTests
 
         Assert.Equal(ActionBlocker.None, new EatCommand(ordinaryPerson, TestCatalogs.AppleItem).Blocker(ordinaryWorld));
 
-        var nonDigestingSpecies = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle);
+        var nonDigestingSpecies = new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
         var nonDigestingWorld = new WorldState(TestCatalogs.CreateConfigurationWithSpecies(nonDigestingSpecies));
         var nonDigestingPerson = nonDigestingWorld.SpawnPerson("Kell", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         nonDigestingPerson.KnownTechniques.Add(TestCatalogs.BasicEating);

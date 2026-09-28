@@ -1,5 +1,6 @@
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Population;
 
@@ -12,7 +13,7 @@ public class SpeciesDefinitionTests
     [Fact]
     public void DigestibilityOfAMaterialInTheDietIsWhatWasGiven()
     {
-        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle, [new SpeciesDefinition.DietEntry(Apple, 0.5f)]);
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle, [new SpeciesDefinition.DietEntry(Apple, 0.5f)]) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
 
         Assert.Equal(0.5f, species.DigestibilityOf(Apple));
     }
@@ -20,7 +21,7 @@ public class SpeciesDefinitionTests
     [Fact]
     public void DigestibilityOfAMaterialNotInTheDietIsZero()
     {
-        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle, [new SpeciesDefinition.DietEntry(Apple, 1f)]);
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle, [new SpeciesDefinition.DietEntry(Apple, 1f)]) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
 
         Assert.Equal(0f, species.DigestibilityOf(Grass));
     }
@@ -28,19 +29,10 @@ public class SpeciesDefinitionTests
     [Fact]
     public void ANullDietNormalizesToEmptyRatherThanNull()
     {
-        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle);
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
 
         Assert.Empty(species.Diet);
         Assert.Equal(0f, species.DigestibilityOf(Apple));
-    }
-
-    // The winter reserve: a species with no opinion runs at exactly the human rate.
-    [Fact]
-    public void HungerPerTickMultiplierDefaultsToOne()
-    {
-        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle);
-
-        Assert.Equal(1f, species.HungerPerTickMultiplier);
     }
 
     // A species with no opinion never flees, which is what keeps a human out of
@@ -48,7 +40,7 @@ public class SpeciesDefinitionTests
     [Fact]
     public void FleeDefaultsToNull()
     {
-        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle);
+        var species = new SpeciesDefinition(Person.HumanSpecies, "Human", LifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier };
 
         Assert.Null(species.Flee);
     }

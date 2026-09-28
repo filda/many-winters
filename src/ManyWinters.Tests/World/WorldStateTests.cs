@@ -240,7 +240,7 @@ public class WorldStateTests
         var bag = new ItemKindId("bag");
         var world = new WorldState(new WorldConfiguration
         {
-            SpeciesCatalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle)]),
+            SpeciesCatalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier }]),
             ItemCatalog = new ItemCatalog(
                 new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
                 new MaterialCatalog([]),
@@ -258,7 +258,7 @@ public class WorldStateTests
         var bag = new ItemKindId("bag");
         var world = new WorldState(new WorldConfiguration
         {
-            SpeciesCatalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle)]),
+            SpeciesCatalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", TestCatalogs.HumanLifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier }]),
             ItemCatalog = new ItemCatalog(
                 new[] { new ItemDefinition(bag, "Bag", new MaterialId("plant_fibre"), new FormId("vessel"), CarryCapacityBonus: 20f) },
                 new MaterialCatalog([]),

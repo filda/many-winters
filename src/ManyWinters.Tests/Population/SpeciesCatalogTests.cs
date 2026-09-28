@@ -1,6 +1,8 @@
+using System.Text.Json;
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
+using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Population;
 
@@ -11,7 +13,7 @@ public class SpeciesCatalogTests
     {
         var lifeCycle = new LifeCycle(1, 4, 7, 10);
         var catalog = new SpeciesCatalog([
-            new SpeciesDefinition(Person.HumanSpecies, "Human", lifeCycle),
+            new SpeciesDefinition(Person.HumanSpecies, "Human", lifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier },
         ]);
 
         var definition = catalog.Get(Person.HumanSpecies);
@@ -36,7 +38,7 @@ public class SpeciesCatalogTests
         Directory.CreateDirectory(humanDir);
         File.WriteAllText(
             Path.Combine(humanDir, "human.json"),
-            """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 } }""");
+            """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 }, "collisionRadius": 0.35, "hungerPerTickMultiplier": 1 }""");
 
         try
         {
@@ -65,6 +67,8 @@ public class SpeciesCatalogTests
               "id": "human",
               "displayName": "Human",
               "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 },
+              "collisionRadius": 0.35,
+              "hungerPerTickMultiplier": 1,
               "diet": [
                 { "material": "apple", "digestibility": 1 },
                 { "material": "grass", "digestibility": 0.3 }
@@ -101,6 +105,8 @@ public class SpeciesCatalogTests
               "id": "deer",
               "displayName": "Deer",
               "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 2, "elderAgeYears": 6, "maxLifespanYears": 8 },
+              "collisionRadius": 0.35,
+              "hungerPerTickMultiplier": 1,
               "carcass": [
                 { "item": "meat", "amount": 30 },
                 { "item": "hide", "amount": 1 },
@@ -133,7 +139,7 @@ public class SpeciesCatalogTests
     public void ASpeciesDescribedWithNoCarcassHasAnEmptyOne()
     {
         var lifeCycle = new LifeCycle(1, 4, 7, 10);
-        var catalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", lifeCycle)]);
+        var catalog = new SpeciesCatalog([new SpeciesDefinition(Person.HumanSpecies, "Human", lifeCycle) { CollisionRadius = TestCatalogs.HumanCollisionRadius, HungerPerTickMultiplier = TestCatalogs.HumanHungerPerTickMultiplier }]);
 
         Assert.Empty(catalog.Get(Person.HumanSpecies).Carcass);
     }
@@ -146,7 +152,7 @@ public class SpeciesCatalogTests
         Directory.CreateDirectory(humanDir);
         File.WriteAllText(
             Path.Combine(humanDir, "human.json"),
-            """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 } }""");
+            """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 }, "collisionRadius": 0.35, "hungerPerTickMultiplier": 1 }""");
         File.WriteAllText(Path.Combine(humanDir, "notes.txt"), "this is not json and would blow up if read as such");
 
         try
@@ -160,6 +166,28 @@ public class SpeciesCatalogTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void LoadFromJsonReadsTheFootprintAndAppetite()
+    {
+        var catalog = SpeciesCatalog.LoadFromJson([("deer.json", """{ "id": "deer", "displayName": "Deer", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 2, "elderAgeYears": 6, "maxLifespanYears": 8 }, "collisionRadius": 0.6, "hungerPerTickMultiplier": 0.28 }""")]);
+
+        var definition = catalog.Get(new SpeciesId("deer"));
+        Assert.Equal(0.6f, definition.CollisionRadius);
+        Assert.Equal(0.28f, definition.HungerPerTickMultiplier);
+    }
+
+    // Without the requirement a forgotten field would load as 0 - a creature with no footprint,
+    // or one that never gets hungry.
+    [Theory]
+    [InlineData("\"hungerPerTickMultiplier\": 1")]
+    [InlineData("\"collisionRadius\": 0.35")]
+    public void LoadFromJsonRejectsASpeciesMissingItsFootprintOrAppetite(string onlyField)
+    {
+        var json = $$"""{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 }, {{onlyField}} }""";
+
+        Assert.Throws<JsonException>(() => SpeciesCatalog.LoadFromJson([("human.json", json)]));
     }
 
     [Fact]

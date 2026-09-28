@@ -9,7 +9,7 @@ namespace ManyWinters.Tests.World;
 // off; separation is the only thing moving anyone, which makes exact positions assertable.
 public class WorldStateCollisionTests
 {
-    private const float PersonRadius = 0.35f;
+    private const float PersonRadius = TestCatalogs.HumanCollisionRadius;
     private const double PersonMinDistance = PersonRadius * 2;
 
     [Fact]

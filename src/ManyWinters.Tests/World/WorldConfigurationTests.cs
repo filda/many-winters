@@ -43,7 +43,7 @@ public class WorldConfigurationTests
             asked.Add(catalog);
             return catalog switch
             {
-                "species" => [("human.json", """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 } }""")],
+                "species" => [("human.json", """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 }, "collisionRadius": 0.35, "hungerPerTickMultiplier": 1 }""")],
                 "resources" => [("apple.json", """{ "id": "apple", "displayName": "Apple", "skill": "foraging" }""")],
                 "skills" => [("foraging.json", """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""")],
                 "recipes" => [("axe.json", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""")],
@@ -72,7 +72,7 @@ public class WorldConfigurationTests
     public void LoadFromDirectoryReadsEveryCatalogFromItsOwnFolderUnderTheContentRoot()
     {
         var root = Path.Combine(Path.GetTempPath(), $"manywinters-worldconfiguration-{Guid.NewGuid():N}");
-        WriteDefinition(root, "species", "human", """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 } }""");
+        WriteDefinition(root, "species", "human", """{ "id": "human", "displayName": "Human", "lifeCycle": { "weaningAgeYears": 1, "adultAgeYears": 4, "elderAgeYears": 7, "maxLifespanYears": 10 }, "collisionRadius": 0.35, "hungerPerTickMultiplier": 1 }""");
         WriteDefinition(root, "resources", "apple", """{ "id": "apple", "displayName": "Apple", "skill": "foraging" }""");
         WriteDefinition(root, "skills", "foraging", """{ "id": "foraging", "displayName": "Foraging", "baseTechnique": "basic_foraging", "efficientTechnique": "efficient_foraging" }""");
         WriteDefinition(root, "recipes", "axe", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""");

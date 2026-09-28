@@ -23,8 +23,6 @@ public sealed record SpeciesDefinition(
     // makes "eats when hungry, otherwise wanders" fall out for free rather than needing its own
     // rule.
     bool CanCarry = true,
-    // Half-width of this species' footprint for collision resolution, in metres.
-    float CollisionRadius = 0.35f,
     // Null for a species with no herd - a human, today. Present for a species that spawns as a
     // group sharing one HomeRange, such as a starting deer herd.
     SpeciesDefinition.HerdDefinition? Herd = null,
@@ -32,10 +30,6 @@ public sealed record SpeciesDefinition(
     // works through a separate mechanism. Present for a species whose females conceive on a
     // per-tick roll.
     SpeciesDefinition.BreedingDefinition? Breeding = null,
-    // Multiplies the base hunger-per-tick rate for every creature of this species. 1 for a
-    // human, so nothing about a person changes; below 1 for a species that needs to run leaner
-    // through a lean season.
-    float HungerPerTickMultiplier = 1f,
     // Null for a species that never flees anyone - a human, today. Present for a species that
     // breaks off whatever it is doing the moment a living person comes within FleeDistance.
     SpeciesDefinition.FleeDefinition? Flee = null,
@@ -65,6 +59,17 @@ public sealed record SpeciesDefinition(
     // person once one is closer than FleeDistance, until the gap reaches SafeDistance, at
     // SpeedPerTick.
     public sealed record FleeDefinition(float FleeDistance, float SafeDistance, float SpeedPerTick);
+
+    // Half-width of this species' footprint for collision resolution, in metres. Required, as is
+    // the multiplier below, and required rather than defaulted: a species file that forgot either
+    // would otherwise load as a creature with no footprint or no appetite rather than fail, and
+    // System.Text.Json enforces `required` without any further annotation.
+    public required float CollisionRadius { get; init; }
+
+    // Multiplies the base hunger-per-tick rate for every creature of this species. 1 for a
+    // human, so nothing about a person changes; below 1 for a species that needs to run leaner
+    // through a lean season.
+    public required float HungerPerTickMultiplier { get; init; }
 
     // C# does not allow a collection-expression default on the primary constructor parameters
     // above, so the empty-collection normalization happens here instead.

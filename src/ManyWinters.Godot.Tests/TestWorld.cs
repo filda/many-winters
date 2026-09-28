@@ -81,6 +81,9 @@ internal static class TestWorld
     private const long DeerAdultAgeYears = 2;
     private static readonly LifeCycle DeerLifeCycle = new(WeaningAgeYears: 1, AdultAgeYears: DeerAdultAgeYears, ElderAgeYears: 6, MaxLifespanYears: 8);
 
+    private const float CollisionRadius = 0.35f;
+    private const float HungerPerTickMultiplier = 1f;
+
     // Both Apple and Berry share the "apple" material below, so this one entry keeps both edible -
     // all that is edible in this test world.
     private static readonly IReadOnlyList<SpeciesDefinition.DietEntry> HumanDiet = [new(new MaterialId("apple"), 1f)];
@@ -146,8 +149,8 @@ internal static class TestWorld
         return new WorldState(new WorldConfiguration(
             new SpeciesCatalog(
             [
-                new SpeciesDefinition(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet),
-                new SpeciesDefinition(DeerSpecies, "Deer", DeerLifeCycle, CanCarry: false),
+                new SpeciesDefinition(Person.HumanSpecies, "Human", HumanLifeCycle, HumanDiet) { CollisionRadius = CollisionRadius, HungerPerTickMultiplier = HungerPerTickMultiplier },
+                new SpeciesDefinition(DeerSpecies, "Deer", DeerLifeCycle, CanCarry: false) { CollisionRadius = CollisionRadius, HungerPerTickMultiplier = HungerPerTickMultiplier },
             ]),
             new ResourceCatalog([
                 new ResourceDefinition(AppleTree, "Apple", Foraging, Apple, CanFell: true, FellLeaves: [new(new EntityKindId("wood"), 30f)]),
