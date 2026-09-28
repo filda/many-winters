@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
+using Cake.Core.Diagnostics;
 using Cake.Frosting;
 
 namespace ManyWinters.Build;
@@ -135,9 +137,34 @@ public sealed class BuildTask : FrostingTask<BuildContext>
 [IsDependentOn(typeof(BuildTask))]
 public sealed class TestTask : FrostingTask<BuildContext>
 {
+    // Each project runs as the xunit v3 executable it is, not through `dotnet test`: only the
+    // native runner has the quiet reporter, which prints the failures and nothing else. A failing
+    // project does not stop the next one from running, so one run reports every failure.
+    //
+    // The tests run in a random order (RandomTestOrder), and the quiet reporter does not print the
+    // seed it drew, so the seed is drawn here and printed instead: `--seed=N` replays that order.
     public override void Run(BuildContext context)
     {
-        BuildProcess.Run(context, "dotnet", "test", context.SolutionPath, "--no-build", "--configuration", context.BuildConfiguration, "--verbosity", "normal");
+        var seed = context.TestOrderSeed ?? Random.Shared.Next().ToString(CultureInfo.InvariantCulture);
+        context.Log.Information(Verbosity.Normal, "Test order seed: {0} (replay with --seed={0})", seed);
+
+        var failed = new List<string>();
+        foreach (var project in context.UnitTestProjectPaths)
+        {
+            try
+            {
+                BuildProcess.Run(context, "dotnet", "run", "--project", project, "--no-build", "--configuration", context.BuildConfiguration, "--", ":" + seed, "-reporter", "quiet");
+            }
+            catch (InvalidOperationException)
+            {
+                failed.Add(Path.GetFileNameWithoutExtension(project));
+            }
+        }
+
+        if (failed.Count > 0)
+        {
+            throw new InvalidOperationException("Tests failed in " + string.Join(", ", failed) + ".");
+        }
     }
 }
 

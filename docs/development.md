@@ -84,6 +84,8 @@ dotnet run --project src/ManyWinters.Tools/SimulationRunner
 dotnet test
 ```
 
+The unit tests run in a random order, drawn afresh every run (`RandomTestOrder` in `ManyWinters.Tests/TestSupport`, linked into `ManyWinters.Godot.Tests`), so a test that leans on state another one left behind fails sooner or later instead of passing by luck. The `Test` target prints the seed it ran with and prints only failures; `--target=Test --seed=N` replays that exact order.
+
 Every run of the tool starts a fresh, empty world — nothing persists between separate invocations unless you explicitly `save`/`load` it. The world runs on the same content the game ships with, loaded from `src/ManyWinters.Godot/Content` relative to the working directory (so run it from the repository root, or point it elsewhere with `--content <dir>` as the first argument). Chain as many commands as you want into a single invocation, unquoted:
 
 ```powershell

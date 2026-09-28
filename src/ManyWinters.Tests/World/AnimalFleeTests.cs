@@ -107,9 +107,11 @@ public class AnimalFleeTests
         // calf runs off well past it, so the calf's long walk back is not chasing a mother
         // who may have wandered off just as far in some other direction.
         var home = NewHome(new Position(0, 0), radius: 2f);
-        var mother = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0, 0), home, TestCatalogs.AdultAgeTicks, Sex.Female);
+        // Pinned ids: the idle wander runs on the id's seed, and a fresh Guid each run let the
+        // mother now and then trail the fleeing calf so closely that it never left her reach.
+        var mother = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0, 0), home, TestCatalogs.AdultAgeTicks, Sex.Female, id: TestIds.Animal(1));
         // At the mother's nursing reach (2, exactly SimulationRules.MaxInteractionDistance).
-        var calf = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(2, 0), home, initialAgeTicks: 0, sex: Sex.Male, mother: mother);
+        var calf = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(2, 0), home, initialAgeTicks: 0, sex: Sex.Male, mother: mother, id: TestIds.Animal(2));
         Assert.True(world.IsBeingNursed(calf));
 
         // Close enough to the calf to send it fleeing (distance 7 < FleeDistance 8) but far enough
@@ -119,14 +121,18 @@ public class AnimalFleeTests
         world.Advance(1);
         Assert.IsType<FleeTask>(calf.Tasks.Current);
 
+        // Nursed again at any tick after losing it, not at one fixed tick: the walk back ends
+        // when it ends, and a snapshot at tick 100 could catch the calf a step short.
         var wasEverUnnursed = false;
+        var wasNursedAgain = false;
         for (var i = 0; i < 100; i++)
         {
             world.Advance(1);
             wasEverUnnursed |= !world.IsBeingNursed(calf);
+            wasNursedAgain |= wasEverUnnursed && world.IsBeingNursed(calf);
         }
 
         Assert.True(wasEverUnnursed, "expected the calf to lose nursing reach while it fled");
-        Assert.True(world.IsBeingNursed(calf), "expected the calf to be nursed again once it walked back to its mother");
+        Assert.True(wasNursedAgain, "expected the calf to be nursed again once it walked back to its mother");
     }
 }

@@ -69,16 +69,19 @@ public static class WorldStateSpawnExtensions
         HomeRange? home = null,
         long initialAgeTicks = 0,
         Sex? sex = null,
-        Animal? mother = null)
+        Animal? mother = null,
+        // Null (the default) draws a fresh one; a test whose outcome runs on the id's seed (the
+        // idle wander, say) pins it, or the outcome changes from run to run.
+        CreatureId? id = null)
     {
-        var id = CreatureId.New();
+        id ??= CreatureId.New();
         home ??= new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f };
         world.Execute(new SpawnAnimalCommand(
-            id,
+            id.Value,
             species,
             position,
             home,
-            sex ?? Creature.SexOf(id),
+            sex ?? Creature.SexOf(id.Value),
             world.Clock.CurrentTick - initialAgeTicks,
             mother));
 

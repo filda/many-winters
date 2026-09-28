@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\ManyWinters.Tests\TestSupport\RandomTestOrder.cs" Link="TestSupport\RandomTestOrder.cs" />
+    <Compile Include="..\ManyWinters.Tests\TestSupport\RandomTestOrderTests.cs" Link="TestSupport\RandomTestOrderTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ManyWinters.Godot\ManyWinters.Godot.csproj" />
   </ItemGroup>
 
