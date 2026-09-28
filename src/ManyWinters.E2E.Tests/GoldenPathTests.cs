@@ -189,6 +189,11 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
             menu = _game.WaitForGameLog("Menu This spot", TimeSpan.FromSeconds(4));
         }
 
+        if (menu is null)
+        {
+            _game.SaveDebugShot("building-no-menu"); // what the second right-click left on screen
+        }
+
         Assert.NotNull(menu);
         GameFixture.Settle(400);
         _game.SaveDebugShot("building-menu");

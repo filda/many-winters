@@ -35,8 +35,26 @@ public sealed class GameFixture : IAsyncLifetime
     public ValueTask DisposeAsync()
     {
         _window?.Dispose();
+        KeepGameLog();
         AssertBootLogHasNoScriptError();
         return ValueTask.CompletedTask;
+    }
+
+    // The next launch rotates godot.log away, and on CI the machine is gone with it: a failed
+    // wait says only that a line never came, while the log says what came instead. Kept beside
+    // the debug frames, which CI uploads on failure; one file per launch, named by when it ended.
+    private static void KeepGameLog()
+    {
+        var path = GameLogPath();
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        var directory = Path.Combine(FindRepoRoot(), "artifacts", "e2e-debug");
+        Directory.CreateDirectory(directory);
+        var name = $"godot-{DateTime.UtcNow.ToString("HHmmss-fff", CultureInfo.InvariantCulture)}.log";
+        File.Copy(path, Path.Combine(directory, name), overwrite: true);
     }
 
     // The whole run's log, not the per-test offset: a script error at boot (building a view for
