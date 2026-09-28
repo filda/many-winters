@@ -75,7 +75,7 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
         // one, and only a good one leaves the edge keener for it.
         var worn = edge with { Volume = edge.Volume * (1f - world.Configuration.Rules.VolumeLostPerSharpening) };
         var reworked = WorkAttempt.Succeeds(Person, Skill, Verb, world.Clock.CurrentTick)
-            ? worn with { Quality = Math.Max(edge.Quality, WorkAttempt.QualityFor(Person, Skill)) }
+            ? worn with { Quality = Math.Max(edge.Quality, WorkAttempt.Practised(Person, Skill)) }
             : worn;
 
         Person.Inventory.RemoveAssembly(Thing);

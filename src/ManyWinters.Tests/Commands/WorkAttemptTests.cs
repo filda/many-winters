@@ -29,7 +29,7 @@ public class WorkAttemptTests
     {
         var world = TestCatalogs.CreateWorld();
 
-        Assert.True(WorkAttempt.ChanceFor(Somebody(world), Skill) > 0f);
+        Assert.True(WorkAttempt.Practised(Somebody(world), Skill) > 0f);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class WorkAttemptTests
         var person = Somebody(world);
         Practise(person, 50);
 
-        Assert.Equal(1f, WorkAttempt.ChanceFor(person, Skill), 5);
+        Assert.Equal(1f, WorkAttempt.Practised(person, Skill), 5);
     }
 
     [Fact]
@@ -50,8 +50,8 @@ public class WorkAttemptTests
         var middling = Somebody(world, "Bran");
         Practise(middling, 10);
 
-        Assert.True(WorkAttempt.ChanceFor(middling, Skill) > WorkAttempt.ChanceFor(beginner, Skill));
-        Assert.True(WorkAttempt.ChanceFor(middling, Skill) < 1f);
+        Assert.True(WorkAttempt.Practised(middling, Skill) > WorkAttempt.Practised(beginner, Skill));
+        Assert.True(WorkAttempt.Practised(middling, Skill) < 1f);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class WorkAttemptTests
         var person = Somebody(world);
         Practise(person, 5000);
 
-        Assert.Equal(1f, WorkAttempt.ChanceFor(person, Skill), 5);
+        Assert.Equal(1f, WorkAttempt.Practised(person, Skill), 5);
     }
 
     // Deterministic from the person, the verb and the tick, like every other roll in the game -
@@ -126,7 +126,7 @@ public class WorkAttemptTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = Somebody(world);
-        var chance = WorkAttempt.ChanceFor(person, Skill);
+        var chance = WorkAttempt.Practised(person, Skill);
 
         var wins = Enumerable.Range(0, 2000).Count(tick => WorkAttempt.Succeeds(person, Skill, Verb, tick));
 

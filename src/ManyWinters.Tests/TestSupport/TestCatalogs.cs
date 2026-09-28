@@ -531,7 +531,7 @@ public static class TestCatalogs
 
     // The shipped axe-grade sharp hafted tool HuntCommand's arithmetic is pinned against
     // (SimulationRules.HuntingHitChancePerToolScore): a knapped wedge lashed to a stick, both
-    // practised to mastery (WorkAttempt.QualityFor is 1 at Skills.LevelAfter(50)). Built directly
+    // practised to mastery (WorkAttempt.Practised is 1 at Skills.LevelAfter(50)). Built directly
     // from the parts rather than by executing Knap/Twist/Bind, so a test can pin its exact
     // chopping score without depending on those commands' own dice.
     //

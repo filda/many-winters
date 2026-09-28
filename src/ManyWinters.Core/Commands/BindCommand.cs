@@ -87,7 +87,7 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
             ? world.Configuration.FormCatalog.Find(part.Form)?.LashingStrength ?? 0f
             : 0f;
 
-        return lashing * binding.Durability(world.Configuration.MaterialCatalog) * WorkAttempt.QualityFor(Person, Skill);
+        return lashing * binding.Durability(world.Configuration.MaterialCatalog) * WorkAttempt.Practised(Person, Skill);
     }
 
     private IEnumerable<MaterialId> MaterialsWorked(WorldState world, Assembly binding) =>

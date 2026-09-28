@@ -86,7 +86,7 @@ internal sealed record ReductiveWork(
                 person.Inventory.AddAssembly(new Assembly.Part(
                     definition.Material,
                     transition.Form,
-                    WorkAttempt.QualityFor(person, Skill),
+                    WorkAttempt.Practised(person, Skill),
                     definition.Volume * transition.InputAmount)
                 {
                     MadeTick = world.Clock.CurrentTick,

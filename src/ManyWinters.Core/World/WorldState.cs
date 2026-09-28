@@ -829,7 +829,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     // disagree, and reality settles it when somebody next works the stuff.
     private static float Distorted(float told, Person teller, Person listener, MaterialId material, MaterialProperty property, long currentTick, SimulationRules rules)
     {
-        var fidelity = WorkAttempt.QualityFor(teller, TeachCommand.TeachingSkill);
+        var fidelity = WorkAttempt.Practised(teller, TeachCommand.TeachingSkill);
         var reach = rules.HearsayDistortion * (1f - fidelity);
         if (reach <= 0f)
         {

@@ -36,10 +36,6 @@ public static class WorkAttempt
         }
     }
 
-    public static float ChanceFor(Person person, SkillTypeId skill) => Practised(person, skill);
-
-    public static float QualityFor(Person person, SkillTypeId skill) => Practised(person, skill);
-
     // Deterministic from the person's seed, the verb and the tick - never a shared Random, as
     // every other roll in the game is. The tick is in the mix so a second try is a second roll,
     // not the same one again; that's also why an attempt costs time, or a player could stand at
@@ -50,13 +46,12 @@ public static class WorkAttempt
 
         // Stryker disable once Equality: NextDouble() returning exactly the chance has
         // probability zero, so < and <= are the same roll
-        return new Random(SeedHash.Avalanche(mixed)).NextDouble() < ChanceFor(person, skill);
+        return new Random(SeedHash.Avalanche(mixed)).NextDouble() < Practised(person, skill);
     }
 
-    private static float Practised(Person person, SkillTypeId skill)
+    public static float Practised(Person person, SkillTypeId skill)
     {
         var mastery = Math.Clamp(person.Skills.Get(skill) / MasteryLevel, 0f, 1f);
-
         return NoviceShare + ((1f - NoviceShare) * mastery);
     }
 

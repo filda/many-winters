@@ -148,7 +148,7 @@ public class TwistCommandTests
         var person = Twister(world);
         Practise(person, times: 5000);
 
-        Assert.Equal(1f, WorkAttempt.QualityFor(person, TwistCommand.Skill), 5);
+        Assert.Equal(1f, WorkAttempt.Practised(person, TwistCommand.Skill), 5);
     }
 
     // A spoiled attempt still costs the material and still teaches - both happen regardless of the roll.
