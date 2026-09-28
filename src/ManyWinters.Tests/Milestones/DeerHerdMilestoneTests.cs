@@ -114,7 +114,7 @@ public class DeerHerdMilestoneTests
         Assert.Equal(herd.Count, world.Animals.Count);
     }
 
-    // Two fixes keep the herd from dying out: WorldState.FindNearestGatherableEntity no longer
+    // Two fixes keep the herd from dying out: IdleDecision.FindNearestGatherableEntity no longer
     // sends a whole herd at the single node nearest its shared anchor, and its in-home tier now
     // only counts a node that can still give a full harvest (GatherCommand.WouldYieldAFullHarvest)
     // rather than any sliver above zero. MapLoader.SpawnAnimalHerds also places a herd where the

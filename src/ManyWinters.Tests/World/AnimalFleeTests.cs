@@ -79,7 +79,7 @@ public class AnimalFleeTests
         Assert.IsNotType<FleeTask>(person.Tasks.Current);
     }
 
-    // The same threat does not restart the task every tick (WorldState.KeepsCurrentTask) - proven
+    // The same threat does not restart the task every tick (IdleDecision.KeepsCurrentTask) - proven
     // by reference identity of the FleeTask instance across several ticks while the threat stays
     // in range the whole time.
     [Fact]

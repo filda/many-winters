@@ -14,7 +14,7 @@ public sealed record ButcherCommand(Person Butcher, Animal Carcass) : ICommand
 {
     public static readonly SkillTypeId Skill = new("butchering");
 
-    // Public: HuntCommand and WorldState.DecideIdleTask both ask "does this carcass hold meat"
+    // Public: HuntCommand and the idle AI's food search both ask "does this carcass hold meat"
     // without needing a second, private copy of the id.
     public static readonly ItemKindId Meat = new("meat");
     // Raw off the animal, not the tanned hide warm_clothing is made from - only rawhide spoils;

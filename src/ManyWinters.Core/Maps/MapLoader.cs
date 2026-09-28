@@ -366,7 +366,7 @@ public static class MapLoader
         var positions = new List<Position>();
 
         // The band has a home too: one shared, non-drifting HomeRange at this camp, at the
-        // radius people already wandered within, so IdleTask and DecideIdleTask's food search
+        // radius people already wandered within, so IdleTask and the idle AI's food search
         // need no new logic - the Home-aware paths already built for Animal just apply. A camp
         // doesn't wander the way a herd's ground does (DriftMetresPerSeason 0); a band's
         // migration would be a deliberate decision, not a drift. A fresh HomeRange every call, so

@@ -13,7 +13,7 @@ public class HuntTaskTests
     private const float Range = 10f;
 
     // Most tests here are about the walk itself, not about which speed installed it, so they all
-    // share the idle AI's unhurried pace (WorldState.DecideIdleTask) unless the test says
+    // share the idle AI's unhurried pace (IdleDecision.DecideIdleTask) unless the test says
     // otherwise.
     private const float IdleSpeed = GatherTask.SpeedPerTick;
 
@@ -56,7 +56,7 @@ public class HuntTaskTests
 
     // The bug this constructor parameter fixes: a player-directed hunt (TargetActions,
     // MoveCommand.SpeedPerTick) has to close the gap faster than the autonomous idle AI's
-    // unhurried pace (WorldState.DecideIdleTask, GatherTask.SpeedPerTick) - both used to
+    // unhurried pace (IdleDecision.DecideIdleTask, GatherTask.SpeedPerTick) - both used to
     // hard-code the slower one regardless of who sent the hunter.
     [Fact]
     public void ADirectedHuntClosesTheDistanceFasterThanAnIdleOne()

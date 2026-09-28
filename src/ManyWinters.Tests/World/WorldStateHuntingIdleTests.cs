@@ -5,7 +5,7 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// WorldState.DecideIdleTask's hunting/butchering branch: tried after the existing "seek food
+// The idle AI's hunting/butchering branch (IdleDecision): tried after the existing "seek food
 // when hungry" node/pile search comes up empty, and only while hungry - hunting is not busywork
 // for an idle, fed person, and a hungry butcher is sent to a carcass already on the ground
 // before a hunter is sent after a live one.
@@ -20,7 +20,7 @@ public class WorldStateHuntingIdleTests
     private static Person NewPerson(WorldState world, Position position, bool huntingKnown = false, bool butcheringKnown = false, float hunger = 0f)
     {
         var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        // NeedsToSeekFoodUrgently gates on knowing how to eat at all (WorldState.KnowsHowToEat) -
+        // NeedsToSeekFoodUrgently gates on knowing how to eat at all (IdleDecision.KnowsHowToEat) -
         // without it, hunger alone never opens the "seek food" branch these tests are about.
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         if (huntingKnown)

@@ -44,7 +44,7 @@ public class SpeciesDefinitionTests
     }
 
     // A species with no opinion never flees, which is what keeps a human out of
-    // WorldState.DecideIdleTask's flee check entirely.
+    // IdleDecision.DecideIdleTask's flee check entirely.
     [Fact]
     public void FleeDefaultsToNull()
     {

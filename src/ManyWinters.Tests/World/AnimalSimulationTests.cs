@@ -162,7 +162,7 @@ public class AnimalSimulationTests
         Assert.IsType<GatherTask>(deer.Tasks.Current);
     }
 
-    // WorldState.FindNearestGatherableEntity's in-home tier only counts a node that would still
+    // IdleDecision.FindNearestGatherableEntity's in-home tier only counts a node that would still
     // give this deer a full harvest (GatherCommand.WouldYieldAFullHarvest) - a node down to a
     // sliver still passes IsWorthGathering's plain "more than zero left", so without this a herd
     // would nibble its barely-regrown home tuft at regen speed forever rather than falling
@@ -191,7 +191,7 @@ public class AnimalSimulationTests
         Assert.Same(fullOutsideHome, gatherTask.Target);
     }
 
-    // WorldState.FindNearestGatherableEntity picks nearest-to-itself among nodes bounded by the
+    // IdleDecision.FindNearestGatherableEntity picks nearest-to-itself among nodes bounded by the
     // shared Home, not nearest-to-the-shared-anchor - the earlier anchor-centred search sent every
     // member of a herd at the single node nearest that one point, which starved the shipped map's
     // herds even with plenty of grass in aggregate.
