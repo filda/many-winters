@@ -18,9 +18,6 @@ public sealed class ButcherTask(
     float approachFractionOfReach
     ) : CreatureTask
 {
-    // Stop short of the carcass rather than on it, the same standoff GatherTask uses.
-    private const float ApproachFractionOfReach = 0.6f;
-
     private Position? _approachPosition;
     private MoveTask? _move;
 
