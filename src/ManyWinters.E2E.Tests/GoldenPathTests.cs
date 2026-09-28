@@ -97,10 +97,7 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
 
         Assert.NotNull(gathered);
 
-        for (var i = 0; i < GatherTicks; i++)
-        {
-            _game.AdvanceOneTick();
-        }
+        Assert.True(_game.AdvanceTicks(GatherTicks, TimeSpan.FromSeconds(30)));
 
         GameFixture.Settle(800); // the last tick's frame, not the one before it
 
@@ -171,10 +168,7 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
 
         Assert.NotNull(gathered);
 
-        for (var i = 0; i < GatherTicks; i++)
-        {
-            _game.AdvanceOneTick();
-        }
+        Assert.True(_game.AdvanceTicks(GatherTicks, TimeSpan.FromSeconds(30)));
 
         GameFixture.Settle(800);
 

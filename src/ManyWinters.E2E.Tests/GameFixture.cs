@@ -99,6 +99,33 @@ public sealed class GameFixture : IAsyncLifetime
     /// key is ignored.</summary>
     public void AdvanceOneTick() => KeyPress(VkF12);
 
+    /// <summary>Steps the held clock <paramref name="count"/> ticks and waits until the game's log
+    /// shows every one of them resolved - false once <paramref name="timeout"/> has passed. The
+    /// keys are posted far faster than a slow machine ticks: on CI thirty steps have taken ten
+    /// seconds to drain, and any click posted meanwhile queues behind them and lands long after
+    /// its own wait gave up. Peeks rather than advancing the offset, because lines printed by the
+    /// ticks themselves (a view created, an order resolved) are still for later waits to find.</summary>
+    public bool AdvanceTicks(int count, TimeSpan timeout)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            AdvanceOneTick();
+        }
+
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (Regex.Matches(ReadUnread(), @"^Tick \d+:", RegexOptions.Multiline).Count >= count)
+            {
+                return true;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return false;
+    }
+
     /// <summary>Presses a key down and holds it until the game's log gains a line containing
     /// <paramref name="text"/>, then releases it - returning that line, or null once
     /// <paramref name="timeout"/> has passed. The release always happens, timeout or not. A
@@ -190,21 +217,25 @@ public sealed class GameFixture : IAsyncLifetime
     /// them in the unread tail is harmless and more than one anchor can each be read once.</summary>
     public (int X, int Y)? ReadAnchor(string kind)
     {
+        var match = Regex.Match(ReadUnread(), $@"E2E anchor {Regex.Escape(kind)} (\d+) (\d+)");
+        return match.Success
+            ? (int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture))
+            : null;
+    }
+
+    // The log from the current offset on, without moving it.
+    private string ReadUnread()
+    {
         var path = GameLogPath();
         if (!File.Exists(path))
         {
-            return null;
+            return string.Empty;
         }
 
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         stream.Seek(_gameLogOffset, SeekOrigin.Begin);
         using var reader = new StreamReader(stream);
-        var rest = reader.ReadToEnd();
-
-        var match = Regex.Match(rest, $@"E2E anchor {Regex.Escape(kind)} (\d+) (\d+)");
-        return match.Success
-            ? (int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture))
-            : null;
+        return reader.ReadToEnd();
     }
 
     private static string GameLogPath() => Path.Combine(
