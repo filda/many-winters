@@ -10,44 +10,6 @@ public class PrologueTests
 {
     private const int ManySeeds = 200;
 
-    private static Person Eldest(string name = "Liska", Sex sex = Sex.Female, int idSeed = 1) =>
-        new()
-        {
-            Id = TestIds.Person(idSeed),
-            Name = name,
-            BirthTick = -2700,
-            Mother = Person.Unknown,
-            Father = Person.Unknown,
-            Sex = sex,
-            Home = TestPeople.AnyHome,
-        };
-
-    private static BandArrival Arrival(
-        Person? eldest = null,
-        Season season = Season.Spring,
-        int people = 15,
-        int men = 6,
-        int women = 6,
-        int children = 3,
-        int eldestWinters = 9,
-        bool knowsAnything = false) =>
-        new()
-        {
-            BandName = "Liska's people",
-            Season = season,
-            ArrivalTick = 0,
-            People = people,
-            Men = men,
-            Women = women,
-            Children = children,
-            Eldest = eldest ?? Eldest(),
-            EldestWinters = eldestWinters,
-            KnowsAnything = knowsAnything,
-        };
-
-    private static IEnumerable<Inscription> OverManyBands(Func<Person, BandArrival> arrival, Sex sex = Sex.Female) =>
-        Enumerable.Range(1, ManySeeds).Select(seed => Prologue.Write(arrival(Eldest(sex: sex, idSeed: seed))));
-
     [Fact]
     public void TheShippedBandsPrologueIsWrittenInFull()
     {
@@ -198,4 +160,42 @@ public class PrologueTests
             ],
             closings);
     }
+
+    private static Person Eldest(string name = "Liska", Sex sex = Sex.Female, int idSeed = 1) =>
+        new()
+        {
+            Id = TestIds.Person(idSeed),
+            Name = name,
+            BirthTick = -2700,
+            Mother = Person.Unknown,
+            Father = Person.Unknown,
+            Sex = sex,
+            Home = TestPeople.AnyHome,
+        };
+
+    private static BandArrival Arrival(
+        Person? eldest = null,
+        Season season = Season.Spring,
+        int people = 15,
+        int men = 6,
+        int women = 6,
+        int children = 3,
+        int eldestWinters = 9,
+        bool knowsAnything = false) =>
+        new()
+        {
+            BandName = "Liska's people",
+            Season = season,
+            ArrivalTick = 0,
+            People = people,
+            Men = men,
+            Women = women,
+            Children = children,
+            Eldest = eldest ?? Eldest(),
+            EldestWinters = eldestWinters,
+            KnowsAnything = knowsAnything,
+        };
+
+    private static IEnumerable<Inscription> OverManyBands(Func<Person, BandArrival> arrival, Sex sex = Sex.Female) =>
+        Enumerable.Range(1, ManySeeds).Select(seed => Prologue.Write(arrival(Eldest(sex: sex, idSeed: seed))));
 }

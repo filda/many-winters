@@ -44,11 +44,6 @@ public static class CreakModel
     // whole tree flexing, not one point of contact.
     private const float TrunkBaseHz = 220.0f;
     private const float TrunkSizeScale = 2.0f;
-
-    // Irregular and few - a handful of trunk modes, not the dense crowd ImpactModel needs to fake
-    // a solid from a single impulse. The sawtooth already supplies its own dense harmonic series;
-    // the bank only has to give it a body to ring inside.
-    private static readonly float[] ModeRatios = [1.00f, 1.34f, 1.87f, 2.58f, 3.41f, 4.36f];
     private const float ModeDetuneRange = 0.06f;
     private const float ModeGainRollOffExponent = 0.3f;
     // Short. At a tenth of a second the bank still rings between slips and the whole thing sings
@@ -72,6 +67,11 @@ public static class CreakModel
 
     private const float TargetRms = 0.2f;
     private const float TargetPeak = 0.9f;
+
+    // Irregular and few - a handful of trunk modes, not the dense crowd ImpactModel needs to fake
+    // a solid from a single impulse. The sawtooth already supplies its own dense harmonic series;
+    // the bank only has to give it a body to ring inside.
+    private static readonly float[] ModeRatios = [1.00f, 1.34f, 1.87f, 2.58f, 3.41f, 4.36f];
 
     public static float[] Render(Creak creak, float durationSeconds, int sampleRate, int seed)
     {

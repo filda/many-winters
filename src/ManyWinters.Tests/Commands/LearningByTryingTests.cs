@@ -17,31 +17,6 @@ public class LearningByTryingTests
     private static readonly MaterialId WoodMaterial = new("wood");
     private static readonly MaterialId StoneMaterial = new("stone");
 
-    // Nothing comes of merely carrying things here, so what a person ends up understanding, they
-    // understood by working it.
-    private static WorldState WorldWhereCarryingTeachesNothing() =>
-        new(TestCatalogs.CreateConfiguration() with
-        {
-            Rules = SimulationRules.Default with { MaterialUnderstandingPerTick = 0f },
-        });
-
-    private static Person Twister(WorldState world)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
-        person.Inventory.Add(TestCatalogs.GrassItem, TestCatalogs.GrassPerCord);
-
-        return person;
-    }
-
-    private static void Practise(Person person, SkillTypeId skill)
-    {
-        for (var i = 0; i < 50; i++)
-        {
-            person.Skills.Increase(skill, 1f);
-        }
-    }
-
     [Fact]
     public void WorkingSomethingTeachesWhatItIs()
     {
@@ -142,5 +117,30 @@ public class LearningByTryingTests
         world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
 
         Assert.True(person.Beliefs.HoldsAnythingAbout(PlantFibre));
+    }
+
+    // Nothing comes of merely carrying things here, so what a person ends up understanding, they
+    // understood by working it.
+    private static WorldState WorldWhereCarryingTeachesNothing() =>
+        new(TestCatalogs.CreateConfiguration() with
+        {
+            Rules = SimulationRules.Default with { MaterialUnderstandingPerTick = 0f },
+        });
+
+    private static Person Twister(WorldState world)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
+        person.Inventory.Add(TestCatalogs.GrassItem, TestCatalogs.GrassPerCord);
+
+        return person;
+    }
+
+    private static void Practise(Person person, SkillTypeId skill)
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            person.Skills.Increase(skill, 1f);
+        }
     }
 }

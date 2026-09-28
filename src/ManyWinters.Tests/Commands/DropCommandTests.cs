@@ -84,23 +84,6 @@ public class DropCommandTests
         Assert.Equal(ActionBlocker.MissingMaterials, new DropCommand(person, new CarriedThing.Stock(TestCatalogs.WoodItem, 3)).Blocker(world));
     }
 
-    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
-
-    private static Assembly.Joined Axe() =>
-        new(
-            0.8f,
-            0.5f,
-            new Assembly.Part(new MaterialId("stone"), TestCatalogs.Wedge, 1f, 1f),
-            new Assembly.Part(new MaterialId("wood"), new FormId("stick"), 1f, 2f));
-
-    private static Person Carrying(WorldState world, Assembly thing, Position? at = null)
-    {
-        var person = world.SpawnPerson("Ava", at ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.Inventory.AddAssembly(thing);
-
-        return person;
-    }
-
     [Fact]
     public void PuttingSomethingDownLeavesItWhereThePersonIsStanding()
     {
@@ -211,5 +194,22 @@ public class DropCommandTests
 
         Assert.Equal(cord, Assert.Single(bran.Inventory.Assemblies));
         Assert.Empty(ava.Inventory.Assemblies);
+    }
+
+    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
+
+    private static Assembly.Joined Axe() =>
+        new(
+            0.8f,
+            0.5f,
+            new Assembly.Part(new MaterialId("stone"), TestCatalogs.Wedge, 1f, 1f),
+            new Assembly.Part(new MaterialId("wood"), new FormId("stick"), 1f, 2f));
+
+    private static Person Carrying(WorldState world, Assembly thing, Position? at = null)
+    {
+        var person = world.SpawnPerson("Ava", at ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.Inventory.AddAssembly(thing);
+
+        return person;
     }
 }

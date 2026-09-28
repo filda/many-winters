@@ -8,14 +8,6 @@ public class ExplorationMasksTests
     // 8 texels across a 20m map: one texel per 2.5m exploration cell.
     private static readonly TexelGrid Grid = new(Size: 8, HalfExtentMeters: 10f);
 
-    private static RevealableExploration WithSightAt(params Position[] sources)
-    {
-        var state = new ExplorationState();
-        state.Update(sources);
-
-        return new RevealableExploration(state);
-    }
-
     [Fact]
     public void GroundNobodyHasSeenIsUnknownAndNothingElse()
     {
@@ -117,5 +109,13 @@ public class ExplorationMasksTests
         Assert.Equal(Grid.Size, masks.Unexplored.GetLength(1));
         Assert.Equal(Grid.Size, masks.Remembered.GetLength(0));
         Assert.Equal(Grid.Size, masks.Explored.GetLength(0));
+    }
+
+    private static RevealableExploration WithSightAt(params Position[] sources)
+    {
+        var state = new ExplorationState();
+        state.Update(sources);
+
+        return new RevealableExploration(state);
     }
 }

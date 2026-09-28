@@ -54,21 +54,6 @@ public sealed partial class FreeCameraRig : Node3D
     private bool _mouseRotating;
     private Vector3 _panVelocity = Vector3.Zero;
 
-    public Vector3 CameraGlobalPosition => _camera.GlobalPosition;
-
-    // The orbit/pan target - Main's fallback line-of-sight target for the occlusion fade when
-    // nothing is selected.
-    public Vector3 RigGlobalPosition => GlobalPosition;
-
-    // For screen-space projection (Main's selection marker, click radius) - UnprojectPosition and
-    // IsPositionBehind are not exposed any other way.
-    public Camera3D Camera => _camera;
-
-    // How far from RigGlobalPosition a decoration is still worth building a node for. Tracks the
-    // current zoom, not a fixed world distance, so zooming out to see the whole map keeps
-    // everything in it, not just a fixed radius around the rig.
-    public float ViewRadius => (_isOrthographic ? _orthographicSize : _zoomDistance) * ViewRadiusMultiplier;
-
     // sampleHeight: the same ground-height function everything else on the ground uses. Panning
     // only moves the rig in XZ, so without it the rig's Y stays frozen where it started and the
     // camera ends up under a nearby bump after panning.
@@ -91,6 +76,21 @@ public sealed partial class FreeCameraRig : Node3D
         _camera = new Camera3D { Far = 5000f, Near = 0.5f, CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit };
         AddChild(_camera);
     }
+
+    public Vector3 CameraGlobalPosition => _camera.GlobalPosition;
+
+    // The orbit/pan target - Main's fallback line-of-sight target for the occlusion fade when
+    // nothing is selected.
+    public Vector3 RigGlobalPosition => GlobalPosition;
+
+    // For screen-space projection (Main's selection marker, click radius) - UnprojectPosition and
+    // IsPositionBehind are not exposed any other way.
+    public Camera3D Camera => _camera;
+
+    // How far from RigGlobalPosition a decoration is still worth building a node for. Tracks the
+    // current zoom, not a fixed world distance, so zooming out to see the whole map keeps
+    // everything in it, not just a fixed radius around the rig.
+    public float ViewRadius => (_isOrthographic ? _orthographicSize : _zoomDistance) * ViewRadiusMultiplier;
 
     // UpdateCamera reads GlobalPosition and calls LookAt, both of which need this node inside the
     // tree - not yet true during the constructor, since composition code adds this rig to the

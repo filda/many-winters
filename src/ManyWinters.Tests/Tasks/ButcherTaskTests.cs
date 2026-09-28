@@ -9,28 +9,13 @@ namespace ManyWinters.Tests.Tasks;
 // where it fell, it does not move.
 public class ButcherTaskTests
 {
-    private static readonly Position CarcassPosition = new(10, 10);
-
-    private static readonly float Reach = SimulationRules.Default.PileReachDistance;
-
     // Most tests here are about the walk itself, not about which speed installed it, so they all
     // share the idle AI's unhurried pace unless the test says otherwise.
     private const float IdleSpeed = 0.3f;
 
-    private static Person NewButcher(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+    private static readonly Position CarcassPosition = new(10, 10);
 
-    private static Animal NewCarcass() =>
-        new(TestCatalogs.DeerSpeciesId, new HomeRange(CarcassPosition) { Radius = 10f, DriftMetresPerSeason = 0f })
-        {
-            BirthTick = 0,
-            Sex = Sex.Female,
-            Position = CarcassPosition,
-            IsAlive = false,
-        };
-
-    private static ButcherTask NewTask(float? reach = null, Animal? carcass = null, float speedPerTick = IdleSpeed) =>
-        new(carcass ?? NewCarcass(), reach ?? Reach, speedPerTick, 0.6f);
+    private static readonly float Reach = SimulationRules.Default.PileReachDistance;
 
     [Fact]
     public void IsNeverComplete()
@@ -106,4 +91,19 @@ public class ButcherTaskTests
 
         Assert.Equal(start, butcher.Position);
     }
+
+    private static Person NewButcher(Position position) =>
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+
+    private static Animal NewCarcass() =>
+        new(TestCatalogs.DeerSpeciesId, new HomeRange(CarcassPosition) { Radius = 10f, DriftMetresPerSeason = 0f })
+        {
+            BirthTick = 0,
+            Sex = Sex.Female,
+            Position = CarcassPosition,
+            IsAlive = false,
+        };
+
+    private static ButcherTask NewTask(float? reach = null, Animal? carcass = null, float speedPerTick = IdleSpeed) =>
+        new(carcass ?? NewCarcass(), reach ?? Reach, speedPerTick, 0.6f);
 }

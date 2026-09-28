@@ -7,20 +7,12 @@ namespace ManyWinters.Godot.Tests;
 // points from the scene toward the viewer, so a camera looking down -Z has a backward axis of +Z.
 public class BillboardUvTests
 {
-    private static readonly Vector3 SpriteCenter = Vector3.Zero;
     private const float Width = 2f;
     private const float Height = 4f;
     private const float HalfWidth = Width / 2f;
     private const float HalfHeight = Height / 2f;
 
-    // A perpendicular ray from ten metres out, aimed at `aim`.
-    private static Vector2? UvOfRayThrough(Vector3 aim, Vector3 cameraBackward, bool flipH = false) =>
-        UvOfRayFrom(aim + (cameraBackward.Normalized() * 10f), aim, cameraBackward, flipH);
-
-    // An oblique ray from `eye` through `aim`. Perpendicular rays hide a wrong crossing
-    // distance, because the error then only moves the hit along the plane's normal.
-    private static Vector2? UvOfRayFrom(Vector3 eye, Vector3 aim, Vector3 cameraBackward, bool flipH = false) =>
-        BillboardUv.At(cameraBackward, eye, (aim - eye).Normalized(), SpriteCenter, Width, Height, flipH);
+    private static readonly Vector3 SpriteCenter = Vector3.Zero;
 
     [Fact]
     public void AnObliqueRayCrossesThePlaneWhereItActuallyPointsAtIt()
@@ -219,4 +211,13 @@ public class BillboardUvTests
     {
         Assert.Equal((0, 0), BillboardUv.PixelAt(new Vector2(-0.5f, -0.5f), width: 100, height: 200));
     }
+
+    // A perpendicular ray from ten metres out, aimed at `aim`.
+    private static Vector2? UvOfRayThrough(Vector3 aim, Vector3 cameraBackward, bool flipH = false) =>
+        UvOfRayFrom(aim + (cameraBackward.Normalized() * 10f), aim, cameraBackward, flipH);
+
+    // An oblique ray from `eye` through `aim`. Perpendicular rays hide a wrong crossing
+    // distance, because the error then only moves the hit along the plane's normal.
+    private static Vector2? UvOfRayFrom(Vector3 eye, Vector3 aim, Vector3 cameraBackward, bool flipH = false) =>
+        BillboardUv.At(cameraBackward, eye, (aim - eye).Normalized(), SpriteCenter, Width, Height, flipH);
 }

@@ -20,21 +20,6 @@ public class FamilyMilestoneTests
     // Spring through autumn: seasons are 75 ticks, and winter is the fourth.
     private const int TicksBeforeTheFirstWinter = 225;
 
-    private static Person SpawnAdult(WorldState world, string name, Sex sex, Position position)
-    {
-        var person = world.SpawnPerson(
-            name,
-            position,
-            initialAgeTicks: world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears,
-            sex: sex);
-
-        // Foraging and eating have to be learned; granted directly because this test is about
-        // the band's year, not how the founders learned.
-        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
-        person.KnownTechniques.Add(TestCatalogs.BasicEating);
-        return person;
-    }
-
     [Fact]
     public void ABandLeftTogetherForAYearGrows()
     {
@@ -138,5 +123,20 @@ public class FamilyMilestoneTests
         Assert.True(mother.IsAlive);
         Assert.True(child.IsAlive);
         Assert.NotEmpty(child.KnownTechniques);
+    }
+
+    private static Person SpawnAdult(WorldState world, string name, Sex sex, Position position)
+    {
+        var person = world.SpawnPerson(
+            name,
+            position,
+            initialAgeTicks: world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears,
+            sex: sex);
+
+        // Foraging and eating have to be learned; granted directly because this test is about
+        // the band's year, not how the founders learned.
+        person.KnownTechniques.Add(TestCatalogs.BasicForaging);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        return person;
     }
 }

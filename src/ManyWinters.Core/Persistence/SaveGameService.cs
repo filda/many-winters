@@ -17,6 +17,22 @@ public static class SaveGameService
         WriteIndented = true,
     };
 
+    public static void Save(WorldState world, string path)
+    {
+        var json = JsonSerializer.Serialize(ToSaveData(world), JsonOptions);
+        File.WriteAllText(path, json);
+    }
+
+    // A save carries no catalogs; the configuration turns the restored ids back into definitions.
+    public static WorldState Load(string path, WorldConfiguration configuration)
+    {
+        var json = File.ReadAllText(path);
+        var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
+            ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
+
+        return FromSaveData(data, configuration);
+    }
+
     private static SaveData ToSaveData(WorldState world)
     {
         var people = world.People.Select(ToPersonSaveData).ToList();
@@ -401,20 +417,4 @@ public static class SaveGameService
         peopleById.TryGetValue(id, out var parent)
             ? parent
             : throw new InvalidDataException($"Save refers to person {id} as a parent before (or without) saving that person.");
-
-    public static void Save(WorldState world, string path)
-    {
-        var json = JsonSerializer.Serialize(ToSaveData(world), JsonOptions);
-        File.WriteAllText(path, json);
-    }
-
-    // A save carries no catalogs; the configuration turns the restored ids back into definitions.
-    public static WorldState Load(string path, WorldConfiguration configuration)
-    {
-        var json = File.ReadAllText(path);
-        var data = JsonSerializer.Deserialize<SaveData>(json, JsonOptions)
-            ?? throw new InvalidDataException($"Save file '{path}' could not be parsed.");
-
-        return FromSaveData(data, configuration);
-    }
 }

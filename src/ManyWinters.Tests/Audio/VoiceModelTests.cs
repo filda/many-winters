@@ -6,6 +6,10 @@ public class VoiceModelTests
 {
     private const int SampleRate = 22050;
 
+    private const float LowEndCeilingHz = 220.0f;
+
+    private const float WindowSeconds = 0.02f;
+
     // Oblique on purpose: none of these sit at 0, 1 or a round number, so no formula's arithmetic
     // quietly cancels.
     private static readonly VoiceIdentity Voice = new(PitchHz: 145.0f, Tract: 0.6f, Roughness: 0.35f, Breath: 0.4f);
@@ -128,8 +132,6 @@ public class VoiceModelTests
         Assert.True(PeakToMeanRatio(samples) > PeakToMeanRatio(noise) * 2.0f);
     }
 
-    private const float LowEndCeilingHz = 220.0f;
-
     private static float LowEndFundamental(float[] samples)
     {
         var spectrum = Analysis.Fft(samples);
@@ -153,8 +155,6 @@ public class VoiceModelTests
 
         return Analysis.BinFrequency(peakBin, spectrum.Length, SampleRate);
     }
-
-    private const float WindowSeconds = 0.02f;
 
     private static float[] WindowRms(float[] samples)
     {

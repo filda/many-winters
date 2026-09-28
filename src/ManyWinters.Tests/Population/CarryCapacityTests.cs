@@ -5,15 +5,6 @@ namespace ManyWinters.Tests.Population;
 
 public class CarryCapacityTests
 {
-    private static long AgeTicksFor(long ageInYears) => SimulationRules.Default.TicksPerYear * ageInYears;
-
-    private static float MaxCarryWeightAt(long ageInYears)
-    {
-        var world = TestCatalogs.CreateWorld();
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: AgeTicksFor(ageInYears));
-        return world.MaxCarryWeightFor(person);
-    }
-
     [Fact]
     public void ANewbornCarriesOnlyAFractionOfTheAdultBaseline()
     {
@@ -60,5 +51,14 @@ public class CarryCapacityTests
     public void CapacityNeverDeclinesBelowTheElderFloorEvenPastMaxLifespan()
     {
         Assert.Equal(50f * 0.85f, MaxCarryWeightAt(ageInYears: 50));
+    }
+
+    private static long AgeTicksFor(long ageInYears) => SimulationRules.Default.TicksPerYear * ageInYears;
+
+    private static float MaxCarryWeightAt(long ageInYears)
+    {
+        var world = TestCatalogs.CreateWorld();
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: AgeTicksFor(ageInYears));
+        return world.MaxCarryWeightFor(person);
     }
 }

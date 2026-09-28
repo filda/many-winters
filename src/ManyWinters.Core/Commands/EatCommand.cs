@@ -15,21 +15,6 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
     // starve - eating (like gathering) has to be taught, not assumed.
     public static readonly SkillTypeId Skill = new("eating");
 
-    public ActionBlocker Blocker(WorldState world) =>
-        EatingBlocker(world, Actor, FoodItem, Actor.Inventory.Get(FoodItem));
-
-    public void Execute(WorldState world)
-    {
-        if (Blocker(world) is not ActionBlocker.None)
-        {
-            return;
-        }
-
-        // Unguarded: removing zero units leaves the count exactly as it was, so there is
-        // nothing for a "did we actually eat" check to save.
-        Actor.Inventory.Remove(FoodItem, Eat(world, Actor, FoodItem, Actor.Inventory.Get(FoodItem)));
-    }
-
     // Why this meal cannot happen, over `availableUnits` of `food` from wherever they come:
     // EatCommand passes what the eater carries, GatherCommand what the node would give up.
     //
@@ -107,5 +92,20 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
         }
 
         return unitsEaten;
+    }
+
+    public ActionBlocker Blocker(WorldState world) =>
+        EatingBlocker(world, Actor, FoodItem, Actor.Inventory.Get(FoodItem));
+
+    public void Execute(WorldState world)
+    {
+        if (Blocker(world) is not ActionBlocker.None)
+        {
+            return;
+        }
+
+        // Unguarded: removing zero units leaves the count exactly as it was, so there is
+        // nothing for a "did we actually eat" check to save.
+        Actor.Inventory.Remove(FoodItem, Eat(world, Actor, FoodItem, Actor.Inventory.Get(FoodItem)));
     }
 }

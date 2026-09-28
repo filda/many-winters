@@ -9,24 +9,6 @@ namespace ManyWinters.Tests.World;
 // and what happens the moment its mother is no longer there to do either.
 public class WorldStateNursingTests
 {
-    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
-
-    private static Person SpawnMother(WorldState world, Position position) =>
-        world.SpawnPerson("Sela", position, initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
-
-    private static Person SpawnInfant(WorldState world, Person mother, Position position, long ageTicks = 0) =>
-        world.SpawnPerson("Bran", position, initialAgeTicks: ageTicks, mother: mother);
-
-    // Age is read off the clock, which Advance moves before its loop runs, so a multi-tick call
-    // would age everyone to its end on the first tick. The game itself steps one tick at a time.
-    private static void AdvanceTickByTick(WorldState world, int ticks)
-    {
-        for (var i = 0; i < ticks; i++)
-        {
-            world.Advance(1);
-        }
-    }
-
     [Fact]
     public void AnInfantAtItsMothersSideDoesNotGetHungry()
     {
@@ -243,5 +225,23 @@ public class WorldStateNursingTests
         Assert.True(WorldState.Distance(mother.Position, new Position(0, 0)) > world.Configuration.Rules.MaxInteractionDistance);
         Assert.True(world.IsWithinReach(infant.Position, mother.Position));
         Assert.Equal(0f, infant.Needs.Hunger);
+    }
+
+    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
+
+    private static Person SpawnMother(WorldState world, Position position) =>
+        world.SpawnPerson("Sela", position, initialAgeTicks: AdultAgeTicks(world), sex: Sex.Female);
+
+    private static Person SpawnInfant(WorldState world, Person mother, Position position, long ageTicks = 0) =>
+        world.SpawnPerson("Bran", position, initialAgeTicks: ageTicks, mother: mother);
+
+    // Age is read off the clock, which Advance moves before its loop runs, so a multi-tick call
+    // would age everyone to its end on the first tick. The game itself steps one tick at a time.
+    private static void AdvanceTickByTick(WorldState world, int ticks)
+    {
+        for (var i = 0; i < ticks; i++)
+        {
+            world.Advance(1);
+        }
     }
 }

@@ -4,20 +4,6 @@ namespace ManyWinters.Tests.World;
 
 public class BoxBlurTests
 {
-    private static float[,] Grid(int size, Func<int, int, float> value)
-    {
-        var grid = new float[size, size];
-        for (var y = 0; y < size; y++)
-        {
-            for (var x = 0; x < size; x++)
-            {
-                grid[y, x] = value(x, y);
-            }
-        }
-
-        return grid;
-    }
-
     [Fact]
     public void AFlatGridStaysFlat()
     {
@@ -106,5 +92,19 @@ public class BoxBlurTests
         }
 
         Assert.Equal(1f, total, 4);
+    }
+
+    private static float[,] Grid(int size, Func<int, int, float> value)
+    {
+        var grid = new float[size, size];
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                grid[y, x] = value(x, y);
+            }
+        }
+
+        return grid;
     }
 }

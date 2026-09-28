@@ -14,8 +14,6 @@ public class HeightmapTests
         [70f, 80f, 90f],
     ];
 
-    private static Heightmap NewMap() => new(Heights, gridSize: 3, cellSizeMeters: 20f);
-
     [Fact]
     public void TheMapSpansHalfItsWidthEachWayFromTheOrigin()
     {
@@ -193,4 +191,6 @@ public class HeightmapTests
         Assert.Equal(5, fingerprint.Split('|').Length);
         Assert.DoesNotContain(fingerprint.Split('|'), part => part.Length == 0);
     }
+
+    private static Heightmap NewMap() => new(Heights, gridSize: 3, cellSizeMeters: 20f);
 }

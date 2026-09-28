@@ -27,8 +27,6 @@ public sealed record ResourceDefinition(
     // a short rock pile can be solid.
     float CollisionRadius = 0f)
 {
-    public sealed record FellLeaf(EntityKindId Kind, float Amount);
-
     // C# does not allow a collection-expression default on the primary constructor parameters
     // above, so the empty-collection normalization happens here instead.
     public IReadOnlyList<ClimateYield> ClimateYields { get; } = ClimateYields ?? [];
@@ -50,4 +48,6 @@ public sealed record ResourceDefinition(
 
     // Conditions the plant does not grow in at all, read off ClimateYields.
     public bool IsInhospitable(Climate climate) => YieldMultiplierFor(climate) <= 0f;
+
+    public sealed record FellLeaf(EntityKindId Kind, float Amount);
 }

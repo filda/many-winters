@@ -11,32 +11,9 @@ namespace ManyWinters.Tests.World;
 // disagree, and reality settles it when somebody next works the stuff.
 public class BeliefDistortionTests
 {
-    private static readonly MaterialId PlantFibre = new("plant_fibre");
     private const MaterialProperty Fibrousness = MaterialProperty.Fibrousness;
 
-    // Everyone talks, nobody learns by carrying: what changes hands here changed hands by word.
-    private static WorldState TalkativeWorld(float distortion = 0.15f) =>
-        new(TestCatalogs.CreateConfiguration() with
-        {
-            Rules = SimulationRules.Default with
-            {
-                BeliefSharingChancePerTick = 1f,
-                MaterialUnderstandingPerTick = 0f,
-                IdleDiscoveryChancePerTick = 0f,
-                HearsayDistortion = distortion,
-            },
-        });
-
-    // Pinned ids, because every roll in distortion runs on them: random ones would re-roll the
-    // dice on every run and pass or fail by luck.
-    private static Person Somebody(WorldState world, int seed, Position? position = null) =>
-        world.SpawnPerson(TestIds.Person(seed), $"Person{seed}", position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-
-    private static void Holds(Person person, float value) =>
-        person.Beliefs.Learn(PlantFibre, Fibrousness, value, confidenceGained: 1f);
-
-    private static float Heard(Person person) =>
-        person.Beliefs.Held[(PlantFibre, Fibrousness)].Value;
+    private static readonly MaterialId PlantFibre = new("plant_fibre");
 
     [Fact]
     public void WhatArrivesIsNotQuiteWhatWasSaid()
@@ -185,4 +162,28 @@ public class BeliefDistortionTests
 
         Assert.NotEqual(Heard(bran), Heard(cass));
     }
+
+    // Everyone talks, nobody learns by carrying: what changes hands here changed hands by word.
+    private static WorldState TalkativeWorld(float distortion = 0.15f) =>
+        new(TestCatalogs.CreateConfiguration() with
+        {
+            Rules = SimulationRules.Default with
+            {
+                BeliefSharingChancePerTick = 1f,
+                MaterialUnderstandingPerTick = 0f,
+                IdleDiscoveryChancePerTick = 0f,
+                HearsayDistortion = distortion,
+            },
+        });
+
+    // Pinned ids, because every roll in distortion runs on them: random ones would re-roll the
+    // dice on every run and pass or fail by luck.
+    private static Person Somebody(WorldState world, int seed, Position? position = null) =>
+        world.SpawnPerson(TestIds.Person(seed), $"Person{seed}", position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+    private static void Holds(Person person, float value) =>
+        person.Beliefs.Learn(PlantFibre, Fibrousness, value, confidenceGained: 1f);
+
+    private static float Heard(Person person) =>
+        person.Beliefs.Held[(PlantFibre, Fibrousness)].Value;
 }

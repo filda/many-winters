@@ -18,6 +18,10 @@ internal partial class BuildingView : SpriteEntityView
     private const float MaxScale = 1.1f;
     private const float ShadowDiameter = 3.5f;
 
+    // Cached per kind: repeated ResourceLoader.Load of the same resource crashes the C# bridge.
+    // A camp is a handful of huts, so this exists for correctness, not for the cache's own sake.
+    private static readonly Dictionary<EntityKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
+
     private readonly Entity _building;
     private readonly Action<Entity, MouseButton> _onClicked;
 
@@ -49,10 +53,6 @@ internal partial class BuildingView : SpriteEntityView
         _onClicked(_building, button);
         return true;
     }
-
-    // Cached per kind: repeated ResourceLoader.Load of the same resource crashes the C# bridge.
-    // A camp is a handful of huts, so this exists for correctness, not for the cache's own sake.
-    private static readonly Dictionary<EntityKindId, BuildingVisualDefinition?> VisualDefinitionCache = new();
 
     private static Color ColorFor(EntityKindId kind)
     {

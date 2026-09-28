@@ -30,6 +30,11 @@ public partial class NamingPanel : PaperPanel
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }
 
+    // What the player called it, or that they would rather not say right now - the owner decides
+    // what either means for the thing that was made.
+    internal event Action<string>? Named;
+    internal event Action? Cancelled;
+
     public override void _Ready()
     {
         base._Ready();
@@ -80,13 +85,6 @@ public partial class NamingPanel : PaperPanel
         _name.GrabFocus();
     }
 
-    // What the player called it, or that they would rather not say right now - the owner decides
-    // what either means for the thing that was made.
-    internal event Action<string>? Named;
-    internal event Action? Cancelled;
-
-    protected override void OnCloseRequested() => Close();
-
     internal void Close()
     {
         if (!Visible)
@@ -97,6 +95,8 @@ public partial class NamingPanel : PaperPanel
         Visible = false;
         Cancelled?.Invoke();
     }
+
+    protected override void OnCloseRequested() => Close();
 
     private void Confirm()
     {

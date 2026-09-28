@@ -155,8 +155,6 @@ public class WithdrawCommandTests
         Assert.Equal(ActionBlocker.StoreIsEmpty, new WithdrawCommand(person, building, new CarriedThing.Stock(TestCatalogs.WoodItem, 5)).Blocker(world));
     }
 
-    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
-
     [Fact]
     public void SomethingMadeComesBackOffTheShelves()
     {
@@ -200,4 +198,6 @@ public class WithdrawCommandTests
             ActionBlocker.StoreIsEmpty,
             new WithdrawCommand(person, building, new CarriedThing.Worked(Cord())).Blocker(world));
     }
+
+    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, 0.8f, 5f);
 }

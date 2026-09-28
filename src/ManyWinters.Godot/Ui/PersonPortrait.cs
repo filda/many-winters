@@ -45,6 +45,12 @@ internal partial class PersonPortrait : Control
         Paint(_hair, look.Hair, isAlive ? SpriteTint.ModulateFor(look.HairColor) : PersonLook.DeadTint);
     }
 
+    private static void Paint(TextureRect layer, string texturePath, Color modulate)
+    {
+        layer.Texture = new AtlasTexture { Atlas = TextureCache.Get(texturePath), Region = HeadAndShoulders };
+        layer.Modulate = modulate;
+    }
+
     private TextureRect Layer()
     {
         var layer = new TextureRect
@@ -56,11 +62,5 @@ internal partial class PersonPortrait : Control
         layer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(layer);
         return layer;
-    }
-
-    private static void Paint(TextureRect layer, string texturePath, Color modulate)
-    {
-        layer.Texture = new AtlasTexture { Atlas = TextureCache.Get(texturePath), Region = HeadAndShoulders };
-        layer.Modulate = modulate;
     }
 }

@@ -5,8 +5,11 @@ namespace ManyWinters.Godot.Tests;
 
 public class SpriteExtentsTests
 {
-    private static SpriteExtents.Extent Extent(float width, float height, float centerX, float centerY) =>
-        new(width, height, centerX, centerY);
+    private const float WorldHeight = 4f;
+
+    // A 100x200 canvas standing 4m tall, so 2cm per pixel. Used rects below are off-centre on
+    // both axes and not square, so a swapped axis or lost sign cannot pass.
+    private static readonly Vector2 Canvas = new(100f, 200f);
 
     [Fact]
     public void CombiningTwoStackedExtentsSpansBothOfThem()
@@ -58,11 +61,6 @@ public class SpriteExtentsTests
             SpriteExtents.Combine(trunk, canopy),
             SpriteExtents.Combine(canopy, trunk));
     }
-
-    // A 100x200 canvas standing 4m tall, so 2cm per pixel. Used rects below are off-centre on
-    // both axes and not square, so a swapped axis or lost sign cannot pass.
-    private static readonly Vector2 Canvas = new(100f, 200f);
-    private const float WorldHeight = 4f;
 
     [Fact]
     public void ContentFillingTheWholeCanvasIsTheFullWorldSizeAndSitsOnTheOrigin()
@@ -216,4 +214,7 @@ public class SpriteExtentsTests
         Assert.Equal(rendered.X, extent.Width, 4);
         Assert.Equal(rendered.Y, extent.Height, 4);
     }
+
+    private static SpriteExtents.Extent Extent(float width, float height, float centerX, float centerY) =>
+        new(width, height, centerX, centerY);
 }

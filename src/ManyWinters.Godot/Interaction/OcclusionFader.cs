@@ -13,12 +13,13 @@ internal sealed class OcclusionFader(
     WorldPresenter presenter,
     PresentationSettings presentation)
 {
+    private const float RecomputeDistanceSquaredThreshold = 0.0001f;
+
     // Skips ComputeOccludingSprites (an O(sprite count) scan) on frames where neither the camera
     // nor the occlusion target moved: with the camera at rest and nobody selected walking, the
     // sight line - and so the occluding set - cannot have changed since last frame.
     private Vector3? _lastCameraPosition;
     private Vector3? _lastTargetPosition;
-    private const float RecomputeDistanceSquaredThreshold = 0.0001f;
 
     public void Update(Creature? selectedCreature)
     {
@@ -63,6 +64,13 @@ internal sealed class OcclusionFader(
                 SetSpriteAlpha(sprite, 1f);
             }
         }
+    }
+
+    private static void SetSpriteAlpha(Sprite3D sprite, float alpha)
+    {
+        var color = sprite.Modulate;
+        color.A = alpha;
+        sprite.Modulate = color;
     }
 
     // What the occlusion sight line runs to: whoever is selected if anyone (and the node to
@@ -122,12 +130,5 @@ internal sealed class OcclusionFader(
         }
 
         return result;
-    }
-
-    private static void SetSpriteAlpha(Sprite3D sprite, float alpha)
-    {
-        var color = sprite.Modulate;
-        color.A = alpha;
-        sprite.Modulate = color;
     }
 }

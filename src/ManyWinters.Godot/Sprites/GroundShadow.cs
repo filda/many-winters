@@ -6,10 +6,10 @@ namespace ManyWinters.Godot.Sprites;
 // face the camera would visibly tilt as the camera orbits.
 public static class GroundShadow
 {
-    private const string TexturePath = "res://Content/effects/ground_shadow.png";
-
     // Just above the terrain surface so it never z-fights with the ground mesh.
     public const float GroundOffset = 0.02f;
+
+    private const string TexturePath = "res://Content/effects/ground_shadow.png";
 
     // Centred under the caster with no light-direction offset: a fixed world-space offset next
     // to a caster that always faces the camera swings around it as the view orbits. A

@@ -10,33 +10,6 @@ namespace ManyWinters.Audio;
 // sequencing, no lexicon - because unintelligible is the requirement, not a shortfall.
 public static class VoiceModel
 {
-    // Five tongue shapes standing in for cardinal vowels - a place along the tract (TongueIndex),
-    // how far it narrows there (TongueDiameter), and how open the lips are (LipDiameter). These
-    // are chosen for a plausible spread across the tongue's front/back and open/close range, not
-    // matched against any specific vowel table: unintelligible is the requirement, so what matters
-    // is that five distinct, topologically sensible places exist for the tongue to travel between.
-    private static readonly TractShape[] Vowels =
-    [
-        new(TongueIndex: 21.0f, TongueDiameter: 3.3f, LipDiameter: 1.5f), // open, central
-        new(TongueIndex: 28.0f, TongueDiameter: 2.6f, LipDiameter: 1.4f), // front, mid
-        new(TongueIndex: 30.0f, TongueDiameter: 1.8f, LipDiameter: 1.3f), // front, close
-        new(TongueIndex: 18.0f, TongueDiameter: 2.3f, LipDiameter: 0.9f), // back, mid, rounded
-        new(TongueIndex: 16.0f, TongueDiameter: 1.9f, LipDiameter: 0.7f), // back, close, rounded
-    ];
-
-    // Every entry above keeps the tract's rest-diameter formula comfortably clear of zero at its
-    // own peak - a vowel that pinches shut by its own table entry would misfire the
-    // release-transient logic used to tell a real stop's closure from a vowel passing through a
-    // merely narrow shape on its way somewhere else.
-
-    // The shape every vowel leans towards at low Energy, the same role NeutralFormants played in
-    // the previous model and for the same reason: a mutter under the breath still distinguishes
-    // its vowels, so the floor below (MovementMin) never lets Energy collapse them onto this. Not
-    // an average of the table above (that blend lands on an oddly narrow shape of its own, no
-    // vowel itself): Pink Trombone's own resting shape, upstream's choice of what a tract sits at
-    // when nothing is asking it to do anything in particular.
-    private static readonly TractShape NeutralShape = new(TongueIndex: 12.9f, TongueDiameter: 2.43f, LipDiameter: 1.5f);
-
     private const float MovementMin = 0.6f;
     private const float MovementRange = 0.4f;
 
@@ -95,6 +68,33 @@ public static class VoiceModel
 
     private const float TargetRms = 0.2f;
     private const float TargetPeak = 0.9f;
+
+    // Five tongue shapes standing in for cardinal vowels - a place along the tract (TongueIndex),
+    // how far it narrows there (TongueDiameter), and how open the lips are (LipDiameter). These
+    // are chosen for a plausible spread across the tongue's front/back and open/close range, not
+    // matched against any specific vowel table: unintelligible is the requirement, so what matters
+    // is that five distinct, topologically sensible places exist for the tongue to travel between.
+    private static readonly TractShape[] Vowels =
+    [
+        new(TongueIndex: 21.0f, TongueDiameter: 3.3f, LipDiameter: 1.5f), // open, central
+        new(TongueIndex: 28.0f, TongueDiameter: 2.6f, LipDiameter: 1.4f), // front, mid
+        new(TongueIndex: 30.0f, TongueDiameter: 1.8f, LipDiameter: 1.3f), // front, close
+        new(TongueIndex: 18.0f, TongueDiameter: 2.3f, LipDiameter: 0.9f), // back, mid, rounded
+        new(TongueIndex: 16.0f, TongueDiameter: 1.9f, LipDiameter: 0.7f), // back, close, rounded
+    ];
+
+    // Every entry above keeps the tract's rest-diameter formula comfortably clear of zero at its
+    // own peak - a vowel that pinches shut by its own table entry would misfire the
+    // release-transient logic used to tell a real stop's closure from a vowel passing through a
+    // merely narrow shape on its way somewhere else.
+
+    // The shape every vowel leans towards at low Energy, the same role NeutralFormants played in
+    // the previous model and for the same reason: a mutter under the breath still distinguishes
+    // its vowels, so the floor above (MovementMin) never lets Energy collapse them onto this. Not
+    // an average of the table above (that blend lands on an oddly narrow shape of its own, no
+    // vowel itself): Pink Trombone's own resting shape, upstream's choice of what a tract sits at
+    // when nothing is asking it to do anything in particular.
+    private static readonly TractShape NeutralShape = new(TongueIndex: 12.9f, TongueDiameter: 2.43f, LipDiameter: 1.5f);
 
     public static float[] Render(VoiceIdentity voice, Utterance utterance, int sampleRate, int seed)
     {
@@ -198,15 +198,6 @@ public static class VoiceModel
         return Normalise(Resample(samples, internalRate, sampleRate));
     }
 
-    private readonly record struct SyllablePlan(
-        TractShape FromShape,
-        TractShape TargetShape,
-        float PitchHz,
-        float Tenseness,
-        float RoughnessJitter,
-        int ClosureSamples,
-        int ContentSamples);
-
     private static TractShape BlendTowards(TractShape from, TractShape to, float movement) => new(
         Lerp(from.TongueIndex, to.TongueIndex, movement),
         Lerp(from.TongueDiameter, to.TongueDiameter, movement),
@@ -284,4 +275,13 @@ public static class VoiceModel
 
         return samples;
     }
+
+    private readonly record struct SyllablePlan(
+        TractShape FromShape,
+        TractShape TargetShape,
+        float PitchHz,
+        float Tenseness,
+        float RoughnessJitter,
+        int ClosureSamples,
+        int ContentSamples);
 }

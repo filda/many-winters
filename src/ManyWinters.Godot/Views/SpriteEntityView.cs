@@ -17,27 +17,6 @@ namespace ManyWinters.Godot.Views;
 // SpriteExtents, HoverArbiter, WalkCycle); this is the thin shell that calls them.
 internal abstract partial class SpriteEntityView : Area3D, IHoverable
 {
-    // One drawn layer. TexturePath and BaseModulate are settable because a view may re-point
-    // and re-colour its layers on death.
-    protected sealed class SpriteLayer(Sprite3D sprite, string texturePath, bool picks, bool outlines)
-    {
-        public Sprite3D Sprite { get; } = sprite;
-
-        public string TexturePath { get; set; } = texturePath;
-
-        // The layer's colour in full sight, before the fog tint is multiplied in. Taken from the
-        // sprite as registered, so seeded variation (canopy brightness, garment colour) is in it.
-        public Color BaseModulate { get; set; } = sprite.Modulate;
-
-        // Whether this layer's opaque pixels count as the entity under the cursor. A fruit
-        // overlay does not: it lies inside the canopy's own silhouette and adds no pixels.
-        public bool Picks { get; } = picks;
-
-        // Whether the hover rim traces this layer - not the same question. A branch layer is
-        // pickable, but a rim around one-pixel twigs reads as a squiggle beside the canopy.
-        public bool Outlines { get; } = outlines;
-    }
-
     private readonly List<SpriteLayer> _layers = new();
     private readonly RememberedFade _remembered = new();
 
@@ -49,17 +28,43 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     private CollisionShape3D? _collisionShape;
     private bool _isHovered;
 
-    // The world height every layer is created at and the height
-    // WorldPresenter placed this node by; the ground shadow and ground-contact correction are
-    // measured against it.
-    protected float NominalHeight { get; }
-
     protected SpriteEntityView(float nominalHeight, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
     {
         NominalHeight = nominalHeight;
         _hover = hover;
         _onMissedClick = onMissedClick;
     }
+
+    // Top of the drawn silhouette above this node's origin, in *world* metres - for Main's
+    // screen-space selection marker, which adds it to GlobalPosition; hence this node's scale
+    // is in it, unlike in the local extent VisibleExtent returns.
+    public float TopHeightOffset
+    {
+        get
+        {
+            var extent = VisibleExtent();
+            return (extent.CenterYOffset + (extent.Height / 2f)) * Scale.Y;
+        }
+    }
+
+    // The world height every layer is created at and the height
+    // WorldPresenter placed this node by; the ground shadow and ground-contact correction are
+    // measured against it.
+    protected float NominalHeight { get; }
+
+    // For a view with an animation of its own (a walk cycle), whose processing cannot be
+    // switched off between fades.
+    protected virtual bool NeedsEveryFrame => false;
+
+    // How far ScaleAndKeepGroundContact lifted this node above where an unscaled one would
+    // render, so a later position handed in (PersonView's per-tick target) is lifted
+    // the same; otherwise the first tick walks every person down to the uncorrected height.
+    protected Vector3 GroundContactCorrection { get; private set; }
+
+    // Pins the hit-test plane to a stable anchor instead of each sprite's own GlobalPosition: a
+    // walk bob moves the layers every frame, which sweeps the sampled pixel across silhouette
+    // edges and flickers the hover. Null means each sprite's own position.
+    protected virtual Vector3? PixelHitAnchor => null;
 
     private bool IsPickable => _onMissedClick is not null;
 
@@ -89,18 +94,6 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         ApplyTints();
     }
 
-    // Where a view creates its layers, ground shadow and seeded scale. Called from _Ready, so
-    // the node is in the tree and WorldPresenter has already set its Position.
-    protected abstract void Build();
-
-    // For a view with an animation of its own (a walk cycle), whose processing cannot be
-    // switched off between fades.
-    protected virtual bool NeedsEveryFrame => false;
-
-    protected virtual void OnProcess(double delta)
-    {
-    }
-
     public sealed override void _Process(double delta)
     {
         if (_remembered.IsFading)
@@ -119,6 +112,75 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     // Drops out of the hover arbiter without a callback: QueueFree is already requested, and
     // touching a freed node is a crash.
     public sealed override void _ExitTree() => _hover?.Forget(this);
+
+    public void ShowHovered(bool hovered)
+    {
+        if (hovered == _isHovered)
+        {
+            return;
+        }
+
+        _isHovered = hovered;
+
+        // A rim traced around the silhouette, nothing else: no scale bump or tint, so geometry
+        // stays put and nothing has to be re-measured.
+        ShowOutline(hovered);
+    }
+
+    // Lets HoverRescue ask whether this exact point is opaque on this view, when another
+    // entity's broad-phase box won the pick. A view that never lights up answers no, so the
+    // rescue carries on to whatever is really under the cursor.
+    public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
+    {
+        if (_hover is null)
+        {
+            return false;
+        }
+
+        var opaque = IsOpaqueAt(camera, worldPosition);
+        _hover.Set(this, opaque);
+        return opaque;
+    }
+
+    // Asked once a frame while this view holds the highlight: the same test from the cursor's
+    // current position rather than from a picking event, since a
+    // stuck highlight is always a missing event. A cursor over any UI panel counts as off -
+    // physics picking never fires under a Control, so the sprite behind one would stay lit.
+    public bool IsStillUnderCursor()
+    {
+        var viewport = GetViewport();
+        return viewport.GuiGetHoveredControl() is null
+            && viewport.GetCamera3D() is { } camera
+            && IsOpaqueAtScreen(camera, viewport.GetMousePosition());
+    }
+
+    public bool TryClickAt(Camera3D camera, Vector3 worldPosition, MouseButton button) =>
+        WantsClick(button) && IsOpaqueAt(camera, worldPosition) && OnClicked(button);
+
+    // Fog of war's "remembered" tier: explored, but nobody has it in sight. Only aims the fade;
+    // the tint moves in _Process. Called once a tick for every live view, so the no-change case
+    // must cost nothing.
+    public void SetRemembered(bool remembered)
+    {
+        if (!_remembered.Retarget(remembered))
+        {
+            return;
+        }
+
+        SetProcess(true);
+    }
+
+    // Straight to the end state, no fade - for a view created somewhere the group already left.
+    // Touches no node, so WorldPresenter can call it before the view enters the tree.
+    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
+
+    // Where a view creates its layers, ground shadow and seeded scale. Called from _Ready, so
+    // the node is in the tree and WorldPresenter has already set its Position.
+    protected abstract void Build();
+
+    protected virtual void OnProcess(double delta)
+    {
+    }
 
     // Takes over a sprite the view created. Creation stays with the view, where alpha cut,
     // render priority and occlusion-fade exclusion are decided; from here on this class tints,
@@ -160,16 +222,55 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         Position += GroundContactCorrection;
     }
 
-    // How far ScaleAndKeepGroundContact lifted this node above where an unscaled one would
-    // render, so a later position handed in (PersonView's per-tick target) is lifted
-    // the same; otherwise the first tick walks every person down to the uncorrected height.
-    protected Vector3 GroundContactCorrection { get; private set; }
+    // Cut to the drawn silhouette, not the full square canvas, or the shape would hover and
+    // click well outside anything visible. Re-derived whenever the texture changes (a corpse
+    // lies down, wider and shorter).
+    protected void RefreshCollisionShape()
+    {
+        if (!IsPickable)
+        {
+            return;
+        }
+
+        if (_collisionShape is null)
+        {
+            _collisionShape = new CollisionShape3D { Shape = new BoxShape3D() };
+            AddChild(_collisionShape);
+        }
+
+        var extent = VisibleExtent();
+        ((BoxShape3D)_collisionShape.Shape).Size = new Vector3(extent.Width, extent.Height, extent.Width);
+        _collisionShape.Position = new Vector3(extent.CenterXOffset, extent.CenterYOffset, 0f);
+    }
+
+    // Which of the two order buttons this view answers to. An unwanted one is left entirely
+    // alone - not even the missed-click fallback runs - so a click a view declines outright
+    // cannot become a ground order behind it.
+    protected virtual bool WantsClick(MouseButton button) => button == MouseButton.Left;
+
+    // What a click on this entity means. False means "not mine after all" and sends the click
+    // down the same fallback chain as one that missed the pixels.
+    protected virtual bool OnClicked(MouseButton button) => false;
+
+    // The single place any layer's colour is written, always re-derived from its base modulate
+    // so repeated calls cannot compound a tint. Alpha is left as it is on the sprite: that
+    // channel belongs to the occlusion fade, and writing full alpha back would blink a ghosted
+    // sprite solid once a frame.
+    protected void ApplyTints()
+    {
+        foreach (var layer in _layers)
+        {
+            var color = _remembered.Applied(layer.BaseModulate);
+            color.A = layer.Sprite.Modulate.A;
+            layer.Sprite.Modulate = color;
+        }
+    }
 
     // The drawn silhouette in this node's local metres: the union of the picking layers' visible
     // extents, each scaled by its own sprite's scale (1 everywhere today, but a layer's scale is
     // the one factor unreadable elsewhere). This node's own scale is left out: the engine
     // applies it to every child, so counting it here would apply it twice.
-    protected SpriteExtents.Extent VisibleExtent()
+    private SpriteExtents.Extent VisibleExtent()
     {
         SpriteExtents.Extent? combined = null;
         foreach (var layer in _layers)
@@ -195,53 +296,6 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         }
 
         return combined ?? new SpriteExtents.Extent(NominalHeight, NominalHeight, 0f, 0f);
-    }
-
-    // Top of the drawn silhouette above this node's origin, in *world* metres - for Main's
-    // screen-space selection marker, which adds it to GlobalPosition; hence this node's scale
-    // is in it, unlike in the local extent above.
-    public float TopHeightOffset
-    {
-        get
-        {
-            var extent = VisibleExtent();
-            return (extent.CenterYOffset + (extent.Height / 2f)) * Scale.Y;
-        }
-    }
-
-    // Cut to the drawn silhouette, not the full square canvas, or the shape would hover and
-    // click well outside anything visible. Re-derived whenever the texture changes (a corpse
-    // lies down, wider and shorter).
-    protected void RefreshCollisionShape()
-    {
-        if (!IsPickable)
-        {
-            return;
-        }
-
-        if (_collisionShape is null)
-        {
-            _collisionShape = new CollisionShape3D { Shape = new BoxShape3D() };
-            AddChild(_collisionShape);
-        }
-
-        var extent = VisibleExtent();
-        ((BoxShape3D)_collisionShape.Shape).Size = new Vector3(extent.Width, extent.Height, extent.Width);
-        _collisionShape.Position = new Vector3(extent.CenterXOffset, extent.CenterYOffset, 0f);
-    }
-
-    public void ShowHovered(bool hovered)
-    {
-        if (hovered == _isHovered)
-        {
-            return;
-        }
-
-        _isHovered = hovered;
-
-        // A rim traced around the silhouette, nothing else: no scale bump or tint, so geometry
-        // stays put and nothing has to be re-measured.
-        ShowOutline(hovered);
     }
 
     // One rim around the whole entity rather than one per layer, traced from the layers marked
@@ -276,50 +330,6 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
             HoverOutline.Clear(host);
         }
     }
-
-    // Lets HoverRescue ask whether this exact point is opaque on this view, when another
-    // entity's broad-phase box won the pick. A view that never lights up answers no, so the
-    // rescue carries on to whatever is really under the cursor.
-    public bool TryHoverAt(Camera3D camera, Vector3 worldPosition)
-    {
-        if (_hover is null)
-        {
-            return false;
-        }
-
-        var opaque = IsOpaqueAt(camera, worldPosition);
-        _hover.Set(this, opaque);
-        return opaque;
-    }
-
-    // Asked once a frame while this view holds the highlight: the same test from the cursor's
-    // current position rather than from a picking event, since a
-    // stuck highlight is always a missing event. A cursor over any UI panel counts as off -
-    // physics picking never fires under a Control, so the sprite behind one would stay lit.
-    public bool IsStillUnderCursor()
-    {
-        var viewport = GetViewport();
-        return viewport.GuiGetHoveredControl() is null
-            && viewport.GetCamera3D() is { } camera
-            && IsOpaqueAtScreen(camera, viewport.GetMousePosition());
-    }
-
-    public bool TryClickAt(Camera3D camera, Vector3 worldPosition, MouseButton button) =>
-        WantsClick(button) && IsOpaqueAt(camera, worldPosition) && OnClicked(button);
-
-    // Which of the two order buttons this view answers to. An unwanted one is left entirely
-    // alone - not even the missed-click fallback runs - so a click a view declines outright
-    // cannot become a ground order behind it.
-    protected virtual bool WantsClick(MouseButton button) => button == MouseButton.Left;
-
-    // What a click on this entity means. False means "not mine after all" and sends the click
-    // down the same fallback chain as one that missed the pixels.
-    protected virtual bool OnClicked(MouseButton button) => false;
-
-    // Pins the hit-test plane to a stable anchor instead of each sprite's own GlobalPosition: a
-    // walk bob moves the layers every frame, which sweeps the sampled pixel across silhouette
-    // edges and flickers the hover. Null means each sprite's own position.
-    protected virtual Vector3? PixelHitAnchor => null;
 
     private bool IsOpaqueAt(Camera3D camera, Vector3 worldPosition) =>
         IsOpaqueAtScreen(camera, camera.UnprojectPosition(worldPosition));
@@ -376,34 +386,24 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         }
     }
 
-    // Fog of war's "remembered" tier: explored, but nobody has it in sight. Only aims the fade;
-    // the tint moves in _Process. Called once a tick for every live view, so the no-change case
-    // must cost nothing.
-    public void SetRemembered(bool remembered)
+    // One drawn layer. TexturePath and BaseModulate are settable because a view may re-point
+    // and re-colour its layers on death.
+    protected sealed class SpriteLayer(Sprite3D sprite, string texturePath, bool picks, bool outlines)
     {
-        if (!_remembered.Retarget(remembered))
-        {
-            return;
-        }
+        public Sprite3D Sprite { get; } = sprite;
 
-        SetProcess(true);
-    }
+        public string TexturePath { get; set; } = texturePath;
 
-    // Straight to the end state, no fade - for a view created somewhere the group already left.
-    // Touches no node, so WorldPresenter can call it before the view enters the tree.
-    public void SnapRemembered(bool remembered) => _remembered.Snap(remembered);
+        // The layer's colour in full sight, before the fog tint is multiplied in. Taken from the
+        // sprite as registered, so seeded variation (canopy brightness, garment colour) is in it.
+        public Color BaseModulate { get; set; } = sprite.Modulate;
 
-    // The single place any layer's colour is written, always re-derived from its base modulate
-    // so repeated calls cannot compound a tint. Alpha is left as it is on the sprite: that
-    // channel belongs to the occlusion fade, and writing full alpha back would blink a ghosted
-    // sprite solid once a frame.
-    protected void ApplyTints()
-    {
-        foreach (var layer in _layers)
-        {
-            var color = _remembered.Applied(layer.BaseModulate);
-            color.A = layer.Sprite.Modulate.A;
-            layer.Sprite.Modulate = color;
-        }
+        // Whether this layer's opaque pixels count as the entity under the cursor. A fruit
+        // overlay does not: it lies inside the canopy's own silhouette and adds no pixels.
+        public bool Picks { get; } = picks;
+
+        // Whether the hover rim traces this layer - not the same question. A branch layer is
+        // pickable, but a rim around one-pixel twigs reads as a squiggle beside the canopy.
+        public bool Outlines { get; } = outlines;
     }
 }

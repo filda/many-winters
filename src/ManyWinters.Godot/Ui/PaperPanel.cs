@@ -113,22 +113,6 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
         _scroll.AddChild(Body);
     }
 
-    // What the cross in the corner does. Putting the window away is all most of them need; one
-    // with something to settle on the way out - starting the clock again - overrides this.
-    protected virtual void OnCloseRequested() => Visible = false;
-
-    // What goes in the title bar where the title is: the title itself, unless a panel sets it
-    // inside something of its own - the summary card makes the whole line a button that opens the
-    // person's page. Called while the title bar is still being built, like BuildTitleBarExtras.
-    protected virtual Control Heading(Label titleLabel) => titleLabel;
-
-    // Nothing, unless a panel overrides it. Called while the title bar is still being built, so
-    // it has to stand on its own rather than reach for fields the rest of _Ready has not created
-    // yet.
-    protected virtual void BuildTitleBarExtras(HBoxContainer titleBar)
-    {
-    }
-
     // What the window is called. A title that is a fact about the world - whose band this is,
     // who is selected - changes with the world, so it is not fixed at construction.
     public void SetTitle(string text) => _titleLabel.Text = text;
@@ -150,6 +134,22 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
             // something else moved it.
             Position = ScreenPlacement.Centred(GetCombinedMinimumSize(), GetViewport().GetVisibleRect().Size);
         }
+    }
+
+    // What the cross in the corner does. Putting the window away is all most of them need; one
+    // with something to settle on the way out - starting the clock again - overrides this.
+    protected virtual void OnCloseRequested() => Visible = false;
+
+    // What goes in the title bar where the title is: the title itself, unless a panel sets it
+    // inside something of its own - the summary card makes the whole line a button that opens the
+    // person's page. Called while the title bar is still being built, like BuildTitleBarExtras.
+    protected virtual Control Heading(Label titleLabel) => titleLabel;
+
+    // Nothing, unless a panel overrides it. Called while the title bar is still being built, so
+    // it has to stand on its own rather than reach for fields the rest of _Ready has not created
+    // yet.
+    protected virtual void BuildTitleBarExtras(HBoxContainer titleBar)
+    {
     }
 
     // Body height is its natural size, capped to the room left over so an overlong body scrolls

@@ -6,9 +6,6 @@ namespace ManyWinters.Tests.Commands;
 
 public class SpawnResourceNodeCommandTests
 {
-    private static List<Entity> ResourceNodes(WorldState world) =>
-        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
-
     [Fact]
     public void ExecuteAddsAResourceNodeWithTheGivenKindPositionAndAmount()
     {
@@ -57,4 +54,7 @@ public class SpawnResourceNodeCommandTests
 
         Assert.Equal(ActionBlocker.None, command.Blocker(world));
     }
+
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
 }

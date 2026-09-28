@@ -16,13 +16,18 @@ internal partial class AnimalView : CreatureView
     private const float ShadowDiameterRatio = 0.5f;
     private const int ScaleSalt = 501;
 
+    // A species with no WorldHeight of its own (no .tres, or one that leaves it at 0) draws at
+    // about a person's own height - a deer is not a decoration-scale icon.
+    private const float DefaultHeight = 1.6f;
+
     // For a species kind with no .tres visual definition at all - a placeholder muted green,
     // only ever seen if the content is missing both its definition and its art.
     private static readonly Color DefaultColor = new(0.35f, 0.45f, 0.25f);
 
-    // A species with no WorldHeight of its own (no .tres, or one that leaves it at 0) draws at
-    // about a person's own height - a deer is not a decoration-scale icon.
-    private const float DefaultHeight = 1.6f;
+    // Cached per species, not loaded per animal - the same reasoning as ResourceNodeView's
+    // VisualDefinitionCache: many animals of one species loading the same .tres in one frame risks
+    // the same GCHandle race.
+    private static readonly Dictionary<SpeciesId, ResourceVisualDefinition?> VisualDefinitionCache = new();
 
     private readonly Animal _animal;
     private readonly SpeciesId _species;
@@ -98,11 +103,6 @@ internal partial class AnimalView : CreatureView
         var visual = LoadVisualDefinition(species);
         return visual is { WorldHeight: > 0f } ? visual.WorldHeight : DefaultHeight;
     }
-
-    // Cached per species, not loaded per animal - the same reasoning as ResourceNodeView's
-    // VisualDefinitionCache: many animals of one species loading the same .tres in one frame risks
-    // the same GCHandle race.
-    private static readonly Dictionary<SpeciesId, ResourceVisualDefinition?> VisualDefinitionCache = new();
 
     private static ResourceVisualDefinition? LoadVisualDefinition(SpeciesId species)
     {

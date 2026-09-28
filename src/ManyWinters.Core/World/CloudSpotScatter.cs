@@ -21,6 +21,15 @@ public static class CloudSpotScatter
     // saturate the space without looping long over a full map.
     private const int AttemptsPerTargetSpot = 6;
 
+    // Wavelength of the spatial grain mixed into each spot's roll, in metres - the size of
+    // the clumps and gaps the thinning cover breaks into.
+    private const float ClumpScaleMeters = 22f;
+
+    // How much of the roll is spatial grain rather than independent chance. An independent
+    // roll thins the cover as an even sprinkle, which still reads as regular; shared grain
+    // makes whole patches drop out together, so the cover tears into clumps and openings.
+    private const float ClumpWeight = 0.6f;
+
     public static IReadOnlyList<CloudSpot> Generate(float halfExtentMeters, float meanSpacingMeters, float minSize, float maxSize, int textureCount, int seed)
     {
         var rng = new Random(seed);
@@ -55,15 +64,6 @@ public static class CloudSpotScatter
     }
 
     public static float MinGap(float sizeA, float sizeB) => MinGapFactor * (sizeA + sizeB);
-
-    // Wavelength of the spatial grain mixed into each spot's roll, in metres - the size of
-    // the clumps and gaps the thinning cover breaks into.
-    private const float ClumpScaleMeters = 22f;
-
-    // How much of the roll is spatial grain rather than independent chance. An independent
-    // roll thins the cover as an even sprinkle, which still reads as regular; shared grain
-    // makes whole patches drop out together, so the cover tears into clumps and openings.
-    private const float ClumpWeight = 0.6f;
 
     // Blends the spot's own independent chance with smooth value noise sampled at its
     // position, staying in [0, 1).

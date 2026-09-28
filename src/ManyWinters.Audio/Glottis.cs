@@ -137,6 +137,8 @@ public sealed class Glottis
         return source + aspiration;
     }
 
+    private static float Jitter(Rng rng, float fraction) => 1.0f + ((rng.NextFloat() * 2.0f * fraction) - fraction);
+
     // Re-derives the LF waveform for the cycle about to start, with a fresh jittered period and
     // pulse amplitude - this is where roughness actually happens, one glottal pulse at a time.
     private void BeginPeriod()
@@ -207,6 +209,4 @@ public sealed class Glottis
 
         return _e0 * MathF.Exp(_alpha * t) * MathF.Sin(_omega * t);
     }
-
-    private static float Jitter(Rng rng, float fraction) => 1.0f + ((rng.NextFloat() * 2.0f * fraction) - fraction);
 }

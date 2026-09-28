@@ -18,11 +18,6 @@ public class WorldStateBreedingTests
     // accident - the fed/not-fed tests below set Hunger explicitly instead.
     private const float LooseSatietyThreshold = 1000f;
 
-    private static WorldState NewWorld(long gestationTicks = 150, float conceptionChancePerTick = 1f, float satietyHungerBelow = LooseSatietyThreshold, Climate climate = Climate.Mild) =>
-        new(TestCatalogs.CreateConfigurationWithDeerBreeding(new SpeciesDefinition.BreedingDefinition(climate, gestationTicks, conceptionChancePerTick, satietyHungerBelow)));
-
-    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 0f };
-
     [Fact]
     public void AFemaleWithAMateAtHomeConceivesWhenEveryConditionHolds()
     {
@@ -210,4 +205,9 @@ public class WorldStateBreedingTests
 
         Assert.Equal(first, second);
     }
+
+    private static WorldState NewWorld(long gestationTicks = 150, float conceptionChancePerTick = 1f, float satietyHungerBelow = LooseSatietyThreshold, Climate climate = Climate.Mild) =>
+        new(TestCatalogs.CreateConfigurationWithDeerBreeding(new SpeciesDefinition.BreedingDefinition(climate, gestationTicks, conceptionChancePerTick, satietyHungerBelow)));
+
+    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 0f };
 }

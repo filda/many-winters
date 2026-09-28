@@ -51,6 +51,11 @@ internal sealed class Heightmap
         HalfExtentMeters = (gridSize - 1) * cellSizeMeters / 2f;
     }
 
+    // Every number that changes the ground's shape, so a mesh cached under different tuning
+    // is never served as matching. Any constant added above belongs in here too.
+    internal static string ShapeFingerprint =>
+        string.Join('|', SubdivisionsPerCell, BumpNoiseSeed, BumpOctaves, BumpFrequency, BumpAmplitudeMeters);
+
     // Lowest and highest source elevation. The ground is shifted so the lowest sits at zero;
     // the renderer colours by the span between them.
     internal float MinHeight { get; }
@@ -63,6 +68,12 @@ internal sealed class Heightmap
     internal int FineGridSize => ((_gridSize - 1) * SubdivisionsPerCell) + 1;
 
     internal float FineCellSize => _cellSizeMeters / SubdivisionsPerCell;
+
+    // Fbm's [0, 1] remapped to [-1, 1] so the bump rolls both ways around the real elevation
+    // instead of raising the whole terrain by half the amplitude. Exposed because the mesh
+    // build wants the raw sample and the bump separately.
+    internal static float BumpAt(float x, float z) =>
+        (float)((BumpNoise.Fbm(x, z, BumpOctaves, BumpFrequency) - 0.5) * 2.0) * BumpAmplitudeMeters;
 
     // Elevation without the bump: bilinear between the DEM's samples, clamped at the grid
     // edge. Water surfaces use this - the bump would make them look choppy.
@@ -84,17 +95,6 @@ internal sealed class Heightmap
     // shows as a person floating above or sinking into the ground.
     internal float HeightAt(float x, float z) =>
         Bilinear(FineGridSize, FineCellSize, x, z, FineVertexAt);
-
-    // Every number that changes the ground's shape, so a mesh cached under different tuning
-    // is never served as matching. Any constant added above belongs in here too.
-    internal static string ShapeFingerprint =>
-        string.Join('|', SubdivisionsPerCell, BumpNoiseSeed, BumpOctaves, BumpFrequency, BumpAmplitudeMeters);
-
-    // Fbm's [0, 1] remapped to [-1, 1] so the bump rolls both ways around the real elevation
-    // instead of raising the whole terrain by half the amplitude. Exposed because the mesh
-    // build wants the raw sample and the bump separately.
-    internal static float BumpAt(float x, float z) =>
-        (float)((BumpNoise.Fbm(x, z, BumpOctaves, BumpFrequency) - 0.5) * 2.0) * BumpAmplitudeMeters;
 
     // Bilinear sample over a square grid of `size` vertices, `spacing` apart, centred on the
     // origin, clamped at the edge. Shared by both grids so they cannot drift into two formulas.

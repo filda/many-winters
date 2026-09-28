@@ -9,6 +9,8 @@ public class CorvidCawTests
     // Oblique on purpose: not 0 or 1, so no formula's arithmetic quietly cancels.
     private const float Size = 0.4f;
 
+    private const float WindowSeconds = 0.02f;
+
     [Fact]
     public void SameSeedRendersAnIdenticalBuffer()
     {
@@ -96,8 +98,6 @@ public class CorvidCawTests
 
         return peak / mean;
     }
-
-    private const float WindowSeconds = 0.02f;
 
     private static float[] WindowRms(float[] samples)
     {

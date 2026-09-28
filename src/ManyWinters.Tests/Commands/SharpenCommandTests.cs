@@ -11,27 +11,9 @@ namespace ManyWinters.Tests.Commands;
 // holding it could have made, and no further.
 public class SharpenCommandTests
 {
-    private static readonly MaterialId Stone = new("stone");
     private const float PoorlyMade = 0.3f;
 
-    private static Assembly.Part Wedge(float quality = PoorlyMade, float volume = 1f) =>
-        new(Stone, TestCatalogs.Wedge, quality, volume);
-
-    private static Person Sharpener(WorldState world, Assembly carrying, int practice = 50)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicSharpening);
-        person.Inventory.AddAssembly(carrying);
-        for (var i = 0; i < practice; i++)
-        {
-            person.Skills.Increase(SharpenCommand.Skill, 1f);
-        }
-
-        return person;
-    }
-
-    private static Assembly.Part EdgeIn(Person person) =>
-        Assert.IsType<Assembly.Part>(Assert.Single(person.Inventory.Assemblies));
+    private static readonly MaterialId Stone = new("stone");
 
     [Fact]
     public void SharpeningLeavesTheEdgeKeenerThanItWas()
@@ -238,4 +220,23 @@ public class SharpenCommandTests
 
         Assert.True(person.Skills.Get(SharpenCommand.Skill) > 0f);
     }
+
+    private static Assembly.Part Wedge(float quality = PoorlyMade, float volume = 1f) =>
+        new(Stone, TestCatalogs.Wedge, quality, volume);
+
+    private static Person Sharpener(WorldState world, Assembly carrying, int practice = 50)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicSharpening);
+        person.Inventory.AddAssembly(carrying);
+        for (var i = 0; i < practice; i++)
+        {
+            person.Skills.Increase(SharpenCommand.Skill, 1f);
+        }
+
+        return person;
+    }
+
+    private static Assembly.Part EdgeIn(Person person) =>
+        Assert.IsType<Assembly.Part>(Assert.Single(person.Inventory.Assemblies));
 }

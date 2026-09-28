@@ -23,42 +23,9 @@ internal sealed partial class MainUi : CanvasLayer
 {
     private const string SelectionMarkerTexturePath = "res://Content/people/selection_marker.png";
 
-    // Every full-screen page or window that asks for the player's whole attention, tagged with
-    // what that means for it. `HoldsClock` says whether it stops the world while it is up;
-    // `BlocksPause` says whether its being up should stop Space from opening a second window on
-    // top of it. The pause panel holds the clock but is not its own blocker - TogglePause decides
-    // what pressing Space does to the one already up, not whether it is allowed to be up at all.
-    private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
-
     private readonly List<ModalWindow> _modals = [];
     private readonly PausePanel _pausePanel;
     private readonly HelpPanel _helpPanel;
-
-    // Raised whenever a clock-holding page this type owns comes down (pause dismissed, help
-    // dismissed, an inscription dismissed). Composition code primes the tick accumulator; this
-    // type has no simulation clock of its own to prime.
-    public event Action? ClockShouldResume;
-
-    public StatusBar StatusBar { get; }
-
-    public ChroniclePanel Chronicle { get; }
-
-    public InscriptionOverlay InscriptionOverlay { get; }
-
-    public InspectorPanel Inspector { get; }
-
-    public SelectionUi Selection { get; }
-
-    public WorkshopUi Workshop { get; }
-
-    public ContextMenu ContextMenu { get; }
-
-    // True while any registered control that holds the clock is visible.
-    public bool HoldsClock => _modals.Any(modal => modal.HoldsClock && modal.Control.Visible);
-
-    // True while any registered control that should keep the pause page from opening on top of
-    // it is visible.
-    public bool BlocksPause => _modals.Any(modal => modal.BlocksPause && modal.Control.Visible);
 
     private readonly WorldState _world;
 
@@ -193,6 +160,43 @@ internal sealed partial class MainUi : CanvasLayer
         RegisterModal(_helpPanel, holdsClock: true, blocksPause: true);
     }
 
+    // Raised whenever a clock-holding page this type owns comes down (pause dismissed, help
+    // dismissed, an inscription dismissed). Composition code primes the tick accumulator; this
+    // type has no simulation clock of its own to prime.
+    public event Action? ClockShouldResume;
+
+    public StatusBar StatusBar { get; }
+
+    public ChroniclePanel Chronicle { get; }
+
+    public InscriptionOverlay InscriptionOverlay { get; }
+
+    public InspectorPanel Inspector { get; }
+
+    public SelectionUi Selection { get; }
+
+    public WorkshopUi Workshop { get; }
+
+    public ContextMenu ContextMenu { get; }
+
+    // True while any registered control that holds the clock is visible.
+    public bool HoldsClock => _modals.Any(modal => modal.HoldsClock && modal.Control.Visible);
+
+    // True while any registered control that should keep the pause page from opening on top of
+    // it is visible.
+    private bool BlocksPause => _modals.Any(modal => modal.BlocksPause && modal.Control.Visible);
+
+    // F11 moves between the window and a borderless fullscreen - the whole screen, taskbar
+    // included, with no native Windows chrome (WindowMode.Fullscreen rather than the exclusive
+    // video-mode switch, which is the less forgiving kind on Windows). F alone zooms the camera,
+    // so the key is F11; the controls page lists it under Windows.
+    public static void ToggleFullscreen()
+    {
+        var mode = DisplayServer.WindowGetMode();
+        var inFullscreen = mode is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
+        DisplayServer.WindowSetMode(inFullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
+    }
+
     // Two things the constructor above cannot finish: Chronicle's position needs GetViewport(),
     // and StatusBar's tick label is built in StatusBar's own _Ready - both need this CanvasLayer
     // inside the tree, which is not yet true while this constructor runs.
@@ -201,11 +205,6 @@ internal sealed partial class MainUi : CanvasLayer
         Chronicle.Position = new Vector2(GetViewport().GetVisibleRect().Size.X - 476f, 16f);
         StatusBar.SetTick(_world.Clock.CurrentTick, _world.CurrentSeason);
     }
-
-    // Every registration happens inside this constructor now that MainUi builds and attaches
-    // every control itself; nothing outside this type calls it any more.
-    private void RegisterModal(Control control, bool holdsClock, bool blocksPause) =>
-        _modals.Add(new ModalWindow(control, holdsClock, blocksPause));
 
     // Space toggles the clock at the player's request - ignored while a page nobody asked to see
     // stacked behind it, since a pause opened there would only surface once that page comes down.
@@ -225,12 +224,6 @@ internal sealed partial class MainUi : CanvasLayer
         _pausePanel.Show(bandName, sinceArrival, population);
     }
 
-    private void HidePause()
-    {
-        _pausePanel.Hide();
-        ClockShouldResume?.Invoke();
-    }
-
     // Nothing else answers to Escape, and a menu or a page that can only be dismissed by
     // clicking one particular thing is one the player fights. The naming question, the workbench,
     // the context menu, and the detail page each dismiss themselves through their own owner;
@@ -243,14 +236,21 @@ internal sealed partial class MainUi : CanvasLayer
         }
     }
 
-    // F11 moves between the window and a borderless fullscreen - the whole screen, taskbar
-    // included, with no native Windows chrome (WindowMode.Fullscreen rather than the exclusive
-    // video-mode switch, which is the less forgiving kind on Windows). F alone zooms the camera,
-    // so the key is F11; the controls page lists it under Windows.
-    public static void ToggleFullscreen()
+    // Every registration happens inside this constructor now that MainUi builds and attaches
+    // every control itself; nothing outside this type calls it any more.
+    private void RegisterModal(Control control, bool holdsClock, bool blocksPause) =>
+        _modals.Add(new ModalWindow(control, holdsClock, blocksPause));
+
+    private void HidePause()
     {
-        var mode = DisplayServer.WindowGetMode();
-        var inFullscreen = mode is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
-        DisplayServer.WindowSetMode(inFullscreen ? DisplayServer.WindowMode.Windowed : DisplayServer.WindowMode.Fullscreen);
+        _pausePanel.Hide();
+        ClockShouldResume?.Invoke();
     }
+
+    // Every full-screen page or window that asks for the player's whole attention, tagged with
+    // what that means for it. `HoldsClock` says whether it stops the world while it is up;
+    // `BlocksPause` says whether its being up should stop Space from opening a second window on
+    // top of it. The pause panel holds the clock but is not its own blocker - TogglePause decides
+    // what pressing Space does to the one already up, not whether it is allowed to be up at all.
+    private readonly record struct ModalWindow(Control Control, bool HoldsClock, bool BlocksPause);
 }

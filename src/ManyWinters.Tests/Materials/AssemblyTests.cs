@@ -4,15 +4,6 @@ namespace ManyWinters.Tests.Materials;
 
 public class AssemblyTests
 {
-    private static readonly MaterialId Wood = new("wood");
-    private static readonly MaterialId Stone = new("stone");
-    private static readonly MaterialId Grass = new("grass");
-    private static readonly MaterialId Unknown = new("unobtainium");
-
-    private static readonly FormId Wedge = new("wedge");
-    private static readonly FormId Shaft = new("shaft");
-    private static readonly FormId Cord = new("cord");
-
     // These tests are about the parts, so the lashings themselves weigh nothing; what a
     // binding weighs has its own test below.
     private const float NoBinding = 0f;
@@ -23,6 +14,15 @@ public class AssemblyTests
     private const float StoneToughness = 0.2f;
     private const float GrassDensity = 0.1f;
     private const float GrassToughness = 0.4f;
+
+    private static readonly MaterialId Wood = new("wood");
+    private static readonly MaterialId Stone = new("stone");
+    private static readonly MaterialId Grass = new("grass");
+    private static readonly MaterialId Unknown = new("unobtainium");
+
+    private static readonly FormId Wedge = new("wedge");
+    private static readonly FormId Shaft = new("shaft");
+    private static readonly FormId Cord = new("cord");
 
     private static readonly MaterialCatalog Materials = new([
         new MaterialDefinition(Wood, "Wood", WoodDensity, Toughness: WoodToughness),

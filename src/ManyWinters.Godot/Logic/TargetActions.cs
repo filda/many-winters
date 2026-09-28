@@ -5,12 +5,6 @@ using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 
 namespace ManyWinters.Godot.Logic;
-
-// What the player pointed at and what may be done with it. The heading names the thing in the
-// player's own words, so the actions under it need not repeat it: "Apple tree" over "Gather",
-// not a column of "Gather from the apple tree".
-internal sealed record TargetMenu(string Heading, IReadOnlyList<ActionOffer> Offers);
-
 // The other half of PersonActions: what the selected person may do with something else in the
 // world. One overload per kind of thing there is rather than one abstraction over all of them -
 // a tree, a person, a hut and a patch of ground have nothing in common but a position, and an
@@ -38,21 +32,6 @@ internal static class TargetActions
         EntityCategory.Building => ForBuilding(world, actor, entity),
         _ => throw new ArgumentOutOfRangeException(nameof(entity), entity.Category, "Unknown entity category."),
     };
-
-    private static TargetMenu ForResource(WorldState world, Person actor, Entity node)
-    {
-        var resource = world.Configuration.ResourceCatalog.Get(node.Kind);
-        var offers = new List<ActionOffer> { Gather(world, actor, node) };
-
-        // Only for what can be felled at all: a standing "Fell" on every mushroom is a line the
-        // player learns to ignore rather than a refusal they can do anything about.
-        if (resource.CanFell)
-        {
-            offers.Add(ActionOffer.For("Fell", new FellCommand(actor, node), world, resource.Skill, node.Position));
-        }
-
-        return new TargetMenu(resource.DisplayName, offers);
-    }
 
     // Split out because a left click on a resource means this and nothing else, so the click
     // handler asks for it by name rather than by taking whichever offer happens to come first.
@@ -132,6 +111,57 @@ internal static class TargetActions
         return new TargetMenu(heading, [offer]);
     }
 
+    // Split out for the same reason as Gather and WalkTo: a left click on a pile means this and
+    // nothing else.
+    internal static ActionOffer PickUp(WorldState world, Person actor, Entity pile) =>
+        ActionOffer.For("Pick up", new PickUpItemCommand(actor, pile), world, target: pile.Position);
+
+    internal static TargetMenu For(WorldState world, Person actor, Position ground)
+    {
+        var offers = new List<ActionOffer> { WalkTo(world, actor, ground) };
+
+        // The other half of the recipe list a person's own card offers: only for a recipe whose
+        // output does not fit in the pack, which is what makes it worth choosing a spot for at
+        // all. Same rule as the crafting lines on a person's own card: offered from the first
+        // unit of the material, so "Build a store here" is a goal to work towards with the
+        // blocker saying how far off it is, and absent entirely for somebody carrying none of it.
+        foreach (var recipe in world.Configuration.RecipeCatalog.Definitions
+                     .Where(recipe => actor.Inventory.Get(recipe.InputItem) > 0)
+                     .Where(recipe => !PersonActions.FitsInInventory(world, actor, recipe.Output))
+                     .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal))
+        {
+            offers.Add(ActionOffer.For(
+                $"Build {Lowered(world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName)}",
+                new MakeCommand(actor, recipe.Output, ground),
+                world,
+                target: ground));
+        }
+
+        // Not named after the spot: a patch of grass has no name, and coordinates are a fact about
+        // the simulation rather than about the world the player is looking at.
+        return new TargetMenu("This spot", offers);
+    }
+
+    // Split out for the same reason as Gather: a left click on bare ground means this and nothing
+    // else.
+    internal static ActionOffer WalkTo(WorldState world, Person actor, Position ground) =>
+        ActionOffer.For("Walk here", new MoveCommand(actor, ground), world, target: ground);
+
+    private static TargetMenu ForResource(WorldState world, Person actor, Entity node)
+    {
+        var resource = world.Configuration.ResourceCatalog.Get(node.Kind);
+        var offers = new List<ActionOffer> { Gather(world, actor, node) };
+
+        // Only for what can be felled at all: a standing "Fell" on every mushroom is a line the
+        // player learns to ignore rather than a refusal they can do anything about.
+        if (resource.CanFell)
+        {
+            offers.Add(ActionOffer.For("Fell", new FellCommand(actor, node), world, resource.Skill, node.Position));
+        }
+
+        return new TargetMenu(resource.DisplayName, offers);
+    }
+
     // A pile is one kind of stock or one made thing, so the heading already
     // names it and the one offer under it is a bare verb - the same shape as a resource's
     // "Gather". A made thing is named the way it is named everywhere else: the band's own word
@@ -142,11 +172,6 @@ internal static class TargetActions
                 ? InspectorText.ForWorkedThing(made, world)
                 : world.Configuration.ItemCatalog.Get(new ItemKindId(pile.Kind.Value)).DisplayName,
             [PickUp(world, actor, pile)]);
-
-    // Split out for the same reason as Gather and WalkTo: a left click on a pile means this and
-    // nothing else.
-    internal static ActionOffer PickUp(WorldState world, Person actor, Entity pile) =>
-        ActionOffer.For("Pick up", new PickUpItemCommand(actor, pile), world, target: pile.Position);
 
     private static TargetMenu ForBuilding(WorldState world, Person actor, Entity building)
     {
@@ -180,37 +205,6 @@ internal static class TargetActions
 
         return new TargetMenu(items.Get(new ItemKindId(building.Kind.Value)).DisplayName, offers);
     }
-
-    internal static TargetMenu For(WorldState world, Person actor, Position ground)
-    {
-        var offers = new List<ActionOffer> { WalkTo(world, actor, ground) };
-
-        // The other half of the recipe list a person's own card offers: only for a recipe whose
-        // output does not fit in the pack, which is what makes it worth choosing a spot for at
-        // all. Same rule as the crafting lines on a person's own card: offered from the first
-        // unit of the material, so "Build a store here" is a goal to work towards with the
-        // blocker saying how far off it is, and absent entirely for somebody carrying none of it.
-        foreach (var recipe in world.Configuration.RecipeCatalog.Definitions
-                     .Where(recipe => actor.Inventory.Get(recipe.InputItem) > 0)
-                     .Where(recipe => !PersonActions.FitsInInventory(world, actor, recipe.Output))
-                     .OrderBy(recipe => recipe.Output.Value, StringComparer.Ordinal))
-        {
-            offers.Add(ActionOffer.For(
-                $"Build {Lowered(world.Configuration.ItemCatalog.Get(recipe.Output).DisplayName)}",
-                new MakeCommand(actor, recipe.Output, ground),
-                world,
-                target: ground));
-        }
-
-        // Not named after the spot: a patch of grass has no name, and coordinates are a fact about
-        // the simulation rather than about the world the player is looking at.
-        return new TargetMenu("This spot", offers);
-    }
-
-    // Split out for the same reason as Gather: a left click on bare ground means this and nothing
-    // else.
-    internal static ActionOffer WalkTo(WorldState world, Person actor, Position ground) =>
-        ActionOffer.For("Walk here", new MoveCommand(actor, ground), world, target: ground);
 
     // A line per thing the teacher could pass on, not one "teach them the lot": a lesson is a
     // single technique, the way the band's own casual teaching hands over at most one per tick
@@ -271,3 +265,8 @@ internal static class TargetActions
     // the rest of the player's prose sets a thing's name mid-phrase.
     private static string Lowered(string displayName) => displayName.ToLowerInvariant();
 }
+
+// What the player pointed at and what may be done with it. The heading names the thing in the
+// player's own words, so the actions under it need not repeat it: "Apple tree" over "Gather",
+// not a column of "Gather from the apple tree".
+internal sealed record TargetMenu(string Heading, IReadOnlyList<ActionOffer> Offers);

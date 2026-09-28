@@ -10,12 +10,6 @@ namespace ManyWinters.Tests.World;
 // Home to give a Person.
 public class PersonHomeRangeTests
 {
-    // Hunger accrual is switched off here: these tests are about wandering and search bounds,
-    // not survival, and a real hunger clock would kill the lone, unfed person under test long
-    // before hundreds of idle ticks have played out.
-    private static WorldState NewWorldWithoutHunger() =>
-        new(TestCatalogs.CreateConfiguration() with { Rules = SimulationRules.Default with { HungerPerTick = 0f } });
-
     [Fact]
     public void APersonWithAHomeReturnsWithinItsRadiusAfterADirectedTripEndsOutsideIt()
     {
@@ -70,4 +64,10 @@ public class PersonHomeRangeTests
         var gatherTask = Assert.IsType<GatherTask>(person.Tasks.Current);
         Assert.Same(withinRangeOfCamp, gatherTask.Target);
     }
+
+    // Hunger accrual is switched off here: these tests are about wandering and search bounds,
+    // not survival, and a real hunger clock would kill the lone, unfed person under test long
+    // before hundreds of idle ticks have played out.
+    private static WorldState NewWorldWithoutHunger() =>
+        new(TestCatalogs.CreateConfiguration() with { Rules = SimulationRules.Default with { HungerPerTick = 0f } });
 }

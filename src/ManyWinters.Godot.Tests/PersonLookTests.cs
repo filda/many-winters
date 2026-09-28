@@ -79,8 +79,6 @@ public class PersonLookTests
         Assert.False(card.IsAlive);
     }
 
-    private static string Path(string layer, string variant) => $"res://Content/people/{layer}_{variant}.png";
-
     // Which tint replaces a creature's own colour for its state - null for the living, since
     // their colour is their own rather than something looked up here.
     [Fact]
@@ -116,4 +114,6 @@ public class PersonLookTests
             - Math.Min(Math.Min(PersonLook.BonesTint.R, PersonLook.BonesTint.G), PersonLook.BonesTint.B);
         Assert.True(bonesSpread <= deadSpread);
     }
+
+    private static string Path(string layer, string variant) => $"res://Content/people/{layer}_{variant}.png";
 }

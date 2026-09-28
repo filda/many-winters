@@ -4,24 +4,6 @@ namespace ManyWinters.Godot.Tests;
 
 public class LendingPoolTests
 {
-    // A stand-in for the pooled ShaderMaterial: Resource-derived types cannot be touched here
-    // (see this project's README), which is why the pool is generic.
-    private sealed class Lent
-    {
-    }
-
-    private static LendingPool<Lent> CountingPool(out Func<int> created)
-    {
-        var count = 0;
-        created = () => count;
-
-        return new LendingPool<Lent>(() =>
-        {
-            count++;
-            return new Lent();
-        });
-    }
-
     [Fact]
     public void AFreshPoolHoldsNothing()
     {
@@ -99,5 +81,23 @@ public class LendingPoolTests
         }
 
         Assert.Equal(4, created());
+    }
+
+    private static LendingPool<Lent> CountingPool(out Func<int> created)
+    {
+        var count = 0;
+        created = () => count;
+
+        return new LendingPool<Lent>(() =>
+        {
+            count++;
+            return new Lent();
+        });
+    }
+
+    // A stand-in for the pooled ShaderMaterial: Resource-derived types cannot be touched here
+    // (see this project's README), which is why the pool is generic.
+    private sealed class Lent
+    {
     }
 }

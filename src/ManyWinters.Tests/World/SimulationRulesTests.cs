@@ -6,6 +6,10 @@ namespace ManyWinters.Tests.World;
 
 public class SimulationRulesTests
 {
+    // Not MaxHunger 100 with variation 0.5: there halving, doubling and adding come out alike,
+    // so mutants survive (docs/development.md, "Mutation testing").
+    private static readonly SimulationRules HungerRules = new() { MaxHunger = 80f, MaxHungerVariation = 0.25f };
+
     [Fact]
     public void DefaultIsTheShippedCalendar()
     {
@@ -40,10 +44,6 @@ public class SimulationRulesTests
 
         Assert.Equal(expected, rules.SeasonAt(tick));
     }
-
-    // Not MaxHunger 100 with variation 0.5: there halving, doubling and adding come out alike,
-    // so mutants survive (docs/development.md, "Mutation testing").
-    private static readonly SimulationRules HungerRules = new() { MaxHunger = 80f, MaxHungerVariation = 0.25f };
 
     [Fact]
     public void ADrawnMaxHungerStaysWithinTheVariationEitherWayOfTheAverage()

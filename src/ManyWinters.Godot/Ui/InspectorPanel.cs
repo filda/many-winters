@@ -25,10 +25,6 @@ internal sealed partial class InspectorPanel : PanelContainer
     private Label _buildingsLabel = null!;
     private Label _gravesLabel = null!;
 
-    public event Action? SpawnRequested;
-    public event Action? ExtinguishRequested;
-    public event Action<bool>? RevealMapToggled;
-
     public InspectorPanel(PresentationSettings presentation)
     {
         _fontSize = presentation.InspectorFontSize;
@@ -36,6 +32,10 @@ internal sealed partial class InspectorPanel : PanelContainer
         Visible = false;
         CustomMinimumSize = new Vector2(Width, 0);
     }
+
+    public event Action? SpawnRequested;
+    public event Action? ExtinguishRequested;
+    public event Action<bool>? RevealMapToggled;
 
     public override void _Ready()
     {

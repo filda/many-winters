@@ -26,10 +26,6 @@ public static class GranularModel
     private const float ToneCutoffBaseHz = 900.0f;
     private const float ToneCutoffHardnessRangeHz = 3500.0f;
     private const float ToneQ = 0.707f;
-
-    // Irregular ratios so the body has a pitch rather than a hollow, evenly-spaced ring - the same
-    // reasoning ImpactModel's mode table documents, at a much smaller scale here.
-    private static readonly float[] ModeRatios = [1.0f, 1.7f, 2.6f, 3.9f];
     private const float ModeDetuneRange = 0.06f;
     private const float ModeGainRollOffExponent = 0.3f;
 
@@ -61,6 +57,10 @@ public static class GranularModel
     private const float TargetPeak = 0.9f;
     private const float MinimumLengthSeconds = 0.05f;
     private const float RingTailMultiplier = 1.2f;
+
+    // Irregular ratios so the body has a pitch rather than a hollow, evenly-spaced ring - the same
+    // reasoning ImpactModel's mode table documents, at a much smaller scale here.
+    private static readonly float[] ModeRatios = [1.0f, 1.7f, 2.6f, 3.9f];
 
     public static float[] Render(GranularSurface surface, GranularGesture gesture, int sampleRate, int seed)
     {

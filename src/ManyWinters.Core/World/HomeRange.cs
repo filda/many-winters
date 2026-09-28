@@ -6,6 +6,13 @@ namespace ManyWinters.Core.World;
 // home shifts slowly and reproducibly and never jumps mid-season.
 public sealed class HomeRange
 {
+    // Null until the first Advance call, which only ever establishes which season "now" is - it
+    // never moves the anchor, or a freshly spawned herd would jump the instant the world's first
+    // tick ran. Every later call that crosses into a new season moves it exactly once.
+    private long? _lastAdvancedSeason;
+
+    public HomeRange(Position anchor) => Anchor = anchor;
+
     // The home of the unknown person, who needs one only so that no creature's Home is ever null:
     // the empty id, never in any world, and no ground at all - radius 0 at the origin, never
     // drifting - so anything that ever did read it would stand still rather than wander off.
@@ -25,13 +32,6 @@ public sealed class HomeRange
     // From the species' own herd definition, kept here rather than in the shared rules so a
     // second species can drift at its own rate. 0 for a home range that never moves.
     public required float DriftMetresPerSeason { get; init; }
-
-    // Null until the first Advance call, which only ever establishes which season "now" is - it
-    // never moves the anchor, or a freshly spawned herd would jump the instant the world's first
-    // tick ran. Every later call that crosses into a new season moves it exactly once.
-    private long? _lastAdvancedSeason;
-
-    public HomeRange(Position anchor) => Anchor = anchor;
 
     // Idempotent within a season: called every tick, but only moves the anchor on the tick that
     // crosses into a new season, so the drift is exactly DriftMetresPerSeason per season

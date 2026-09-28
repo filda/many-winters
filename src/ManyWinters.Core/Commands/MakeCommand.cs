@@ -12,6 +12,11 @@ namespace ManyWinters.Core.Commands;
 // is placed wherever the maker is standing.
 public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Position = null) : ICommand
 {
+    // Wherever the maker is standing, unless a specific spot was asked for - so "make an axe"
+    // from the person's card and "build a storage hut here" from a ground click both go through
+    // this one command.
+    private Position TargetPosition => Position ?? Person.Position;
+
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -63,11 +68,6 @@ public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Pos
             Storage = new Inventory(),
         });
     }
-
-    // Wherever the maker is standing, unless a specific spot was asked for - so "make an axe"
-    // from the person's card and "build a storage hut here" from a ground click both go through
-    // this one command.
-    private Position TargetPosition => Position ?? Person.Position;
 
     private bool FitsInInventory(WorldState world) =>
         Person.Inventory.HasRoomFor(Output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(Person));

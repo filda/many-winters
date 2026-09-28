@@ -6,14 +6,14 @@ namespace ManyWinters.Godot.Logic;
 // nothing and lets the floor recover the index. One wrong and the fog sits half a texel off.
 internal readonly record struct TexelGrid(int Size, float HalfExtentMeters)
 {
-    // One texel per exploration cell, rounded up so the bitmap covers the whole map.
-    internal static TexelGrid Covering(float halfExtentMeters, float cellSizeMeters) =>
-        new((int)MathF.Ceiling((2f * halfExtentMeters) / cellSizeMeters), halfExtentMeters);
-
     internal float ExtentMeters => 2f * HalfExtentMeters;
 
     // How much ground one texel stands for - the scale the distance field is reported in.
     internal float MetresPerTexel => ExtentMeters / Size;
+
+    // One texel per exploration cell, rounded up so the bitmap covers the whole map.
+    internal static TexelGrid Covering(float halfExtentMeters, float cellSizeMeters) =>
+        new((int)MathF.Ceiling((2f * halfExtentMeters) / cellSizeMeters), halfExtentMeters);
 
     // The world coordinate at the *centre* of a texel, where exploration state is sampled: a
     // texel is an area, and its corner would bias every sample half a texel toward the origin.

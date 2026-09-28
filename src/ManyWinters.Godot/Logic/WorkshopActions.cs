@@ -65,18 +65,6 @@ internal static class WorkshopActions
         return MaterialWords.For(person.Beliefs.AsBelieved(material));
     }
 
-    private static MaterialDefinition? MaterialOf(WorldState world, WorkshopEntry entry)
-    {
-        var id = entry.Target switch
-        {
-            CarriedThing.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
-            CarriedThing.Worked { Thing: Assembly.Part part } => part.Material,
-            _ => (MaterialId?)null,
-        };
-
-        return id is { } material ? world.Configuration.MaterialCatalog.Find(material) : null;
-    }
-
     // A recipe is named up front, unlike a reductive or combinative verb: the player already
     // knows an axe when they see one, and hiding the word "axe" behind "Make" would only be coy.
     // Only for a recipe the person can actually carry out right now - how far short they are of
@@ -135,6 +123,18 @@ internal static class WorkshopActions
         2 => ActionOffer.For("Make", new BindCommand(person, picked[0].Target, picked[1].Target), world, BindCommand.Skill),
         _ => null,
     };
+
+    private static MaterialDefinition? MaterialOf(WorldState world, WorkshopEntry entry)
+    {
+        var id = entry.Target switch
+        {
+            CarriedThing.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
+            CarriedThing.Worked { Thing: Assembly.Part part } => part.Material,
+            _ => (MaterialId?)null,
+        };
+
+        return id is { } material ? world.Configuration.MaterialCatalog.Find(material) : null;
+    }
 
     // One thing picked, from either tier. Raw stock is worked down - which verb is the item's
     // own business - and a worked thing is worked over, which today means its edge renewed.

@@ -11,48 +11,6 @@ public class BindCommandTests
     private static readonly CarriedThing Wood = new CarriedThing.Stock(TestCatalogs.WoodItem);
     private static readonly CarriedThing Stone = new CarriedThing.Stock(TestCatalogs.StoneItem);
 
-    // Somebody who knows how to bind, carrying a stick, a stone and one cord to lash them with.
-    // Practised enough that the hands never fail (chance of success reaches 1 at mastery), so a
-    // test about what binding produces is not also a test of the dice. The rolling has its own
-    // tests below.
-    private static Person Binder(WorldState world, float cordQuality = 0.5f)
-    {
-        var person = Novice(world, cordQuality);
-        Practise(person);
-
-        return person;
-    }
-
-    private static Person Novice(WorldState world, float cordQuality = 0.5f)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicBinding);
-        person.Inventory.Add(TestCatalogs.WoodItem, 1);
-        person.Inventory.Add(TestCatalogs.StoneItem, 1);
-        person.Inventory.AddAssembly(Cord(cordQuality));
-
-        return person;
-    }
-
-    private static void Practise(Person person, int times = 50)
-    {
-        for (var i = 0; i < times; i++)
-        {
-            person.Skills.Increase(BindCommand.Skill, 1f);
-        }
-    }
-
-    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
-    {
-        while (WorkAttempt.Succeeds(person, BindCommand.Skill, BindCommand.Verb, world.Clock.CurrentTick) != succeed)
-        {
-            world.Clock.Advance();
-        }
-    }
-
-    private static Assembly.Part Cord(float quality = 0.5f) =>
-        new(new MaterialId("plant_fibre"), TestCatalogs.Cord, quality, Volume: 15f);
-
     [Fact]
     public void BindingTwoThingsLeavesOneObjectMadeOfBoth()
     {
@@ -306,4 +264,46 @@ public class BindCommandTests
 
         Assert.True(person.Skills.Get(BindCommand.Skill) > 0f);
     }
+
+    // Somebody who knows how to bind, carrying a stick, a stone and one cord to lash them with.
+    // Practised enough that the hands never fail (chance of success reaches 1 at mastery), so a
+    // test about what binding produces is not also a test of the dice. The rolling has its own
+    // tests above.
+    private static Person Binder(WorldState world, float cordQuality = 0.5f)
+    {
+        var person = Novice(world, cordQuality);
+        Practise(person);
+
+        return person;
+    }
+
+    private static Person Novice(WorldState world, float cordQuality = 0.5f)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicBinding);
+        person.Inventory.Add(TestCatalogs.WoodItem, 1);
+        person.Inventory.Add(TestCatalogs.StoneItem, 1);
+        person.Inventory.AddAssembly(Cord(cordQuality));
+
+        return person;
+    }
+
+    private static void Practise(Person person, int times = 50)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            person.Skills.Increase(BindCommand.Skill, 1f);
+        }
+    }
+
+    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
+    {
+        while (WorkAttempt.Succeeds(person, BindCommand.Skill, BindCommand.Verb, world.Clock.CurrentTick) != succeed)
+        {
+            world.Clock.Advance();
+        }
+    }
+
+    private static Assembly.Part Cord(float quality = 0.5f) =>
+        new(new MaterialId("plant_fibre"), TestCatalogs.Cord, quality, Volume: 15f);
 }

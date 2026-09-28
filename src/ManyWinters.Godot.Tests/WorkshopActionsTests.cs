@@ -10,9 +10,6 @@ namespace ManyWinters.Godot.Tests;
 // a verb - the count of what they picked is the whole question.
 public class WorkshopActionsTests
 {
-    private static Assembly.Part Cord(float quality = 0.5f) =>
-        new(new MaterialId("plant_fibre"), TestWorld.Cord, quality, Volume: 15f);
-
     [Fact]
     public void TheBenchListsBothTiersOfThePack()
     {
@@ -460,4 +457,7 @@ public class WorkshopActionsTests
         Assert.Null(WorkshopActions.Drop(world, person, []));
         Assert.Null(WorkshopActions.Drop(world, person, carried));
     }
+
+    private static Assembly.Part Cord(float quality = 0.5f) =>
+        new(new MaterialId("plant_fibre"), TestWorld.Cord, quality, Volume: 15f);
 }

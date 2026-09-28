@@ -13,6 +13,8 @@ namespace ManyWinters.Godot.Logic;
 // player. Kept apart from the panel so the wording is a plain function of the state.
 internal static class InspectorText
 {
+    private const string Unnameable = "something made";
+
     // Creature, not Person: an animal has tasks too, and this is also the animal card's own
     // "doing" line.
     internal static string ForTask(Creature creature) => creature.Tasks.Current switch
@@ -156,24 +158,6 @@ internal static class InspectorText
         _ => Unnameable,
     };
 
-    private const string Unnameable = "something made";
-
-    private static string ForPiece(Assembly.Part part, MaterialCatalog materials, FormCatalog forms)
-    {
-        var material = materials.Find(part.Material)?.DisplayName;
-        var form = forms.Find(part.Form)?.DisplayName;
-
-        return (material, form) switch
-        {
-            (null, null) => Unnameable,
-            (null, not null) => Lowered(form),
-            (not null, null) => Lowered(material),
-            _ => $"{Lowered(material)} {Lowered(form)}",
-        };
-    }
-
-    private static string Lowered(string displayName) => displayName.ToLowerInvariant();
-
     // The grave as the player finds it: what the stone says, and nothing the stone could not say.
     // ForGrave keeps the id and the coordinates for the debug inspector.
     internal static string ForGraveRecord(Grave grave, SkillCatalog skills)
@@ -235,4 +219,20 @@ internal static class InspectorText
         var parents = string.Join(" and ", new[] { motherName, fatherName }.Where(name => name is not null));
         return $"{childWord} of {parents}\n";
     }
+
+    private static string ForPiece(Assembly.Part part, MaterialCatalog materials, FormCatalog forms)
+    {
+        var material = materials.Find(part.Material)?.DisplayName;
+        var form = forms.Find(part.Form)?.DisplayName;
+
+        return (material, form) switch
+        {
+            (null, null) => Unnameable,
+            (null, not null) => Lowered(form),
+            (not null, null) => Lowered(material),
+            _ => $"{Lowered(material)} {Lowered(form)}",
+        };
+    }
+
+    private static string Lowered(string displayName) => displayName.ToLowerInvariant();
 }

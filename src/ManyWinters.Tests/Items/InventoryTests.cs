@@ -5,6 +5,8 @@ namespace ManyWinters.Tests.Items;
 
 public class InventoryTests
 {
+    private const long MeatShelfLifeTicks = 30;
+
     private static readonly ItemKindId Wood = new("wood");
     private static readonly ItemKindId Feather = new("feather");
     private static readonly ItemKindId Stone = new("stone");
@@ -12,24 +14,10 @@ public class InventoryTests
     private static readonly MaterialId Stuff = new("stuff");
     private static readonly FormId Lump = new("lump");
 
-    // These tests are about how weight adds up, not where a unit weight comes from: density 1,
-    // so an item's volume reads directly as its weight.
-    private static ItemCatalog CatalogOf(params ItemDefinition[] items) =>
-        new(items, new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f)]), new FormCatalog([]));
-
-    private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
-        new(id, displayName, Stuff, Lump, weight);
-
-    // For the age-ledger tests: one catalog with a kind whose material spoils, so
+    // For the age-ledger tests: a kind whose material spoils, built into PerishableCatalog so
     // Add/Remove/Transfer/Expire have something to track.
     private static readonly ItemKindId Meat = new("meat");
     private static readonly MaterialId Perishable = new("meat");
-    private const long MeatShelfLifeTicks = 30;
-
-    private static ItemCatalog PerishableCatalog() => new(
-        [new ItemDefinition(Meat, "Meat", Perishable, Lump, 1f)],
-        new MaterialCatalog([new MaterialDefinition(Perishable, "Meat", Density: 1f, ShelfLifeTicks: MeatShelfLifeTicks)]),
-        new FormCatalog([]));
 
     // A made object goes in whole or not at all, unlike a stack: half an axe is nothing.
     [Fact]
@@ -508,4 +496,17 @@ public class InventoryTests
 
         Assert.Single(inventory.Assemblies);
     }
+
+    // These tests are about how weight adds up, not where a unit weight comes from: density 1,
+    // so an item's volume reads directly as its weight.
+    private static ItemCatalog CatalogOf(params ItemDefinition[] items) =>
+        new(items, new MaterialCatalog([new MaterialDefinition(Stuff, "Stuff", Density: 1f)]), new FormCatalog([]));
+
+    private static ItemDefinition Weighing(ItemKindId id, string displayName, float weight) =>
+        new(id, displayName, Stuff, Lump, weight);
+
+    private static ItemCatalog PerishableCatalog() => new(
+        [new ItemDefinition(Meat, "Meat", Perishable, Lump, 1f)],
+        new MaterialCatalog([new MaterialDefinition(Perishable, "Meat", Density: 1f, ShelfLifeTicks: MeatShelfLifeTicks)]),
+        new FormCatalog([]));
 }

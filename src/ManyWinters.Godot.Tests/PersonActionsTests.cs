@@ -12,9 +12,6 @@ namespace ManyWinters.Godot.Tests;
 // on.
 public class PersonActionsTests
 {
-    private static ActionOffer OfType<TCommand>(WorldState world, Person person) =>
-        Assert.Single(PersonActions.For(world, person), offer => offer.Command is TCommand);
-
     // Everything that needed a target - felling, burying, depositing, building, having a child -
     // left for the contextual menu, and took "nothing nearby" with it: every offer that is made
     // now has a command behind it.
@@ -240,4 +237,7 @@ public class PersonActionsTests
         Assert.NotEmpty(offers);
         Assert.DoesNotContain(offers, offer => offer.IsAvailable);
     }
+
+    private static ActionOffer OfType<TCommand>(WorldState world, Person person) =>
+        Assert.Single(PersonActions.For(world, person), offer => offer.Command is TCommand);
 }

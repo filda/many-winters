@@ -14,8 +14,6 @@ namespace ManyWinters.Godot.Logic;
 // unexplored side.
 internal static class ExplorationMasks
 {
-    internal sealed record Masks(float[,] Unexplored, float[,] Remembered, bool[,] Explored);
-
     internal static Masks Build(RevealableExploration exploration, TexelGrid grid)
     {
         var size = grid.Size;
@@ -41,4 +39,6 @@ internal static class ExplorationMasks
 
         return new Masks(unexplored, remembered, explored);
     }
+
+    internal sealed record Masks(float[,] Unexplored, float[,] Remembered, bool[,] Explored);
 }

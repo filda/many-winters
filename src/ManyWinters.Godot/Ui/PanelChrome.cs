@@ -7,6 +7,19 @@ namespace ManyWinters.Godot.Ui;
 // panel, status bar - so they read as one UI language.
 public static class PanelChrome
 {
+    // How far the text sits from the paper's edge. The caller lays this in itself, because the
+    // StyleBox cannot carry it without insetting the grain with it.
+    public const int PaperPadding = 14;
+
+    // How far a filled box holds text off its own left and right edge. Public, because anything
+    // laying its own labels over such a box has to line up with it.
+    public const int FilledPadding = 8;
+
+    // How much room the cross in a panel's corner takes.
+    private const int CrossSize = 20;
+
+    private const int CrossFontSize = 16;
+
     public static StyleBoxFlat Background() => new()
     {
         BgColor = new Color(0f, 0f, 0f, 0.6f),
@@ -40,14 +53,6 @@ public static class PanelChrome
         CornerRadiusBottomLeft = 3,
         CornerRadiusBottomRight = 3,
     };
-
-    // How far the text sits from the paper's edge. The caller lays this in itself, because the
-    // StyleBox cannot carry it without insetting the grain with it.
-    public const int PaperPadding = 14;
-
-    // How far a filled box holds text off its own left and right edge. Public, because anything
-    // laying its own labels over such a box has to line up with it.
-    public const int FilledPadding = 8;
 
     // A box filled with one colour, padded the way a line of text on paper wants: what the panels
     // build their flat buttons and their meter bars out of.
@@ -101,11 +106,6 @@ public static class PanelChrome
         return theme;
     }
 
-    // How much room the cross in a panel's corner takes.
-    private const int CrossSize = 20;
-
-    private const int CrossFontSize = 16;
-
     // The way out, in the top right corner where every window keeps it. Carries its own face and
     // its own box rather than taking the ambient theme's, because the same cross sits on a page
     // of paper and on the dark card over the world - only the ink changes. Quiet at rest and full
@@ -153,19 +153,6 @@ public static class PanelChrome
         return corner;
     }
 
-    // Tighter than Filled: a cross is one glyph, and a line of text's padding around it would
-    // push it off the corner it belongs in.
-    private static StyleBoxFlat CrossBox(Color fill) => new()
-    {
-        BgColor = fill,
-        ContentMarginLeft = 4,
-        ContentMarginRight = 4,
-        CornerRadiusTopLeft = 3,
-        CornerRadiusTopRight = 3,
-        CornerRadiusBottomLeft = 3,
-        CornerRadiusBottomRight = 3,
-    };
-
     // A hairline in the ink, between sections of a page - the engine's own separator draws a grey
     // bevel, which is not a mark paper makes.
     public static HSeparator Rule()
@@ -195,6 +182,19 @@ public static class PanelChrome
         grain.AddChild(Hatching(paper));
         return grain;
     }
+
+    // Tighter than Filled: a cross is one glyph, and a line of text's padding around it would
+    // push it off the corner it belongs in.
+    private static StyleBoxFlat CrossBox(Color fill) => new()
+    {
+        BgColor = fill,
+        ContentMarginLeft = 4,
+        ContentMarginRight = 4,
+        CornerRadiusTopLeft = 3,
+        CornerRadiusTopRight = 3,
+        CornerRadiusBottomLeft = 3,
+        CornerRadiusBottomRight = 3,
+    };
 
     private static TextureRect Blotches(PaperWeathering paper)
     {

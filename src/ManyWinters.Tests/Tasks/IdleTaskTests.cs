@@ -7,14 +7,6 @@ namespace ManyWinters.Tests.Tasks;
 
 public class IdleTaskTests
 {
-    private static Person NewPerson(Position position) =>
-        new() { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = HomeAt(position) };
-
-    // A camp of the rules' radius that never drifts, so a test about the walk itself has a still
-    // anchor to walk around.
-    private static HomeRange HomeAt(Position anchor) =>
-        new(anchor) { Radius = SimulationRules.Default.CampHomeRadius, DriftMetresPerSeason = 0f };
-
     [Fact]
     public void IsNeverComplete()
     {
@@ -252,4 +244,12 @@ public class IdleTaskTests
 
         Assert.Equal(first.Position, second.Position);
     }
+
+    private static Person NewPerson(Position position) =>
+        new() { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = HomeAt(position) };
+
+    // A camp of the rules' radius that never drifts, so a test about the walk itself has a still
+    // anchor to walk around.
+    private static HomeRange HomeAt(Position anchor) =>
+        new(anchor) { Radius = SimulationRules.Default.CampHomeRadius, DriftMetresPerSeason = 0f };
 }

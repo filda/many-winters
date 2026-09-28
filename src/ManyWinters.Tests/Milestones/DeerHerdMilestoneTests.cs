@@ -19,42 +19,6 @@ public class DeerHerdMilestoneTests
     // 6), so nobody here is excluded from breeding by age.
     private const long AdultAgeTicks = 3 * TicksPerYear;
 
-    private static HomeRange NewHome(Position anchor, float radius) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
-
-    private static List<Animal> SpawnHerd(WorldState world, HomeRange home, int femaleCount, int maleCount)
-    {
-        var herd = new List<Animal>();
-        for (var i = 0; i < femaleCount; i++)
-        {
-            herd.Add(world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(i, 0), home, AdultAgeTicks, Sex.Female));
-        }
-
-        for (var i = 0; i < maleCount; i++)
-        {
-            herd.Add(world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(-i - 1, 0), home, AdultAgeTicks, Sex.Male));
-        }
-
-        return herd;
-    }
-
-    // Two rings of near-endless grass around the anchor - close enough that a hungry deer never
-    // has far to walk, plentiful enough that nobody's own gathering ever exhausts it.
-    private static void ScatterGrass(WorldState world, Position center, int perRing)
-    {
-        void Ring(double distance)
-        {
-            for (var i = 0; i < perRing; i++)
-            {
-                var angle = i * (Math.Tau / perRing);
-                var position = new Position(center.X + (Math.Cos(angle) * distance), center.Y + (Math.Sin(angle) * distance));
-                world.SpawnResourceNode(TestCatalogs.Grass, position, 1_000_000f);
-            }
-        }
-
-        Ring(3);
-        Ring(8);
-    }
-
     [Fact]
     public void AHerdOnPlentyOfGrassSurvivesAYearAndGrows()
     {
@@ -140,5 +104,41 @@ public class DeerHerdMilestoneTests
 
         var living = map.World.Animals.Count(a => a.IsAlive);
         Assert.True(living >= starting, $"expected at least the starting {starting} deer alive, found {living}");
+    }
+
+    private static HomeRange NewHome(Position anchor, float radius) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
+
+    private static List<Animal> SpawnHerd(WorldState world, HomeRange home, int femaleCount, int maleCount)
+    {
+        var herd = new List<Animal>();
+        for (var i = 0; i < femaleCount; i++)
+        {
+            herd.Add(world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(i, 0), home, AdultAgeTicks, Sex.Female));
+        }
+
+        for (var i = 0; i < maleCount; i++)
+        {
+            herd.Add(world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(-i - 1, 0), home, AdultAgeTicks, Sex.Male));
+        }
+
+        return herd;
+    }
+
+    // Two rings of near-endless grass around the anchor - close enough that a hungry deer never
+    // has far to walk, plentiful enough that nobody's own gathering ever exhausts it.
+    private static void ScatterGrass(WorldState world, Position center, int perRing)
+    {
+        void Ring(double distance)
+        {
+            for (var i = 0; i < perRing; i++)
+            {
+                var angle = i * (Math.Tau / perRing);
+                var position = new Position(center.X + (Math.Cos(angle) * distance), center.Y + (Math.Sin(angle) * distance));
+                world.SpawnResourceNode(TestCatalogs.Grass, position, 1_000_000f);
+            }
+        }
+
+        Ring(3);
+        Ring(8);
     }
 }

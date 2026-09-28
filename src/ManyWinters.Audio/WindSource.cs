@@ -109,6 +109,20 @@ public sealed class WindSource : ISampleSource
         }
     }
 
+    // Calm stays low and dark, a storm sweeps the whole 300-1200 Hz range: strength scales the
+    // LFO's range rather than shifting it, so a calm breeze cannot wander into storm territory.
+    private static float CentreHz(float strength, float u) => 300.0f + (900.0f * strength * u);
+
+    // The floor was high enough that "calm" was still a steady rush. A breeze has to be able to
+    // drop to almost nothing between gusts.
+    private static float GainTarget(float strength, float u) => (0.06f + (0.94f * strength)) * (0.5f + (0.5f * u));
+
+    // Kept clear of the whistle band at strength 0 (600 Hz there), so a calm wind still has its
+    // top octave rather than being filtered into a rumble.
+    private static float ToneCutoffHz(float strength) => 800.0f + (5200.0f * strength);
+
+    private static float LfoRateHz(float gustiness) => 0.1f + (0.4f * gustiness);
+
     private void AdvanceBlock()
     {
         var uCentre = _centreLfo.Next();
@@ -126,18 +140,4 @@ public sealed class WindSource : ISampleSource
         // Rides the top half of a gust and is silent in calm air, per the plan's whistle mapping.
         _whistleMix = _parameters.Gustiness * MathF.Max(0.0f, uGain - 0.5f) * 2.0f;
     }
-
-    // Calm stays low and dark, a storm sweeps the whole 300-1200 Hz range: strength scales the
-    // LFO's range rather than shifting it, so a calm breeze cannot wander into storm territory.
-    private static float CentreHz(float strength, float u) => 300.0f + (900.0f * strength * u);
-
-    // The floor was high enough that "calm" was still a steady rush. A breeze has to be able to
-    // drop to almost nothing between gusts.
-    private static float GainTarget(float strength, float u) => (0.06f + (0.94f * strength)) * (0.5f + (0.5f * u));
-
-    // Kept clear of the whistle band at strength 0 (600 Hz there), so a calm wind still has its
-    // top octave rather than being filtered into a rumble.
-    private static float ToneCutoffHz(float strength) => 800.0f + (5200.0f * strength);
-
-    private static float LfoRateHz(float gustiness) => 0.1f + (0.4f * gustiness);
 }

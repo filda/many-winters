@@ -8,11 +8,6 @@ namespace ManyWinters.Godot.Logic;
 // which caches it); converting to metres and merging layers does not.
 internal static class SpriteExtents
 {
-    // CenterXOffset/CenterYOffset: how far the visible content's centre sits right (+X) of and
-    // above (+Y) the sprite node's origin. Content is not always centred in its canvas, so a
-    // caller placing a shape off "the sprite's centre" needs these, not just the size.
-    internal readonly record struct Extent(float Width, float Height, float CenterXOffset, float CenterYOffset);
-
     // `worldHeight` is what the sprite was created at: the whole canvas height maps to it and
     // everything else scales from there.
     internal static Extent From(Vector2 usedPosition, Vector2 usedSize, Vector2 canvasSize, float worldHeight)
@@ -54,4 +49,9 @@ internal static class SpriteExtents
 
         return new Extent(maxX - minX, maxY - minY, (minX + maxX) / 2f, (minY + maxY) / 2f);
     }
+
+    // CenterXOffset/CenterYOffset: how far the visible content's centre sits right (+X) of and
+    // above (+Y) the sprite node's origin. Content is not always centred in its canvas, so a
+    // caller placing a shape off "the sprite's centre" needs these, not just the size.
+    internal readonly record struct Extent(float Width, float Height, float CenterXOffset, float CenterYOffset);
 }

@@ -11,23 +11,6 @@ namespace ManyWinters.Tests.World;
 // rots a season in, where the cured garment does not.
 public class HideCuringProgressionTests
 {
-    private static Animal DeadDeer(WorldState world, Position position)
-    {
-        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position);
-        deer.IsAlive = false;
-        deer.Inventory.Add(TestCatalogs.RawhideItem, 1);
-
-        return deer;
-    }
-
-    private static void MakesEveryTanningAttemptSucceed(Person person)
-    {
-        for (var i = 0; i < 50; i++)
-        {
-            person.Skills.Increase(TanCommand.Skill, 1f);
-        }
-    }
-
     [Fact]
     public void HuntButcherTanAndCraftEndsInWarmClothingThatNeverSpoils()
     {
@@ -91,5 +74,22 @@ public class HideCuringProgressionTests
 
         world.Advance(400 - TestCatalogs.RawhideShelfLifeTicks);
         Assert.Equal(1, person.Inventory.Get(TestCatalogs.WarmClothing));
+    }
+
+    private static Animal DeadDeer(WorldState world, Position position)
+    {
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestCatalogs.RawhideItem, 1);
+
+        return deer;
+    }
+
+    private static void MakesEveryTanningAttemptSucceed(Person person)
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            person.Skills.Increase(TanCommand.Skill, 1f);
+        }
     }
 }

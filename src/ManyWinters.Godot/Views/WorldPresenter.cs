@@ -8,22 +8,10 @@ namespace ManyWinters.Godot.Views;
 
 public sealed partial class WorldPresenter : Node3D
 {
-    // Raised by the small per-family methods below rather than known about by the views
-    // themselves: a view only reports "I was clicked", and this is the one place that turns that
-    // into an event nobody upstream has to be constructed before this presenter is.
-    public event Action<Person, MouseButton>? PersonClicked;
-
-    public event Action<Animal, MouseButton>? AnimalClicked;
-
-    public event Action<Entity, MouseButton>? ResourceNodeClicked;
-
-    public event Action<Entity, MouseButton>? BuildingClicked;
-
-    public event Action<Grave>? GraveSelected;
-
-    public event Action<Entity, MouseButton>? ItemPileClicked;
-
-    public event CollisionObject3D.InputEventEventHandler? MissedClick;
+    // The radius a decoration must fall back outside of before its view is torn down again -
+    // wider than the create radius, so a decoration sitting right at the edge does not flicker
+    // in and out as the camera drifts by a meter.
+    private const float ViewReleaseRadiusMultiplier = 1.25f;
 
     private readonly Func<float, float, float> _sampleHeight;
     private readonly ResourceCatalog _resourceCatalog;
@@ -60,11 +48,6 @@ public sealed partial class WorldPresenter : Node3D
     // constructor passes the camera's actual starting values instead.
     private Position _viewCenter;
     private double _viewRadiusSquared;
-
-    // The radius a decoration must fall back outside of before its view is torn down again -
-    // wider than the create radius, so a decoration sitting right at the edge does not flicker
-    // in and out as the camera drifts by a meter.
-    private const float ViewReleaseRadiusMultiplier = 1.25f;
 
     public WorldPresenter(
         WorldState world,
@@ -116,6 +99,23 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
+    // Raised by the small per-family methods below rather than known about by the views
+    // themselves: a view only reports "I was clicked", and this is the one place that turns that
+    // into an event nobody upstream has to be constructed before this presenter is.
+    public event Action<Person, MouseButton>? PersonClicked;
+
+    public event Action<Animal, MouseButton>? AnimalClicked;
+
+    public event Action<Entity, MouseButton>? ResourceNodeClicked;
+
+    public event Action<Entity, MouseButton>? BuildingClicked;
+
+    public event Action<Grave>? GraveSelected;
+
+    public event Action<Entity, MouseButton>? ItemPileClicked;
+
+    public event CollisionObject3D.InputEventEventHandler? MissedClick;
+
     // Every rendered frame, not once per tick: camera and people keep moving between ticks, so
     // whether the cursor is still on the lit thing changes continuously.
     public void RevalidateHover() => _hover.Revalidate();
@@ -157,19 +157,6 @@ public sealed partial class WorldPresenter : Node3D
         if (_animalViews.TryGetValue(id, out var view))
         {
             view.SetDecayed(isDecayed);
-        }
-    }
-
-    // Fired when the world removes an animal (subscribed in the constructor): unlike
-    // RemovePersonView, which fires from an order the player gave, nothing outside this class
-    // asks for this - the world forgets the animal's bones on its own once they have lingered
-    // long enough.
-    private void RemoveAnimalView(CreatureId id)
-    {
-        if (_animalViews.TryGetValue(id, out var view))
-        {
-            view.QueueFree();
-            _animalViews.Remove(id);
         }
     }
 
@@ -233,6 +220,78 @@ public sealed partial class WorldPresenter : Node3D
         {
             view.QueueFree();
             _resourceNodeViews.Remove(id);
+        }
+    }
+
+    // Once per simulation tick and when the "Reveal Map" toggle flips - a HashSet lookup per
+    // view at that cadence is cheap even at decoration scale, and each view's early-out ends
+    // most calls at once. Every family of view goes through here, so a grave, hut or corpse the
+    // group walked away from dims with the trees; what the view does with it is its own
+    // business.
+    //
+    // cameraPosition/viewRadius refresh the view-distance gate resource nodes check themselves
+    // against - other view families are few enough in practice to skip the same treatment.
+    public void RefreshExploration(Vector3 cameraPosition, float viewRadius)
+    {
+        _viewCenter = WorldSpace.ToSimulation(cameraPosition);
+        _viewRadiusSquared = (double)viewRadius * viewRadius;
+
+        RefreshResourceNodeExploration();
+
+        // People are read from the world, not _personViews, because the cell to ask about is
+        // wherever they are this tick. Anyone alive is always in sight - they are the eyes the
+        // fog is drawn from - so this only ever dims the dead.
+        foreach (var person in _people)
+        {
+            if (_personViews.TryGetValue(person.Id, out var personView))
+            {
+                personView.SetRemembered(IsOutOfSight(person.Position));
+            }
+        }
+
+        // An animal never contributes to the fog itself (exploration is revealed only by living
+        // people), so unlike a person's own view above, a living animal's view
+        // dims exactly like a resource node's or a building's whenever it drifts out of sight.
+        foreach (var animal in _animals)
+        {
+            if (_animalViews.TryGetValue(animal.Id, out var animalView))
+            {
+                animalView.SetRemembered(IsOutOfSight(animal.Position));
+            }
+        }
+
+        foreach (var grave in _graves)
+        {
+            if (_graveViews.TryGetValue(grave.Id, out var graveView))
+            {
+                graveView.SetRemembered(IsOutOfSight(grave.Position));
+            }
+        }
+
+        foreach (var entity in _entities)
+        {
+            switch (entity.Category)
+            {
+                case EntityCategory.Building when _buildingViews.TryGetValue(entity.Id, out var buildingView):
+                    buildingView.SetRemembered(IsOutOfSight(entity.Position));
+                    break;
+                case EntityCategory.Pile when _itemPileViews.TryGetValue(entity.Id, out var pileView):
+                    pileView.SetRemembered(IsOutOfSight(entity.Position));
+                    break;
+            }
+        }
+    }
+
+    // Fired when the world removes an animal (subscribed in the constructor): unlike
+    // RemovePersonView, which fires from an order the player gave, nothing outside this class
+    // asks for this - the world forgets the animal's bones on its own once they have lingered
+    // long enough.
+    private void RemoveAnimalView(CreatureId id)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _animalViews.Remove(id);
         }
     }
 
@@ -327,65 +386,6 @@ public sealed partial class WorldPresenter : Node3D
         view.SnapRemembered(IsOutOfSight(node.Position));
         AddChild(view);
         _resourceNodeViews[node.Id] = view;
-    }
-
-    // Once per simulation tick and when the "Reveal Map" toggle flips - a HashSet lookup per
-    // view at that cadence is cheap even at decoration scale, and each view's early-out ends
-    // most calls at once. Every family of view goes through here, so a grave, hut or corpse the
-    // group walked away from dims with the trees; what the view does with it is its own
-    // business.
-    //
-    // cameraPosition/viewRadius refresh the view-distance gate resource nodes check themselves
-    // against - other view families are few enough in practice to skip the same treatment.
-    public void RefreshExploration(Vector3 cameraPosition, float viewRadius)
-    {
-        _viewCenter = WorldSpace.ToSimulation(cameraPosition);
-        _viewRadiusSquared = (double)viewRadius * viewRadius;
-
-        RefreshResourceNodeExploration();
-
-        // People are read from the world, not _personViews, because the cell to ask about is
-        // wherever they are this tick. Anyone alive is always in sight - they are the eyes the
-        // fog is drawn from - so this only ever dims the dead.
-        foreach (var person in _people)
-        {
-            if (_personViews.TryGetValue(person.Id, out var personView))
-            {
-                personView.SetRemembered(IsOutOfSight(person.Position));
-            }
-        }
-
-        // An animal never contributes to the fog itself (exploration is revealed only by living
-        // people), so unlike a person's own view above, a living animal's view
-        // dims exactly like a resource node's or a building's whenever it drifts out of sight.
-        foreach (var animal in _animals)
-        {
-            if (_animalViews.TryGetValue(animal.Id, out var animalView))
-            {
-                animalView.SetRemembered(IsOutOfSight(animal.Position));
-            }
-        }
-
-        foreach (var grave in _graves)
-        {
-            if (_graveViews.TryGetValue(grave.Id, out var graveView))
-            {
-                graveView.SetRemembered(IsOutOfSight(grave.Position));
-            }
-        }
-
-        foreach (var entity in _entities)
-        {
-            switch (entity.Category)
-            {
-                case EntityCategory.Building when _buildingViews.TryGetValue(entity.Id, out var buildingView):
-                    buildingView.SetRemembered(IsOutOfSight(entity.Position));
-                    break;
-                case EntityCategory.Pile when _itemPileViews.TryGetValue(entity.Id, out var pileView):
-                    pileView.SetRemembered(IsOutOfSight(entity.Position));
-                    break;
-            }
-        }
     }
 
     private bool IsOutOfSight(Position position) =>

@@ -6,6 +6,8 @@ namespace ManyWinters.Tests.Items;
 
 public class ItemCatalogTests
 {
+    private const float StoneHardness = 0.8f;
+
     private static readonly MaterialId Hide = new("hide");
     private static readonly MaterialId Stone = new("stone");
     private static readonly FormId Garment = new("garment");
@@ -20,21 +22,6 @@ public class ItemCatalogTests
     private static readonly FormId Stick = new("stick");
     private static readonly MaterialId WoodMaterial = new("wood");
     private static readonly ItemKindId Axe = new("axe");
-
-    private const float StoneHardness = 0.8f;
-
-    private static FormCatalog Forms() => new([
-        new FormDefinition(Garment, "Garment"),
-        new FormDefinition(Lump, "Lump"),
-        new FormDefinition(Wedge, "Wedge", EdgeSharpness: 1f),
-        new FormDefinition(Stick, "Stick", HaftLeverage: 1f),
-    ]);
-
-    private static MaterialCatalog Materials() => new([
-        new MaterialDefinition(Hide, "Hide", Density: 0.75f, Insulation: 1f),
-        new MaterialDefinition(Stone, "Stone", Density: 2f, Hardness: StoneHardness),
-        new MaterialDefinition(WoodMaterial, "Wood", Density: 0.5f, Hardness: 0.4f),
-    ]);
 
     [Fact]
     public void GetReturnsTheDefinitionForAKnownId()
@@ -265,12 +252,6 @@ public class ItemCatalogTests
 
         Assert.True(catalog.ChoppingScoreFor(heavyAxe) > catalog.ChoppingScoreFor(Axe));
     }
-
-    // What a made thing chops like (section 4's formula in full). A knapped wedge is already an
-    // edge in the hand; lashing it to a shaft is what turns a held stone into a swung one.
-    private static Assembly.Part Head(float quality = 1f) => new(Stone, Wedge, quality, Volume: 1f);
-
-    private static Assembly.Part Haft() => new(WoodMaterial, Stick, Quality: 1f, Volume: 2f);
 
     [Fact]
     public void AKnappedWedgeChopsInTheBareHandAndChopsBetterHafted()
@@ -525,6 +506,25 @@ public class ItemCatalogTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    private static FormCatalog Forms() => new([
+        new FormDefinition(Garment, "Garment"),
+        new FormDefinition(Lump, "Lump"),
+        new FormDefinition(Wedge, "Wedge", EdgeSharpness: 1f),
+        new FormDefinition(Stick, "Stick", HaftLeverage: 1f),
+    ]);
+
+    private static MaterialCatalog Materials() => new([
+        new MaterialDefinition(Hide, "Hide", Density: 0.75f, Insulation: 1f),
+        new MaterialDefinition(Stone, "Stone", Density: 2f, Hardness: StoneHardness),
+        new MaterialDefinition(WoodMaterial, "Wood", Density: 0.5f, Hardness: 0.4f),
+    ]);
+
+    // What a made thing chops like (section 4's formula in full). A knapped wedge is already an
+    // edge in the hand; lashing it to a shaft is what turns a held stone into a swung one.
+    private static Assembly.Part Head(float quality = 1f) => new(Stone, Wedge, quality, Volume: 1f);
+
+    private static Assembly.Part Haft() => new(WoodMaterial, Stick, Quality: 1f, Volume: 2f);
 
     private static string WriteItem(string root, string id)
     {

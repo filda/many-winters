@@ -9,9 +9,6 @@ namespace ManyWinters.Godot.Tests;
 // a wrong maximum or a stale label is visible in the game and invisible to every other test.
 public class SelectionCardTests
 {
-    private static MeterReading Meter(WorldState world, Person person, string label) =>
-        SelectionCard.For(world, person).Meters.Single(meter => meter.Label == label);
-
     [Fact]
     public void TheCardNamesThePersonAndWhatTheyAreDoing()
     {
@@ -328,4 +325,7 @@ public class SelectionCardTests
 
         Assert.Equal("Wood x3", SelectionCard.For(world, person).Carried);
     }
+
+    private static MeterReading Meter(WorldState world, Person person, string label) =>
+        SelectionCard.For(world, person).Meters.Single(meter => meter.Label == label);
 }

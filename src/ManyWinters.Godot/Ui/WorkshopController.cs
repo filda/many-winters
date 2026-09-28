@@ -15,18 +15,6 @@ namespace ManyWinters.Godot.Ui;
 // person; how the bench decides what a pick can do stays in WorkshopActions.
 internal sealed class WorkshopController
 {
-    private readonly WorldState _world;
-    private readonly OrderCoordinator _orders;
-    private readonly WorkshopPanel _workshop;
-    private readonly NamingPanel _namingPanel;
-
-    // Who the currently open workshop was opened for - remembered rather than re-asked of a
-    // selection that may have moved on by the time a recipe or naming callback fires.
-    private Person? _person;
-
-    // What the last attempt turned out, held only long enough for the player to name it.
-    private Assembly? _justMade;
-
     // Said whenever a pick turns out to lead nowhere - several ways to say the same nothing, so
     // trying a few unworkable pairs in a row does not read as the game reciting one stock line
     // back at the player.
@@ -38,15 +26,17 @@ internal sealed class WorkshopController
         "It comes to nothing.",
     ];
 
-    // Letting the workshop go primes the tick accumulator, so the world starts again on the next
-    // frame rather than a full interval later - as dismissing the controls page does. Raised
-    // rather than done here: priming the accumulator is Main's clock to hold, not this one's.
-    public event Action? Closed;
+    private readonly WorldState _world;
+    private readonly OrderCoordinator _orders;
+    private readonly WorkshopPanel _workshop;
+    private readonly NamingPanel _namingPanel;
 
-    // A word the band coined outlives whoever coined it, so it goes in the chronicle rather than
-    // only into the panel that asked for it. Raised rather than recorded here: the chronicle is
-    // not this controller's to know about.
-    public event Action<Inscription>? InscriptionRecorded;
+    // Who the currently open workshop was opened for - remembered rather than re-asked of a
+    // selection that may have moved on by the time a recipe or naming callback fires.
+    private Person? _person;
+
+    // What the last attempt turned out, held only long enough for the player to name it.
+    private Assembly? _justMade;
 
     // The workbench, opened from the pack line on the selected person's card. Like the pause page
     // it holds the clock while it is up: working a thing over is meant to be unhurried.
@@ -71,6 +61,16 @@ internal sealed class WorkshopController
         _namingPanel.Named += OnNamed;
         _namingPanel.Cancelled += () => _justMade = null;
     }
+
+    // Letting the workshop go primes the tick accumulator, so the world starts again on the next
+    // frame rather than a full interval later - as dismissing the controls page does. Raised
+    // rather than done here: priming the accumulator is Main's clock to hold, not this one's.
+    public event Action? Closed;
+
+    // A word the band coined outlives whoever coined it, so it goes in the chronicle rather than
+    // only into the panel that asked for it. Raised rather than recorded here: the chronicle is
+    // not this controller's to know about.
+    public event Action<Inscription>? InscriptionRecorded;
 
     public void Toggle(Person person)
     {

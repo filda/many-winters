@@ -6,6 +6,8 @@ public class BirdCallTests
 {
     private const int SampleRate = 22050;
 
+    private const float WindowSeconds = 0.005f;
+
     // Oblique on purpose: PitchHz and Brightness both sit away from round numbers, so no
     // formula's arithmetic quietly cancels.
     private static readonly BirdVoice Voice = new(PitchHz: 2350.0f, Brightness: 0.65f);
@@ -75,8 +77,6 @@ public class BirdCallTests
 
         Assert.NotEqual(early, late);
     }
-
-    private const float WindowSeconds = 0.005f;
 
     private static float[] WindowRms(float[] samples)
     {

@@ -4,9 +4,6 @@ namespace ManyWinters.Tests.World;
 
 public class SpatialSpacingIndexTests
 {
-    private static SpatialSpacingIndex<Position> NewIndex(double cellSize = 1.0) =>
-        new(cellSize, p => p.X, p => p.Y);
-
     [Fact]
     public void AnEmptyIndexIsNeverTooClose()
     {
@@ -79,4 +76,7 @@ public class SpatialSpacingIndexTests
 
         Assert.True(index.IsTooClose(0, 0, _ => 1.0));
     }
+
+    private static SpatialSpacingIndex<Position> NewIndex(double cellSize = 1.0) =>
+        new(cellSize, p => p.X, p => p.Y);
 }

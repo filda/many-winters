@@ -5,11 +5,16 @@ namespace ManyWinters.Tests.Audio;
 public class FrictionModelTests
 {
     private const int SampleRate = 22050;
+    private const int StrokeCount = 4;
+
+    private const float WindowSeconds = 0.02f;
+
+    private const float LowHighSplitFrequency = 500.0f;
+    private const float HighBandFloorFrequency = 1500.0f;
 
     // Oblique on purpose: neither StrokesPerSecond nor strokeCount is 1, and Grit/Pressure sit
     // away from 0 and 1 so no formula's arithmetic quietly cancels.
     private static readonly FrictionStroke Stroke = new(Grit: 0.35f, Pressure: 0.6f, StrokesPerSecond: 1.7f);
-    private const int StrokeCount = 4;
 
     [Fact]
     public void SameSeedRendersAnIdenticalBuffer()
@@ -109,8 +114,6 @@ public class FrictionModelTests
         Assert.NotEqual(firstStroke.ToArray(), secondStroke.ToArray());
     }
 
-    private const float WindowSeconds = 0.02f;
-
     private static float[] WindowRms(float[] samples)
     {
         var windowSamples = (int)(WindowSeconds * SampleRate);
@@ -153,9 +156,6 @@ public class FrictionModelTests
 
         return count;
     }
-
-    private const float LowHighSplitFrequency = 500.0f;
-    private const float HighBandFloorFrequency = 1500.0f;
 
     private static float LowToHighEnergyRatio(float[] samples)
     {

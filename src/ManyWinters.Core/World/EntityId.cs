@@ -4,11 +4,11 @@ namespace ManyWinters.Core.World;
 // resource, a dropped pile, a building) draws one of these the same way.
 public readonly record struct EntityId(Guid Value)
 {
+    public int Seed => IdGeneration.SeedOf(Value);
+
     public static EntityId New() => new(Guid.NewGuid());
 
     public static EntityId New(Random rng) => new(IdGeneration.NextGuid(rng));
-
-    public int Seed => IdGeneration.SeedOf(Value);
 
     public override string ToString() => Value.ToString();
 }

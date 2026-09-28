@@ -10,6 +10,8 @@ public class InsectTrillTests
     private const float PitchHz = 5300.0f;
     private const float DurationSeconds = 0.85f;
 
+    private const float WindowSeconds = 0.004f;
+
     [Fact]
     public void SameSeedRendersAnIdenticalBuffer()
     {
@@ -69,8 +71,6 @@ public class InsectTrillTests
 
         Assert.True(Analysis.SpectralCentroid(high, SampleRate) > Analysis.SpectralCentroid(low, SampleRate));
     }
-
-    private const float WindowSeconds = 0.004f;
 
     private static float[] WindowRms(float[] samples)
     {

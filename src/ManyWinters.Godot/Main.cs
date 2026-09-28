@@ -15,6 +15,11 @@ namespace ManyWinters.Godot;
 
 public partial class Main : Node3D
 {
+    // Above the game's own UI canvas, which is built three quarters of the way through the load:
+    // both sit on the default layer otherwise, and the status bar - added to the tree later -
+    // drew over the bottom of the title page for the rest of the load.
+    private const int LoadingCanvasLayer = 100;
+
     // Every tunable number this scene runs on lives in these two, not in constants here - what
     // is a rule of the world itself belongs to the simulation's own configuration instead.
     private readonly SimulationPacing _pacing = SimulationPacing.Default;
@@ -38,11 +43,6 @@ public partial class Main : Node3D
     private SimulationLoop _simulationLoop = null!;
     private OcclusionFader _occlusionFader = null!;
     private OrderCoordinator _orderCoordinator = null!;
-
-    // Above the game's own UI canvas, which is built three quarters of the way through the load:
-    // both sit on the default layer otherwise, and the status bar - added to the tree later -
-    // drew over the bottom of the title page for the rest of the load.
-    private const int LoadingCanvasLayer = 100;
 
     // The title page, held up while the world is built. On its own CanvasLayer so it covers the
     // game's own UI layer, and freed rather than hidden once there is a world to look at.
@@ -146,27 +146,6 @@ public partial class Main : Node3D
         GD.Print($"Build tag: {BuildTag.For(AssemblyBuildTimeUtc())}");
     }
 
-    // Says what is about to be built, then lets the frame draw before building it - the other way
-    // round and every line the player reads names the step that has just finished.
-    private async Task Building(float progress, string step)
-    {
-        _loadingScreen!.Show(progress, step);
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-    }
-
-    // Last write time of the running assembly - a build stamp needing no build-time code
-    // generation. Built from BaseDirectory because Assembly.Location is empty here: Godot loads
-    // the assembly from a stream so the file can be overwritten while the editor holds it. Null
-    // when there is nothing to stat; BuildTag renders that as "unknown" rather than a guess.
-    private static DateTimeOffset? AssemblyBuildTimeUtc()
-    {
-        var assemblyPath = Path.Combine(AppContext.BaseDirectory, $"{typeof(Main).Assembly.GetName().Name}.dll");
-
-        return File.Exists(assemblyPath)
-            ? new DateTimeOffset(File.GetLastWriteTimeUtc(assemblyPath), TimeSpan.Zero)
-            : null;
-    }
-
     public override void _Process(double delta)
     {
         // Half the world does not exist yet; every line below reaches into it.
@@ -251,6 +230,53 @@ public partial class Main : Node3D
         }
 
         _worldInput.HandleUnhandled(@event, GetViewport());
+    }
+
+    // Last write time of the running assembly - a build stamp needing no build-time code
+    // generation. Built from BaseDirectory because Assembly.Location is empty here: Godot loads
+    // the assembly from a stream so the file can be overwritten while the editor holds it. Null
+    // when there is nothing to stat; BuildTag renders that as "unknown" rather than a guess.
+    private static DateTimeOffset? AssemblyBuildTimeUtc()
+    {
+        var assemblyPath = Path.Combine(AppContext.BaseDirectory, $"{typeof(Main).Assembly.GetName().Name}.dll");
+
+        return File.Exists(assemblyPath)
+            ? new DateTimeOffset(File.GetLastWriteTimeUtc(assemblyPath), TimeSpan.Zero)
+            : null;
+    }
+
+    // The sprite's body centre, not its feet: WorldPresenter seats every creature/node view's
+    // origin at groundHeight + nominalHeight/2, which already is the vertical middle of the drawn
+    // silhouette for an ordinarily-centred sprite, so the unprojected origin itself is a click
+    // that lands on opaque pixels rather than off the top or bottom of one. None when there is no
+    // such thing, it fell out of camera view (a pending resource node), or it projects behind the
+    // camera or off the edge of the viewport - a test reading "none" fails with a clear message
+    // instead of clicking a stale or wrong pixel.
+    private static void PrintE2EAnchor(string kind, Vector3? worldPosition, Camera3D camera)
+    {
+        if (worldPosition is not { } position || camera.IsPositionBehind(position))
+        {
+            GD.Print($"E2E anchor {kind} none");
+            return;
+        }
+
+        var screen = camera.UnprojectPosition(position);
+        var viewportSize = camera.GetViewport().GetVisibleRect().Size;
+        if (screen.X < 0 || screen.Y < 0 || screen.X >= viewportSize.X || screen.Y >= viewportSize.Y)
+        {
+            GD.Print($"E2E anchor {kind} none");
+            return;
+        }
+
+        GD.Print($"E2E anchor {kind} {(int)screen.X} {(int)screen.Y}");
+    }
+
+    // Says what is about to be built, then lets the frame draw before building it - the other way
+    // round and every line the player reads names the step that has just finished.
+    private async Task Building(float progress, string step)
+    {
+        _loadingScreen!.Show(progress, step);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
     private void SetUpLighting()
@@ -367,32 +393,6 @@ public partial class Main : Node3D
             "deer",
             E2EAnchors.NearestLivingAnimal(_world.Animals, campCenter) is { } animal ? _presenter.GetCreatureGlobalPosition(animal.Id) : null,
             camera);
-    }
-
-    // The sprite's body centre, not its feet: WorldPresenter seats every creature/node view's
-    // origin at groundHeight + nominalHeight/2, which already is the vertical middle of the drawn
-    // silhouette for an ordinarily-centred sprite, so the unprojected origin itself is a click
-    // that lands on opaque pixels rather than off the top or bottom of one. None when there is no
-    // such thing, it fell out of camera view (a pending resource node), or it projects behind the
-    // camera or off the edge of the viewport - a test reading "none" fails with a clear message
-    // instead of clicking a stale or wrong pixel.
-    private static void PrintE2EAnchor(string kind, Vector3? worldPosition, Camera3D camera)
-    {
-        if (worldPosition is not { } position || camera.IsPositionBehind(position))
-        {
-            GD.Print($"E2E anchor {kind} none");
-            return;
-        }
-
-        var screen = camera.UnprojectPosition(position);
-        var viewportSize = camera.GetViewport().GetVisibleRect().Size;
-        if (screen.X < 0 || screen.Y < 0 || screen.X >= viewportSize.X || screen.Y >= viewportSize.Y)
-        {
-            GD.Print($"E2E anchor {kind} none");
-            return;
-        }
-
-        GD.Print($"E2E anchor {kind} {(int)screen.X} {(int)screen.Y}");
     }
 
     // Everything that must follow any order taking effect, in one place rather than at every

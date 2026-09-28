@@ -82,6 +82,27 @@ public partial class WorkshopPanel : PaperPanel
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }
 
+    // Pressed on a recipe line. The owner runs it, the same way it runs a line off the person's
+    // card - this panel knows what an offer is, not what making one means for the rest of the
+    // game.
+    internal event Action<ActionOffer>? RecipeInvoked;
+
+    // Put away, so the world can start moving again.
+    internal event Action? Closed;
+
+    // Raised for Main to ask the world what the current pick would do and to carry it out; the
+    // panel holds no world.
+    internal event Action? Attempted;
+
+    // Pressed Eat or Drop on whatever is picked. Main carries it out the same way it does an
+    // attempt or a recipe - this panel only says which button was pressed.
+    internal event Action? EatRequested;
+    internal event Action? DropRequested;
+
+    internal event Action? PickChanged;
+
+    internal IReadOnlyList<WorkshopEntry> Picked => _picked;
+
     public override void _Ready()
     {
         base._Ready();
@@ -151,28 +172,20 @@ public partial class WorkshopPanel : PaperPanel
         Body.AddChild(_words);
     }
 
-    // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
-    // rather than down in the body - they read on the selection the way the icons on a toolbar
-    // do, not on the pack laid out underneath. Built while the title bar is still going up, so
-    // their Pressed handlers are wired here too rather than back in _Ready.
-    protected override void BuildTitleBarExtras(HBoxContainer titleBar)
+    // The picture drawn for a thing, or none where nothing has been drawn for it yet - the tile
+    // then carries the blank tint instead. Internal rather than private: the naming panel wants
+    // the same picture, larger, for the thing it is asking a name for.
+    internal static Texture2D? IconFor(CarriedThing thing)
     {
-        _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
-        _eat.Visible = false;
-        _eat.Pressed += () => EatRequested?.Invoke();
-        titleBar.AddChild(_eat);
+        foreach (var path in ItemIcons.For(thing))
+        {
+            if (ResourceLoader.Exists(path))
+            {
+                return ResourceLoader.Load<Texture2D>(path);
+            }
+        }
 
-        _drop = WorkshopIcons.Button("Drop", WorkshopIcons.Drop());
-        _drop.Visible = false;
-        _drop.Pressed += () => DropRequested?.Invoke();
-        titleBar.AddChild(_drop);
-
-        // Shown only while there is something for it to do - a button that reads "Make" while
-        // greyed out is a button promising an answer it does not have.
-        _try = WorkshopIcons.Button("Make", WorkshopIcons.Make());
-        _try.Visible = false;
-        _try.Pressed += OnTryPressed;
-        titleBar.AddChild(_try);
+        return null;
     }
 
     // Opened fresh: nothing picked, nothing yet said about the last attempt.
@@ -189,14 +202,6 @@ public partial class WorkshopPanel : PaperPanel
     // could have changed what is carried.
     internal void ShowRecipes(IReadOnlyList<ActionOffer> recipes) => _recipes.Show(recipes);
 
-    // Pressed on a recipe line. The owner runs it, the same way it runs a line off the person's
-    // card - this panel knows what an offer is, not what making one means for the rest of the
-    // game.
-    internal event Action<ActionOffer>? RecipeInvoked;
-
-    // The clock is held while the bench is out, so the cross cannot simply hide it.
-    protected override void OnCloseRequested() => Close();
-
     internal void Close()
     {
         if (!Visible)
@@ -207,9 +212,6 @@ public partial class WorkshopPanel : PaperPanel
         Visible = false;
         Closed?.Invoke();
     }
-
-    // Put away, so the world can start moving again.
-    internal event Action? Closed;
 
     // Redrawn after every attempt, because the pack has changed underneath it. A pick that is no
     // longer in the pack - the grass that just became cord - quietly stops being picked.
@@ -272,18 +274,46 @@ public partial class WorkshopPanel : PaperPanel
         _outcome.Visible = sentence.Length > 0;
     }
 
-    internal IReadOnlyList<WorkshopEntry> Picked => _picked;
+    // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
+    // rather than down in the body - they read on the selection the way the icons on a toolbar
+    // do, not on the pack laid out underneath. Built while the title bar is still going up, so
+    // their Pressed handlers are wired here too rather than back in _Ready.
+    protected override void BuildTitleBarExtras(HBoxContainer titleBar)
+    {
+        _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
+        _eat.Visible = false;
+        _eat.Pressed += () => EatRequested?.Invoke();
+        titleBar.AddChild(_eat);
+
+        _drop = WorkshopIcons.Button("Drop", WorkshopIcons.Drop());
+        _drop.Visible = false;
+        _drop.Pressed += () => DropRequested?.Invoke();
+        titleBar.AddChild(_drop);
+
+        // Shown only while there is something for it to do - a button that reads "Make" while
+        // greyed out is a button promising an answer it does not have.
+        _try = WorkshopIcons.Button("Make", WorkshopIcons.Make());
+        _try.Visible = false;
+        _try.Pressed += OnTryPressed;
+        titleBar.AddChild(_try);
+    }
+
+    // The clock is held while the bench is out, so the cross cannot simply hide it.
+    protected override void OnCloseRequested() => Close();
+
+    // The same shading every pressed thing on paper takes, with a line of ink round it.
+    private static StyleBoxFlat PickedBox()
+    {
+        var box = PanelChrome.Filled(new Color(InscriptionFont.DarkInk, 0.18f));
+        box.BorderColor = InscriptionFont.DarkInk;
+        box.BorderWidthLeft = 1;
+        box.BorderWidthRight = 1;
+        box.BorderWidthTop = 1;
+        box.BorderWidthBottom = 1;
+        return box;
+    }
 
     private void OnTryPressed() => Attempted?.Invoke();
-
-    // Raised for Main to ask the world what the current pick would do and to carry it out; the
-    // panel holds no world.
-    internal event Action? Attempted;
-
-    // Pressed Eat or Drop on whatever is picked. Main carries it out the same way it does an
-    // attempt or a recipe - this panel only says which button was pressed.
-    internal event Action? EatRequested;
-    internal event Action? DropRequested;
 
     // One square of bench per thing: its picture, the count in the corner where there is more
     // than one of it, and its name under the cursor. Not a line of text - a pack is things, and
@@ -336,34 +366,6 @@ public partial class WorkshopPanel : PaperPanel
         return tile;
     }
 
-    // The same shading every pressed thing on paper takes, with a line of ink round it.
-    private static StyleBoxFlat PickedBox()
-    {
-        var box = PanelChrome.Filled(new Color(InscriptionFont.DarkInk, 0.18f));
-        box.BorderColor = InscriptionFont.DarkInk;
-        box.BorderWidthLeft = 1;
-        box.BorderWidthRight = 1;
-        box.BorderWidthTop = 1;
-        box.BorderWidthBottom = 1;
-        return box;
-    }
-
-    // The picture drawn for a thing, or none where nothing has been drawn for it yet - the tile
-    // then carries the blank tint instead. Internal rather than private: the naming panel wants
-    // the same picture, larger, for the thing it is asking a name for.
-    internal static Texture2D? IconFor(CarriedThing thing)
-    {
-        foreach (var path in ItemIcons.For(thing))
-        {
-            if (ResourceLoader.Exists(path))
-            {
-                return ResourceLoader.Load<Texture2D>(path);
-            }
-        }
-
-        return null;
-    }
-
     // Two is all a binding holds, so a third pick pushes the oldest out rather than refusing the
     // click - the player is changing their mind, not making a mistake.
     private void TogglePick(WorkshopEntry entry)
@@ -380,8 +382,6 @@ public partial class WorkshopPanel : PaperPanel
         Show(_carried);
         PickChanged?.Invoke();
     }
-
-    internal event Action? PickChanged;
 
     private sealed class PickTile(Button button, TextureRect icon, ColorRect undrawn, Label count)
     {

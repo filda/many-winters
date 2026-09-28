@@ -20,19 +20,6 @@ public static class InscriptionAssertions
         }
     }
 
-    // The title names what the lines are about, rather than being a sentence itself.
-    private static void AssertReadsAsATitle(string title)
-    {
-        AssertReadsCleanly(title);
-        Assert.False(title.EndsWith('.'), $"A title takes no full stop: '{title}'");
-    }
-
-    private static void AssertReadsAsASentence(string line)
-    {
-        AssertReadsCleanly(line);
-        Assert.EndsWith(".", line);
-    }
-
     // Everything an inscription says, in the order it is said: closing words too, since they
     // are spoken over the band like the rest.
     public static IEnumerable<string> AllText(Inscription inscription)
@@ -46,6 +33,19 @@ public static class InscriptionAssertions
         {
             yield return dismissal;
         }
+    }
+
+    // The title names what the lines are about, rather than being a sentence itself.
+    private static void AssertReadsAsATitle(string title)
+    {
+        AssertReadsCleanly(title);
+        Assert.False(title.EndsWith('.'), $"A title takes no full stop: '{title}'");
+    }
+
+    private static void AssertReadsAsASentence(string line)
+    {
+        AssertReadsCleanly(line);
+        Assert.EndsWith(".", line);
     }
 
     // An empty phrase slotted into a template leaves a double space or a dangling comma, so this

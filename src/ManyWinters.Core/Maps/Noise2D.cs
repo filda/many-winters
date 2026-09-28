@@ -81,16 +81,6 @@ public sealed class Noise2D
         return total / maxAmplitude;
     }
 
-    // The lattice point's unit gradient dotted with the offset (dx, dy) to the sampled point.
-    // Bitwise AND, not modulo, so negative coordinates (the origin is mid-terrain) index the
-    // permutation table correctly.
-    private double DotGradient(int x, int y, double dx, double dy)
-    {
-        var h = _permutation[(_permutation[x & 255] + y) & 255];
-        var (gx, gy) = Gradients[h % Gradients.Length];
-        return (gx * dx) + (gy * dy);
-    }
-
     // Eight unit vectors 45 degrees apart - plenty for how coarsely this is sampled.
     private static (double X, double Y)[] BuildGradients()
     {
@@ -107,4 +97,14 @@ public sealed class Noise2D
     // Perlin's quintic fade (6t^5 - 15t^4 + 10t^3): second-derivative-continuous, unlike
     // smoothstep, which shows a crease at cell boundaries where neighbouring gradients disagree.
     private static double Fade(double t) => t * t * t * ((t * ((t * 6.0) - 15.0)) + 10.0);
+
+    // The lattice point's unit gradient dotted with the offset (dx, dy) to the sampled point.
+    // Bitwise AND, not modulo, so negative coordinates (the origin is mid-terrain) index the
+    // permutation table correctly.
+    private double DotGradient(int x, int y, double dx, double dy)
+    {
+        var h = _permutation[(_permutation[x & 255] + y) & 255];
+        var (gx, gy) = Gradients[h % Gradients.Length];
+        return (gx * dx) + (gy * dy);
+    }
 }

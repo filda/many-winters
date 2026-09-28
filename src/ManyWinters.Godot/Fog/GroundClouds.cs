@@ -35,10 +35,6 @@ public sealed class GroundClouds
     // layers do not share a pattern.
     private const int Seed = 23;
 
-    // Everything this type adds goes beneath its own root, never beneath Main directly:
-    // composition code attaches this once and never reaches into it again.
-    public Node3D Root { get; } = new() { Name = "GroundClouds" };
-
     private readonly FogOfWarRenderer _fogOfWar;
     private readonly Func<float, float, float> _sampleHeight;
     private readonly IReadOnlyList<CloudSpot> _candidates;
@@ -52,6 +48,10 @@ public sealed class GroundClouds
 
         Refresh();
     }
+
+    // Everything this type adds goes beneath its own root, never beneath Main directly:
+    // composition code attaches this once and never reaches into it again.
+    public Node3D Root { get; } = new() { Name = "GroundClouds" };
 
     // Call after the fog-of-war renderer refreshes - this reads the distance field that rebuild
     // just produced.

@@ -11,28 +11,6 @@ public class BeliefSharingTests
 {
     private static readonly MaterialId PlantFibre = new("plant_fibre");
 
-    // Certain rather than rare, and nothing learned by handling, so what arrives in a listener
-    // arrived by being told.
-    private static WorldState TalkativeWorld() =>
-        new(TestCatalogs.CreateConfiguration() with
-        {
-            Rules = SimulationRules.Default with
-            {
-                BeliefSharingChancePerTick = 1f,
-                MaterialUnderstandingPerTick = 0f,
-                IdleDiscoveryChancePerTick = 0f,
-                // These tests cover whether a thing is passed on at all and how firmly it lands;
-                // what a retelling does to the value is tested separately.
-                HearsayDistortion = 0f,
-            },
-        });
-
-    private static Person Person(WorldState world, string name, Position? position = null) =>
-        world.SpawnPerson(name, position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-
-    private static void ComesToKnow(Person person, float value = 0.9f) =>
-        person.Beliefs.Learn(PlantFibre, MaterialProperty.Fibrousness, value, confidenceGained: 1f);
-
     [Fact]
     public void WhatOnePersonKnowsPassesToSomebodyStandingWithThem()
     {
@@ -183,4 +161,26 @@ public class BeliefSharingTests
 
         Assert.All(others, person => Assert.True(person.Beliefs.HoldsAnythingAbout(PlantFibre)));
     }
+
+    // Certain rather than rare, and nothing learned by handling, so what arrives in a listener
+    // arrived by being told.
+    private static WorldState TalkativeWorld() =>
+        new(TestCatalogs.CreateConfiguration() with
+        {
+            Rules = SimulationRules.Default with
+            {
+                BeliefSharingChancePerTick = 1f,
+                MaterialUnderstandingPerTick = 0f,
+                IdleDiscoveryChancePerTick = 0f,
+                // These tests cover whether a thing is passed on at all and how firmly it lands;
+                // what a retelling does to the value is tested separately.
+                HearsayDistortion = 0f,
+            },
+        });
+
+    private static Person Person(WorldState world, string name, Position? position = null) =>
+        world.SpawnPerson(name, position ?? new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+    private static void ComesToKnow(Person person, float value = 0.9f) =>
+        person.Beliefs.Learn(PlantFibre, MaterialProperty.Fibrousness, value, confidenceGained: 1f);
 }

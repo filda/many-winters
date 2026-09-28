@@ -61,6 +61,28 @@ resharper_unused_method_return_value_local_highlighting = warning
 # registries (_imageCache, _liveSprites) - and a naming rule can only express one of them.
 resharper_inconsistent_naming_highlighting = none
 
+# Member order within a type, enforced by StyleCop.Analyzers (Directory.Build.props): fields,
+# constructors, ..., properties, indexers, methods, nested types (SA1201); within each kind
+# public before internal before protected before private (SA1202); constants before other
+# fields (SA1203); static before instance (SA1204). StyleCop is here for these four rules
+# only, so its categories are switched off wholesale and the four switched back on. There is no
+# automatic fix: moving a static field initializer below one that reads it leaves the reader
+# seeing null, so members are moved by hand (Rider/VS "move member" or cut and paste).
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpecialRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.AlternativeRules.severity = none
+dotnet_diagnostic.SA0001.severity = none
+dotnet_diagnostic.SA1201.severity = error
+dotnet_diagnostic.SA1202.severity = error
+dotnet_diagnostic.SA1203.severity = error
+dotnet_diagnostic.SA1204.severity = error
+
 [src/ManyWinters.Tests/**.cs]
 # Assert.* is annotated as a contract check, so a lambda that only asserts on its parameter
 # trips this - which in a test is the entire point of the parameter.

@@ -33,24 +33,6 @@ public class SpawnNewBandTests
         new(-500, 500),
     ];
 
-    private static List<Entity> ResourceNodes(WorldState world) =>
-        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
-
-    private static (WorldState World, Position Camp) Spawn(int seed, Position oldCamp)
-    {
-        var world = new WorldState(TestCatalogs.CreateConfiguration());
-        var camp = MapLoader.SpawnNewBand(world, new Random(seed), oldCamp);
-        return (world, camp);
-    }
-
-    private static void AssertOnTerrain(Position position, string what, Position oldCamp, int seed)
-    {
-        var onTerrain = position.X >= -TerrainHalfMeters && position.X <= TerrainHalfMeters
-            && position.Y >= -TerrainHalfMeters && position.Y <= TerrainHalfMeters;
-
-        Assert.True(onTerrain, $"Seed {seed}, old camp ({oldCamp.X}, {oldCamp.Y}): {what} at ({position.X:0.##}, {position.Y:0.##}) stands off the terrain.");
-    }
-
     // Every person the band brings, and every stock pile and food plant it scatters, must have
     // ground under it - not just the camp center.
     [Fact]
@@ -190,5 +172,23 @@ public class SpawnNewBandTests
         Assert.Equal(firstCamp, secondCamp);
         Assert.Equal(firstWorld.People.Select(p => p.Position), secondWorld.People.Select(p => p.Position));
         Assert.Equal(ResourceNodes(firstWorld).Select(n => (n.Kind, n.Position)), ResourceNodes(secondWorld).Select(n => (n.Kind, n.Position)));
+    }
+
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+
+    private static (WorldState World, Position Camp) Spawn(int seed, Position oldCamp)
+    {
+        var world = new WorldState(TestCatalogs.CreateConfiguration());
+        var camp = MapLoader.SpawnNewBand(world, new Random(seed), oldCamp);
+        return (world, camp);
+    }
+
+    private static void AssertOnTerrain(Position position, string what, Position oldCamp, int seed)
+    {
+        var onTerrain = position.X >= -TerrainHalfMeters && position.X <= TerrainHalfMeters
+            && position.Y >= -TerrainHalfMeters && position.Y <= TerrainHalfMeters;
+
+        Assert.True(onTerrain, $"Seed {seed}, old camp ({oldCamp.X}, {oldCamp.Y}): {what} at ({position.X:0.##}, {position.Y:0.##}) stands off the terrain.");
     }
 }

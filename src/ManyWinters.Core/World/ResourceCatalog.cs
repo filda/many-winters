@@ -11,8 +11,6 @@ public sealed class ResourceCatalog
         _definitions = definitions.ToDictionary(d => d.Id);
     }
 
-    public ResourceDefinition Get(EntityKindId id) => _definitions[id];
-
     public static ResourceCatalog LoadFromDirectory(string rootPath)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
@@ -20,4 +18,6 @@ public sealed class ResourceCatalog
     // inside the .pck and only Godot's file access can reach them, can load them too.
     public static ResourceCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
         => new(JsonDefinitions.Parse<ResourceDefinition>(documents, "Resource"));
+
+    public ResourceDefinition Get(EntityKindId id) => _definitions[id];
 }

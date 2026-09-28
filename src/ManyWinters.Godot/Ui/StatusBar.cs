@@ -27,6 +27,14 @@ public partial class StatusBar : PanelContainer
     private double _sincePerformanceRefresh;
     private global::Godot.Timer _notificationTimer = null!;
 
+    public event Action? BandRequested;
+
+    public event Action? ChronicleRequested;
+
+    public event Action? InspectorRequested;
+
+    public event Action? HelpRequested;
+
     public override void _Ready()
     {
         // Both vertical anchors at 1 and OffsetTop = -BarHeight: SetAnchorsPreset without
@@ -118,14 +126,6 @@ public partial class StatusBar : PanelContainer
         _notificationLabel.Text = message;
         _notificationTimer.Start();
     }
-
-    public event Action? BandRequested;
-
-    public event Action? ChronicleRequested;
-
-    public event Action? InspectorRequested;
-
-    public event Action? HelpRequested;
 
     public void ShowChronicleButton() => _chronicleButton.Visible = true;
 

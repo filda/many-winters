@@ -37,6 +37,21 @@ public sealed class WorldState
             );
     }
 
+    public event Action<Person>? PersonAdded;
+
+    public event Action<Animal>? AnimalAdded;
+
+    public event Action<Entity>? EntityAdded;
+
+    public event Action<Grave>? GraveAdded;
+
+    // Only a pile-category entity fires this today.
+    public event Action<Entity>? EntityRemoved;
+
+    // A dead, unburied animal whose bones have finally lingered past the bones-linger time -
+    // fired by the decay pass in Advance, mirroring EntityRemoved.
+    public event Action<Animal>? AnimalRemoved;
+
     public SimulationClock Clock { get; } = new();
 
     public ExplorationState Exploration { get; } = new();
@@ -77,20 +92,12 @@ public sealed class WorldState
 
     public Season CurrentSeason => Configuration.Rules.SeasonAt(Clock.CurrentTick);
 
-    public event Action<Person>? PersonAdded;
-
-    public event Action<Animal>? AnimalAdded;
-
-    public event Action<Entity>? EntityAdded;
-
-    public event Action<Grave>? GraveAdded;
-
-    // Only a pile-category entity fires this today.
-    public event Action<Entity>? EntityRemoved;
-
-    // A dead, unburied animal whose bones have finally lingered past the bones-linger time -
-    // fired by the decay pass in Advance, mirroring EntityRemoved.
-    public event Action<Animal>? AnimalRemoved;
+    public static double Distance(Position a, Position b)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        return Math.Sqrt((dx * dx) + (dy * dy));
+    }
 
     // Add* take a finished object: what it is made of is the caller's business
     // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
@@ -146,22 +153,7 @@ public sealed class WorldState
         EntityRemoved?.Invoke(entity);
     }
 
-    // Bones gone into the ground: the decay pass calls this once its bones have lingered past
-    // the bones-linger time. Never called for a Person - see AnimalRemoved.
-    internal void RemoveAnimal(Animal animal)
-    {
-        _animals.Remove(animal);
-        AnimalRemoved?.Invoke(animal);
-    }
-
     public void Execute(ICommand command) => command.Execute(this);
-
-    public static double Distance(Position a, Position b)
-    {
-        var dx = a.X - b.X;
-        var dy = a.Y - b.Y;
-        return Math.Sqrt((dx * dx) + (dy * dy));
-    }
 
     // The one proximity test every "act on that thing" command shares; exactly at the limit still
     // counts. `rangeMultiplier` serves the rare wider reach (TeachCommand's efficient teacher).
@@ -236,10 +228,6 @@ public sealed class WorldState
     {
         return CarryCapacity.MaxCarryWeightFor(creature, Configuration, AgeInYears(creature), LifeCycleOf(creature));
     }
-
-    // Every living Person then every living Animal, for the per-creature passes in Advance and
-    // for anything (NursingInfantOf, collision resolution) that has to look across both.
-    private IEnumerable<Creature> AllCreatures() => _people.Cast<Creature>().Concat(_animals);
 
     public void Advance(long ticks)
     {
@@ -331,12 +319,21 @@ public sealed class WorldState
         }
     }
 
-    private bool IsNursedBy(Creature creature, Creature? mother) =>
-        creature.IsAlive
-        && mother is { IsAlive: true }
-        && ReferenceEquals(creature.NursingMother, mother)
-        && LifeStageOf(creature) == LifeStage.Infant
-        && IsWithinReach(creature.Position, mother.Position);
+    // Whether this creature's corpse has crossed the corpse-decay time - derived
+    // rather than stored. A living creature, or one that never died in this world (no
+    // DeathTick), is never decayed. BuryCommand asks this to tell an
+    // unmarked grave from a marked one; the >= here (as opposed to Advance's own one-time ==)
+    // is deliberate, since a caller may ask on any tick, not just the one decay happened on.
+    public bool IsDecayed(Creature creature) =>
+        creature.DeathTick is { } deathTick && Clock.CurrentTick - deathTick >= Configuration.Rules.CorpseDecayTicks;
+
+    // Bones gone into the ground: the decay pass calls this once its bones have lingered past
+    // the bones-linger time. Never called for a Person - see AnimalRemoved.
+    internal void RemoveAnimal(Animal animal)
+    {
+        _animals.Remove(animal);
+        AnimalRemoved?.Invoke(animal);
+    }
 
     // What a dead creature leaves behind, put into its own Inventory once at the moment it dies -
     // whatever the cause, hunger and old age included, and however starved or old it died:
@@ -360,17 +357,6 @@ public sealed class WorldState
         }
     }
 
-    // Whether this creature's corpse has crossed the corpse-decay time - derived
-    // rather than stored. A living creature, or one that never died in this world (no
-    // DeathTick), is never decayed. BuryCommand asks this to tell an
-    // unmarked grave from a marked one; the >= here (as opposed to Advance's own one-time ==)
-    // is deliberate, since a caller may ask on any tick, not just the one decay happened on.
-    public bool IsDecayed(Creature creature) =>
-        creature.DeathTick is { } deathTick && Clock.CurrentTick - deathTick >= Configuration.Rules.CorpseDecayTicks;
-
-    private void RefreshExploration() =>
-        Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));
-
     internal void RestorePerson(Person person) => _people.Add(person);
 
     internal void RestoreForebear(Person forebear) => _forebears.Add(forebear);
@@ -382,4 +368,18 @@ public sealed class WorldState
     internal void RestoreGrave(Grave grave) => _graves.Add(grave);
 
     internal void RestoreHomeRange(HomeRange homeRange) => _homeRanges.Add(homeRange);
+
+    // Every living Person then every living Animal, for the per-creature passes in Advance and
+    // for anything (NursingInfantOf, collision resolution) that has to look across both.
+    private IEnumerable<Creature> AllCreatures() => _people.Cast<Creature>().Concat(_animals);
+
+    private bool IsNursedBy(Creature creature, Creature? mother) =>
+        creature.IsAlive
+        && mother is { IsAlive: true }
+        && ReferenceEquals(creature.NursingMother, mother)
+        && LifeStageOf(creature) == LifeStage.Infant
+        && IsWithinReach(creature.Position, mother.Position);
+
+    private void RefreshExploration() =>
+        Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));
 }

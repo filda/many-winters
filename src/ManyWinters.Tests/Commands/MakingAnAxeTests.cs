@@ -15,43 +15,6 @@ namespace ManyWinters.Tests.Commands;
 // per-command tests each side of a seam cannot.
 public class MakingAnAxeTests
 {
-    private static Person Toolmaker(WorldState world)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicKnapping);
-        person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
-        person.KnownTechniques.Add(TestCatalogs.BasicBinding);
-        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
-
-        // Practised hands, so this is a test of the chain rather than of the dice.
-        foreach (var skill in new[] { KnapCommand.Skill, TwistCommand.Skill, BindCommand.Skill })
-        {
-            for (var i = 0; i < 50; i++)
-            {
-                person.Skills.Increase(skill, 1f);
-            }
-        }
-
-        person.Inventory.Add(TestCatalogs.StoneItem, TestCatalogs.StonePerWedge);
-        person.Inventory.Add(TestCatalogs.GrassItem, TestCatalogs.GrassPerCord);
-        person.Inventory.Add(TestCatalogs.WoodItem, 1);
-
-        return person;
-    }
-
-    private static Assembly MakeAnAxe(WorldState world, Person person)
-    {
-        world.Execute(new KnapCommand(person, TestCatalogs.StoneItem));
-        var head = Assert.Single(person.Inventory.Assemblies);
-
-        world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
-
-        // The cordage is never asked for: binding reaches for the soundest one in the pack.
-        world.Execute(new BindCommand(person, new CarriedThing.Worked(head), new CarriedThing.Stock(TestCatalogs.WoodItem)));
-
-        return Assert.Single(person.Inventory.Assemblies);
-    }
-
     [Fact]
     public void AStoneAHandfulOfGrassAndAStickBecomeOneThing()
     {
@@ -113,5 +76,42 @@ public class MakingAnAxeTests
         world.Execute(new BindCommand(person, new CarriedThing.Worked(head), new CarriedThing.Stock(TestCatalogs.WoodItem)));
 
         Assert.True(person.Inventory.BestChoppingScore(items) > bare);
+    }
+
+    private static Person Toolmaker(WorldState world)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicKnapping);
+        person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
+        person.KnownTechniques.Add(TestCatalogs.BasicBinding);
+        person.KnownTechniques.Add(TestCatalogs.BasicWoodcutting);
+
+        // Practised hands, so this is a test of the chain rather than of the dice.
+        foreach (var skill in new[] { KnapCommand.Skill, TwistCommand.Skill, BindCommand.Skill })
+        {
+            for (var i = 0; i < 50; i++)
+            {
+                person.Skills.Increase(skill, 1f);
+            }
+        }
+
+        person.Inventory.Add(TestCatalogs.StoneItem, TestCatalogs.StonePerWedge);
+        person.Inventory.Add(TestCatalogs.GrassItem, TestCatalogs.GrassPerCord);
+        person.Inventory.Add(TestCatalogs.WoodItem, 1);
+
+        return person;
+    }
+
+    private static Assembly MakeAnAxe(WorldState world, Person person)
+    {
+        world.Execute(new KnapCommand(person, TestCatalogs.StoneItem));
+        var head = Assert.Single(person.Inventory.Assemblies);
+
+        world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
+
+        // The cordage is never asked for: binding reaches for the soundest one in the pack.
+        world.Execute(new BindCommand(person, new CarriedThing.Worked(head), new CarriedThing.Stock(TestCatalogs.WoodItem)));
+
+        return Assert.Single(person.Inventory.Assemblies);
     }
 }

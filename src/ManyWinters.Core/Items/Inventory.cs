@@ -65,17 +65,6 @@ public sealed class Inventory
     // tracked, so if this is called at all the kind is meant to be tracked).
     public void RestoreAgedEntry(ItemKindId kind, long tick, int count) => AgedEntriesFor(kind).Add((tick, count));
 
-    private List<(long Tick, int Count)> AgedEntriesFor(ItemKindId kind)
-    {
-        if (!_ages.TryGetValue(kind, out var entries))
-        {
-            entries = [];
-            _ages[kind] = entries;
-        }
-
-        return entries;
-    }
-
     public bool Remove(ItemKindId kind, int amount) => RemoveDated(kind, amount) is not null;
 
     // The same removal, but reporting which ledger entries (oldest tick first) it actually took -
@@ -103,53 +92,6 @@ public sealed class Inventory
         }
 
         return ConsumeOldest(kind, amount);
-    }
-
-    // Removes up to `amount` from the age ledger, oldest tick first, and reports exactly what was
-    // taken - the shape a transfer needs to hand the very same entries on to another Inventory
-    // rather than restamping them "now": moving something between containers does not change its
-    // age. Whatever of `amount` the ledger cannot cover (untimed stock, or a shortfall) is simply
-    // not reported - it was never aged to begin with.
-    private List<(long Tick, int Count)> ConsumeOldest(ItemKindId kind, int amount)
-    {
-        var taken = new List<(long, int)>();
-        if (!_ages.TryGetValue(kind, out var entries))
-        {
-            return taken;
-        }
-
-        entries.Sort((a, b) => a.Tick.CompareTo(b.Tick));
-
-        var remaining = amount;
-        var consumedWhole = 0;
-        while (consumedWhole < entries.Count && remaining > 0)
-        {
-            var (tick, count) = entries[consumedWhole];
-            if (count <= remaining)
-            {
-                taken.Add((tick, count));
-                remaining -= count;
-                consumedWhole++;
-            }
-            else
-            {
-                taken.Add((tick, remaining));
-                entries[consumedWhole] = (tick, count - remaining);
-                remaining = 0;
-            }
-        }
-
-        if (consumedWhole > 0)
-        {
-            entries.RemoveRange(0, consumedWhole);
-        }
-
-        if (entries.Count == 0)
-        {
-            _ages.Remove(kind);
-        }
-
-        return taken;
     }
 
     // Both tiers weigh on the same scale, so a pack full of worked things is as heavy to carry
@@ -205,18 +147,6 @@ public sealed class Inventory
     // Whether a single unit of `kind` would still fit - asked before walking to a source of it.
     public bool HasRoomFor(ItemKindId kind, ItemCatalog catalog, float maxWeight) => UnitsThatFit(kind, catalog, maxWeight) > 0;
 
-    private int UnitsThatFit(ItemKindId kind, ItemCatalog catalog, float maxWeight)
-    {
-        var unitWeight = catalog.WeightFor(kind);
-        if (unitWeight <= 0f)
-        {
-            return int.MaxValue;
-        }
-
-        var remainingCapacity = maxWeight - TotalWeight(catalog);
-        return Math.Max(0, (int)(remainingCapacity / unitWeight));
-    }
-
     // Moving something that already exists into another Inventory's uncapped room (a store's
     // shelf): unlike Add, this is never a thing coming into being, so whatever ticks its units
     // already carried travel with them rather than being restamped "now".
@@ -246,27 +176,6 @@ public sealed class Inventory
 
         MoveUnits(kind, toMove, destination);
         return toMove;
-    }
-
-    private void MoveUnits(ItemKindId kind, int amount, Inventory destination)
-    {
-        var carriedAges = ConsumeOldest(kind, amount);
-
-        var remaining = Get(kind) - amount;
-        if (remaining <= 0)
-        {
-            _counts.Remove(kind);
-        }
-        else
-        {
-            _counts[kind] = remaining;
-        }
-
-        destination._counts[kind] = destination.Get(kind) + amount;
-        if (carriedAges.Count > 0)
-        {
-            destination.AgedEntriesFor(kind).AddRange(carriedAges);
-        }
     }
 
     // The once-per-tick spoilage pass: drops every stacked unit and every worked object whose
@@ -325,5 +234,96 @@ public sealed class Inventory
             catalog.ShelfLifeTicksOf(assembly) is { } shelf && currentTick - assembly.MadeTick >= shelf);
 
         return lost;
+    }
+
+    private List<(long Tick, int Count)> AgedEntriesFor(ItemKindId kind)
+    {
+        if (!_ages.TryGetValue(kind, out var entries))
+        {
+            entries = [];
+            _ages[kind] = entries;
+        }
+
+        return entries;
+    }
+
+    // Removes up to `amount` from the age ledger, oldest tick first, and reports exactly what was
+    // taken - the shape a transfer needs to hand the very same entries on to another Inventory
+    // rather than restamping them "now": moving something between containers does not change its
+    // age. Whatever of `amount` the ledger cannot cover (untimed stock, or a shortfall) is simply
+    // not reported - it was never aged to begin with.
+    private List<(long Tick, int Count)> ConsumeOldest(ItemKindId kind, int amount)
+    {
+        var taken = new List<(long, int)>();
+        if (!_ages.TryGetValue(kind, out var entries))
+        {
+            return taken;
+        }
+
+        entries.Sort((a, b) => a.Tick.CompareTo(b.Tick));
+
+        var remaining = amount;
+        var consumedWhole = 0;
+        while (consumedWhole < entries.Count && remaining > 0)
+        {
+            var (tick, count) = entries[consumedWhole];
+            if (count <= remaining)
+            {
+                taken.Add((tick, count));
+                remaining -= count;
+                consumedWhole++;
+            }
+            else
+            {
+                taken.Add((tick, remaining));
+                entries[consumedWhole] = (tick, count - remaining);
+                remaining = 0;
+            }
+        }
+
+        if (consumedWhole > 0)
+        {
+            entries.RemoveRange(0, consumedWhole);
+        }
+
+        if (entries.Count == 0)
+        {
+            _ages.Remove(kind);
+        }
+
+        return taken;
+    }
+
+    private int UnitsThatFit(ItemKindId kind, ItemCatalog catalog, float maxWeight)
+    {
+        var unitWeight = catalog.WeightFor(kind);
+        if (unitWeight <= 0f)
+        {
+            return int.MaxValue;
+        }
+
+        var remainingCapacity = maxWeight - TotalWeight(catalog);
+        return Math.Max(0, (int)(remainingCapacity / unitWeight));
+    }
+
+    private void MoveUnits(ItemKindId kind, int amount, Inventory destination)
+    {
+        var carriedAges = ConsumeOldest(kind, amount);
+
+        var remaining = Get(kind) - amount;
+        if (remaining <= 0)
+        {
+            _counts.Remove(kind);
+        }
+        else
+        {
+            _counts[kind] = remaining;
+        }
+
+        destination._counts[kind] = destination.Get(kind) + amount;
+        if (carriedAges.Count > 0)
+        {
+            destination.AgedEntriesFor(kind).AddRange(carriedAges);
+        }
     }
 }

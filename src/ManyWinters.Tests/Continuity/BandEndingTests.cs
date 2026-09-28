@@ -10,38 +10,6 @@ public class BandEndingTests
     // Default rules: 75-tick seasons, Winter the fourth, so winters begin at 225, 525, 825, ...
     private const long WinterBegins = 225;
 
-    private static Person NewPerson(string name, Sex sex, long birthTick, int idSeed = 1) =>
-        new()
-        {
-            Id = TestIds.Person(idSeed),
-            Name = name,
-            BirthTick = birthTick,
-            Mother = Person.Unknown,
-            Father = Person.Unknown,
-            Sex = sex,
-            Home = TestPeople.AnyHome,
-        };
-
-    private static Person Dead(Person person, long deathTick, DeathCause cause = DeathCause.Hunger, bool buried = false)
-    {
-        person.IsAlive = false;
-        person.DeathTick = deathTick;
-        person.CauseOfDeath = cause;
-        person.IsBuried = buried;
-        return person;
-    }
-
-    private static WorldState WorldWith(params Person[] people)
-    {
-        var world = TestCatalogs.CreateWorld();
-        foreach (var person in people)
-        {
-            world.AddPerson(person);
-        }
-
-        return world;
-    }
-
     [Fact]
     public void ABandWithLivingMenAndWomenIsLiving()
     {
@@ -323,5 +291,37 @@ public class BandEndingTests
 
         Assert.NotNull(ending);
         Assert.Equal(0, ending.Born);
+    }
+
+    private static Person NewPerson(string name, Sex sex, long birthTick, int idSeed = 1) =>
+        new()
+        {
+            Id = TestIds.Person(idSeed),
+            Name = name,
+            BirthTick = birthTick,
+            Mother = Person.Unknown,
+            Father = Person.Unknown,
+            Sex = sex,
+            Home = TestPeople.AnyHome,
+        };
+
+    private static Person Dead(Person person, long deathTick, DeathCause cause = DeathCause.Hunger, bool buried = false)
+    {
+        person.IsAlive = false;
+        person.DeathTick = deathTick;
+        person.CauseOfDeath = cause;
+        person.IsBuried = buried;
+        return person;
+    }
+
+    private static WorldState WorldWith(params Person[] people)
+    {
+        var world = TestCatalogs.CreateWorld();
+        foreach (var person in people)
+        {
+            world.AddPerson(person);
+        }
+
+        return world;
     }
 }

@@ -16,17 +16,6 @@ public class HuntTaskTests
     // share the idle AI's unhurried pace unless the test says otherwise.
     private const float IdleSpeed = 0.3f;
 
-    private static Person NewHunter(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
-
-    private static Animal NewPrey(Position position) =>
-        new(TestCatalogs.DeerSpeciesId, new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f })
-        {
-            BirthTick = 0,
-            Sex = Sex.Female,
-            Position = position,
-        };
-
     [Fact]
     public void IsNeverComplete()
     {
@@ -130,4 +119,15 @@ public class HuntTaskTests
 
         Assert.True(WorldState.Distance(hunter.Position, prey.Position) <= Range);
     }
+
+    private static Person NewHunter(Position position) =>
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+
+    private static Animal NewPrey(Position position) =>
+        new(TestCatalogs.DeerSpeciesId, new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f })
+        {
+            BirthTick = 0,
+            Sex = Sex.Female,
+            Position = position,
+        };
 }

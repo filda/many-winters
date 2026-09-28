@@ -22,12 +22,6 @@ public class LootCommandTests
         Assert.Equal(5, looter.Inventory.Get(TestCatalogs.WoodItem));
     }
 
-    // What somebody made outlives them. Until worked things could be taken off a body, a winter
-    // of practice went into the ground with whoever was holding it (see
-    // docs/materials-and-crafting-architecture.md, the instance tier).
-    private static Assembly.Part Axehead(float volume = 1f) =>
-        new(new MaterialId("stone"), TestCatalogs.Wedge, 1f, volume);
-
     [Fact]
     public void LootingTakesWhatTheyMadeAsWellAsWhatTheyGathered()
     {
@@ -228,4 +222,10 @@ public class LootCommandTests
 
         Assert.Equal(ActionBlocker.TooFar, new LootCommand(looter, deceased).Blocker(world));
     }
+
+    // What somebody made outlives them. Until worked things could be taken off a body, a winter
+    // of practice went into the ground with whoever was holding it (see
+    // docs/materials-and-crafting-architecture.md, the instance tier).
+    private static Assembly.Part Axehead(float volume = 1f) =>
+        new(new MaterialId("stone"), TestCatalogs.Wedge, 1f, volume);
 }

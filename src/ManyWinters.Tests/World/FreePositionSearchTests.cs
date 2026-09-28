@@ -4,15 +4,6 @@ namespace ManyWinters.Tests.World;
 
 public class FreePositionSearchTests
 {
-    // Hands out (0, 0), (1, 0), (2, 0), ... so a returned position's X says which draw it was.
-    private static Func<Position> Counting(List<Position> drawn) =>
-        () =>
-        {
-            var candidate = new Position(drawn.Count, 0);
-            drawn.Add(candidate);
-            return candidate;
-        };
-
     [Fact]
     public void TakesTheFirstCandidateWhenItsSpotIsFree()
     {
@@ -45,4 +36,13 @@ public class FreePositionSearchTests
         Assert.Equal(new Position(5, 0), found);
         Assert.Equal(6, drawn.Count);
     }
+
+    // Hands out (0, 0), (1, 0), (2, 0), ... so a returned position's X says which draw it was.
+    private static Func<Position> Counting(List<Position> drawn) =>
+        () =>
+        {
+            var candidate = new Position(drawn.Count, 0);
+            drawn.Add(candidate);
+            return candidate;
+        };
 }

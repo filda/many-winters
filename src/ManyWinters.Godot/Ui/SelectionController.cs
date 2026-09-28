@@ -27,33 +27,6 @@ internal sealed class SelectionController
     private Animal? _animal;
     private Grave? _grave;
 
-    // Forwarded from the selection card, the detail page, or (in composition code) the contextual
-    // menu - all three draw offers for whoever is selected, so this is the one signal a caller
-    // needs to carry an offer out.
-    public event Action<ActionOffer>? ActionInvoked;
-
-    // The pack line, pressed on the card or on the detail page - who it was pressed for, since a
-    // workshop is opened for somebody rather than for whoever happens to be selected when it
-    // finally opens.
-    public event Action<Person>? WorkshopRequested;
-
-    // Raised after every selection change, so the still-separate debug inspector can redraw from
-    // Person or Grave without this controller knowing that window exists.
-    public event Action? Refreshed;
-
-    // Letting the detail page go primes the tick accumulator, the same reason WorkshopController
-    // raises its own Closed.
-    public event Action? Closed;
-
-    public Person? Person => _person;
-
-    public Grave? Grave => _grave;
-
-    // Whichever of the two - a person or an animal - is selected, for everything that only reads
-    // what every Creature has: the marker's position, the occlusion fade's sight line, the clock's
-    // idle-grace hint. Never both, so there is never a question of which one wins.
-    public Creature? SelectedCreature => (Creature?)_person ?? _animal;
-
     public SelectionController(
         SelectionUi ui,
         WorldState world,
@@ -95,6 +68,33 @@ internal sealed class SelectionController
         world.AnimalRemoved += OnAnimalRemoved;
     }
 
+    // Forwarded from the selection card, the detail page, or (in composition code) the contextual
+    // menu - all three draw offers for whoever is selected, so this is the one signal a caller
+    // needs to carry an offer out.
+    public event Action<ActionOffer>? ActionInvoked;
+
+    // The pack line, pressed on the card or on the detail page - who it was pressed for, since a
+    // workshop is opened for somebody rather than for whoever happens to be selected when it
+    // finally opens.
+    public event Action<Person>? WorkshopRequested;
+
+    // Raised after every selection change, so the still-separate debug inspector can redraw from
+    // Person or Grave without this controller knowing that window exists.
+    public event Action? Refreshed;
+
+    // Letting the detail page go primes the tick accumulator, the same reason WorkshopController
+    // raises its own Closed.
+    public event Action? Closed;
+
+    public Person? Person => _person;
+
+    public Grave? Grave => _grave;
+
+    // Whichever of the two - a person or an animal - is selected, for everything that only reads
+    // what every Creature has: the marker's position, the occlusion fade's sight line, the clock's
+    // idle-grace hint. Never both, so there is never a question of which one wins.
+    public Creature? SelectedCreature => (Creature?)_person ?? _animal;
+
     public void Select(Person person)
     {
         _person = person;
@@ -124,36 +124,6 @@ internal sealed class SelectionController
         _person = null;
         _animal = null;
         Refresh();
-    }
-
-    // Pressing a name on the roster: select the person and take the view to them. Selecting alone
-    // would leave the player looking at the same empty forest with a marker somewhere off screen.
-    private void SelectAndFocus(Person person)
-    {
-        Select(person);
-
-        if (_presenter.GetCreatureGlobalPosition(person.Id) is { } position)
-        {
-            _cameraRig.FocusOn(position);
-        }
-    }
-
-    // The player put their own card away with the cross in its corner: nobody is selected any
-    // more, so the card comes down with the selection rather than on its own.
-    private void Clear()
-    {
-        _person = null;
-        _animal = null;
-        _grave = null;
-        Refresh();
-    }
-
-    private void OnAnimalRemoved(Animal animal)
-    {
-        if (ReferenceEquals(_animal, animal))
-        {
-            Clear();
-        }
     }
 
     // Every window that shows something about whoever is selected or was, closed together so a
@@ -250,6 +220,36 @@ internal sealed class SelectionController
             screenPosition.X - (_marker.Size.X / 2f),
             screenPosition.Y - _presentation.SelectionMarkerScreenGap - _marker.Size.Y);
         _marker.Visible = true;
+    }
+
+    // Pressing a name on the roster: select the person and take the view to them. Selecting alone
+    // would leave the player looking at the same empty forest with a marker somewhere off screen.
+    private void SelectAndFocus(Person person)
+    {
+        Select(person);
+
+        if (_presenter.GetCreatureGlobalPosition(person.Id) is { } position)
+        {
+            _cameraRig.FocusOn(position);
+        }
+    }
+
+    // The player put their own card away with the cross in its corner: nobody is selected any
+    // more, so the card comes down with the selection rather than on its own.
+    private void Clear()
+    {
+        _person = null;
+        _animal = null;
+        _grave = null;
+        Refresh();
+    }
+
+    private void OnAnimalRemoved(Animal animal)
+    {
+        if (ReferenceEquals(_animal, animal))
+        {
+            Clear();
+        }
     }
 
     // The player asked to see the selected person's full page.

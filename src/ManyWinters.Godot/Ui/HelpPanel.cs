@@ -58,9 +58,6 @@ public partial class HelpPanel : PaperPanel
         ]),
     ];
 
-    // "Back to the land" was pressed, the cross, or Escape: the page comes down.
-    public event Action? Dismissed;
-
     public HelpPanel()
         : base("How this is played")
     {
@@ -71,6 +68,9 @@ public partial class HelpPanel : PaperPanel
         // onto the page. As a line it lights under the cursor like everything pressable on paper.
         Theme = PanelChrome.PaperButtons(ButtonFontSize);
     }
+
+    // "Back to the land" was pressed, the cross, or Escape: the page comes down.
+    public event Action? Dismissed;
 
     public override void _Ready()
     {
@@ -91,8 +91,6 @@ public partial class HelpPanel : PaperPanel
         away.AddChild(back);
     }
 
-    protected override void OnCloseRequested() => Dismiss();
-
     public void Toggle()
     {
         if (Visible)
@@ -109,6 +107,8 @@ public partial class HelpPanel : PaperPanel
         Visible = false;
         Dismissed?.Invoke();
     }
+
+    protected override void OnCloseRequested() => Dismiss();
 
     private static VBoxContainer Column((string Heading, string[] Lines)[] sections)
     {

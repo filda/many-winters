@@ -5,10 +5,9 @@ namespace ManyWinters.Core.Population;
 
 public sealed class Person : Creature
 {
-    // Where every family line ends. Parents are always real Person objects, so someone with no
-    // recorded ancestry points here: the empty id (no entity ever draws it), long dead, never in
-    // any world, and its own mother and father so the chain terminates without a null.
-    public static Person Unknown { get; } = new(unknownRootName: "Unknown");
+    // A well-known id, declared once rather than drawn or configured per instance. Every Person
+    // is this species.
+    public static readonly SpeciesId HumanSpecies = new("human");
 
     public Person()
     {
@@ -34,6 +33,11 @@ public sealed class Person : Creature
         // rather than written as a literal so it is not a claim about anything.
         Sex = SexOf(Id);
     }
+
+    // Where every family line ends. Parents are always real Person objects, so someone with no
+    // recorded ancestry points here: the empty id (no entity ever draws it), long dead, never in
+    // any world, and its own mother and father so the chain terminates without a null.
+    public static Person Unknown { get; } = new(unknownRootName: "Unknown");
 
     public required string Name { get; init; }
 
@@ -65,10 +69,6 @@ public sealed class Person : Creature
 
     // The band's camp: inherited at birth, handed out by whoever founds the band.
     public override required HomeRange Home { get; init; }
-
-    // A well-known id, declared once rather than drawn or configured per instance. Every Person
-    // is this species.
-    public static readonly SpeciesId HumanSpecies = new("human");
 
     public override SpeciesId Species => HumanSpecies;
 }

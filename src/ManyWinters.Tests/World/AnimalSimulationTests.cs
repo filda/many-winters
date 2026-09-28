@@ -9,8 +9,6 @@ namespace ManyWinters.Tests.World;
 // anyone else.
 public class AnimalSimulationTests
 {
-    private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
-
     [Fact]
     public void AnAnimalWithGrassInRangeEatsWhenHungryAndItsHungerDrops()
     {
@@ -255,4 +253,6 @@ public class AnimalSimulationTests
         Assert.IsType<IdleTask>(person.Tasks.Current);
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.GrassItem));
     }
+
+    private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
 }

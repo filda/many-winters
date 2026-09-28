@@ -7,9 +7,6 @@ namespace ManyWinters.Tests.Tasks;
 
 public class MoveTaskTests
 {
-    private static Person NewPerson(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
-
     [Fact]
     public void DestinationExposesTheGivenDestination()
     {
@@ -131,4 +128,7 @@ public class MoveTaskTests
 
         Assert.Equal(new Position(0, 3), person.Position);
     }
+
+    private static Person NewPerson(Position position) =>
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
 }

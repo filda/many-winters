@@ -15,31 +15,6 @@ public class TargetActionsTests
     private static readonly Position Camp = new(0, 0);
     private static readonly Position FarAway = new(50, 0);
 
-    private static Entity AddNode(WorldState world, EntityKindId kind, Position position)
-    {
-        var node = new Entity
-        {
-            Kind = kind,
-            Category = EntityCategory.Growable,
-            Position = position,
-            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
-        };
-        world.AddEntity(node);
-        return node;
-    }
-
-    private static Person AddCorpse(WorldState world, string name, Position position)
-    {
-        var person = TestWorld.AddAdult(world, name, position);
-        person.IsAlive = false;
-        return person;
-    }
-
-    private static List<string> Labels(TargetMenu menu) => menu.Offers.Select(offer => offer.Label).ToList();
-
-    private static ActionOffer Labelled(TargetMenu menu, string label) =>
-        Assert.Single(menu.Offers, offer => offer.Label == label);
-
     // A tree is named on the heading, so the lines under it are bare verbs rather than a column
     // repeating what was pointed at.
     [Fact]
@@ -677,4 +652,29 @@ public class TargetActionsTests
 
         Assert.DoesNotContain(TargetActions.For(world, person, deer).Offers, offer => offer.Label == "Butcher");
     }
+
+    private static Entity AddNode(WorldState world, EntityKindId kind, Position position)
+    {
+        var node = new Entity
+        {
+            Kind = kind,
+            Category = EntityCategory.Growable,
+            Position = position,
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        };
+        world.AddEntity(node);
+        return node;
+    }
+
+    private static Person AddCorpse(WorldState world, string name, Position position)
+    {
+        var person = TestWorld.AddAdult(world, name, position);
+        person.IsAlive = false;
+        return person;
+    }
+
+    private static List<string> Labels(TargetMenu menu) => menu.Offers.Select(offer => offer.Label).ToList();
+
+    private static ActionOffer Labelled(TargetMenu menu, string label) =>
+        Assert.Single(menu.Offers, offer => offer.Label == label);
 }

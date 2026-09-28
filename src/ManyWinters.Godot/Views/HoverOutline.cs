@@ -15,10 +15,6 @@ internal static class HoverOutline
 {
     private const string ShaderPath = "res://Content/effects/sprite_highlight.gdshader";
 
-    // The whole of what hover looks like. A Modulate tint is not an option: it is a pure
-    // multiply and this art is largely black crosshatch ink, so most of a sprite barely changes.
-    private static readonly Color RimColor = new(1f, 0.85f, 0.15f);
-
     // Screen pixels, so the line keeps its weight at every camera distance like the drawing's
     // own ink. Kept thin: the art's contour picked out, not a glow over it.
     private const float RimScreenPixels = 2f;
@@ -26,6 +22,10 @@ internal static class HoverOutline
     // As many textures as the shader has slots for. A fruit tree is the widest entity at four
     // layers, and only two of those draw outlines, so nothing comes close.
     private const int MaxLayers = 4;
+
+    // The whole of what hover looks like. A Modulate tint is not an option: it is a pure
+    // multiply and this art is largely black crosshatch ink, so most of a sprite barely changes.
+    private static readonly Color RimColor = new(1f, 0.85f, 0.15f);
 
     private static Shader? _shader;
     private static readonly LendingPool<ShaderMaterial> _materials = new(NewMaterial);

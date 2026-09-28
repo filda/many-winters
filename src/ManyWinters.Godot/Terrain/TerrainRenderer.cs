@@ -10,10 +10,6 @@ namespace ManyWinters.Godot.Terrain;
 // prototype and the game's own entry point so both render identical terrain.
 public sealed partial class TerrainRenderer : Node3D
 {
-    // Published rather than taken as a constructor callback: a click on the ground body is
-    // this type's own business to report, not a consumer's to wire in before this exists.
-    public event CollisionObject3D.InputEventEventHandler? GroundInputEvent;
-
     // The one terrain patch the game ships, owned here rather than by whichever entry point
     // constructs it - more than one caller renders this same patch, and neither is where the
     // shipped asset paths belong.
@@ -24,35 +20,21 @@ public sealed partial class TerrainRenderer : Node3D
     private const float TextureTileMeters = 16f;
     private const float WaterSurfaceOffset = 0.15f;
 
-    private static readonly Color LowColor = new(0.22f, 0.24f, 0.16f);
-    private static readonly Color HighColor = new(0.55f, 0.52f, 0.46f);
-    private static readonly Color WaterColor = new(0.24f, 0.34f, 0.40f, 0.8f);
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-
-    private sealed record HeightmapData(
-        string Source,
-        double CenterLatitude,
-        double CenterLongitude,
-        float CellSizeMeters,
-        int GridSize,
-        float[][] Heights);
-
-    private sealed record WaterwaysData(
-        string Source,
-        double CenterLatitude,
-        double CenterLongitude,
-        WaterwayPolyline[] Polylines);
-
-    // The JSON carries name/waterway-type per polyline too; only the geometry is read here.
-    // Instantiated by JsonSerializer, which InspectCode doesn't see as usage.
-    // ReSharper disable once ClassNeverInstantiated.Local
-    private sealed record WaterwayPolyline(float WidthMeters, float[][] Points);
-
     // Minimum gap so two decorations never land (near-)exactly on top of each other, which reads
     // as z-fighting rather than the deliberate clumped-forest overlap. Rejects only coincidence,
     // not crowding - at ~1500 points over a ~38000 sq m disk a 10cm collision is near even odds.
     private const float MinDecorationSpacing = 0.1f;
     private const int MaxPlacementAttempts = 10;
+
+    // Bump whenever the vertex/colour/UV formula in BuildMeshAndCollision changes shape: the hash
+    // covers every value that goes into the mesh, not the code that combines them.
+    private const int TerrainMeshCacheVersion = 1;
+    private const string TerrainMeshCacheDirectory = "user://terrain_mesh_cache";
+
+    private static readonly Color LowColor = new(0.22f, 0.24f, 0.16f);
+    private static readonly Color HighColor = new(0.55f, 0.52f, 0.46f);
+    private static readonly Color WaterColor = new(0.24f, 0.34f, 0.40f, 0.8f);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly string _groundTexturePath;
     private readonly string _waterwaysPath;
@@ -63,14 +45,22 @@ public sealed partial class TerrainRenderer : Node3D
     // every ScatterDecoration call - O(1)-ish neighbour lookup once the total reaches thousands.
     private readonly Dictionary<(int, int), List<Vector2>> _occupiedPositions = new();
 
-    public float Half { get; private set; }
-
-    public TerrainRenderer(string heightmapPath, string waterwaysPath, string groundTexturePath)
+    private TerrainRenderer(string heightmapPath, string waterwaysPath, string groundTexturePath)
     {
         _waterwaysPath = waterwaysPath;
         _groundTexturePath = groundTexturePath;
         LoadHeightmap(heightmapPath);
     }
+
+    // Published rather than taken as a constructor callback: a click on the ground body is
+    // this type's own business to report, not a consumer's to wire in before this exists.
+    public event CollisionObject3D.InputEventEventHandler? GroundInputEvent;
+
+    public float Half { get; private set; }
+
+    private int FineGridSize => _heightmap.FineGridSize;
+
+    private float FineCellSize => _heightmap.FineCellSize;
 
     // The shipped terrain patch, mesh and waterways built - unattached, ready for composition
     // code to AddChild once and never construct a second one from these same paths.
@@ -82,47 +72,89 @@ public sealed partial class TerrainRenderer : Node3D
         return terrain;
     }
 
-    private void LoadHeightmap(string heightmapPath)
-    {
-        var json = ContentFiles.ReadText(heightmapPath);
-        _heightmapJson = json;
-        var data = JsonSerializer.Deserialize<HeightmapData>(json, JsonOptions)
-            ?? throw new InvalidDataException($"Heightmap '{heightmapPath}' could not be parsed.");
-
-        _heightmap = new Heightmap(data.Heights, data.GridSize, data.CellSizeMeters);
-        Half = _heightmap.HalfExtentMeters;
-    }
-
-    private int FineGridSize => _heightmap.FineGridSize;
-
-    private float FineCellSize => _heightmap.FineCellSize;
-
     // The ground height anything standing on the terrain should use: interpolates the mesh's
     // own vertices rather than recomputing from the height formula.
     public float SampleHeight(float x, float z) => _heightmap.HeightAt(x, z);
 
-    // Bump whenever the vertex/colour/UV formula in BuildMeshAndCollision changes shape: the hash
-    // covers every value that goes into the mesh, not the code that combines them.
-    private const int TerrainMeshCacheVersion = 1;
-    private const string TerrainMeshCacheDirectory = "user://terrain_mesh_cache";
-
-    // The mesh build is a pure function of the heightmap file and the constants above, and took
-    // ~1.2s per start - the biggest chunk of startup. A hash-keyed cache loads it in a few ms and
-    // invalidates itself on any heightmap or tuning change.
-    private string ComputeMeshCacheKey()
+    // Cutout/billboard scatter for the TerrainSandbox prototype; the game's decorations are
+    // ResourceNodes instead. Per-node sprites, never a MultiMesh batch: decorations keep
+    // individual identity so they can become clickable (AGENTS.md).
+    //
+    // Scattered within radius of (centerX, centerZ), not over the whole ~1 km patch - a forest
+    // dense enough there would still leave the small playable area bare. Each instance picks
+    // one of texturePaths at random, so one call can mix differently shaped rocks.
+    public void ScatterDecoration(
+        Random rng,
+        int count,
+        IReadOnlyList<string> texturePaths,
+        float baseHeight,
+        Color fallbackColor,
+        float minScale,
+        float maxScale,
+        float centerX,
+        float centerZ,
+        float radius)
     {
-        var input = string.Join(
-            '|',
-            TerrainMeshCacheVersion,
-            Heightmap.ShapeFingerprint,
-            LowColor,
-            HighColor,
-            _heightmapJson);
-        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(hash);
+        for (var i = 0; i < count; i++)
+        {
+            // Uniform over the disk, not a square: sqrt(u) compensates for outer rings covering
+            // more area, so points do not bunch toward the centre. Retried a bounded number of
+            // times when too close to an existing decoration, then falls back to the last
+            // attempt rather than skipping.
+            var position = new Vector2(centerX, centerZ);
+            for (var attempt = 0; attempt < MaxPlacementAttempts; attempt++)
+            {
+                var angle = (float)rng.NextDouble() * Mathf.Tau;
+                var distance = radius * MathF.Sqrt((float)rng.NextDouble());
+                position = new Vector2(centerX + (MathF.Cos(angle) * distance), centerZ + (MathF.Sin(angle) * distance));
+                if (!IsTooCloseToAnExistingDecoration(position))
+                {
+                    break;
+                }
+            }
+
+            MarkOccupied(position);
+            var x = position.X;
+            var z = position.Y;
+            var scale = minScale + ((float)rng.NextDouble() * (maxScale - minScale));
+            var worldHeight = baseHeight * scale;
+            var texturePath = texturePaths[rng.Next(texturePaths.Count)];
+
+            var groundShadow = GroundShadow.Create(worldHeight * 0.5f);
+            groundShadow.Position += new Vector3(x, SampleHeight(x, z) + GroundShadow.GroundOffset, z);
+            AddChild(groundShadow);
+
+            var sprite = BillboardSprite.Create(texturePath, worldHeight, fallbackColor);
+            sprite.Position = new Vector3(x, SampleHeight(x, z) + (worldHeight / 2f), z);
+            AddChild(sprite);
+        }
     }
 
-    public void BuildTerrainMesh()
+    private static void AddTriangle(
+        SurfaceTool tool,
+        (Vector3 Position, Color Color, Vector2 Uv) a,
+        (Vector3 Position, Color Color, Vector2 Uv) b,
+        (Vector3 Position, Color Color, Vector2 Uv) c)
+    {
+        foreach (var vertex in new[] { a, b, c })
+        {
+            tool.SetColor(vertex.Color);
+            tool.SetUV(vertex.Uv);
+            tool.AddVertex(vertex.Position);
+        }
+    }
+
+    private static void AddPlainTriangle(SurfaceTool tool, Vector3 a, Vector3 b, Vector3 c)
+    {
+        tool.AddVertex(a);
+        tool.AddVertex(b);
+        tool.AddVertex(c);
+    }
+
+    private static (int, int) CellFor(Vector2 position) =>
+        ((int)MathF.Floor(position.X / MinDecorationSpacing), (int)MathF.Floor(position.Y / MinDecorationSpacing));
+
+    private void BuildTerrainMesh()
     {
         var cacheKey = ComputeMeshCacheKey();
         var meshCachePath = $"{TerrainMeshCacheDirectory}/{cacheKey}.mesh.res";
@@ -167,83 +199,9 @@ public sealed partial class TerrainRenderer : Node3D
         AddChild(collisionBody);
     }
 
-    private (Mesh Mesh, Shape3D CollisionShape) BuildMeshAndCollision()
-    {
-        var heightRange = Math.Max(0.001f, _heightmap.MaxHeight - _heightmap.MinHeight);
-
-        // The heightmap is a 41x41 grid at 25m - far too coarse for the bump's wavelength, so
-        // each source cell is subdivided without changing the source data. RawAt + BumpAt per
-        // vertex, not SampleHeight: HeightAt blends between these very vertices, so calling it
-        // here would add a pointless interpolation.
-        var fineGridSize = FineGridSize;
-        var fineCellSize = FineCellSize;
-
-        // Each fine-grid vertex is shared by up to 4 quads; computing it per quad would evaluate
-        // the bump noise up to 4x over (~640,000 instead of 160,801 on a 401x401 grid).
-        var vertices = new Vector3[fineGridSize, fineGridSize];
-        var colors = new Color[fineGridSize, fineGridSize];
-        for (var row = 0; row < fineGridSize; row++)
-        {
-            for (var col = 0; col < fineGridSize; col++)
-            {
-                var x = (col * fineCellSize) - Half;
-                var z = (row * fineCellSize) - Half;
-                var rawHeight = _heightmap.RawAt(x, z);
-                vertices[row, col] = new Vector3(x, rawHeight + Heightmap.BumpAt(x, z), z);
-                colors[row, col] = LowColor.Lerp(HighColor, rawHeight / heightRange);
-            }
-        }
-
-        Vector2 UvFor(Vector3 vertex) => new Vector2(vertex.X, vertex.Z) / TextureTileMeters;
-
-        var surfaceTool = new SurfaceTool();
-        surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
-
-        for (var row = 0; row < fineGridSize - 1; row++)
-        {
-            for (var col = 0; col < fineGridSize - 1; col++)
-            {
-                var a = vertices[row, col];
-                var b = vertices[row, col + 1];
-                var c = vertices[row + 1, col];
-                var d = vertices[row + 1, col + 1];
-
-                AddTriangle(
-                    surfaceTool,
-                    (a, colors[row, col], UvFor(a)),
-                    (b, colors[row, col + 1], UvFor(b)),
-                    (c, colors[row + 1, col], UvFor(c)));
-                AddTriangle(
-                    surfaceTool,
-                    (b, colors[row, col + 1], UvFor(b)),
-                    (d, colors[row + 1, col + 1], UvFor(d)),
-                    (c, colors[row + 1, col], UvFor(c)));
-            }
-        }
-
-        surfaceTool.GenerateNormals();
-        var mesh = surfaceTool.Commit();
-        var collisionShape = mesh.CreateTrimeshShape();
-        return (mesh, collisionShape);
-    }
-
-    private static void AddTriangle(
-        SurfaceTool tool,
-        (Vector3 Position, Color Color, Vector2 Uv) a,
-        (Vector3 Position, Color Color, Vector2 Uv) b,
-        (Vector3 Position, Color Color, Vector2 Uv) c)
-    {
-        foreach (var vertex in new[] { a, b, c })
-        {
-            tool.SetColor(vertex.Color);
-            tool.SetUV(vertex.Uv);
-            tool.AddVertex(vertex.Position);
-        }
-    }
-
     // Real OSM waterway centerlines (art/fetch_stream.py) as flat ribbons following the terrain's
     // raw height at each point - the DEM already holds the valley the river cut.
-    public void BuildWaterways()
+    private void BuildWaterways()
     {
         if (!ContentFiles.Exists(_waterwaysPath))
         {
@@ -306,71 +264,94 @@ public sealed partial class TerrainRenderer : Node3D
         });
     }
 
-    private Vector3 WaterVertex(float x, float z) => new Vector3(x, _heightmap.RawAt(x, z) + WaterSurfaceOffset, z);
-
-    private static void AddPlainTriangle(SurfaceTool tool, Vector3 a, Vector3 b, Vector3 c)
+    private void LoadHeightmap(string heightmapPath)
     {
-        tool.AddVertex(a);
-        tool.AddVertex(b);
-        tool.AddVertex(c);
+        var json = ContentFiles.ReadText(heightmapPath);
+        _heightmapJson = json;
+        var data = JsonSerializer.Deserialize<HeightmapData>(json, JsonOptions)
+            ?? throw new InvalidDataException($"Heightmap '{heightmapPath}' could not be parsed.");
+
+        _heightmap = new Heightmap(data.Heights, data.GridSize, data.CellSizeMeters);
+        Half = _heightmap.HalfExtentMeters;
     }
 
-    // Cutout/billboard scatter for the TerrainSandbox prototype; the game's decorations are
-    // ResourceNodes instead. Per-node sprites, never a MultiMesh batch: decorations keep
-    // individual identity so they can become clickable (AGENTS.md).
-    //
-    // Scattered within radius of (centerX, centerZ), not over the whole ~1 km patch - a forest
-    // dense enough there would still leave the small playable area bare. Each instance picks
-    // one of texturePaths at random, so one call can mix differently shaped rocks.
-    public void ScatterDecoration(
-        Random rng,
-        int count,
-        IReadOnlyList<string> texturePaths,
-        float baseHeight,
-        Color fallbackColor,
-        float minScale,
-        float maxScale,
-        float centerX,
-        float centerZ,
-        float radius)
+    // The mesh build is a pure function of the heightmap file and the constants above, and took
+    // ~1.2s per start - the biggest chunk of startup. A hash-keyed cache loads it in a few ms and
+    // invalidates itself on any heightmap or tuning change.
+    private string ComputeMeshCacheKey()
     {
-        for (var i = 0; i < count; i++)
+        var input = string.Join(
+            '|',
+            TerrainMeshCacheVersion,
+            Heightmap.ShapeFingerprint,
+            LowColor,
+            HighColor,
+            _heightmapJson);
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash);
+    }
+
+    private (Mesh Mesh, Shape3D CollisionShape) BuildMeshAndCollision()
+    {
+        var heightRange = Math.Max(0.001f, _heightmap.MaxHeight - _heightmap.MinHeight);
+
+        // The heightmap is a 41x41 grid at 25m - far too coarse for the bump's wavelength, so
+        // each source cell is subdivided without changing the source data. RawAt + BumpAt per
+        // vertex, not SampleHeight: HeightAt blends between these very vertices, so calling it
+        // here would add a pointless interpolation.
+        var fineGridSize = FineGridSize;
+        var fineCellSize = FineCellSize;
+
+        // Each fine-grid vertex is shared by up to 4 quads; computing it per quad would evaluate
+        // the bump noise up to 4x over (~640,000 instead of 160,801 on a 401x401 grid).
+        var vertices = new Vector3[fineGridSize, fineGridSize];
+        var colors = new Color[fineGridSize, fineGridSize];
+        for (var row = 0; row < fineGridSize; row++)
         {
-            // Uniform over the disk, not a square: sqrt(u) compensates for outer rings covering
-            // more area, so points do not bunch toward the centre. Retried a bounded number of
-            // times when too close to an existing decoration, then falls back to the last
-            // attempt rather than skipping.
-            var position = new Vector2(centerX, centerZ);
-            for (var attempt = 0; attempt < MaxPlacementAttempts; attempt++)
+            for (var col = 0; col < fineGridSize; col++)
             {
-                var angle = (float)rng.NextDouble() * Mathf.Tau;
-                var distance = radius * MathF.Sqrt((float)rng.NextDouble());
-                position = new Vector2(centerX + (MathF.Cos(angle) * distance), centerZ + (MathF.Sin(angle) * distance));
-                if (!IsTooCloseToAnExistingDecoration(position))
-                {
-                    break;
-                }
+                var x = (col * fineCellSize) - Half;
+                var z = (row * fineCellSize) - Half;
+                var rawHeight = _heightmap.RawAt(x, z);
+                vertices[row, col] = new Vector3(x, rawHeight + Heightmap.BumpAt(x, z), z);
+                colors[row, col] = LowColor.Lerp(HighColor, rawHeight / heightRange);
             }
-
-            MarkOccupied(position);
-            var x = position.X;
-            var z = position.Y;
-            var scale = minScale + ((float)rng.NextDouble() * (maxScale - minScale));
-            var worldHeight = baseHeight * scale;
-            var texturePath = texturePaths[rng.Next(texturePaths.Count)];
-
-            var groundShadow = GroundShadow.Create(worldHeight * 0.5f);
-            groundShadow.Position += new Vector3(x, SampleHeight(x, z) + GroundShadow.GroundOffset, z);
-            AddChild(groundShadow);
-
-            var sprite = BillboardSprite.Create(texturePath, worldHeight, fallbackColor);
-            sprite.Position = new Vector3(x, SampleHeight(x, z) + (worldHeight / 2f), z);
-            AddChild(sprite);
         }
+
+        Vector2 UvFor(Vector3 vertex) => new Vector2(vertex.X, vertex.Z) / TextureTileMeters;
+
+        var surfaceTool = new SurfaceTool();
+        surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
+
+        for (var row = 0; row < fineGridSize - 1; row++)
+        {
+            for (var col = 0; col < fineGridSize - 1; col++)
+            {
+                var a = vertices[row, col];
+                var b = vertices[row, col + 1];
+                var c = vertices[row + 1, col];
+                var d = vertices[row + 1, col + 1];
+
+                AddTriangle(
+                    surfaceTool,
+                    (a, colors[row, col], UvFor(a)),
+                    (b, colors[row, col + 1], UvFor(b)),
+                    (c, colors[row + 1, col], UvFor(c)));
+                AddTriangle(
+                    surfaceTool,
+                    (b, colors[row, col + 1], UvFor(b)),
+                    (d, colors[row + 1, col + 1], UvFor(d)),
+                    (c, colors[row + 1, col], UvFor(c)));
+            }
+        }
+
+        surfaceTool.GenerateNormals();
+        var mesh = surfaceTool.Commit();
+        var collisionShape = mesh.CreateTrimeshShape();
+        return (mesh, collisionShape);
     }
 
-    private static (int, int) CellFor(Vector2 position) =>
-        ((int)MathF.Floor(position.X / MinDecorationSpacing), (int)MathF.Floor(position.Y / MinDecorationSpacing));
+    private Vector3 WaterVertex(float x, float z) => new Vector3(x, _heightmap.RawAt(x, z) + WaterSurfaceOffset, z);
 
     // The candidate's cell plus its 8 neighbours - two points within MinDecorationSpacing can
     // sit in adjacent cells.
@@ -410,4 +391,23 @@ public sealed partial class TerrainRenderer : Node3D
 
         positions.Add(position);
     }
+
+    private sealed record HeightmapData(
+        string Source,
+        double CenterLatitude,
+        double CenterLongitude,
+        float CellSizeMeters,
+        int GridSize,
+        float[][] Heights);
+
+    private sealed record WaterwaysData(
+        string Source,
+        double CenterLatitude,
+        double CenterLongitude,
+        WaterwayPolyline[] Polylines);
+
+    // The JSON carries name/waterway-type per polyline too; only the geometry is read here.
+    // Instantiated by JsonSerializer, which InspectCode doesn't see as usage.
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private sealed record WaterwayPolyline(float WidthMeters, float[][] Points);
 }

@@ -6,9 +6,10 @@ namespace ManyWinters.Godot.Tests;
 // Where a panel placed by the cursor ends up once the screen has had its say.
 public class ScreenPlacementTests
 {
+    private const float Margin = 8f;
+
     private static readonly Vector2 Screen = new(1000, 800);
     private static readonly Vector2 Size = new(200, 300);
-    private const float Margin = 8f;
 
     [Fact]
     public void APanelWithRoomForItselfIsLeftWhereItWasPut()

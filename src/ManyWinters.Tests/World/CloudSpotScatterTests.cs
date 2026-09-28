@@ -4,9 +4,6 @@ namespace ManyWinters.Tests.World;
 
 public class CloudSpotScatterTests
 {
-    private static IReadOnlyList<CloudSpot> Scatter(int seed = 7) =>
-        CloudSpotScatter.Generate(halfExtentMeters: 100f, meanSpacingMeters: 11f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: seed);
-
     [Fact]
     public void EverySpotLiesInsideTheMap()
     {
@@ -176,16 +173,6 @@ public class CloudSpotScatterTests
         Assert.Equal(0.4f, high - low, 5);
     }
 
-    private static void AssertSpot(CloudSpot spot, float x, float z, float size, int texture, float roll, float lift)
-    {
-        Assert.Equal(x, spot.X, 4);
-        Assert.Equal(z, spot.Z, 4);
-        Assert.Equal(size, spot.Size, 4);
-        Assert.Equal(texture, spot.TextureIndex);
-        Assert.Equal(roll, spot.Roll, 6);
-        Assert.Equal(lift, spot.Lift, 6);
-    }
-
     [Fact]
     public void ScatteringStopsWhenTheAttemptBudgetRunsOutOnAMapThatCannotHoldTheTarget()
     {
@@ -194,5 +181,18 @@ public class CloudSpotScatterTests
         var spots = CloudSpotScatter.Generate(halfExtentMeters: 20f, meanSpacingMeters: 2f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: 7);
 
         Assert.Equal(53, spots.Count);
+    }
+
+    private static IReadOnlyList<CloudSpot> Scatter(int seed = 7) =>
+        CloudSpotScatter.Generate(halfExtentMeters: 100f, meanSpacingMeters: 11f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: seed);
+
+    private static void AssertSpot(CloudSpot spot, float x, float z, float size, int texture, float roll, float lift)
+    {
+        Assert.Equal(x, spot.X, 4);
+        Assert.Equal(z, spot.Z, 4);
+        Assert.Equal(size, spot.Size, 4);
+        Assert.Equal(texture, spot.TextureIndex);
+        Assert.Equal(roll, spot.Roll, 6);
+        Assert.Equal(lift, spot.Lift, 6);
     }
 }

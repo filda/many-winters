@@ -5,11 +5,13 @@ namespace ManyWinters.Tests.Audio;
 public class CreakModelTests
 {
     private const int SampleRate = 22050;
+    private const float StandardDurationSeconds = 1.3f;
+
+    private const float WindowSeconds = 0.02f;
 
     // Oblique on purpose: Size and Strain both sit away from 0 and 1, and the duration is not a
     // round number, so no formula's arithmetic quietly cancels.
     private static readonly Creak Standard = new(Size: 0.35f, Strain: 0.65f);
-    private const float StandardDurationSeconds = 1.3f;
 
     [Fact]
     public void SameSeedRendersAnIdenticalBuffer()
@@ -83,6 +85,30 @@ public class CreakModelTests
             $"slow {CountSlips(slow)}, fast {CountSlips(fast)}");
     }
 
+    [Fact]
+    public void RenderLastsTheRequestedDuration()
+    {
+        var samples = CreakModel.Render(Standard, 0.73f, SampleRate, 5);
+
+        Assert.Equal((int)(0.73f * SampleRate), samples.Length);
+    }
+
+    // Steady band-limited noise under a fixed envelope has a windowed-RMS coefficient of variation
+    // around 0.13 - sampling noise, nothing else. The stutter has to clear that by a wide margin for
+    // the catch-and-release to be real rather than an artefact of the resonator bank's own texture.
+    [Fact]
+    public void TheStutterIsReal()
+    {
+        var samples = CreakModel.Render(Standard, StandardDurationSeconds, SampleRate, 99);
+        var windowRms = WindowRms(samples);
+
+        var mean = windowRms.Average();
+        var variance = windowRms.Select(v => (v - mean) * (v - mean)).Average();
+        var coefficientOfVariation = MathF.Sqrt(variance) / mean;
+
+        Assert.True(coefficientOfVariation > 0.3f, $"cv was {coefficientOfVariation}");
+    }
+
     // Two thresholds, not one: a single level miscounts on a decaying burst that blips back over
     // it, which is what cost FrictionModelTests a round.
     private static int CountSlips(ReadOnlySpan<float> samples)
@@ -121,32 +147,6 @@ public class CreakModelTests
 
         return count;
     }
-
-    [Fact]
-    public void RenderLastsTheRequestedDuration()
-    {
-        var samples = CreakModel.Render(Standard, 0.73f, SampleRate, 5);
-
-        Assert.Equal((int)(0.73f * SampleRate), samples.Length);
-    }
-
-    // Steady band-limited noise under a fixed envelope has a windowed-RMS coefficient of variation
-    // around 0.13 - sampling noise, nothing else. The stutter has to clear that by a wide margin for
-    // the catch-and-release to be real rather than an artefact of the resonator bank's own texture.
-    [Fact]
-    public void TheStutterIsReal()
-    {
-        var samples = CreakModel.Render(Standard, StandardDurationSeconds, SampleRate, 99);
-        var windowRms = WindowRms(samples);
-
-        var mean = windowRms.Average();
-        var variance = windowRms.Select(v => (v - mean) * (v - mean)).Average();
-        var coefficientOfVariation = MathF.Sqrt(variance) / mean;
-
-        Assert.True(coefficientOfVariation > 0.3f, $"cv was {coefficientOfVariation}");
-    }
-
-    private const float WindowSeconds = 0.02f;
 
     private static float[] WindowRms(float[] samples)
     {

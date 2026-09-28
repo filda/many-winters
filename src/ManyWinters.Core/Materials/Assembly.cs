@@ -19,6 +19,13 @@ public abstract record Assembly
     {
     }
 
+    // The tick the verb that produced this object (Knap/Twist/Bind/Sharpen) finished it - one
+    // moment for the whole object rather than one per part, so re-sharpening or re-binding a
+    // thing resets its age. Defaults to 0 rather than being required, since it matters only once
+    // a part's material has a shelf life - nothing today does, so every existing caller that
+    // builds a Part or Joined without naming it keeps working unchanged.
+    public long MadeTick { get; init; }
+
     // Density times volume per part plus binding weight - same formula a stackable item's
     // weight uses, so both tiers weigh on one scale and working a thing neither creates nor
     // destroys weight.
@@ -27,13 +34,6 @@ public abstract record Assembly
     // The weakest link over both parts and joints (section 6) - a rope lashed to a rope lashed
     // to a rope is constructible and useless.
     public abstract float Durability(MaterialCatalog materials);
-
-    // The tick the verb that produced this object (Knap/Twist/Bind/Sharpen) finished it - one
-    // moment for the whole object rather than one per part, so re-sharpening or re-binding a
-    // thing resets its age. Defaults to 0 rather than being required, since it matters only once
-    // a part's material has a shelf life - nothing today does, so every existing caller that
-    // builds a Part or Joined without naming it keeps working unchanged.
-    public long MadeTick { get; init; }
 
     // Quality (0-1) is how well the piece was worked. Volume is bulk in the same arbitrary units
     // as an item's own Volume, so an assembly's weight comes out comparable to a stackable

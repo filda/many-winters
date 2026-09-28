@@ -7,8 +7,6 @@ namespace ManyWinters.Tests.Commands;
 
 public class SpawnAnimalCommandTests
 {
-    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 20f };
-
     [Fact]
     public void GrantsEveryInnateTechniqueTheSpeciesDescribes()
     {
@@ -64,4 +62,6 @@ public class SpawnAnimalCommandTests
 
         Assert.Same(world.Animals[0], raised);
     }
+
+    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 20f };
 }

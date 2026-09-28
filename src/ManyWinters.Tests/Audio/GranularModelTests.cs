@@ -84,28 +84,6 @@ public class GranularModelTests
             $"live {CrestFactor(live)}, dry {CrestFactor(dry)}");
     }
 
-    private static float CrestFactor(float[] samples) => Analysis.Peak(samples) / Analysis.Rms(samples);
-
-    // Share of the spectrum's energy sitting around the body's 600 Hz fundamental.
-    private static double ResonanceShare(float[] samples)
-    {
-        var spectrum = Analysis.Fft(samples);
-        double inBand = 0.0;
-        double total = 0.0;
-        for (var bin = 0; bin < spectrum.Length; bin++)
-        {
-            var energy = (double)spectrum[bin] * spectrum[bin];
-            total += energy;
-            var frequency = Analysis.BinFrequency(bin, spectrum.Length, SampleRate);
-            if (frequency is >= 500.0f and < 800.0f)
-            {
-                inBand += energy;
-            }
-        }
-
-        return total > 0.0 ? inBand / total : 0.0;
-    }
-
     // Everything else equal, more grains per second means a denser signal, so the crest factor
     // (peak, fixed by normalisation, over RMS) falls as the rate rises.
     [Fact]
@@ -154,5 +132,27 @@ public class GranularModelTests
         var long1 = GranularModel.Render(Stone, new GranularGesture(0.08f, 0.55f, 0.5f), SampleRate, 4);
 
         Assert.True(long1.Length > brief.Length);
+    }
+
+    private static float CrestFactor(float[] samples) => Analysis.Peak(samples) / Analysis.Rms(samples);
+
+    // Share of the spectrum's energy sitting around the body's 600 Hz fundamental.
+    private static double ResonanceShare(float[] samples)
+    {
+        var spectrum = Analysis.Fft(samples);
+        double inBand = 0.0;
+        double total = 0.0;
+        for (var bin = 0; bin < spectrum.Length; bin++)
+        {
+            var energy = (double)spectrum[bin] * spectrum[bin];
+            total += energy;
+            var frequency = Analysis.BinFrequency(bin, spectrum.Length, SampleRate);
+            if (frequency is >= 500.0f and < 800.0f)
+            {
+                inBand += energy;
+            }
+        }
+
+        return total > 0.0 ? inBand / total : 0.0;
     }
 }

@@ -16,11 +16,9 @@ namespace ManyWinters.Godot;
 //   twice is the same frame — for a still screenshot, or for anything comparing frames.
 internal static class LaunchOptions
 {
-    private static readonly string[] Args = OS.GetCmdlineUserArgs();
+    public static readonly bool ClockHeld = OS.GetCmdlineUserArgs().Contains("hold-clock");
 
-    public static readonly bool ClockHeld = Args.Contains("hold-clock");
+    public static readonly bool Verbose = OS.GetCmdlineUserArgs().Contains("verbose");
 
-    public static readonly bool Verbose = Args.Contains("verbose");
-
-    public static readonly bool Still = Args.Contains("still");
+    public static readonly bool Still = OS.GetCmdlineUserArgs().Contains("still");
 }

@@ -38,25 +38,6 @@ public static class IdleDiscovery
         }
     }
 
-    private static IEnumerable<MaterialId> MaterialsInHand(WorldState world, Person person)
-    {
-        var items = world.Configuration.ItemCatalog;
-
-        return person.Inventory.Counts.Keys
-            .Select(kind => items.Get(kind).Material)
-            .Concat(person.Inventory.Assemblies.SelectMany(PartMaterialsOf))
-            .Distinct();
-    }
-
-    // Every substance in a made thing, however deep: somebody carrying a hafted axe about has
-    // their hands on both the stone and the wood.
-    private static IEnumerable<MaterialId> PartMaterialsOf(Assembly assembly) => assembly switch
-    {
-        Assembly.Part part => [part.Material],
-        Assembly.Joined joined => PartMaterialsOf(joined.Left).Concat(PartMaterialsOf(joined.Right)),
-        _ => [],
-    };
-
     // Idle hands turning something over, and now and then working out how it is done (see
     // docs/materials-and-crafting-architecture.md section 7, "idle experimentation"). This is
     // what keeps knowledge living in people rather than in the player's head: a settlement left
@@ -102,6 +83,25 @@ public static class IdleDiscovery
             }
         }
     }
+
+    private static IEnumerable<MaterialId> MaterialsInHand(WorldState world, Person person)
+    {
+        var items = world.Configuration.ItemCatalog;
+
+        return person.Inventory.Counts.Keys
+            .Select(kind => items.Get(kind).Material)
+            .Concat(person.Inventory.Assemblies.SelectMany(PartMaterialsOf))
+            .Distinct();
+    }
+
+    // Every substance in a made thing, however deep: somebody carrying a hafted axe about has
+    // their hands on both the stone and the wood.
+    private static IEnumerable<MaterialId> PartMaterialsOf(Assembly assembly) => assembly switch
+    {
+        Assembly.Part part => [part.Material],
+        Assembly.Joined joined => PartMaterialsOf(joined.Left).Concat(PartMaterialsOf(joined.Right)),
+        _ => [],
+    };
 
     // What this person happens to be turning over this tick: one thing out of the pack, or two.
     // Drawn from the same seeded stream as every other autonomous roll, so a replay fiddles with

@@ -11,40 +11,6 @@ namespace ManyWinters.Tests.Commands;
 // FellCommand has one.
 public class HuntCommandTests
 {
-    private static Person Hunter(WorldState world, Position position, bool knowsHunting = true, bool knowsEfficientHunting = false) =>
-        Hunter(world, CreatureId.New(), position, knowsHunting, knowsEfficientHunting);
-
-    // With a chosen id, so a determinism test can pin the roll on it.
-    private static Person Hunter(WorldState world, CreatureId id, Position position, bool knowsHunting = true, bool knowsEfficientHunting = false)
-    {
-        var person = world.SpawnPerson(id, "Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        if (knowsHunting)
-        {
-            person.KnownTechniques.Add(TestCatalogs.BasicHunting);
-        }
-
-        if (knowsEfficientHunting)
-        {
-            person.KnownTechniques.Add(TestCatalogs.EfficientHunting);
-        }
-
-        return person;
-    }
-
-    private static Animal Deer(WorldState world, Position position) =>
-        world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position);
-
-    private static Animal Deer(WorldState world, CreatureId id, Position position) =>
-        DeerWithId(world, id, position);
-
-    // Spawns with a chosen id - the determinism tests below pin the roll on it.
-    private static Animal DeerWithId(WorldState world, CreatureId id, Position position)
-    {
-        var home = new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f };
-        world.Execute(new SpawnAnimalCommand(id, TestCatalogs.DeerSpeciesId, position, home, Creature.SexOf(id), world.Clock.CurrentTick));
-        return world.Animals[^1];
-    }
-
     [Fact]
     public void NothingBlocksAKnowledgeableHunterWithLivingPreyWithinRange()
     {
@@ -257,41 +223,6 @@ public class HuntCommandTests
         Assert.Contains(false, outcomes);
     }
 
-    // The tool-score hit-chance arithmetic: rather than pin one
-    // seed that happens to land where expected, this runs many independent (hunter, prey) pairs
-    // at the same tick - deterministic (SeedHash, not real randomness) and reproducible every
-    // run - and checks the observed hit rate against what the formula predicts.
-    private static float ObservedHitRate(WorldState world, bool giveAxe, bool efficient, int trials)
-    {
-        var rng = new Random(12345);
-        var hits = 0;
-
-        for (var i = 0; i < trials; i++)
-        {
-            var hunter = world.SpawnPerson(CreatureId.New(rng), $"Hunter{i}", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-            hunter.KnownTechniques.Add(TestCatalogs.BasicHunting);
-            if (efficient)
-            {
-                hunter.KnownTechniques.Add(TestCatalogs.EfficientHunting);
-            }
-
-            if (giveAxe)
-            {
-                hunter.Inventory.AddAssembly(TestCatalogs.CreateTestAxe(world));
-            }
-
-            var deer = DeerWithId(world, CreatureId.New(rng), new Position(0, 0));
-
-            world.Execute(new HuntCommand(hunter, deer));
-            if (!deer.IsAlive)
-            {
-                hits++;
-            }
-        }
-
-        return (float)hits / trials;
-    }
-
     [Fact]
     public void BareHandsHitRateMatchesTheBaseHitChance()
     {
@@ -344,5 +275,74 @@ public class HuntCommandTests
         var observed = ObservedHitRate(world, giveAxe: true, efficient: true, trials: 2000);
 
         Assert.InRange(observed, 0.85f, 0.95f);
+    }
+
+    private static Person Hunter(WorldState world, Position position, bool knowsHunting = true, bool knowsEfficientHunting = false) =>
+        Hunter(world, CreatureId.New(), position, knowsHunting, knowsEfficientHunting);
+
+    // With a chosen id, so a determinism test can pin the roll on it.
+    private static Person Hunter(WorldState world, CreatureId id, Position position, bool knowsHunting = true, bool knowsEfficientHunting = false)
+    {
+        var person = world.SpawnPerson(id, "Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        if (knowsHunting)
+        {
+            person.KnownTechniques.Add(TestCatalogs.BasicHunting);
+        }
+
+        if (knowsEfficientHunting)
+        {
+            person.KnownTechniques.Add(TestCatalogs.EfficientHunting);
+        }
+
+        return person;
+    }
+
+    private static Animal Deer(WorldState world, Position position) =>
+        world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position);
+
+    private static Animal Deer(WorldState world, CreatureId id, Position position) =>
+        DeerWithId(world, id, position);
+
+    // Spawns with a chosen id - the determinism tests above pin the roll on it.
+    private static Animal DeerWithId(WorldState world, CreatureId id, Position position)
+    {
+        var home = new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f };
+        world.Execute(new SpawnAnimalCommand(id, TestCatalogs.DeerSpeciesId, position, home, Creature.SexOf(id), world.Clock.CurrentTick));
+        return world.Animals[^1];
+    }
+
+    // The tool-score hit-chance arithmetic: rather than pin one
+    // seed that happens to land where expected, this runs many independent (hunter, prey) pairs
+    // at the same tick - deterministic (SeedHash, not real randomness) and reproducible every
+    // run - and checks the observed hit rate against what the formula predicts.
+    private static float ObservedHitRate(WorldState world, bool giveAxe, bool efficient, int trials)
+    {
+        var rng = new Random(12345);
+        var hits = 0;
+
+        for (var i = 0; i < trials; i++)
+        {
+            var hunter = world.SpawnPerson(CreatureId.New(rng), $"Hunter{i}", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+            hunter.KnownTechniques.Add(TestCatalogs.BasicHunting);
+            if (efficient)
+            {
+                hunter.KnownTechniques.Add(TestCatalogs.EfficientHunting);
+            }
+
+            if (giveAxe)
+            {
+                hunter.Inventory.AddAssembly(TestCatalogs.CreateTestAxe(world));
+            }
+
+            var deer = DeerWithId(world, CreatureId.New(rng), new Position(0, 0));
+
+            world.Execute(new HuntCommand(hunter, deer));
+            if (!deer.IsAlive)
+            {
+                hits++;
+            }
+        }
+
+        return (float)hits / trials;
     }
 }

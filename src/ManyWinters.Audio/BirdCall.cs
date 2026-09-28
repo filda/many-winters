@@ -6,11 +6,6 @@ namespace ManyWinters.Audio;
 // anything that chases a real songbird's throat, right down to a wooden instrument's soft attack.
 public static class BirdCall
 {
-    // A small fixed pentatonic-ish set of ratios against the voice's own pitch, rather than a
-    // free choice of interval: a flute phrase moves between a handful of related notes, not
-    // continuously through the scale.
-    private static readonly float[] RatioSet = [1.0f, 1.125f, 1.25f, 1.5f, 1.667f, 2.0f];
-
     private const int MinimumNotes = 2;
     private const int NoteCountRange = 4; // draws 0..3, so 2..5 notes total
 
@@ -37,6 +32,11 @@ public static class BirdCall
 
     private const float TargetRms = 0.2f;
     private const float TargetPeak = 0.9f;
+
+    // A small fixed pentatonic-ish set of ratios against the voice's own pitch, rather than a
+    // free choice of interval: a flute phrase moves between a handful of related notes, not
+    // continuously through the scale.
+    private static readonly float[] RatioSet = [1.0f, 1.125f, 1.25f, 1.5f, 1.667f, 2.0f];
 
     public static float[] Render(BirdVoice voice, int sampleRate, int seed)
     {

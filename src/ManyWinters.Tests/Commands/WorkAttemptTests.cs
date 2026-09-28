@@ -13,17 +13,6 @@ public class WorkAttemptTests
     private static readonly SkillTypeId Skill = new("twisting");
     private static readonly TechniqueId Verb = new("twist");
 
-    private static Person Somebody(WorldState world, string name = "Ava") =>
-        world.SpawnPerson(name, new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-
-    private static void Practise(Person person, int times)
-    {
-        for (var i = 0; i < times; i++)
-        {
-            person.Skills.Increase(Skill, 1f);
-        }
-    }
-
     [Fact]
     public void SomebodyWhoHasNeverTriedStillHasAChance()
     {
@@ -131,5 +120,16 @@ public class WorkAttemptTests
         var wins = Enumerable.Range(0, 2000).Count(tick => WorkAttempt.Succeeds(person, Skill, Verb, tick));
 
         Assert.InRange(wins / 2000f, chance - 0.05f, chance + 0.05f);
+    }
+
+    private static Person Somebody(WorldState world, string name = "Ava") =>
+        world.SpawnPerson(name, new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+
+    private static void Practise(Person person, int times)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            person.Skills.Increase(Skill, 1f);
+        }
     }
 }

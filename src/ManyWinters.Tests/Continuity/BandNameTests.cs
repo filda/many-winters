@@ -6,19 +6,6 @@ namespace ManyWinters.Tests.Continuity;
 
 public class BandNameTests
 {
-    private static Person NewPerson(string name, long birthTick, bool isAlive = true, int idSeed = 1) =>
-        new()
-        {
-            Id = TestIds.Person(idSeed),
-            Name = name,
-            BirthTick = birthTick,
-            IsAlive = isAlive,
-            Mother = Person.Unknown,
-            Father = Person.Unknown,
-            Sex = TestPeople.AnySex,
-            Home = TestPeople.AnyHome,
-        };
-
     [Fact]
     public void ABandIsCalledAfterItsEldestMember()
     {
@@ -56,4 +43,17 @@ public class BandNameTests
         // business, but it must not depend on list order.
         Assert.Equal(BandName.Of([first, second]), BandName.Of([second, first]));
     }
+
+    private static Person NewPerson(string name, long birthTick, bool isAlive = true, int idSeed = 1) =>
+        new()
+        {
+            Id = TestIds.Person(idSeed),
+            Name = name,
+            BirthTick = birthTick,
+            IsAlive = isAlive,
+            Mother = Person.Unknown,
+            Father = Person.Unknown,
+            Sex = TestPeople.AnySex,
+            Home = TestPeople.AnyHome,
+        };
 }

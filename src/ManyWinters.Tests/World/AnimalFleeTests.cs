@@ -9,8 +9,6 @@ namespace ManyWinters.Tests.World;
 // comes within FleeDistance, and a species without that flag (a person) never does.
 public class AnimalFleeTests
 {
-    private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
-
     [Fact]
     public void AGrazingDeerDropsItsGatherTaskWhenAPersonWalksWithinFleeDistance()
     {
@@ -134,4 +132,6 @@ public class AnimalFleeTests
         Assert.True(wasEverUnnursed, "expected the calf to lose nursing reach while it fled");
         Assert.True(wasNursedAgain, "expected the calf to be nursed again once it walked back to its mother");
     }
+
+    private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
 }

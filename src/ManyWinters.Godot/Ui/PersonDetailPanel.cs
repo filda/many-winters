@@ -40,14 +40,6 @@ public partial class PersonDetailPanel : PaperPanel
 
     private readonly List<Label> _knowledgeLines = [];
 
-    // The player asked to see the pack itself. Main opens the workshop over it, the same as from
-    // the summary card.
-    internal event Action? PackRequested;
-
-    // Which action the player pressed. The owner runs it the same way it does one pressed on the
-    // summary card.
-    internal event Action<ActionOffer>? ActionInvoked;
-
     public PersonDetailPanel()
         : base(string.Empty)
     {
@@ -56,6 +48,17 @@ public partial class PersonDetailPanel : PaperPanel
         Visible = false;
         Theme = PanelChrome.PaperButtons(BodyFontSize);
     }
+
+    // The player asked to see the pack itself. Main opens the workshop over it, the same as from
+    // the summary card.
+    internal event Action? PackRequested;
+
+    // Which action the player pressed. The owner runs it the same way it does one pressed on the
+    // summary card.
+    internal event Action<ActionOffer>? ActionInvoked;
+
+    // Put away, so the world can start moving again.
+    internal event Action? Closed;
 
     public override void _Ready()
     {
@@ -88,6 +91,44 @@ public partial class PersonDetailPanel : PaperPanel
 
         _knowledgeHeading = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
         _knowledge.AddChild(_knowledgeHeading);
+    }
+
+    // Opened fresh for whoever the card belongs to.
+    internal void Open(SelectionCard card, IReadOnlyList<ActionOffer> offers)
+    {
+        Show(card, offers);
+        Visible = true;
+    }
+
+    // Redrawn whenever the card behind it is, so the page stays true while it is left open on a
+    // person who is still living their life behind it.
+    internal void Show(SelectionCard card, IReadOnlyList<ActionOffer> offers)
+    {
+        SetTitle(card.Name);
+        _beside.Text = card.Beside;
+        _portrait.Show(card.Look, card.IsAlive);
+        _parents.Text = card.Parents;
+        _parents.Visible = card.Parents.Length > 0;
+        _death.Text = card.Death;
+        _death.Visible = card.Death.Length > 0;
+        _carried.Show(card.Carried);
+        _task.Text = card.Task;
+        _task.Visible = card.Task.Length > 0;
+
+        _meterRows.Sync(card.Fatigue is { } fatigue ? [.. card.Meters, fatigue] : card.Meters);
+        _actions.Show(offers);
+        SyncKnowledge(card.KnowledgeLabel, card.Knowledge);
+    }
+
+    internal void Close()
+    {
+        if (!Visible)
+        {
+            return;
+        }
+
+        Visible = false;
+        Closed?.Invoke();
     }
 
     // The page opens the way a page about somebody does: their likeness in the top left corner and
@@ -131,50 +172,9 @@ public partial class PersonDetailPanel : PaperPanel
         return head;
     }
 
-    // Opened fresh for whoever the card belongs to.
-    internal void Open(SelectionCard card, IReadOnlyList<ActionOffer> offers)
-    {
-        Show(card, offers);
-        Visible = true;
-    }
-
-    // Redrawn whenever the card behind it is, so the page stays true while it is left open on a
-    // person who is still living their life behind it.
-    internal void Show(SelectionCard card, IReadOnlyList<ActionOffer> offers)
-    {
-        SetTitle(card.Name);
-        _beside.Text = card.Beside;
-        _portrait.Show(card.Look, card.IsAlive);
-        _parents.Text = card.Parents;
-        _parents.Visible = card.Parents.Length > 0;
-        _death.Text = card.Death;
-        _death.Visible = card.Death.Length > 0;
-        _carried.Show(card.Carried);
-        _task.Text = card.Task;
-        _task.Visible = card.Task.Length > 0;
-
-        _meterRows.Sync(card.Fatigue is { } fatigue ? [.. card.Meters, fatigue] : card.Meters);
-        _actions.Show(offers);
-        SyncKnowledge(card.KnowledgeLabel, card.Knowledge);
-    }
-
     // The clock is held while the page is out, the same as the workbench's, so the cross cannot
     // simply hide it - the clock has to be let go too.
     protected override void OnCloseRequested() => Close();
-
-    internal void Close()
-    {
-        if (!Visible)
-        {
-            return;
-        }
-
-        Visible = false;
-        Closed?.Invoke();
-    }
-
-    // Put away, so the world can start moving again.
-    internal event Action? Closed;
 
     // A line per skill under its own heading, rather than one comma-spliced sentence that stops
     // reading well once the list grows long. Lines are kept and updated in place, not thrown

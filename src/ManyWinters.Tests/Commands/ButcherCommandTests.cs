@@ -10,51 +10,6 @@ namespace ManyWinters.Tests.Commands;
 // more out of the same carcass.
 public class ButcherCommandTests
 {
-    private static Animal DeadDeer(
-        WorldState world,
-        Position position,
-        int meat = TestCatalogs.DeerCarcassMeat,
-        int hide = TestCatalogs.DeerCarcassHide,
-        int bone = TestCatalogs.DeerCarcassBone,
-        int sinew = TestCatalogs.DeerCarcassSinew)
-    {
-        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position);
-        deer.IsAlive = false;
-        if (meat > 0)
-        {
-            deer.Inventory.Add(TestCatalogs.MeatItem, meat);
-        }
-
-        if (hide > 0)
-        {
-            deer.Inventory.Add(TestCatalogs.RawhideItem, hide);
-        }
-
-        if (bone > 0)
-        {
-            deer.Inventory.Add(TestCatalogs.BoneItem, bone);
-        }
-
-        if (sinew > 0)
-        {
-            deer.Inventory.Add(TestCatalogs.SinewItem, sinew);
-        }
-
-        return deer;
-    }
-
-    private static Person Butcher(WorldState world, Position position, bool knowsEfficientButchering = false)
-    {
-        var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicButchering);
-        if (knowsEfficientButchering)
-        {
-            person.KnownTechniques.Add(TestCatalogs.EfficientButchering);
-        }
-
-        return person;
-    }
-
     [Fact]
     public void NothingBlocksAKnowledgeableButcherWithACarcassWithinReach()
     {
@@ -284,5 +239,50 @@ public class ButcherCommandTests
         }
 
         Assert.DoesNotContain(TestCatalogs.EfficientButchering, butcher.KnownTechniques);
+    }
+
+    private static Animal DeadDeer(
+        WorldState world,
+        Position position,
+        int meat = TestCatalogs.DeerCarcassMeat,
+        int hide = TestCatalogs.DeerCarcassHide,
+        int bone = TestCatalogs.DeerCarcassBone,
+        int sinew = TestCatalogs.DeerCarcassSinew)
+    {
+        var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, position);
+        deer.IsAlive = false;
+        if (meat > 0)
+        {
+            deer.Inventory.Add(TestCatalogs.MeatItem, meat);
+        }
+
+        if (hide > 0)
+        {
+            deer.Inventory.Add(TestCatalogs.RawhideItem, hide);
+        }
+
+        if (bone > 0)
+        {
+            deer.Inventory.Add(TestCatalogs.BoneItem, bone);
+        }
+
+        if (sinew > 0)
+        {
+            deer.Inventory.Add(TestCatalogs.SinewItem, sinew);
+        }
+
+        return deer;
+    }
+
+    private static Person Butcher(WorldState world, Position position, bool knowsEfficientButchering = false)
+    {
+        var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicButchering);
+        if (knowsEfficientButchering)
+        {
+            person.KnownTechniques.Add(TestCatalogs.EfficientButchering);
+        }
+
+        return person;
     }
 }

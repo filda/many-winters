@@ -10,9 +10,6 @@ namespace ManyWinters.Tests.Commands;
 // costs this class one more branch, not a new kind of question.
 public class ReductiveVerbsTests
 {
-    private static Person Person(WorldState world) =>
-        world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-
     [Fact]
     public void GrassAnswersToTwist()
     {
@@ -66,4 +63,7 @@ public class ReductiveVerbsTests
 
         Assert.Null(trial);
     }
+
+    private static Person Person(WorldState world) =>
+        world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
 }

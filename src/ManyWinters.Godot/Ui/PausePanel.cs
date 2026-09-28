@@ -14,13 +14,13 @@ public partial class PausePanel : Control
     private const float ColumnWidth = 640f;
     private const int Spacing = 20;
 
-    // The cross in the corner: the same as pressing Space again. Main holds the clock, so it is
-    // Main that starts it.
-    public event Action? Resumed;
-
     private Label _title = null!;
     private Label _sinceArrival = null!;
     private Label _population = null!;
+
+    // The cross in the corner: the same as pressing Space again. Main holds the clock, so it is
+    // Main that starts it.
+    public event Action? Resumed;
 
     public override void _Ready()
     {

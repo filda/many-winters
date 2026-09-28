@@ -13,39 +13,6 @@ namespace ManyWinters.Tests.Commands;
 // and the blocker ordering the pattern demands.
 public class TanCommandTests
 {
-    private static Person Tanner(WorldState world, int rawhide = 1)
-    {
-        var person = Novice(world, rawhide);
-        Practise(person);
-
-        return person;
-    }
-
-    private static Person Novice(WorldState world, int rawhide = 1)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicTanning);
-        person.Inventory.Add(TestCatalogs.RawhideItem, rawhide);
-
-        return person;
-    }
-
-    private static void Practise(Person person, int times = 50)
-    {
-        for (var i = 0; i < times; i++)
-        {
-            person.Skills.Increase(TanCommand.Skill, 1f);
-        }
-    }
-
-    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
-    {
-        while (WorkAttempt.Succeeds(person, TanCommand.Skill, TanCommand.Verb, world.Clock.CurrentTick) != succeed)
-        {
-            world.Clock.Advance();
-        }
-    }
-
     // Unlike Twist and Knap, curing exchanges one already-known stock substance for another - it
     // does not fashion a new individual object - so what comes out is a countable "hide", not a
     // worked Assembly.
@@ -196,5 +163,38 @@ public class TanCommandTests
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.RawhideItem));
         Assert.Equal(0, person.Inventory.Get(TestCatalogs.HideItem));
         Assert.Empty(person.Inventory.Assemblies);
+    }
+
+    private static Person Tanner(WorldState world, int rawhide = 1)
+    {
+        var person = Novice(world, rawhide);
+        Practise(person);
+
+        return person;
+    }
+
+    private static Person Novice(WorldState world, int rawhide = 1)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicTanning);
+        person.Inventory.Add(TestCatalogs.RawhideItem, rawhide);
+
+        return person;
+    }
+
+    private static void Practise(Person person, int times = 50)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            person.Skills.Increase(TanCommand.Skill, 1f);
+        }
+    }
+
+    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
+    {
+        while (WorkAttempt.Succeeds(person, TanCommand.Skill, TanCommand.Verb, world.Clock.CurrentTick) != succeed)
+        {
+            world.Clock.Advance();
+        }
     }
 }

@@ -5,6 +5,9 @@ namespace ManyWinters.Core.Population.Naming;
 // (docs/Procedural Name Generation Plan.md).
 public static class Phonotactics
 {
+    public const int MinSyllables = 1;
+    public const int MaxSyllables = 3;
+
     public static readonly string[] Consonants =
         ["b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "r", "s", "t", "v", "w", "y", "z"];
 
@@ -20,8 +23,6 @@ public static class Phonotactics
 
     private const int MinNameLength = 3;
     private const int MaxNameLength = 9;
-    public const int MinSyllables = 1;
-    public const int MaxSyllables = 3;
 
     private static readonly HashSet<char> ConsonantChars = Consonants.Select(c => c[0]).ToHashSet();
     private static readonly HashSet<char> VowelChars = Vowels.Select(v => v[0]).ToHashSet();

@@ -8,6 +8,14 @@ namespace ManyWinters.Godot.Fog;
 // still just sky, and they should be visible at every distance from camp.
 public static class CloudScatter
 {
+    // Shared with GroundClouds - one set of cloud art for both the sky and the low cover.
+    public static readonly string[] TexturePaths =
+    [
+        "res://Content/effects/cloud_1.png",
+        "res://Content/effects/cloud_2.png",
+        "res://Content/effects/cloud_3.png",
+    ];
+
     // Sparse, independent puffs - not a continuous cover.
     private const int CloudCount = 40;
 
@@ -21,14 +29,6 @@ public static class CloudScatter
 
     // Fixed for reproducibility, like every other scatter in this codebase.
     private const int Seed = 9;
-
-    // Shared with GroundClouds - one set of cloud art for both the sky and the low cover.
-    public static readonly string[] TexturePaths =
-    [
-        "res://Content/effects/cloud_1.png",
-        "res://Content/effects/cloud_2.png",
-        "res://Content/effects/cloud_3.png",
-    ];
 
     private static readonly Color FallbackColor = new(0.85f, 0.87f, 0.90f);
 

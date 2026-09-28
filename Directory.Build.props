@@ -9,4 +9,10 @@
          `dotnet format` step. -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Only for member ordering (SA1201-SA1204); every other StyleCop rule is switched off in
+         .editorconfig. The 1.2 line is still labelled beta, but the last stable 1.1.118 predates
+         C# 9 and does not know records. -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+  </ItemGroup>
 </Project>

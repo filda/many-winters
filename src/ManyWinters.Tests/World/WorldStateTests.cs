@@ -12,6 +12,13 @@ namespace ManyWinters.Tests.World;
 
 public class WorldStateTests
 {
+    // A short calendar, so old age arrives after a handful of ticks instead of 3000.
+    private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2 };
+
+    // A short-lived human: MaxLifespanYears lives on the species' own LifeCycle, not
+    // SimulationRules (step 0c).
+    private static readonly LifeCycle ShortLifeCycle = TestCatalogs.HumanLifeCycle with { MaxLifespanYears = 3 };
+
     [Fact]
     public void DistanceBetweenTheSamePositionIsZero()
     {
@@ -1112,19 +1119,6 @@ public class WorldStateTests
         Assert.True(person.IsAlive);
     }
 
-    // A short calendar, so old age arrives after a handful of ticks instead of 3000.
-    private static readonly SimulationRules ShortLifeRules = new() { TicksPerSeason = 2 };
-
-    // A short-lived human: MaxLifespanYears lives on the species' own LifeCycle, not
-    // SimulationRules (step 0c).
-    private static readonly LifeCycle ShortLifeCycle = TestCatalogs.HumanLifeCycle with { MaxLifespanYears = 3 };
-
-    private static WorldState CreateWorld(SimulationRules rules) =>
-        new(TestCatalogs.CreateConfiguration() with { Rules = rules });
-
-    private static WorldState CreateWorld(SimulationRules rules, LifeCycle humanLifeCycle) =>
-        new(TestCatalogs.CreateConfigurationWithLifeCycle(humanLifeCycle) with { Rules = rules });
-
     [Fact]
     public void AdvanceKillsAPersonWhoReachesTheMaximumLifespanEvenWhenNeverHungry()
     {
@@ -1933,12 +1927,6 @@ public class WorldStateTests
         Assert.True(person.Inventory.Get(TestCatalogs.GrassItem) > 0);
     }
 
-    private static void FillTheBackpackWithWood(WorldState world, Person person)
-    {
-        var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
-        person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
-    }
-
     [Fact]
     public void AResourceThatYieldsNoItemIsAlwaysWorthWalkingTo()
     {
@@ -1975,5 +1963,17 @@ public class WorldStateTests
         world.Advance(1);
 
         Assert.IsNotType<GatherTask>(person.Tasks.Current);
+    }
+
+    private static WorldState CreateWorld(SimulationRules rules) =>
+        new(TestCatalogs.CreateConfiguration() with { Rules = rules });
+
+    private static WorldState CreateWorld(SimulationRules rules, LifeCycle humanLifeCycle) =>
+        new(TestCatalogs.CreateConfigurationWithLifeCycle(humanLifeCycle) with { Rules = rules });
+
+    private static void FillTheBackpackWithWood(WorldState world, Person person)
+    {
+        var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
     }
 }

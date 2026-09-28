@@ -6,11 +6,6 @@ namespace ManyWinters.Godot.Tests;
 
 public class WorldSpaceTests
 {
-    // Ground rising along one axis only, so a swapped axis changes the answer.
-    private static float SlopeAlongX(float x, float z) => x * 0.5f;
-
-    private static float Flat(float x, float z) => 0f;
-
     [Fact]
     public void TheSimulationsSecondNumberBecomesTheRenderersThird()
     {
@@ -72,4 +67,9 @@ public class WorldSpaceTests
         Assert.Equal(5.0, low.X, 4);
         Assert.Equal(-9.0, low.Y, 4);
     }
+
+    // Ground rising along one axis only, so a swapped axis changes the answer.
+    private static float SlopeAlongX(float x, float z) => x * 0.5f;
+
+    private static float Flat(float x, float z) => 0f;
 }

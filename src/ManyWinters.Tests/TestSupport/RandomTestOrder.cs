@@ -16,15 +16,6 @@ namespace ManyWinters.Tests.TestSupport;
 
 public sealed class RandomTestOrder : ITestClassOrderer, ITestMethodOrderer, ITestCaseOrderer
 {
-    public IReadOnlyCollection<TTestClass?> OrderTestClasses<TTestClass>(IReadOnlyCollection<TTestClass?> testClasses)
-        where TTestClass : ITestClass => Shuffle(testClasses, Randomizer.Current);
-
-    public IReadOnlyCollection<TTestMethod?> OrderTestMethods<TTestMethod>(IReadOnlyCollection<TTestMethod?> testMethods)
-        where TTestMethod : ITestMethod => Shuffle(testMethods, Randomizer.Current);
-
-    public IReadOnlyCollection<TTestCase> OrderTestCases<TTestCase>(IReadOnlyCollection<TTestCase> testCases)
-        where TTestCase : ITestCase => Shuffle(testCases, Randomizer.Current);
-
     /// <summary>Fisher–Yates over a copy, so the collection xunit handed in is left as it was.</summary>
     public static IReadOnlyCollection<T> Shuffle<T>(IReadOnlyCollection<T> items, Random random)
     {
@@ -37,4 +28,13 @@ public sealed class RandomTestOrder : ITestClassOrderer, ITestMethodOrderer, ITe
 
         return shuffled;
     }
+
+    public IReadOnlyCollection<TTestClass?> OrderTestClasses<TTestClass>(IReadOnlyCollection<TTestClass?> testClasses)
+        where TTestClass : ITestClass => Shuffle(testClasses, Randomizer.Current);
+
+    public IReadOnlyCollection<TTestMethod?> OrderTestMethods<TTestMethod>(IReadOnlyCollection<TTestMethod?> testMethods)
+        where TTestMethod : ITestMethod => Shuffle(testMethods, Randomizer.Current);
+
+    public IReadOnlyCollection<TTestCase> OrderTestCases<TTestCase>(IReadOnlyCollection<TTestCase> testCases)
+        where TTestCase : ITestCase => Shuffle(testCases, Randomizer.Current);
 }

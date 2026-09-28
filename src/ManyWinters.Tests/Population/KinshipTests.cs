@@ -5,17 +5,6 @@ namespace ManyWinters.Tests.Population;
 
 public class KinshipTests
 {
-    private static Person NewPerson(string name, Person? mother = null, Person? father = null) =>
-        new()
-        {
-            Name = name,
-            BirthTick = 0,
-            Mother = mother ?? Person.Unknown,
-            Father = father ?? Person.Unknown,
-            Sex = TestPeople.AnySex,
-            Home = TestPeople.AnyHome,
-        };
-
     [Fact]
     public void TwoStrangersAreNotKin()
     {
@@ -122,4 +111,15 @@ public class KinshipTests
 
         Assert.False(Kinship.AreCloseKin(grandmother, child));
     }
+
+    private static Person NewPerson(string name, Person? mother = null, Person? father = null) =>
+        new()
+        {
+            Name = name,
+            BirthTick = 0,
+            Mother = mother ?? Person.Unknown,
+            Father = father ?? Person.Unknown,
+            Sex = TestPeople.AnySex,
+            Home = TestPeople.AnyHome,
+        };
 }

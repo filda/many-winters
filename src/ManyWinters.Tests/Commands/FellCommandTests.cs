@@ -7,9 +7,6 @@ namespace ManyWinters.Tests.Commands;
 
 public class FellCommandTests
 {
-    private static List<Entity> ResourceNodes(WorldState world) =>
-        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
-
     [Fact]
     public void ADeadPersonFellsNothingEvenWithSomebodyElseStandingRightThere()
     {
@@ -366,4 +363,7 @@ public class FellCommandTests
 
         Assert.Equal(ActionBlocker.NotLearned, new FellCommand(person, node).Blocker(world));
     }
+
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
 }

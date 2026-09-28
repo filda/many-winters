@@ -34,6 +34,12 @@ internal static class PersonActions
         return offers;
     }
 
+    // Shared with the workshop's and the world-target's recipe lists, the two halves of the same
+    // recipe list split on where the output lands - the one live check MakeCommand itself runs to
+    // decide it.
+    internal static bool FitsInInventory(WorldState world, Person person, ItemKindId output) =>
+        person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
+
     // No line per verb here. Working what is in the pack is asked for at the workbench instead,
     // opened from the pack line on the card, where the player picks the things and not the verb -
     // a card that grew a "Twist grass" line would be telling them in advance what works, which is
@@ -52,12 +58,6 @@ internal static class PersonActions
 
         return ActionOffer.For("Eat", new EatCommand(person, item), world, EatCommand.Skill);
     }
-
-    // Shared with the workshop's and the world-target's recipe lists, the two halves of the same
-    // recipe list split on where the output lands - the one live check MakeCommand itself runs to
-    // decide it.
-    internal static bool FitsInInventory(WorldState world, Person person, ItemKindId output) =>
-        person.Inventory.HasRoomFor(output, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(person));
 
     // A line per thing actually carried: a line for material nobody has would just be an
     // invitation to go find some, which pressing it could not do. Both tiers, in one list,

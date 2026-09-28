@@ -16,9 +16,6 @@ public class VocabularyTests
     private static readonly FormId Shaft = new("shaft");
     private static readonly FormId Cord = new("cord");
 
-    private static Assembly.Joined Axe(MaterialId head) =>
-        new Assembly.Joined(0.8f, 1f, new Assembly.Part(head, Wedge, 1f, 3f), new Assembly.Part(Wood, Shaft, 1f, 4f));
-
     [Fact]
     public void ABandStartsWithNoWordForAnything()
     {
@@ -121,4 +118,7 @@ public class VocabularyTests
 
         Assert.Equal("axe", vocabulary.WordFor(Axe(Flint)));
     }
+
+    private static Assembly.Joined Axe(MaterialId head) =>
+        new Assembly.Joined(0.8f, 1f, new Assembly.Part(head, Wedge, 1f, 3f), new Assembly.Part(Wood, Shaft, 1f, 4f));
 }

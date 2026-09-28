@@ -8,81 +8,6 @@ using Cake.Core.Diagnostics;
 using Cake.Frosting;
 
 namespace ManyWinters.Build;
-
-internal static class BuildProcess
-{
-    public static void Run(BuildContext context, string fileName, params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(fileName)
-        {
-            WorkingDirectory = context.RootDirectory,
-            UseShellExecute = false,
-        };
-
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
-
-        process.WaitForExit();
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"'{fileName}' exited with code {process.ExitCode}.");
-        }
-    }
-
-    public static string Capture(BuildContext context, string fileName, params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(fileName)
-        {
-            WorkingDirectory = context.RootDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"'{fileName}' exited with code {process.ExitCode}: {error}");
-        }
-
-        return output;
-    }
-
-    public static string FindMsBuildPath(BuildContext context)
-    {
-        var output = Capture(context, "dotnet", "--list-sdks");
-        var sdk = output
-            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => Regex.Match(line, @"^(?<version>\S+) \[(?<path>.+)\]$"))
-            .Where(match => match.Success)
-            .Select(match => new
-            {
-                Version = Version.Parse(match.Groups["version"].Value.Split('-')[0]),
-                Path = match.Groups["path"].Value,
-                Name = match.Groups["version"].Value,
-            })
-            .OrderByDescending(sdk => sdk.Version)
-            .FirstOrDefault()
-            ?? throw new InvalidOperationException("Could not find an installed .NET SDK.");
-
-        return Path.Combine(sdk.Path, sdk.Name, "MSBuild.dll");
-    }
-}
-
 [TaskName("LineEndings")]
 public sealed class LineEndingsTask : FrostingTask<BuildContext>
 {
@@ -103,37 +28,6 @@ public sealed class LineEndingsTask : FrostingTask<BuildContext>
                 + Environment.NewLine + string.Join(Environment.NewLine, offenders));
         }
     }
-}
-
-// Content definitions are edited by hand, so they are kept one key per line: a one-line file
-// makes every edit a whole-file diff and two people touching different keys a merge conflict.
-// The canonical shape is whatever Utf8JsonWriter's indented mode writes (two spaces, matching
-// .editorconfig), with LF line endings and a trailing newline.
-internal static class ContentJson
-{
-    public static IEnumerable<string> Files(BuildContext context) =>
-        Directory.EnumerateFiles(context.ContentDirectory, "*.json", SearchOption.AllDirectories)
-            .Where(path => !path.StartsWith(context.TerrainContentDirectory, StringComparison.Ordinal))
-            .Order(StringComparer.Ordinal);
-
-    public static string Format(string json)
-    {
-        using var document = JsonDocument.Parse(json);
-        using var buffer = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
-        {
-            document.WriteTo(writer);
-        }
-
-        // .NET 8 has no NewLine option on the writer and uses Environment.NewLine.
-        return Encoding.UTF8.GetString(buffer.ToArray()).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n";
-    }
-
-    public static IReadOnlyList<string> Misformatted(BuildContext context) =>
-        Files(context)
-            .Where(path => File.ReadAllText(path) != Format(File.ReadAllText(path)))
-            .Select(path => Path.GetRelativePath(context.RootDirectory, path))
-            .ToList();
 }
 
 [TaskName("FormatJson")]
@@ -307,4 +201,109 @@ public sealed class RenderAudioTask : FrostingTask<BuildContext>
 [IsDependentOn(typeof(E2ETask))]
 public sealed class CiTask : FrostingTask
 {
+}
+
+internal static class BuildProcess
+{
+    public static void Run(BuildContext context, string fileName, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = context.RootDirectory,
+            UseShellExecute = false,
+        };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
+
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"'{fileName}' exited with code {process.ExitCode}.");
+        }
+    }
+
+    public static string Capture(BuildContext context, string fileName, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = context.RootDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Could not start '{fileName}'.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"'{fileName}' exited with code {process.ExitCode}: {error}");
+        }
+
+        return output;
+    }
+
+    public static string FindMsBuildPath(BuildContext context)
+    {
+        var output = Capture(context, "dotnet", "--list-sdks");
+        var sdk = output
+            .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => Regex.Match(line, @"^(?<version>\S+) \[(?<path>.+)\]$"))
+            .Where(match => match.Success)
+            .Select(match => new
+            {
+                Version = Version.Parse(match.Groups["version"].Value.Split('-')[0]),
+                Path = match.Groups["path"].Value,
+                Name = match.Groups["version"].Value,
+            })
+            .OrderByDescending(sdk => sdk.Version)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException("Could not find an installed .NET SDK.");
+
+        return Path.Combine(sdk.Path, sdk.Name, "MSBuild.dll");
+    }
+}
+
+// Content definitions are edited by hand, so they are kept one key per line: a one-line file
+// makes every edit a whole-file diff and two people touching different keys a merge conflict.
+// The canonical shape is whatever Utf8JsonWriter's indented mode writes (two spaces, matching
+// .editorconfig), with LF line endings and a trailing newline.
+internal static class ContentJson
+{
+    public static IEnumerable<string> Files(BuildContext context) =>
+        Directory.EnumerateFiles(context.ContentDirectory, "*.json", SearchOption.AllDirectories)
+            .Where(path => !path.StartsWith(context.TerrainContentDirectory, StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal);
+
+    public static string Format(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+        {
+            document.WriteTo(writer);
+        }
+
+        // .NET 8 has no NewLine option on the writer and uses Environment.NewLine.
+        return Encoding.UTF8.GetString(buffer.ToArray()).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n";
+    }
+
+    public static IReadOnlyList<string> Misformatted(BuildContext context) =>
+        Files(context)
+            .Where(path => File.ReadAllText(path) != Format(File.ReadAllText(path)))
+            .Select(path => Path.GetRelativePath(context.RootDirectory, path))
+            .ToList();
 }

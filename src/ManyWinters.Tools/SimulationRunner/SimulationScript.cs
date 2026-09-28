@@ -62,6 +62,12 @@ public sealed class SimulationScript
         return output;
     }
 
+    private static bool TryParseCount(string[] parts, out int value)
+    {
+        value = 0;
+        return parts.Length > 1 && int.TryParse(parts[1], out value);
+    }
+
     private List<string> Execute(string command)
     {
         var output = new List<string>();
@@ -183,11 +189,5 @@ public sealed class SimulationScript
         }
 
         return output;
-    }
-
-    private static bool TryParseCount(string[] parts, out int value)
-    {
-        value = 0;
-        return parts.Length > 1 && int.TryParse(parts[1], out value);
     }
 }

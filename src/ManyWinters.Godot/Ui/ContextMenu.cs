@@ -74,6 +74,19 @@ internal partial class ContextMenu : PanelContainer
         column.AddChild(_actions);
     }
 
+    // Pushed back inside the screen from here rather than at Open: the menu's height is whatever
+    // the actions on it add up to, and the engine only knows that once it has laid them out.
+    // Costs one calculation per frame while the menu is up, and nothing at all while it is not.
+    public override void _Process(double delta)
+    {
+        if (!Visible)
+        {
+            return;
+        }
+
+        Position = ScreenPlacement.KeptOnScreen(Position, Size, GetViewport().GetVisibleRect().Size, ScreenMargin);
+    }
+
     internal void Open(string heading, IReadOnlyList<ActionOffer> offers, Vector2 screenPosition)
     {
         // A verbose session follows the game from its log alone, so a menu coming up says so.
@@ -100,17 +113,4 @@ internal partial class ContextMenu : PanelContainer
         CallDeferred(MethodName.RaiseOpenRequested, screenPosition);
 
     private void RaiseOpenRequested(Vector2 screenPosition) => OpenRequested?.Invoke(screenPosition);
-
-    // Pushed back inside the screen from here rather than at Open: the menu's height is whatever
-    // the actions on it add up to, and the engine only knows that once it has laid them out.
-    // Costs one calculation per frame while the menu is up, and nothing at all while it is not.
-    public override void _Process(double delta)
-    {
-        if (!Visible)
-        {
-            return;
-        }
-
-        Position = ScreenPlacement.KeptOnScreen(Position, Size, GetViewport().GetVisibleRect().Size, ScreenMargin);
-    }
 }

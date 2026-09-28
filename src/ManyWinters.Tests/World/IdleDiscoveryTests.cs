@@ -13,32 +13,6 @@ namespace ManyWinters.Tests.World;
 // docs/materials-and-crafting-architecture.md section 7).
 public class IdleDiscoveryTests
 {
-    // Certain rather than rare, so a test about *what* gets discovered is not also a test of how
-    // long it takes (the rate has its own tests below). Understanding comes at once too: idle
-    // hands only turn over what they already know, and how long coming to know something takes
-    // is a separate pass's business.
-    private static WorldState WorldWhereIdlingAlwaysTeaches() => WorldWhere(discoveryChance: 1f);
-
-    private static WorldState WorldWhere(float discoveryChance) =>
-        new(TestCatalogs.CreateConfiguration() with
-        {
-            Rules = SimulationRules.Default with
-            {
-                IdleDiscoveryChancePerTick = discoveryChance,
-                MaterialUnderstandingPerTick = 1f,
-            },
-        });
-
-    private static Person Idler(WorldState world, float curiosity = 1f)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks, curiosity: curiosity);
-        person.Tasks.Interrupt(new IdleTask(person.Home, 0.15f, 3, 10));
-
-        return person;
-    }
-
-    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, Quality: 0.5f, Volume: 15f);
-
     [Fact]
     public void SomebodyIdlingWithGrassEventuallyWorksOutHowToTwistIt()
     {
@@ -210,4 +184,30 @@ public class IdleDiscoveryTests
 
         Assert.Equal(0.1f, world.People[^1].Curiosity, 5);
     }
+
+    // Certain rather than rare, so a test about *what* gets discovered is not also a test of how
+    // long it takes (the rate has its own tests above). Understanding comes at once too: idle
+    // hands only turn over what they already know, and how long coming to know something takes
+    // is a separate pass's business.
+    private static WorldState WorldWhereIdlingAlwaysTeaches() => WorldWhere(discoveryChance: 1f);
+
+    private static WorldState WorldWhere(float discoveryChance) =>
+        new(TestCatalogs.CreateConfiguration() with
+        {
+            Rules = SimulationRules.Default with
+            {
+                IdleDiscoveryChancePerTick = discoveryChance,
+                MaterialUnderstandingPerTick = 1f,
+            },
+        });
+
+    private static Person Idler(WorldState world, float curiosity = 1f)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks, curiosity: curiosity);
+        person.Tasks.Interrupt(new IdleTask(person.Home, 0.15f, 3, 10));
+
+        return person;
+    }
+
+    private static Assembly.Part Cord() => new(new MaterialId("plant_fibre"), TestCatalogs.Cord, Quality: 0.5f, Volume: 15f);
 }

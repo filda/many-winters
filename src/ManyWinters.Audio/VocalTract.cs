@@ -241,6 +241,59 @@ public sealed class VocalTract
         return sample * OutputScale;
     }
 
+    // Upstream's own rest-shape formula (TractShaper.getRestDiameter): three fixed regions - a
+    // narrow throat, a slightly wider pharynx, and an open mouth past the lips - with the tongue's
+    // cosine-shaped hump filling the span between them, and the lip region driven by the shape's
+    // own LipDiameter instead of a further fixed constant so a labial closure has somewhere to
+    // happen.
+    private static float RestDiameter(int i, TractShape shape)
+    {
+        if (i < 7)
+        {
+            return 0.6f;
+        }
+
+        if (i < BladeStart)
+        {
+            return 1.1f;
+        }
+
+        if (i >= LipStart)
+        {
+            return shape.LipDiameter;
+        }
+
+        var t = 1.1f * MathF.PI * (shape.TongueIndex - i) / (TipStart - BladeStart);
+        var fixedTongueDiameter = 2.0f + ((shape.TongueDiameter - 2.0f) / 1.5f);
+        var curve = (1.5f - fixedTongueDiameter + TongueCurveOffset) * MathF.Cos(t);
+
+        // The hump is flattened where it meets the lips, upstream's own fudge to keep that join
+        // smooth rather than creased. Upstream also tests for BladeStart - 2 here; the early
+        // returns above mean neither its loop nor this one ever reaches that index, so the
+        // branch is dropped rather than transcribed dead.
+        if (i == LipStart - 1)
+        {
+            curve *= 0.8f;
+        }
+
+        if (i == BladeStart || i == LipStart - 2)
+        {
+            curve *= 0.94f;
+        }
+
+        // Clamped to zero, never let negative: area is diameter squared, so an unclamped diameter
+        // swinging past zero into negative territory does not read as "more closed" - it reads as
+        // *reopening*, since squaring throws the sign away. A tongue shape driven hard enough
+        // towards a closure (TongueDiameter at or below zero) would then carve out a second,
+        // spurious near-zero-area point on its way past true closure, trapping a short, almost
+        // lossless cavity between the two. Driven by a glottis that keeps adding pulses into it
+        // every sample regardless of what is already resonating there, that cavity has nowhere to
+        // dissipate what it accumulates and rings up without bound - measured, given enough
+        // samples, to floating-point infinity. A physical tube's cross-section cannot be negative
+        // either way, so clamping here is the fix and not merely a patch over the symptom.
+        return MathF.Max(1.5f - curve, 0.0f);
+    }
+
     private float Substep(float glottalExcitation, float lambda)
     {
         ProcessTransients();
@@ -319,58 +372,5 @@ public sealed class VocalTract
             _right[position] += amplitude / 2.0f;
             _left[position] += amplitude / 2.0f;
         }
-    }
-
-    // Upstream's own rest-shape formula (TractShaper.getRestDiameter): three fixed regions - a
-    // narrow throat, a slightly wider pharynx, and an open mouth past the lips - with the tongue's
-    // cosine-shaped hump filling the span between them, and the lip region driven by the shape's
-    // own LipDiameter instead of a further fixed constant so a labial closure has somewhere to
-    // happen.
-    private static float RestDiameter(int i, TractShape shape)
-    {
-        if (i < 7)
-        {
-            return 0.6f;
-        }
-
-        if (i < BladeStart)
-        {
-            return 1.1f;
-        }
-
-        if (i >= LipStart)
-        {
-            return shape.LipDiameter;
-        }
-
-        var t = 1.1f * MathF.PI * (shape.TongueIndex - i) / (TipStart - BladeStart);
-        var fixedTongueDiameter = 2.0f + ((shape.TongueDiameter - 2.0f) / 1.5f);
-        var curve = (1.5f - fixedTongueDiameter + TongueCurveOffset) * MathF.Cos(t);
-
-        // The hump is flattened where it meets the lips, upstream's own fudge to keep that join
-        // smooth rather than creased. Upstream also tests for BladeStart - 2 here; the early
-        // returns above mean neither its loop nor this one ever reaches that index, so the
-        // branch is dropped rather than transcribed dead.
-        if (i == LipStart - 1)
-        {
-            curve *= 0.8f;
-        }
-
-        if (i == BladeStart || i == LipStart - 2)
-        {
-            curve *= 0.94f;
-        }
-
-        // Clamped to zero, never let negative: area is diameter squared, so an unclamped diameter
-        // swinging past zero into negative territory does not read as "more closed" - it reads as
-        // *reopening*, since squaring throws the sign away. A tongue shape driven hard enough
-        // towards a closure (TongueDiameter at or below zero) would then carve out a second,
-        // spurious near-zero-area point on its way past true closure, trapping a short, almost
-        // lossless cavity between the two. Driven by a glottis that keeps adding pulses into it
-        // every sample regardless of what is already resonating there, that cavity has nowhere to
-        // dissipate what it accumulates and rings up without bound - measured, given enough
-        // samples, to floating-point infinity. A physical tube's cross-section cannot be negative
-        // either way, so clamping here is the fix and not merely a patch over the symptom.
-        return MathF.Max(1.5f - curve, 0.0f);
     }
 }

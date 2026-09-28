@@ -18,13 +18,13 @@ internal static class SkyPalette
     // default_clear_color.
     public static readonly Color BelowHorizon = new(0.32f, 0.29f, 0.26f);
 
+    public static readonly Color FogFar = Desaturated(Horizon, FogBlueGivenBack);
+
     // How much of the horizon's colour the fog sheet gives up. The seam wants an exact match,
     // but the sheet is parchment ground, and one as blue as the sky reads as a milky sea.
     // Keeping the horizon's brightness while dropping most of its colour leaves no step in
     // value across the seam and a sheet that still reads as paper.
     private const float FogBlueGivenBack = 0.75f;
-
-    public static readonly Color FogFar = Desaturated(Horizon, FogBlueGivenBack);
 
     // Toward the grey of its own average channel, so brightness survives and only colour goes.
     // 0 leaves the colour alone; 1 takes all of it.

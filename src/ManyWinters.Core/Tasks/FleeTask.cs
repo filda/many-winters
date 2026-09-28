@@ -9,11 +9,11 @@ namespace ManyWinters.Core.Tasks;
 // threat dies. No seeded jitter - a straight line is enough for the shipped tuning.
 public sealed class FleeTask(Creature threat, SpeciesDefinition.FleeDefinition flee) : CreatureTask
 {
-    public Creature Threat { get; } = threat;
-
     // Set by Advance, the same pattern as MoveTask's _arrived: the queue calls Advance(creature)
     // then checks IsComplete with no creature to hand it.
     private bool _safe;
+
+    public Creature Threat { get; } = threat;
 
     public override bool IsComplete => _safe || !Threat.IsAlive;
 

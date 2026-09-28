@@ -14,17 +14,6 @@ public class Noise2DTests
         (0.25, 0.75), (0.5, 0.5), (12.8, -7.35), (-45.2, 91.7), (1000.4, -1000.6),
     ];
 
-    private static IEnumerable<(double X, double Y)> Grid()
-    {
-        for (var i = -60; i <= 60; i++)
-        {
-            for (var j = -60; j <= 60; j++)
-            {
-                yield return (i * 0.37, j * 0.41);
-            }
-        }
-    }
-
     [Fact]
     public void ValueAtKeepsItsExactShapeForAGivenSeed()
     {
@@ -222,5 +211,16 @@ public class Noise2DTests
         var noise = new Noise2D(Seed);
 
         Assert.All(Grid(), p => Assert.InRange(noise.Fbm(p.X * 20, p.Y * 20, 3, 1.0 / 140.0), 0.0, 1.0));
+    }
+
+    private static IEnumerable<(double X, double Y)> Grid()
+    {
+        for (var i = -60; i <= 60; i++)
+        {
+            for (var j = -60; j <= 60; j++)
+            {
+                yield return (i * 0.37, j * 0.41);
+            }
+        }
     }
 }

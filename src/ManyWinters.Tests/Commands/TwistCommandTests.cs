@@ -9,42 +9,6 @@ namespace ManyWinters.Tests.Commands;
 
 public class TwistCommandTests
 {
-    // Practised enough that the hands never fail (skill reaches full mastery at this point), so a
-    // test about what twisting produces is not also a test of the dice; the roll itself is tested below.
-    private static Person Twister(WorldState world, int grass = TestCatalogs.GrassPerCord)
-    {
-        var person = Novice(world, grass);
-        Practise(person);
-
-        return person;
-    }
-
-    private static Person Novice(WorldState world, int grass = TestCatalogs.GrassPerCord)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
-        person.Inventory.Add(TestCatalogs.GrassItem, grass);
-
-        return person;
-    }
-
-    private static void Practise(Person person, int times = 50)
-    {
-        for (var i = 0; i < times; i++)
-        {
-            person.Skills.Increase(TwistCommand.Skill, 1f);
-        }
-    }
-
-    // Walks the clock to a tick where the real roll falls the wanted way, rather than stubbing it.
-    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
-    {
-        while (WorkAttempt.Succeeds(person, TwistCommand.Skill, TwistCommand.Verb, world.Clock.CurrentTick) != succeed)
-        {
-            world.Clock.Advance();
-        }
-    }
-
     [Fact]
     public void TwistingTurnsGrassIntoAWorkedPieceOfCord()
     {
@@ -326,5 +290,41 @@ public class TwistCommandTests
         world.Execute(new TwistCommand(person, TestCatalogs.GrassItem));
 
         Assert.Equal(2, person.Inventory.Assemblies.Count);
+    }
+
+    // Practised enough that the hands never fail (skill reaches full mastery at this point), so a
+    // test about what twisting produces is not also a test of the dice; the roll itself is tested above.
+    private static Person Twister(WorldState world, int grass = TestCatalogs.GrassPerCord)
+    {
+        var person = Novice(world, grass);
+        Practise(person);
+
+        return person;
+    }
+
+    private static Person Novice(WorldState world, int grass = TestCatalogs.GrassPerCord)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicTwisting);
+        person.Inventory.Add(TestCatalogs.GrassItem, grass);
+
+        return person;
+    }
+
+    private static void Practise(Person person, int times = 50)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            person.Skills.Increase(TwistCommand.Skill, 1f);
+        }
+    }
+
+    // Walks the clock to a tick where the real roll falls the wanted way, rather than stubbing it.
+    private static void AdvanceToATickThatWill(WorldState world, Person person, bool succeed)
+    {
+        while (WorkAttempt.Succeeds(person, TwistCommand.Skill, TwistCommand.Verb, world.Clock.CurrentTick) != succeed)
+        {
+            world.Clock.Advance();
+        }
     }
 }

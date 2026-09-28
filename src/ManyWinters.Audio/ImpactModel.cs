@@ -5,17 +5,6 @@ namespace ManyWinters.Audio;
 // the ear tracks as "the thing that got hit".
 public static class ImpactModel
 {
-    // Dense, irregular, and crowded at the bottom. Widely-spaced modes are the spectrum of a
-    // hollow vessel - the first two tuning rounds were heard as a saucepan, then a plastic
-    // bucket and a plastic pipe. Neighbouring low modes beat against each other instead of
-    // fusing into a pitch, and no pitch is what tells the ear it is hearing a solid.
-    private static readonly float[] ModeRatios =
-    [
-        1.00f, 1.19f, 1.37f, 1.62f, 1.83f, 2.11f, 2.34f, 2.67f,
-        2.95f, 3.28f, 3.61f, 3.98f, 4.37f, 4.79f, 5.26f, 5.74f,
-        6.29f, 6.87f, 7.51f, 8.19f, 8.94f, 9.75f, 10.60f, 11.60f,
-    ];
-
     // Q, the quality factor, is the material property that actually holds still: it counts
     // oscillations, not seconds. T60 in seconds then falls out as ln(1000) * Q / (pi * f), which
     // damps every mode in proportion to its own frequency without a fudged exponent, and makes a
@@ -50,6 +39,17 @@ public static class ImpactModel
     private const float RingTailMultiplier = 1.2f;
     private const float BurstAttackSeconds = 0.0005f;
     private const float BiquadQ = 0.707f;
+
+    // Dense, irregular, and crowded at the bottom. Widely-spaced modes are the spectrum of a
+    // hollow vessel - the first two tuning rounds were heard as a saucepan, then a plastic
+    // bucket and a plastic pipe. Neighbouring low modes beat against each other instead of
+    // fusing into a pitch, and no pitch is what tells the ear it is hearing a solid.
+    private static readonly float[] ModeRatios =
+    [
+        1.00f, 1.19f, 1.37f, 1.62f, 1.83f, 2.11f, 2.34f, 2.67f,
+        2.95f, 3.28f, 3.61f, 3.98f, 4.37f, 4.79f, 5.26f, 5.74f,
+        6.29f, 6.87f, 7.51f, 8.19f, 8.94f, 9.75f, 10.60f, 11.60f,
+    ];
 
     public static float[] Render(ImpactMaterial striker, ImpactMaterial struck, float size, int sampleRate, int seed)
     {

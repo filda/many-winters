@@ -12,13 +12,13 @@ namespace ManyWinters.Godot.Logic;
 // lagging behind the group.
 internal sealed class RememberedFade
 {
+    public const float ToRememberedSeconds = 1.2f;
+    public const float ToVisibleSeconds = 0.35f;
+
     // Sepia memory of the place: a componentwise multiply that also darkens slightly, so the
     // tone stays warm rather than merely faded. Deliberately not FogOfWarRenderer's
     // RememberedTint - that one paints bare ground, this one multiplies into inked art.
     public static readonly Color Tint = new(0.78f, 0.68f, 0.52f);
-
-    public const float ToRememberedSeconds = 1.2f;
-    public const float ToVisibleSeconds = 0.35f;
 
     private bool _isRemembered;
     private float _progress;

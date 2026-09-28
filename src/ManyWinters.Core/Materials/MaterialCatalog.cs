@@ -11,11 +11,6 @@ public sealed class MaterialCatalog
         _definitions = definitions.ToDictionary(d => d.Id);
     }
 
-    // Deliberately no throwing Get: every caller derives something for whatever items it was
-    // handed, also in a test world with no materials, and an undescribed material has to mean
-    // weightless rather than a crash.
-    public MaterialDefinition? Find(MaterialId id) => _definitions.GetValueOrDefault(id);
-
     public static MaterialCatalog LoadFromDirectory(string rootPath)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));
 
@@ -23,4 +18,9 @@ public sealed class MaterialCatalog
     // the content inside the .pck.
     public static MaterialCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
         => new(JsonDefinitions.Parse<MaterialDefinition>(documents, "Material"));
+
+    // Deliberately no throwing Get: every caller derives something for whatever items it was
+    // handed, also in a test world with no materials, and an undescribed material has to mean
+    // weightless rather than a crash.
+    public MaterialDefinition? Find(MaterialId id) => _definitions.GetValueOrDefault(id);
 }

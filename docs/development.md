@@ -267,6 +267,8 @@ Whitespace formatting (indentation, line endings, spacing — whatever `.editorc
 dotnet format ManyWinters.sln
 ```
 
+Member order within a type is a build error too: `Directory.Build.props` references StyleCop.Analyzers, and `.editorconfig` switches off every StyleCop rule except the four ordering ones (SA1201 kind, SA1202 accessibility, SA1203 constants first, SA1204 static first). Neither `dotnet format` nor StyleCop fixes these automatically; move the member by hand.
+
 `.gitattributes` pins every text file to LF on checkout and normalises it on commit regardless of the machine's `core.autocrlf`, so the repository itself can't drift. The working tree can: a tool that saves CRLF leaves a file git considers unchanged while every reader sees different bytes. The `LineEndings` step of the `CI` target (`git ls-files --eol`) fails on any tracked file like that and lists it.
 
 ## Inspections

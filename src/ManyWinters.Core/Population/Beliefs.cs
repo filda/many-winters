@@ -1,6 +1,9 @@
 using ManyWinters.Core.Materials;
 
 namespace ManyWinters.Core.Population;
+// What somebody takes one property to be, and how sure they are of it. Confidence is what makes
+// a belief something that can be shaken; today only handling raises it.
+public readonly record struct Belief(float Value, float Confidence);
 
 // What one person takes a substance to be like - which is not the same thing as what it is.
 //
@@ -76,7 +79,3 @@ public sealed class Beliefs
             ? belief.Value
             : 0f;
 }
-
-// What somebody takes one property to be, and how sure they are of it. Confidence is what makes
-// a belief something that can be shaken; today only handling raises it.
-public readonly record struct Belief(float Value, float Confidence);

@@ -6,19 +6,6 @@ namespace ManyWinters.Tests.Tasks;
 
 public class CreatureTaskQueueTests
 {
-    private sealed class CompletableTask : CreatureTask
-    {
-        public bool Completed { get; set; }
-
-        public Creature? AdvancedWith { get; private set; }
-
-        public override bool IsComplete => Completed;
-
-        public override void Advance(Creature creature) => AdvancedWith = creature;
-    }
-
-    private static Person NewPerson() => new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
-
     [Fact]
     public void NewQueueHasNoCurrentTask()
     {
@@ -150,5 +137,18 @@ public class CreatureTaskQueueTests
         var queue = new CreatureTaskQueue();
 
         queue.Advance(NewPerson());
+    }
+
+    private static Person NewPerson() => new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+
+    private sealed class CompletableTask : CreatureTask
+    {
+        public bool Completed { get; set; }
+
+        public Creature? AdvancedWith { get; private set; }
+
+        public override bool IsComplete => Completed;
+
+        public override void Advance(Creature creature) => AdvancedWith = creature;
     }
 }

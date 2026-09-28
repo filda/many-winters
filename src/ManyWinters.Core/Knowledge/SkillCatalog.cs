@@ -11,12 +11,6 @@ public sealed class SkillCatalog
         _definitions = definitions.ToDictionary(d => d.Id);
     }
 
-    public SkillDefinition Get(SkillTypeId id) => _definitions[id];
-
-    // Unlike Get, tolerates an unregistered id: WorldState checks the "eating"/"teaching" skills
-    // every Advance, also against minimal test catalogs that never defined them.
-    public SkillDefinition? Find(SkillTypeId id) => _definitions.GetValueOrDefault(id);
-
     // Teaching between neighbours tells every EfficientTechnique from a BaseTechnique -
     // only the latter spreads from standing near someone.
     public IEnumerable<SkillDefinition> Definitions => _definitions.Values;
@@ -28,4 +22,10 @@ public sealed class SkillCatalog
     // the content inside the .pck.
     public static SkillCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
         => new(JsonDefinitions.Parse<SkillDefinition>(documents, "Skill"));
+
+    public SkillDefinition Get(SkillTypeId id) => _definitions[id];
+
+    // Unlike Get, tolerates an unregistered id: WorldState checks the "eating"/"teaching" skills
+    // every Advance, also against minimal test catalogs that never defined them.
+    public SkillDefinition? Find(SkillTypeId id) => _definitions.GetValueOrDefault(id);
 }

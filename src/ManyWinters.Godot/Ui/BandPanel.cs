@@ -22,10 +22,11 @@ namespace ManyWinters.Godot.Ui;
 // arrive as a BandRoster. This class draws them and reports which line was pressed.
 internal partial class BandPanel : PaperPanel
 {
+    internal const float Margin = SelectionPanel.Margin;
+
     // The same page on the other side of the screen, so both numbers come from the panel it
     // mirrors rather than being kept in step by hand.
     private const float Width = SelectionPanel.Width;
-    internal const float Margin = SelectionPanel.Margin;
 
     // Room for the scrollbar PaperPanel grows once the band outgrows the screen: without it a
     // wrapped label's minimum width is one character.
@@ -52,10 +53,6 @@ internal partial class BandPanel : PaperPanel
     private VBoxContainer _people = null!;
     private readonly List<PersonRow> _rows = [];
 
-    // Who the player pressed. The panel knows it named a person, not that naming one moves a
-    // camera - that's for the owner to decide.
-    internal event Action<Person>? PersonChosen;
-
     public BandPanel()
         : base("Band")
     {
@@ -63,6 +60,10 @@ internal partial class BandPanel : PaperPanel
         Visible = false;
         Theme = PanelChrome.PaperButtons(HeadingFontSize);
     }
+
+    // Who the player pressed. The panel knows it named a person, not that naming one moves a
+    // camera - that's for the owner to decide.
+    internal event Action<Person>? PersonChosen;
 
     public override void _Ready()
     {

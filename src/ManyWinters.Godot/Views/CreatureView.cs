@@ -67,6 +67,65 @@ internal abstract partial class CreatureView : SpriteEntityView
         _creature = creature;
     }
 
+    // The walk cycle runs whether or not anything is fading, so processing never switches off.
+    protected sealed override bool NeedsEveryFrame => true;
+
+    // The walk bob moves the layers every frame, so the hit-test plane is pinned to this node's
+    // position; anchored to a bobbing sprite, the sampled pixel sweeps across silhouette edges
+    // and the hover flickers.
+    protected sealed override Vector3? PixelHitAnchor => GlobalPosition;
+
+    // `target` is the position an unscaled creature would render at; this view stands a little
+    // higher than that, and so must its target.
+    public void SetTargetPosition(Vector3 target, float overSeconds)
+    {
+        var corrected = target + GroundContactCorrection;
+        _interpolationSpeed = WalkCycle.InterpolationSpeed(Position.DistanceTo(corrected), overSeconds);
+        _targetPosition = corrected;
+    }
+
+    // Main calls this every tick for every creature whether or not IsAlive changed; without the
+    // guard every living one would be re-measured once a tick.
+    public void SetAlive(bool isAlive)
+    {
+        if (isAlive == _isAlive)
+        {
+            return;
+        }
+
+        _isAlive = isAlive;
+        OnAliveChanged(isAlive);
+        ApplyTints();
+
+        // A corpse is not walked or swayed by OnProcess any more; a leftover bob would leave it
+        // floating above the ground it just settled onto.
+        if (!isAlive)
+        {
+            _stepOffset = Vector3.Zero;
+            _idleWeight = 0f;
+            ApplyPose();
+        }
+
+        // A lying-down silhouette can be wider and shorter than a standing one; the collision
+        // box and the marker's height both follow from re-measuring the layers.
+        RefreshCollisionShape();
+    }
+
+    // Called every tick for every creature, whether or not the decayed flag changed, the same
+    // way SetAlive is - the guard below is what makes the no-change case cost nothing. One-way:
+    // there is no coming back from a decayed corpse, so a caller passing false once true is
+    // already the case is simply ignored rather than un-deciding it.
+    public void SetDecayed(bool isDecayed)
+    {
+        if (_isDecayed || !isDecayed)
+        {
+            return;
+        }
+
+        _isDecayed = true;
+        OnDecayedChanged();
+    }
+
     // Draws this creature's own walk/idle rates from its seed and primes the tick target at
     // wherever WorldPresenter placed the node. Called from a subclass's Build(), after
     // ScaleAndKeepGroundContact - the same order every subclass follows.
@@ -79,14 +138,6 @@ internal abstract partial class CreatureView : SpriteEntityView
         _idlePhase = EntityVisualVariation.RangeFor(seed, salt: 7, 0f, MathF.Tau);
         _targetPosition = Position;
     }
-
-    // The walk cycle runs whether or not anything is fading, so processing never switches off.
-    protected sealed override bool NeedsEveryFrame => true;
-
-    // The walk bob moves the layers every frame, so the hit-test plane is pinned to this node's
-    // position; anchored to a bobbing sprite, the sampled pixel sweeps across silhouette edges
-    // and the hover flickers.
-    protected sealed override Vector3? PixelHitAnchor => GlobalPosition;
 
     // Only the simulation tick moves a creature; this plays that motion back smoothly between
     // ticks, at whatever speed matches how far the tick actually moved it.
@@ -141,47 +192,9 @@ internal abstract partial class CreatureView : SpriteEntityView
         ApplyPose();
     }
 
-    private void ApplyPose() => ApplyPose(_stepOffset + WalkCycle.BobAt(_idlePhase, _idleBobAmplitude * _idleWeight));
-
     // Moves every layer this creature draws by the same rigid offset - one cutout, not
     // independently animated parts.
     protected abstract void ApplyPose(Vector3 offset);
-
-    // `target` is the position an unscaled creature would render at; this view stands a little
-    // higher than that, and so must its target.
-    public void SetTargetPosition(Vector3 target, float overSeconds)
-    {
-        var corrected = target + GroundContactCorrection;
-        _interpolationSpeed = WalkCycle.InterpolationSpeed(Position.DistanceTo(corrected), overSeconds);
-        _targetPosition = corrected;
-    }
-
-    // Main calls this every tick for every creature whether or not IsAlive changed; without the
-    // guard every living one would be re-measured once a tick.
-    public void SetAlive(bool isAlive)
-    {
-        if (isAlive == _isAlive)
-        {
-            return;
-        }
-
-        _isAlive = isAlive;
-        OnAliveChanged(isAlive);
-        ApplyTints();
-
-        // A corpse is not walked or swayed by OnProcess any more; a leftover bob would leave it
-        // floating above the ground it just settled onto.
-        if (!isAlive)
-        {
-            _stepOffset = Vector3.Zero;
-            _idleWeight = 0f;
-            ApplyPose();
-        }
-
-        // A lying-down silhouette can be wider and shorter than a standing one; the collision
-        // box and the marker's height both follow from re-measuring the layers.
-        RefreshCollisionShape();
-    }
 
     // What a subclass does the moment IsAlive actually flips - PersonView swaps every layer's
     // texture for its lying-down counterpart; AnimalView, with no corpse art of its own, only
@@ -190,25 +203,12 @@ internal abstract partial class CreatureView : SpriteEntityView
     {
     }
 
-    // Called every tick for every creature, whether or not the decayed flag changed, the same
-    // way SetAlive is - the guard below is what makes the no-change case cost nothing. One-way:
-    // there is no coming back from a decayed corpse, so a caller passing false once true is
-    // already the case is simply ignored rather than un-deciding it.
-    public void SetDecayed(bool isDecayed)
-    {
-        if (_isDecayed || !isDecayed)
-        {
-            return;
-        }
-
-        _isDecayed = true;
-        OnDecayedChanged();
-    }
-
     // What a subclass does the moment its corpse decays past recognition - there is no bones art,
     // so both PersonView and AnimalView only deepen the tint their own dead look already applied.
     // Nothing by default.
     protected virtual void OnDecayedChanged()
     {
     }
+
+    private void ApplyPose() => ApplyPose(_stepOffset + WalkCycle.BobAt(_idlePhase, _idleBobAmplitude * _idleWeight));
 }

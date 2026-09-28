@@ -11,32 +11,6 @@ namespace ManyWinters.Tests.World;
 // before a hunter is sent after a live one.
 public class WorldStateHuntingIdleTests
 {
-    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 0f };
-
-    // "Urgently hungry" in these tests is 60, above HungerSeekFoodThreshold (50) but under the
-    // lowest MaxHunger anyone can draw (MaxHunger 100 minus MaxHungerVariation 20%): the id is a
-    // fresh Guid every run, and at 80 about one run in forty starved the person on the first
-    // tick, freezing whatever task they held.
-    private static Person NewPerson(WorldState world, Position position, bool huntingKnown = false, bool butcheringKnown = false, float hunger = 0f)
-    {
-        var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        // Seeking food urgently gates on knowing how to eat at all - without it, hunger alone
-        // never opens the "seek food" branch these tests are about.
-        person.KnownTechniques.Add(TestCatalogs.BasicEating);
-        if (huntingKnown)
-        {
-            person.KnownTechniques.Add(TestCatalogs.BasicHunting);
-        }
-
-        if (butcheringKnown)
-        {
-            person.KnownTechniques.Add(TestCatalogs.BasicButchering);
-        }
-
-        person.Needs.Hunger = hunger;
-        return person;
-    }
-
     [Fact]
     public void AHungryHunterWithAHerdInRangeIsSentToHunt()
     {
@@ -236,5 +210,31 @@ public class WorldStateHuntingIdleTests
         world.Advance(1);
 
         Assert.IsNotType<ButcherTask>(person.Tasks.Current);
+    }
+
+    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 0f };
+
+    // "Urgently hungry" in these tests is 60, above HungerSeekFoodThreshold (50) but under the
+    // lowest MaxHunger anyone can draw (MaxHunger 100 minus MaxHungerVariation 20%): the id is a
+    // fresh Guid every run, and at 80 about one run in forty starved the person on the first
+    // tick, freezing whatever task they held.
+    private static Person NewPerson(WorldState world, Position position, bool huntingKnown = false, bool butcheringKnown = false, float hunger = 0f)
+    {
+        var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        // Seeking food urgently gates on knowing how to eat at all - without it, hunger alone
+        // never opens the "seek food" branch these tests are about.
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        if (huntingKnown)
+        {
+            person.KnownTechniques.Add(TestCatalogs.BasicHunting);
+        }
+
+        if (butcheringKnown)
+        {
+            person.KnownTechniques.Add(TestCatalogs.BasicButchering);
+        }
+
+        person.Needs.Hunger = hunger;
+        return person;
     }
 }

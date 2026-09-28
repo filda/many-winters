@@ -26,6 +26,49 @@ public class HuntingMilestoneTests
     private const int BandSize = 3;
     private const int HerdSize = 12;
 
+    // Not "the band lives through the year": meat keeps 30 ticks and nobody can preserve it
+    // yet, so a lone hunter can eat only about six of a kill's thirty before the rest rots, and
+    // one missed chase after the pack runs empty is a death. What hunting does buy, measured over twenty seeds,
+    // is time: the hunting band's first death came at tick 106 or later, the same band without
+    // hunting was all dead by tick 71, and every hunting band took four to seven deer. Ten seeds,
+    // every one required to hold, so the claim is about the loop rather than a lucky year. Raise
+    // the bar back to a full year once meat can be preserved.
+    [Fact]
+    public void ABandThatKnowsHuntingOutlivesTheSameBandWithoutItByFeedingOnTheHerd()
+    {
+        for (var seed = 0; seed < 10; seed++)
+        {
+            var (huntingWorld, huntingBand) = SpawnHuntingBand(seed, huntingKnown: true);
+            var (controlWorld, controlBand) = SpawnHuntingBand(seed, huntingKnown: false);
+
+            huntingWorld.Advance(TicksPerYear);
+            controlWorld.Advance(TicksPerYear);
+
+            var firstHunterDeath = huntingBand.Min(person => person.DeathTick ?? TicksPerYear);
+            var lastControlDeath = controlBand.Max(person => person.DeathTick ?? TicksPerYear);
+            Assert.True(
+                firstHunterDeath > lastControlDeath,
+                $"Seed {seed}: a hunter died at tick {firstHunterDeath}, before the band without hunting was gone at {lastControlDeath}.");
+
+            // The loop actually ran, not merely "somebody lasted by coincidence" - meat only ever
+            // enters a pack through a hunt followed by a butchering.
+            Assert.Contains(huntingWorld.Animals, deer => deer.CauseOfDeath == DeathCause.Hunted);
+        }
+    }
+
+    // The control: identical band, identical herd, only basic_hunting (and efficient_hunting)
+    // missing. With no plant food and no way to ever put a carcass on the ground, there is
+    // nothing to fall back on - every member starves, deterministically, regardless of the seed.
+    [Fact]
+    public void TheSameBandWithoutHuntingStarves()
+    {
+        var (world, band) = SpawnHuntingBand(masterSeed: 0, huntingKnown: false);
+
+        world.Advance(TicksPerYear);
+
+        Assert.DoesNotContain(band, person => person.IsAlive);
+    }
+
     // Mirrors DeerHerdMilestoneTests' own ScatterGrass: two rings of near-endless grass, close
     // enough that a hungry deer never has far to walk and plentiful enough nobody's own grazing
     // ever exhausts it. The herd's food, not the band's - a person's diet has no plant_fibre
@@ -98,48 +141,5 @@ public class HuntingMilestoneTests
         }
 
         return (world, band);
-    }
-
-    // Not "the band lives through the year": meat keeps 30 ticks and nobody can preserve it
-    // yet, so a lone hunter can eat only about six of a kill's thirty before the rest rots, and
-    // one missed chase after the pack runs empty is a death. What hunting does buy, measured over twenty seeds,
-    // is time: the hunting band's first death came at tick 106 or later, the same band without
-    // hunting was all dead by tick 71, and every hunting band took four to seven deer. Ten seeds,
-    // every one required to hold, so the claim is about the loop rather than a lucky year. Raise
-    // the bar back to a full year once meat can be preserved.
-    [Fact]
-    public void ABandThatKnowsHuntingOutlivesTheSameBandWithoutItByFeedingOnTheHerd()
-    {
-        for (var seed = 0; seed < 10; seed++)
-        {
-            var (huntingWorld, huntingBand) = SpawnHuntingBand(seed, huntingKnown: true);
-            var (controlWorld, controlBand) = SpawnHuntingBand(seed, huntingKnown: false);
-
-            huntingWorld.Advance(TicksPerYear);
-            controlWorld.Advance(TicksPerYear);
-
-            var firstHunterDeath = huntingBand.Min(person => person.DeathTick ?? TicksPerYear);
-            var lastControlDeath = controlBand.Max(person => person.DeathTick ?? TicksPerYear);
-            Assert.True(
-                firstHunterDeath > lastControlDeath,
-                $"Seed {seed}: a hunter died at tick {firstHunterDeath}, before the band without hunting was gone at {lastControlDeath}.");
-
-            // The loop actually ran, not merely "somebody lasted by coincidence" - meat only ever
-            // enters a pack through a hunt followed by a butchering.
-            Assert.Contains(huntingWorld.Animals, deer => deer.CauseOfDeath == DeathCause.Hunted);
-        }
-    }
-
-    // The control: identical band, identical herd, only basic_hunting (and efficient_hunting)
-    // missing. With no plant food and no way to ever put a carcass on the ground, there is
-    // nothing to fall back on - every member starves, deterministically, regardless of the seed.
-    [Fact]
-    public void TheSameBandWithoutHuntingStarves()
-    {
-        var (world, band) = SpawnHuntingBand(masterSeed: 0, huntingKnown: false);
-
-        world.Advance(TicksPerYear);
-
-        Assert.DoesNotContain(band, person => person.IsAlive);
     }
 }

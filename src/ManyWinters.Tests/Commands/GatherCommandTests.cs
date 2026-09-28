@@ -289,17 +289,6 @@ public class GatherCommandTests
         Assert.Equal(0f, person.Skills.Get(EatCommand.Skill));
     }
 
-    private static WorldState CreateWorldWhereAnyHungerIsWorthEating() =>
-        new(TestCatalogs.CreateConfiguration() with { Rules = SimulationRules.Default with { HungerEatThreshold = 1f } });
-
-    // Five trips' worth of apples don't fit in one backpack, and a trip that brings nothing back
-    // teaches nothing, so the harvest is set down between trips.
-    private static void GatherAndUnload(WorldState world, Person person, Entity node)
-    {
-        world.Execute(new GatherCommand(person, node));
-        person.Inventory.Remove(TestCatalogs.AppleItem, person.Inventory.Get(TestCatalogs.AppleItem));
-    }
-
     [Fact]
     public void GatheringWoodAddsItToInventoryInsteadOfReducingHunger()
     {
@@ -553,12 +542,6 @@ public class GatherCommandTests
         Assert.Equal(0f, person.Skills.Get(TestCatalogs.Foraging));
     }
 
-    private static void FillTheBackpackWithWood(WorldState world, Person person)
-    {
-        var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
-        person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
-    }
-
     [Fact]
     public void NothingBlocksGatheringFromAFullNodeWithinReachBySomebodyTaught()
     {
@@ -625,5 +608,22 @@ public class GatherCommandTests
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(0, 0), 100);
 
         Assert.Equal(ActionBlocker.NotLearned, new GatherCommand(person, node).Blocker(world));
+    }
+
+    private static WorldState CreateWorldWhereAnyHungerIsWorthEating() =>
+        new(TestCatalogs.CreateConfiguration() with { Rules = SimulationRules.Default with { HungerEatThreshold = 1f } });
+
+    // Five trips' worth of apples don't fit in one backpack, and a trip that brings nothing back
+    // teaches nothing, so the harvest is set down between trips.
+    private static void GatherAndUnload(WorldState world, Person person, Entity node)
+    {
+        world.Execute(new GatherCommand(person, node));
+        person.Inventory.Remove(TestCatalogs.AppleItem, person.Inventory.Get(TestCatalogs.AppleItem));
+    }
+
+    private static void FillTheBackpackWithWood(WorldState world, Person person)
+    {
+        var woodWeight = world.Configuration.ItemCatalog.WeightFor(TestCatalogs.WoodItem);
+        person.Inventory.Add(TestCatalogs.WoodItem, (int)Math.Ceiling(world.MaxCarryWeightFor(person) / woodWeight));
     }
 }

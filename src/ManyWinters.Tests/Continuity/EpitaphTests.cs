@@ -11,53 +11,6 @@ public class EpitaphTests
     // Enough different deaths to draw every variant of every sentence at least once.
     private const int ManySeeds = 200;
 
-    private static Person Dead(string name, Sex sex, DeathCause cause = DeathCause.Hunger, int idSeed = 1) =>
-        new()
-        {
-            Id = TestIds.Person(idSeed),
-            Name = name,
-            BirthTick = -600,
-            IsAlive = false,
-            DeathTick = 1000,
-            CauseOfDeath = cause,
-            Mother = Person.Unknown,
-            Father = Person.Unknown,
-            Sex = sex,
-            Home = TestPeople.AnyHome,
-        };
-
-    private static BandEnding Ending(
-        BandFate fate = BandFate.Ended,
-        Person? lastToDie = null,
-        int wintersSeen = 9,
-        Season season = Season.Winter,
-        int survivors = 0,
-        int born = 4,
-        int graves = 11,
-        int markedGraves = 4,
-        int unburied = 1,
-        BandFate? sideThatEndedFirst = null,
-        int wintersKeptAfterwards = 0) =>
-        new()
-        {
-            Fate = fate,
-            BandName = "Liska's people",
-            LastToDie = lastToDie ?? Dead("Odo", Sex.Male),
-            EndingTick = 1000,
-            SeasonOfEnding = season,
-            WintersSeen = wintersSeen,
-            Survivors = survivors,
-            Born = born,
-            Graves = graves,
-            MarkedGraves = markedGraves,
-            Unburied = unburied,
-            SideThatEndedFirst = sideThatEndedFirst,
-            WintersKeptAfterwards = wintersKeptAfterwards,
-        };
-
-    private static IEnumerable<Inscription> OverManyDeaths(Func<Person, BandEnding> ending, Sex sex = Sex.Male, DeathCause cause = DeathCause.Hunger) =>
-        Enumerable.Range(1, ManySeeds).Select(seed => Epitaph.Write(ending(Dead("Odo", sex, cause, seed))));
-
     [Fact]
     public void ALivingBandHasNoEpitaph()
     {
@@ -402,4 +355,51 @@ public class EpitaphTests
         // Three shapes times three ways of starving.
         Assert.Equal(9, deaths.Count);
     }
+
+    private static Person Dead(string name, Sex sex, DeathCause cause = DeathCause.Hunger, int idSeed = 1) =>
+        new()
+        {
+            Id = TestIds.Person(idSeed),
+            Name = name,
+            BirthTick = -600,
+            IsAlive = false,
+            DeathTick = 1000,
+            CauseOfDeath = cause,
+            Mother = Person.Unknown,
+            Father = Person.Unknown,
+            Sex = sex,
+            Home = TestPeople.AnyHome,
+        };
+
+    private static BandEnding Ending(
+        BandFate fate = BandFate.Ended,
+        Person? lastToDie = null,
+        int wintersSeen = 9,
+        Season season = Season.Winter,
+        int survivors = 0,
+        int born = 4,
+        int graves = 11,
+        int markedGraves = 4,
+        int unburied = 1,
+        BandFate? sideThatEndedFirst = null,
+        int wintersKeptAfterwards = 0) =>
+        new()
+        {
+            Fate = fate,
+            BandName = "Liska's people",
+            LastToDie = lastToDie ?? Dead("Odo", Sex.Male),
+            EndingTick = 1000,
+            SeasonOfEnding = season,
+            WintersSeen = wintersSeen,
+            Survivors = survivors,
+            Born = born,
+            Graves = graves,
+            MarkedGraves = markedGraves,
+            Unburied = unburied,
+            SideThatEndedFirst = sideThatEndedFirst,
+            WintersKeptAfterwards = wintersKeptAfterwards,
+        };
+
+    private static IEnumerable<Inscription> OverManyDeaths(Func<Person, BandEnding> ending, Sex sex = Sex.Male, DeathCause cause = DeathCause.Hunger) =>
+        Enumerable.Range(1, ManySeeds).Select(seed => Epitaph.Write(ending(Dead("Odo", sex, cause, seed))));
 }

@@ -13,21 +13,6 @@ namespace ManyWinters.Tests.Commands;
 // what comes out is the first edge in the game.
 public class KnapCommandTests
 {
-    // Practised enough that the hands never fail (chance of success reaches 1 at mastery), so a
-    // test about what knapping produces is not also a test of the dice.
-    private static Person Knapper(WorldState world, int stone = TestCatalogs.StonePerWedge)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicKnapping);
-        person.Inventory.Add(TestCatalogs.StoneItem, stone);
-        for (var i = 0; i < 50; i++)
-        {
-            person.Skills.Increase(KnapCommand.Skill, 1f);
-        }
-
-        return person;
-    }
-
     [Fact]
     public void KnappingTurnsAStoneLumpIntoAWorkedWedge()
     {
@@ -143,5 +128,20 @@ public class KnapCommandTests
         world.Execute(new KnapCommand(person, TestCatalogs.StoneItem));
 
         Assert.True(person.Beliefs.IsFirm(stone, MaterialProperty.Hardness));
+    }
+
+    // Practised enough that the hands never fail (chance of success reaches 1 at mastery), so a
+    // test about what knapping produces is not also a test of the dice.
+    private static Person Knapper(WorldState world, int stone = TestCatalogs.StonePerWedge)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicKnapping);
+        person.Inventory.Add(TestCatalogs.StoneItem, stone);
+        for (var i = 0; i < 50; i++)
+        {
+            person.Skills.Increase(KnapCommand.Skill, 1f);
+        }
+
+        return person;
     }
 }

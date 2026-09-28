@@ -33,16 +33,6 @@ internal partial class ItemPileView : SpriteEntityView
         Register(BillboardSprite.Create(texturePath, Size, FallbackColor), texturePath);
     }
 
-    // A dedicated item icon (axe, warm_clothing) lives under Content/items; a gathered material
-    // (wood, apple, pear...) never got one of its own - it already has a ground icon under
-    // Content/resources, drawn for the resource it comes off, and a dropped pile of it is the
-    // same icon lying on the ground rather than growing.
-    private static string TexturePathFor(EntityKindId kind)
-    {
-        var itemsPath = TexturePaths.ForItem(kind.Value);
-        return ResourceLoader.Exists(itemsPath) ? itemsPath : TexturePaths.ForResource(kind.Value);
-    }
-
     // Both buttons answer, as a resource does: left picks it up, right asks what else could be
     // done with it (today, the same one thing).
     protected override bool WantsClick(MouseButton button) => true;
@@ -51,5 +41,15 @@ internal partial class ItemPileView : SpriteEntityView
     {
         _onClicked(_pile, button);
         return true;
+    }
+
+    // A dedicated item icon (axe, warm_clothing) lives under Content/items; a gathered material
+    // (wood, apple, pear...) never got one of its own - it already has a ground icon under
+    // Content/resources, drawn for the resource it comes off, and a dropped pile of it is the
+    // same icon lying on the ground rather than growing.
+    private static string TexturePathFor(EntityKindId kind)
+    {
+        var itemsPath = TexturePaths.ForItem(kind.Value);
+        return ResourceLoader.Exists(itemsPath) ? itemsPath : TexturePaths.ForResource(kind.Value);
     }
 }

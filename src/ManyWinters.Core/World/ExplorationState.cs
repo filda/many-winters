@@ -65,13 +65,13 @@ public sealed class ExplorationState
         _explored.UnionWith(visible);
     }
 
-    // For SaveGameService only - Explored otherwise grows only through Update.
-    internal void RestoreExplored(IEnumerable<ExplorationCell> cells) => _explored.UnionWith(cells);
-
     // Erases all exploration so a successor band discovers the world anew.
     public void Reset()
     {
         _explored.Clear();
         _visible.Clear();
     }
+
+    // For SaveGameService only - Explored otherwise grows only through Update.
+    internal void RestoreExplored(IEnumerable<ExplorationCell> cells) => _explored.UnionWith(cells);
 }

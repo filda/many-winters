@@ -23,16 +23,6 @@ public sealed class AmbientSource : ISampleSource
 
     private const int MaxActiveVoices = 16;
 
-    // A few recognisable birds rather than a stranger on every call: the same voice recurring is
-    // what the phrase-level variation in BirdCall relies on for identity.
-    private static readonly BirdVoice[] Birds =
-    [
-        new BirdVoice(PitchHz: 2200.0f, Brightness: 0.55f),
-        new BirdVoice(PitchHz: 3100.0f, Brightness: 0.9f),
-        new BirdVoice(PitchHz: 1750.0f, Brightness: 0.35f),
-        new BirdVoice(PitchHz: 2600.0f, Brightness: 0.7f),
-    ];
-
     private const float InsectPitchMinHz = 4000.0f;
     private const float InsectPitchRangeHz = 2500.0f;
     private const float InsectDurationMinSeconds = 0.4f;
@@ -40,18 +30,6 @@ public sealed class AmbientSource : ISampleSource
 
     private const float CorvidSizeMin = 0.15f;
     private const float CorvidSizeRange = 0.75f;
-
-    // Dry and leafy: a lot of small grains, little wash, a body damped almost to nothing - what
-    // twisted cord and dry leaves already are in GranularModel's own reasoning, at a low intensity
-    // and a long gesture so it reads as background rustle rather than a footstep.
-    private static readonly GranularSurface RustleSurface = new(
-        GrainsPerSecond: 90.0f,
-        GrainHardness: 0.2f,
-        ResonanceHz: 650.0f,
-        ResonanceDamping: 0.9f,
-        NoiseWash: 0.25f);
-
-    private static readonly GranularGesture RustleGesture = new(AttackSeconds: 0.2f, T60Seconds: 1.6f, Intensity: 0.3f);
 
     // Pink, not white: the hush is a low rumble, and pink noise's tilt towards low frequency is
     // what gives the lowpass over it something to shape rather than shaving a flat spectrum down
@@ -67,6 +45,28 @@ public sealed class AmbientSource : ISampleSource
     // change in it has to be smoothed the way WindSource smooths its gain, or turning up winter
     // clicks.
     private const float HushSmoothingSeconds = 0.05f;
+
+    // A few recognisable birds rather than a stranger on every call: the same voice recurring is
+    // what the phrase-level variation in BirdCall relies on for identity.
+    private static readonly BirdVoice[] Birds =
+    [
+        new BirdVoice(PitchHz: 2200.0f, Brightness: 0.55f),
+        new BirdVoice(PitchHz: 3100.0f, Brightness: 0.9f),
+        new BirdVoice(PitchHz: 1750.0f, Brightness: 0.35f),
+        new BirdVoice(PitchHz: 2600.0f, Brightness: 0.7f),
+    ];
+
+    // Dry and leafy: a lot of small grains, little wash, a body damped almost to nothing - what
+    // twisted cord and dry leaves already are in GranularModel's own reasoning, at a low intensity
+    // and a long gesture so it reads as background rustle rather than a footstep.
+    private static readonly GranularSurface RustleSurface = new(
+        GrainsPerSecond: 90.0f,
+        GrainHardness: 0.2f,
+        ResonanceHz: 650.0f,
+        ResonanceDamping: 0.9f,
+        NoiseWash: 0.25f);
+
+    private static readonly GranularGesture RustleGesture = new(AttackSeconds: 0.2f, T60Seconds: 1.6f, Intensity: 0.3f);
 
     private readonly Rng _rng;
     private readonly PinkNoise _hushNoise;
@@ -143,40 +143,6 @@ public sealed class AmbientSource : ISampleSource
         }
     }
 
-    private void TryStart(float[] samples)
-    {
-        if (_active.Count < MaxActiveVoices)
-        {
-            _active.Add(new ActiveVoice(samples));
-        }
-    }
-
-    private float AdvancePool()
-    {
-        var sample = 0.0f;
-        for (var v = _active.Count - 1; v >= 0; v--)
-        {
-            var voice = _active[v];
-            sample += voice.Samples[voice.Cursor];
-            voice.Cursor++;
-
-            if (voice.Cursor >= voice.Samples.Length)
-            {
-                _active.RemoveAt(v);
-            }
-        }
-
-        return sample;
-    }
-
-    private float Hush()
-    {
-        _hushLevel += (_parameters.Hush - _hushLevel) * _hushSmoothingCoefficient;
-
-        var noise = _hushFilter.Process(_hushNoise.Next());
-        return noise * HushGain * _hushLevel * _hushLfo.Next();
-    }
-
     private static float[] StartBird(Rng rng, int sampleRate)
     {
         var voice = Birds[(int)(rng.NextFloat() * Birds.Length)];
@@ -215,6 +181,40 @@ public sealed class AmbientSource : ISampleSource
         }
 
         return samples;
+    }
+
+    private void TryStart(float[] samples)
+    {
+        if (_active.Count < MaxActiveVoices)
+        {
+            _active.Add(new ActiveVoice(samples));
+        }
+    }
+
+    private float AdvancePool()
+    {
+        var sample = 0.0f;
+        for (var v = _active.Count - 1; v >= 0; v--)
+        {
+            var voice = _active[v];
+            sample += voice.Samples[voice.Cursor];
+            voice.Cursor++;
+
+            if (voice.Cursor >= voice.Samples.Length)
+            {
+                _active.RemoveAt(v);
+            }
+        }
+
+        return sample;
+    }
+
+    private float Hush()
+    {
+        _hushLevel += (_parameters.Hush - _hushLevel) * _hushSmoothingCoefficient;
+
+        var noise = _hushFilter.Process(_hushNoise.Next());
+        return noise * HushGain * _hushLevel * _hushLfo.Next();
     }
 
     private sealed class ActiveVoice(float[] samples)

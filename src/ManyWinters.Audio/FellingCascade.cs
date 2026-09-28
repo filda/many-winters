@@ -33,9 +33,6 @@ public static class FellingCascade
     // The hinge lets go while the creak is still sounding, not after it falls silent - so the
     // crack's onset sits inside the creak's own decaying tail rather than waiting for it to finish.
     private const float CrackOverlapSeconds = 0.15f;
-
-    private static readonly GranularSurface FallSurface = new(
-        GrainsPerSecond: 900.0f, GrainHardness: 0.5f, ResonanceHz: 1600.0f, ResonanceDamping: 0.9f, NoiseWash: 0.2f);
     private const float FallAttackSeconds = 0.25f;
     private const float FallT60BaseSeconds = 0.5f;
     private const float FallT60SizeScaleSeconds = 0.5f;
@@ -61,9 +58,6 @@ public static class FellingCascade
     // size in a band well under 1 is what keeps them reading as debris rather than a second crash.
     private const float CrashDebrisMinimumSizeFraction = 0.15f;
     private const float CrashDebrisMaximumSizeFraction = 0.4f;
-
-    private static readonly GranularSurface CrashDebrisSurface = new(
-        GrainsPerSecond: 600.0f, GrainHardness: 0.25f, ResonanceHz: 300.0f, ResonanceDamping: 0.9f, NoiseWash: 0.3f);
     private const float CrashDebrisGestureAttackSeconds = 0.05f;
     private const float CrashDebrisGestureT60Seconds = 0.35f;
     private const float CrashDebrisGestureIntensity = 1.0f;
@@ -77,6 +71,12 @@ public static class FellingCascade
     // grain stream or splash, only more so here.
     private const float TargetRms = 0.1f;
     private const float TargetPeak = 0.9f;
+
+    private static readonly GranularSurface FallSurface = new(
+        GrainsPerSecond: 900.0f, GrainHardness: 0.5f, ResonanceHz: 1600.0f, ResonanceDamping: 0.9f, NoiseWash: 0.2f);
+
+    private static readonly GranularSurface CrashDebrisSurface = new(
+        GrainsPerSecond: 600.0f, GrainHardness: 0.25f, ResonanceHz: 300.0f, ResonanceDamping: 0.9f, NoiseWash: 0.3f);
 
     public static float[] Render(FellingTree tree, int chopCount, int sampleRate, int seed)
     {

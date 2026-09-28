@@ -13,31 +13,6 @@ namespace ManyWinters.Godot.Tests;
 // is visible in the game and invisible to every other test.
 public class InspectorTextTests
 {
-    // Sex is required of every Person but none of the inspector's wording reads it. Fixed
-    // rather than drawn from the id so it is the same person on every run.
-    private static Person NewPerson() =>
-        new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female, Home = TestWorld.AnyHome };
-
-    private static Grave NewGrave(
-        bool isMarked = true,
-        int? ageAtDeath = 7,
-        DeathCause? causeOfDeath = DeathCause.OldAge,
-        string? motherName = "Orla",
-        string? fatherName = "Hesk",
-        IReadOnlyList<TechniqueId>? techniques = null) =>
-        new()
-        {
-            Position = new Position(1, 2),
-            IsMarked = isMarked,
-            Name = "Ava",
-            Sex = Sex.Female,
-            AgeAtDeath = ageAtDeath,
-            CauseOfDeath = causeOfDeath,
-            MotherName = motherName,
-            FatherName = fatherName,
-            KnownTechniques = techniques ?? [new TechniqueId("basic_foraging")],
-        };
-
     [Fact]
     public void SomeoneWithNothingToDoIsIdle()
     {
@@ -590,4 +565,29 @@ public class InspectorTextTests
                 world.Configuration.MaterialCatalog,
                 world.Configuration.FormCatalog));
     }
+
+    // Sex is required of every Person but none of the inspector's wording reads it. Fixed
+    // rather than drawn from the id so it is the same person on every run.
+    private static Person NewPerson() =>
+        new() { Name = "Ava", BirthTick = 0, Mother = Person.Unknown, Father = Person.Unknown, Sex = Sex.Female, Home = TestWorld.AnyHome };
+
+    private static Grave NewGrave(
+        bool isMarked = true,
+        int? ageAtDeath = 7,
+        DeathCause? causeOfDeath = DeathCause.OldAge,
+        string? motherName = "Orla",
+        string? fatherName = "Hesk",
+        IReadOnlyList<TechniqueId>? techniques = null) =>
+        new()
+        {
+            Position = new Position(1, 2),
+            IsMarked = isMarked,
+            Name = "Ava",
+            Sex = Sex.Female,
+            AgeAtDeath = ageAtDeath,
+            CauseOfDeath = causeOfDeath,
+            MotherName = motherName,
+            FatherName = fatherName,
+            KnownTechniques = techniques ?? [new TechniqueId("basic_foraging")],
+        };
 }

@@ -28,12 +28,6 @@ internal sealed class BandContinuityController
 
     private EndingAnnouncements _endingAnnouncements = new();
 
-    // Captured the one moment the arrival announcement really means "just arrived"; read again
-    // later only for its live population counts.
-    public long ArrivalTick { get; private set; }
-
-    public Position CampCenter { get; private set; }
-
     public BandContinuityController(
         WorldState world,
         Position initialCampCenter,
@@ -62,6 +56,12 @@ internal sealed class BandContinuityController
         // than only into the panel that asked for it.
         _workshop.InscriptionRecorded += Record;
     }
+
+    // Captured the one moment the arrival announcement really means "just arrived"; read again
+    // later only for its live population counts.
+    public long ArrivalTick { get; private set; }
+
+    public Position CampCenter { get; private set; }
 
     // The band the player starts with, captured once presentation exists to show it arriving.
     public void ShowInitialArrival()

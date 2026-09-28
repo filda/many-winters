@@ -13,17 +13,6 @@ public class LearningByHandlingTests
     private static readonly MaterialId PlantFibre = new("plant_fibre");
     private static readonly MaterialId StoneMaterial = new("stone");
 
-    private static Person Carrier(WorldState world)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.Tasks.Interrupt(new IdleTask(person.Home, 0.15f, 3, 10));
-
-        return person;
-    }
-
-    // A season of carrying it about, which is what the shipped rate is calibrated to.
-    private static long ASeason(WorldState world) => world.Configuration.Rules.TicksPerSeason;
-
     [Fact]
     public void CarryingSomethingAboutTeachesWhatItIsLike()
     {
@@ -140,4 +129,15 @@ public class LearningByHandlingTests
 
         Assert.DoesNotContain(TestCatalogs.BasicTwisting, person.KnownTechniques);
     }
+
+    private static Person Carrier(WorldState world)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.Tasks.Interrupt(new IdleTask(person.Home, 0.15f, 3, 10));
+
+        return person;
+    }
+
+    // A season of carrying it about, which is what the shipped rate is calibrated to.
+    private static long ASeason(WorldState world) => world.Configuration.Rules.TicksPerSeason;
 }

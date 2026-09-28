@@ -32,6 +32,11 @@ internal partial class SelectionPanel : PaperPanel
     // face makes a line.
     private const int HeadingHeight = TitleFontSize + 8;
 
+    // A magnifying glass, drawn rather than loaded off disk - the same reasoning as the workshop's
+    // own icons: nobody has painted this yet, and a plain shape in the page's own ink is a better
+    // placeholder than a word small enough to look like a toolbar.
+    private const int DetailIconSize = 18;
+
     private Button _heading = null!;
     private TextureRect _detailIcon = null!;
     private Label _beside = null!;
@@ -49,21 +54,6 @@ internal partial class SelectionPanel : PaperPanel
     private MeterRows _meterRows = null!;
     private MeterRows _animalMeterRows = null!;
 
-    // Which action the player pressed. Main runs it: the panel knows what an offer is, not what
-    // executing one means for the rest of the game.
-    internal event Action<ActionOffer>? ActionInvoked;
-
-    // The player asked to see the pack itself. Main opens the workshop over it.
-    internal event Action? PackRequested;
-
-    // The player pressed the name: everything the card knows about this person, laid out with
-    // room to breathe instead of squeezed into this fixed-width column.
-    internal event Action? DetailRequested;
-
-    // The cross in the corner: nobody is selected any more. Main holds the selection, so it is
-    // Main that lets it go - this card only says the player asked for it.
-    internal event Action? CloseRequested;
-
     public SelectionPanel()
         : base(string.Empty)
     {
@@ -80,6 +70,21 @@ internal partial class SelectionPanel : PaperPanel
         OffsetRight = -Margin;
         OffsetTop = Margin;
     }
+
+    // Which action the player pressed. Main runs it: the panel knows what an offer is, not what
+    // executing one means for the rest of the game.
+    internal event Action<ActionOffer>? ActionInvoked;
+
+    // The player asked to see the pack itself. Main opens the workshop over it.
+    internal event Action? PackRequested;
+
+    // The player pressed the name: everything the card knows about this person, laid out with
+    // room to breathe instead of squeezed into this fixed-width column.
+    internal event Action? DetailRequested;
+
+    // The cross in the corner: nobody is selected any more. Main holds the selection, so it is
+    // Main that lets it go - this card only says the player asked for it.
+    internal event Action? CloseRequested;
 
     public override void _Ready()
     {
@@ -135,70 +140,6 @@ internal partial class SelectionPanel : PaperPanel
         // deer's own card carries no dead line to hide.
         _animalCarcass = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.DarkInk);
         _animalBody.AddChild(_animalCarcass);
-    }
-
-    // Main holds the selection, so the cross only says the player asked for it to go.
-    protected override void OnCloseRequested() => CloseRequested?.Invoke();
-
-    // The name and the two facts that introduce a person on one line, the way anyone would be
-    // introduced: the title for what is theirs, quieter type for the rest.
-    //
-    // The whole line is the button, the same way a row of the band's own roster is - the
-    // highlight the player already reads there says the same thing here: this name opens
-    // something too. Both texts ride on the button's rect rather than being laid out by it (a
-    // Button is no container), so a margin holds them where a button's own caption would sit.
-    protected override Control Heading(Label titleLabel)
-    {
-        _heading = new Button
-        {
-            Text = string.Empty,
-            CustomMinimumSize = new Vector2(0, HeadingHeight),
-        };
-        _heading.Pressed += () => DetailRequested?.Invoke();
-
-        var headingPadding = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-        headingPadding.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        headingPadding.AddThemeConstantOverride("margin_left", PanelChrome.FilledPadding);
-        headingPadding.AddThemeConstantOverride("margin_right", PanelChrome.FilledPadding);
-        _heading.AddChild(headingPadding);
-
-        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", HeadingSpacing);
-        headingPadding.AddChild(row);
-
-        titleLabel.AutowrapMode = TextServer.AutowrapMode.Off;
-        titleLabel.VerticalAlignment = VerticalAlignment.Bottom;
-        titleLabel.MouseFilter = MouseFilterEnum.Ignore;
-        row.AddChild(titleLabel);
-
-        _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
-        _beside.AutowrapMode = TextServer.AutowrapMode.Off;
-        _beside.VerticalAlignment = VerticalAlignment.Bottom;
-        _beside.MouseFilter = MouseFilterEnum.Ignore;
-        row.AddChild(_beside);
-
-        // Pushes the icon below to the far end of the line, clear of a long name.
-        row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
-
-        // A magnifying glass, the plain shape for "look closer": a hint that the line opens a
-        // page, not a second way in of its own. Takes no mouse itself, so hovering it is hovering
-        // the button underneath - the whole line lights up together rather than the icon alone.
-        _detailIcon = new TextureRect
-        {
-            Texture = DetailGlass(),
-            CustomMinimumSize = new Vector2(DetailIconSize, DetailIconSize),
-            MouseFilter = MouseFilterEnum.Ignore,
-            StretchMode = TextureRect.StretchModeEnum.KeepCentered,
-        };
-        row.AddChild(_detailIcon);
-
-        // Pulled out to the left by the box's own padding, so the name starts flush with the lines
-        // under it while the highlight still has room around it - the same as the pack line. Not on
-        // the right, where the cross sits beside it.
-        var flush = new MarginContainer();
-        flush.AddThemeConstantOverride("margin_left", -PanelChrome.FilledPadding);
-        flush.AddChild(_heading);
-        return flush;
     }
 
     internal void ShowPerson(SelectionCard card, IReadOnlyList<ActionOffer> offers)
@@ -263,10 +204,69 @@ internal partial class SelectionPanel : PaperPanel
 
     internal void ClearSelection() => Visible = false;
 
-    // A magnifying glass, drawn rather than loaded off disk - the same reasoning as the workshop's
-    // own icons: nobody has painted this yet, and a plain shape in the page's own ink is a better
-    // placeholder than a word small enough to look like a toolbar.
-    private const int DetailIconSize = 18;
+    // Main holds the selection, so the cross only says the player asked for it to go.
+    protected override void OnCloseRequested() => CloseRequested?.Invoke();
+
+    // The name and the two facts that introduce a person on one line, the way anyone would be
+    // introduced: the title for what is theirs, quieter type for the rest.
+    //
+    // The whole line is the button, the same way a row of the band's own roster is - the
+    // highlight the player already reads there says the same thing here: this name opens
+    // something too. Both texts ride on the button's rect rather than being laid out by it (a
+    // Button is no container), so a margin holds them where a button's own caption would sit.
+    protected override Control Heading(Label titleLabel)
+    {
+        _heading = new Button
+        {
+            Text = string.Empty,
+            CustomMinimumSize = new Vector2(0, HeadingHeight),
+        };
+        _heading.Pressed += () => DetailRequested?.Invoke();
+
+        var headingPadding = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        headingPadding.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        headingPadding.AddThemeConstantOverride("margin_left", PanelChrome.FilledPadding);
+        headingPadding.AddThemeConstantOverride("margin_right", PanelChrome.FilledPadding);
+        _heading.AddChild(headingPadding);
+
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.AddThemeConstantOverride("separation", HeadingSpacing);
+        headingPadding.AddChild(row);
+
+        titleLabel.AutowrapMode = TextServer.AutowrapMode.Off;
+        titleLabel.VerticalAlignment = VerticalAlignment.Bottom;
+        titleLabel.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(titleLabel);
+
+        _beside = InscriptionFont.BodyLabel(string.Empty, BodyFontSize, InscriptionFont.FadedDarkInk);
+        _beside.AutowrapMode = TextServer.AutowrapMode.Off;
+        _beside.VerticalAlignment = VerticalAlignment.Bottom;
+        _beside.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(_beside);
+
+        // Pushes the icon below to the far end of the line, clear of a long name.
+        row.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
+
+        // A magnifying glass, the plain shape for "look closer": a hint that the line opens a
+        // page, not a second way in of its own. Takes no mouse itself, so hovering it is hovering
+        // the button underneath - the whole line lights up together rather than the icon alone.
+        _detailIcon = new TextureRect
+        {
+            Texture = DetailGlass(),
+            CustomMinimumSize = new Vector2(DetailIconSize, DetailIconSize),
+            MouseFilter = MouseFilterEnum.Ignore,
+            StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+        };
+        row.AddChild(_detailIcon);
+
+        // Pulled out to the left by the box's own padding, so the name starts flush with the lines
+        // under it while the highlight still has room around it - the same as the pack line. Not on
+        // the right, where the cross sits beside it.
+        var flush = new MarginContainer();
+        flush.AddThemeConstantOverride("margin_left", -PanelChrome.FilledPadding);
+        flush.AddChild(_heading);
+        return flush;
+    }
 
     private static ImageTexture DetailGlass()
     {

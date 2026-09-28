@@ -36,21 +36,6 @@ public sealed class GameWindow : IDisposable
 
     public IntPtr Handle { get; }
 
-    /// <summary>The game process plus the Task Scheduler launcher script that started it, kept so
-    /// cleanup can remove the script once the game (the script's last command) has exited.</summary>
-    private readonly struct GameLaunch
-    {
-        public GameLaunch(Process process, string? launcherScriptPath)
-        {
-            Process = process;
-            LauncherScriptPath = launcherScriptPath;
-        }
-
-        public Process Process { get; }
-
-        public string? LauncherScriptPath { get; }
-    }
-
     /// <summary>
     /// Starts the game and waits for it to report ready. Honors <c>MW_GODOT_EXE</c> (falling
     /// back to "godot" on PATH) — that's the env var the e2e-windows CI job sets to point at
@@ -121,6 +106,13 @@ public sealed class GameWindow : IDisposable
         process.Dispose();
         DeleteLauncherScript(launch.LauncherScriptPath);
         throw new TimeoutException($"Game did not report ready within {timeout} ({diagnostics}). Check {logPath}.");
+    }
+
+    public void Dispose()
+    {
+        KillProcessRobust(_process);
+        _process.Dispose();
+        DeleteLauncherScript(_launcherScriptPath);
     }
 
     private static Process? SafeGetProcessById(int id)
@@ -199,13 +191,6 @@ public sealed class GameWindow : IDisposable
             + $"baselines are calibrated for. A screen smaller than the requested window shrinks it "
             + $"without a word (primary screen: {NativeMethods.GetSystemMetrics(0)}x"
             + $"{NativeMethods.GetSystemMetrics(1)}).");
-    }
-
-    private static class NativeMethods
-    {
-        [DllImport("user32.dll")]
-        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        public static extern int GetSystemMetrics(int index);
     }
 
     /// <summary>
@@ -359,13 +344,6 @@ public sealed class GameWindow : IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        KillProcessRobust(_process);
-        _process.Dispose();
-        DeleteLauncherScript(_launcherScriptPath);
-    }
-
     /// <summary>
     /// Terminates the game and its children. <c>Process.Kill(entireProcessTree: true)</c> cannot
     /// always kill a game the Task Scheduler fallback placed in the task's own job, and a leftover
@@ -407,5 +385,27 @@ public sealed class GameWindow : IDisposable
         {
             // Best effort: never let cleanup throw and mask the real test result.
         }
+    }
+
+    /// <summary>The game process plus the Task Scheduler launcher script that started it, kept so
+    /// cleanup can remove the script once the game (the script's last command) has exited.</summary>
+    private readonly struct GameLaunch
+    {
+        public GameLaunch(Process process, string? launcherScriptPath)
+        {
+            Process = process;
+            LauncherScriptPath = launcherScriptPath;
+        }
+
+        public Process Process { get; }
+
+        public string? LauncherScriptPath { get; }
+    }
+
+    private static class NativeMethods
+    {
+        [DllImport("user32.dll")]
+        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+        public static extern int GetSystemMetrics(int index);
     }
 }

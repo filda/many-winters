@@ -11,8 +11,6 @@ public sealed class RecipeCatalog
         _definitions = definitions.ToDictionary(d => d.Output);
     }
 
-    public RecipeDefinition Get(ItemKindId output) => _definitions[output];
-
     // Every recipe there is - for the menu of what a person could make, which has to list the
     // possibilities before it can offer one.
     public IEnumerable<RecipeDefinition> Definitions => _definitions.Values;
@@ -24,4 +22,6 @@ public sealed class RecipeCatalog
     // the content inside the .pck.
     public static RecipeCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents)
         => new(JsonDefinitions.Parse<RecipeDefinition>(documents, "Recipe"));
+
+    public RecipeDefinition Get(ItemKindId output) => _definitions[output];
 }

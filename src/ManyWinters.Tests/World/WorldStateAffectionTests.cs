@@ -9,21 +9,6 @@ namespace ManyWinters.Tests.World;
 // turns a strong enough one into a child without the player asking.
 public class WorldStateAffectionTests
 {
-    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
-
-    private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
-        world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);
-
-    // Age is read off the clock, which Advance moves before its loop runs, so a multi-tick call
-    // would age everyone to the end of it on the very first tick. The game steps one at a time.
-    private static void AdvanceTickByTick(WorldState world, int ticks)
-    {
-        for (var i = 0; i < ticks; i++)
-        {
-            world.Advance(1);
-        }
-    }
-
     [Fact]
     public void StandingTogetherGrowsABond()
     {
@@ -233,5 +218,20 @@ public class WorldStateAffectionTests
         var child = world.People[^1];
         Assert.Equal(LifeStage.Infant, world.LifeStageOf(child));
         Assert.Equal(3, world.People.Count);
+    }
+
+    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
+
+    private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
+        world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);
+
+    // Age is read off the clock, which Advance moves before its loop runs, so a multi-tick call
+    // would age everyone to the end of it on the very first tick. The game steps one at a time.
+    private static void AdvanceTickByTick(WorldState world, int ticks)
+    {
+        for (var i = 0; i < ticks; i++)
+        {
+            world.Advance(1);
+        }
     }
 }

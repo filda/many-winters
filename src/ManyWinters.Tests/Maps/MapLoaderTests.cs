@@ -13,18 +13,6 @@ public class MapLoaderTests
     // a starting person by a literal name; it identifies them by this fixed spawn position instead.
     private static readonly int[] SpawnOrderOriginalIndex = [10, 1, 0, 2, 3, 6, 4, 8, 11, 5, 7, 9, 12, 13, 14];
 
-    private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
-
-    private static List<Entity> ResourceNodes(WorldState world) =>
-        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
-
-    private static List<Entity> BuildingEntities(WorldState world) =>
-        world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
-
-    // person[i] in the original index space (age/parent tables), regardless of spawn order.
-    private static Person PersonAt(LoadedMap map, int originalIndex) =>
-        map.World.People[Array.IndexOf(SpawnOrderOriginalIndex, originalIndex)];
-
     // The family table settles who bore whom before any id gets a say.
     [Fact]
     public void EveryStartingMotherIsAWomanAndEveryStartingFatherIsAMan()
@@ -608,4 +596,16 @@ public class MapLoaderTests
             ResourceNodes(withoutDeer.World).Select(e => e.Position),
             ResourceNodes(withDeer.World).Select(e => e.Position));
     }
+
+    private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
+
+    private static List<Entity> ResourceNodes(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Growable).ToList();
+
+    private static List<Entity> BuildingEntities(WorldState world) =>
+        world.Entities.Where(e => e.Category == EntityCategory.Building).ToList();
+
+    // person[i] in the original index space (age/parent tables), regardless of spawn order.
+    private static Person PersonAt(LoadedMap map, int originalIndex) =>
+        map.World.People[Array.IndexOf(SpawnOrderOriginalIndex, originalIndex)];
 }

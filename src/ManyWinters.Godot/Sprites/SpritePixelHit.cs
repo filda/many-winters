@@ -19,11 +19,11 @@ namespace ManyWinters.Godot.Sprites;
 // plane.
 public static class SpritePixelHit
 {
-    private static readonly Dictionary<string, Image> _imageCache = new();
-
     // Below this a pixel counts as see-through. Not zero: the sprites' ink edges are
     // antialiased, so a hair of alpha at a silhouette's outer fringe is visually nothing.
     private const float OpaqueAlphaThreshold = 0.1f;
+
+    private static readonly Dictionary<string, Image> _imageCache = new();
 
     // Takes a screen point, the one thing every caller has: hover revalidation has only
     // the cursor, and SpriteEntityView projects a ray hit once and tests each layer against it.

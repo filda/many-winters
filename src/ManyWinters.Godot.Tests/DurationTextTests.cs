@@ -9,8 +9,6 @@ public class DurationTextTests
     private const long TicksPerSeason = 100;
     private const long TicksPerYear = TicksPerSeason * 4;
 
-    private static string For(long ticks) => DurationText.For(ticks, TicksPerYear, TicksPerSeason);
-
     [Fact]
     public void AnythingShortOfAWinterIsCountedInSeasons()
     {
@@ -46,4 +44,6 @@ public class DurationTextTests
     {
         Assert.Equal(expected, For(ticks));
     }
+
+    private static string For(long ticks) => DurationText.For(ticks, TicksPerYear, TicksPerSeason);
 }

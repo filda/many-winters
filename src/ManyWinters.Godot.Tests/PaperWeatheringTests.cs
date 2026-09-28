@@ -10,6 +10,17 @@ public class PaperWeatheringTests
     // The names the game rules its pages with.
     private static readonly string[] Pages = ["Workshop", "Chronicle", "detail", "menu", "pause", "help"];
 
+    public static TheoryData<string> ManyNames()
+    {
+        var data = new TheoryData<string>();
+        foreach (var name in Names())
+        {
+            data.Add(name);
+        }
+
+        return data;
+    }
+
     // Weathering that reshuffled between sessions would read as a bug rather than as paper.
     [Fact]
     public void APageAgesTheSameWayEveryTimeItIsAskedFor()
@@ -77,17 +88,6 @@ public class PaperWeatheringTests
 
         Assert.Equal([3, 4, 5], pages.Select(paper => paper.HatchSpacing).Distinct().Order());
         Assert.Equal([false, true], pages.Select(paper => paper.HatchRising).Distinct().Order());
-    }
-
-    public static TheoryData<string> ManyNames()
-    {
-        var data = new TheoryData<string>();
-        foreach (var name in Names())
-        {
-            data.Add(name);
-        }
-
-        return data;
     }
 
     // Which way the hatching leans is worked out here too, off the same seed, so a name known to

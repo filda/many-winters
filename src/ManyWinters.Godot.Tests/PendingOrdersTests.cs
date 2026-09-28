@@ -11,19 +11,6 @@ public class PendingOrdersTests
     private static readonly Position Camp = new(0, 0);
     private static readonly Position FarAway = new(50, 0);
 
-    private static Entity AddNode(WorldState world, Position position)
-    {
-        var node = new Entity
-        {
-            Kind = TestWorld.AppleTree,
-            Category = EntityCategory.Growable,
-            Position = position,
-            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
-        };
-        world.AddEntity(node);
-        return node;
-    }
-
     [Fact]
     public void AnOrderGivenAcrossTheClearingIsNotReadyYet()
     {
@@ -186,5 +173,18 @@ public class PendingOrdersTests
         ava.Position = node.Position;
 
         Assert.Single(orders.Ready(world));
+    }
+
+    private static Entity AddNode(WorldState world, Position position)
+    {
+        var node = new Entity
+        {
+            Kind = TestWorld.AppleTree,
+            Category = EntityCategory.Growable,
+            Position = position,
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        };
+        world.AddEntity(node);
+        return node;
     }
 }

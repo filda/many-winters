@@ -10,18 +10,6 @@ public class SightLineTests
     private static readonly Vector3 Camera = new(-10f, 6f, -8f);
     private static readonly Vector3 Target = new(14f, 2f, 10f);
 
-    private static SightLine Line() => SightLine.From(Camera, Target)!.Value;
-
-    // A point a given fraction of the way from the camera to the target, pushed `offset`
-    // metres to one side of the line.
-    private static Vector3 Beside(float fraction, float offset)
-    {
-        var line = Line();
-        var sideways = line.Direction.Cross(Vector3.Up).Normalized();
-
-        return line.Origin + (line.Direction * (line.Length * fraction)) + (sideways * offset);
-    }
-
     [Fact]
     public void TheLineRunsFromTheCameraToTheTarget()
     {
@@ -123,5 +111,17 @@ public class SightLineTests
 
         Assert.True(line.IsBlockedBy(onLine + new Vector3(0f, 1f, 0f), radius: 2f, margin: 0f, lengthTolerance: 1f));
         Assert.False(line.IsBlockedBy(onLine + new Vector3(0f, 6f, 0f), radius: 2f, margin: 0f, lengthTolerance: 1f));
+    }
+
+    private static SightLine Line() => SightLine.From(Camera, Target)!.Value;
+
+    // A point a given fraction of the way from the camera to the target, pushed `offset`
+    // metres to one side of the line.
+    private static Vector3 Beside(float fraction, float offset)
+    {
+        var line = Line();
+        var sideways = line.Direction.Cross(Vector3.Up).Normalized();
+
+        return line.Origin + (line.Direction * (line.Length * fraction)) + (sideways * offset);
     }
 }

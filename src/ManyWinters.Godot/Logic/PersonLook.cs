@@ -62,12 +62,12 @@ internal readonly record struct PersonLook(string Body, string Clothing, Color C
             HairColors[EntityVisualVariation.IndexFor(seed, salt: 8, HairColors.Length)]);
     }
 
-    private static string Path(string name, string suffix) => $"{People}{name}{suffix}.png";
-
     // Which tint a creature's own colour is replaced by for its current state, kept here rather
     // than in the views so it is a plain function of the two facts the simulation already knows
     // and can be tested without a scene tree. Null for the living: their colour is their own, not
     // a tint this looks up.
     internal static Color? TintFor(bool isAlive, bool isDecayed) =>
         isAlive ? null : isDecayed ? BonesTint : DeadTint;
+
+    private static string Path(string name, string suffix) => $"{People}{name}{suffix}.png";
 }

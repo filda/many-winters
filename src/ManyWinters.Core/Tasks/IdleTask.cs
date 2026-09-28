@@ -51,6 +51,10 @@ public sealed class IdleTask(
         }
     }
 
+    // Close id seeds would otherwise land their first draws close together, reading as
+    // synchronized wandering.
+    private static int SeedFor(int personSeed) => SeedHash.Avalanche(unchecked((uint)personSeed));
+
     private int NextPauseTicks() => minPauseTicks + _rng!.Next(maxPauseTicks - minPauseTicks + 1);
 
     // Uniform over the disk's area: independent uniform angle and radius would bunch samples near
@@ -61,8 +65,4 @@ public sealed class IdleTask(
         var distance = home.Radius * Math.Sqrt(_rng.NextDouble());
         return new Position(anchor.X + (distance * Math.Cos(angle)), anchor.Y + (distance * Math.Sin(angle)));
     }
-
-    // Close id seeds would otherwise land their first draws close together, reading as
-    // synchronized wandering.
-    private static int SeedFor(int personSeed) => SeedHash.Avalanche(unchecked((uint)personSeed));
 }

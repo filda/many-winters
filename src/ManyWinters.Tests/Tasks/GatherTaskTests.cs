@@ -12,14 +12,6 @@ public class GatherTaskTests
     // The shipped reach, what DecideIdleTask hands in from SimulationRules.
     private static readonly float Reach = SimulationRules.Default.MaxInteractionDistance;
 
-    private static Person NewPerson(Position position) =>
-        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
-
-    private static Entity NewTargetNode() =>
-        new() { Kind = new EntityKindId("apple"), Category = EntityCategory.Growable, Position = Target };
-
-    private static GatherTask NewTask(float reach, Entity target, float speedPerTick, float approachFractionOfReach) => new(target, reach, speedPerTick, approachFractionOfReach);
-
     [Fact]
     public void IsNeverComplete()
     {
@@ -210,4 +202,12 @@ public class GatherTaskTests
         Assert.Equal(referencePerson.Position.X, person.Position.X, precision: 9);
         Assert.Equal(referencePerson.Position.Y, person.Position.Y, precision: 9);
     }
+
+    private static Person NewPerson(Position position) =>
+        new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex, Home = TestPeople.AnyHome };
+
+    private static Entity NewTargetNode() =>
+        new() { Kind = new EntityKindId("apple"), Category = EntityCategory.Growable, Position = Target };
+
+    private static GatherTask NewTask(float reach, Entity target, float speedPerTick, float approachFractionOfReach) => new(target, reach, speedPerTick, approachFractionOfReach);
 }

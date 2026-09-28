@@ -7,6 +7,40 @@ namespace ManyWinters.Core.Commands;
 // - only its species' known techniques and carry capacity differ, both already read off Creature.
 public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
 {
+    // Used by WorldState before it sends someone walking to a source: range is deliberately not
+    // part of this question, because a distant useful source is still a good GatherTask target.
+    public static bool CanTakeAnythingFrom(
+        WorldState world,
+        Creature actor,
+        ResourceDefinition resource,
+        float remainingAmount)
+    {
+        if (resource.YieldsItem is not { } item)
+        {
+            return true;
+        }
+
+        var units = PotentialHarvestUnits(world, actor, resource, remainingAmount);
+        if (units <= 0)
+        {
+            return false;
+        }
+
+        var canEatOnTheSpot =
+            world.IsHungryEnoughToEat(actor)
+            && EatCommand.EatingBlocker(world, actor, item, units) is ActionBlocker.None;
+
+        return canEatOnTheSpot
+            || actor.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(actor));
+    }
+
+    // Whether this node currently holds enough to give this creature a full gather rather than a
+    // dwindling nibble - a stricter check than "more than zero left", so a herd doesn't converge
+    // on whichever home tuft has barely regrown and nibble it at regen speed forever, starving
+    // even with plenty of grass in the region overall.
+    public static bool WouldYieldAFullHarvest(WorldState world, Creature actor, ResourceDefinition resource, float remainingAmount) =>
+        remainingAmount >= HarvestAmountFor(world, actor, resource);
+
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Actor.IsAlive)
@@ -94,33 +128,6 @@ public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
         }
     }
 
-    // Used by WorldState before it sends someone walking to a source: range is deliberately not
-    // part of this question, because a distant useful source is still a good GatherTask target.
-    public static bool CanTakeAnythingFrom(
-        WorldState world,
-        Creature actor,
-        ResourceDefinition resource,
-        float remainingAmount)
-    {
-        if (resource.YieldsItem is not { } item)
-        {
-            return true;
-        }
-
-        var units = PotentialHarvestUnits(world, actor, resource, remainingAmount);
-        if (units <= 0)
-        {
-            return false;
-        }
-
-        var canEatOnTheSpot =
-            world.IsHungryEnoughToEat(actor)
-            && EatCommand.EatingBlocker(world, actor, item, units) is ActionBlocker.None;
-
-        return canEatOnTheSpot
-            || actor.Inventory.HasRoomFor(item, world.Configuration.ItemCatalog, world.MaxCarryWeightFor(actor));
-    }
-
     private static int PotentialHarvestUnits(
         WorldState world,
         Creature actor,
@@ -151,11 +158,4 @@ public sealed record GatherCommand(Creature Actor, Entity Node) : ICommand
         var climate = world.Configuration.SeasonParameters.ClimateFor(world.CurrentSeason);
         return harvestAmount * resource.YieldMultiplierFor(climate);
     }
-
-    // Whether this node currently holds enough to give this creature a full gather rather than a
-    // dwindling nibble - a stricter check than "more than zero left", so a herd doesn't converge
-    // on whichever home tuft has barely regrown and nibble it at regen speed forever, starving
-    // even with plenty of grass in the region overall.
-    public static bool WouldYieldAFullHarvest(WorldState world, Creature actor, ResourceDefinition resource, float remainingAmount) =>
-        remainingAmount >= HarvestAmountFor(world, actor, resource);
 }

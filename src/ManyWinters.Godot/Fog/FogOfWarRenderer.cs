@@ -14,13 +14,6 @@ namespace ManyWinters.Godot.Fog;
 // distance. The bitmap holds a sharp and a blurred copy of the boundary; see that method.
 public sealed class FogOfWarRenderer
 {
-    // The same muted cool grey the cloud sprites use (art/generate_sprites.py, _cloud), so the
-    // unknown sheet and GroundClouds' low cover read as one bank of cloud; warm parchment clashed
-    // with the clouds. The shader's mottling and the low cover, not the hue, keep this from
-    // reading as flat fog or snow.
-    private static readonly Color UnknownColor = new(0.70f, 0.73f, 0.78f);
-    private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
-
     // One texel per ExplorationState cell. A coarser texel straddled two cells, so the shader
     // fogged part of an already-instantiated tree's canopy (a resource node view is only
     // created once its own cell is Explored).
@@ -43,6 +36,13 @@ public sealed class FogOfWarRenderer
     // hover rim, which HoverOutline draws at 127 - a remembered tree is still a valid thing to
     // point at.
     private const int OverlayRenderPriority = 126;
+
+    // The same muted cool grey the cloud sprites use (art/generate_sprites.py, _cloud), so the
+    // unknown sheet and GroundClouds' low cover read as one bank of cloud; warm parchment clashed
+    // with the clouds. The shader's mottling and the low cover, not the hue, keep this from
+    // reading as flat fog or snow.
+    private static readonly Color UnknownColor = new(0.70f, 0.73f, 0.78f);
+    private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
 
     private readonly RevealableExploration _exploration;
     private readonly TexelGrid _grid;

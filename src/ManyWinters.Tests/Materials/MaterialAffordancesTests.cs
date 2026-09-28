@@ -6,15 +6,6 @@ public class MaterialAffordancesTests
 {
     private static readonly MaterialId Id = new("test_material");
 
-    private static MaterialDefinition With(
-        float hardness = 0f,
-        float toughness = 0f,
-        float flexibility = 0f,
-        float elasticity = 0f,
-        float fibrousness = 0f,
-        long? shelfLifeTicks = null) =>
-        new(Id, "Test Material", Hardness: hardness, Toughness: toughness, Flexibility: flexibility, Elasticity: elasticity, Fibrousness: fibrousness, ShelfLifeTicks: shelfLifeTicks);
-
     [Fact]
     public void GrassLikePropertiesCanTwist()
     {
@@ -134,4 +125,13 @@ public class MaterialAffordancesTests
 
         Assert.False(MaterialAffordances.CanCure(tannedHide));
     }
+
+    private static MaterialDefinition With(
+        float hardness = 0f,
+        float toughness = 0f,
+        float flexibility = 0f,
+        float elasticity = 0f,
+        float fibrousness = 0f,
+        long? shelfLifeTicks = null) =>
+        new(Id, "Test Material", Hardness: hardness, Toughness: toughness, Flexibility: flexibility, Elasticity: elasticity, Fibrousness: fibrousness, ShelfLifeTicks: shelfLifeTicks);
 }

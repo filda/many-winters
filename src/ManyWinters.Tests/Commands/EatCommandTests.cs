@@ -249,15 +249,6 @@ public class EatCommandTests
         Assert.DoesNotContain(TestCatalogs.EfficientEating, person.KnownTechniques);
     }
 
-    private static Person EaterWithFood(WorldState world)
-    {
-        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        person.KnownTechniques.Add(TestCatalogs.BasicEating);
-        person.Inventory.Add(TestCatalogs.AppleItem, 20);
-
-        return person;
-    }
-
     [Fact]
     public void NothingBlocksAHungryPersonWithFoodTheyKnowHowToEat()
     {
@@ -369,5 +360,14 @@ public class EatCommandTests
         nonDigestingPerson.Needs.Hunger = 50f;
 
         Assert.Equal(ActionBlocker.NotEdible, new EatCommand(nonDigestingPerson, TestCatalogs.AppleItem).Blocker(nonDigestingWorld));
+    }
+
+    private static Person EaterWithFood(WorldState world)
+    {
+        var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
+        person.KnownTechniques.Add(TestCatalogs.BasicEating);
+        person.Inventory.Add(TestCatalogs.AppleItem, 20);
+
+        return person;
     }
 }

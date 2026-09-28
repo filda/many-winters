@@ -10,8 +10,6 @@ namespace ManyWinters.Tests.World;
 // material's own shelf life, wherever they lie.
 public class WorldStateCorpseDecayTests
 {
-    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 10f, DriftMetresPerSeason = 0f };
-
     // Meat and rawhide rot on their own clocks - meat first, since it has the shorter shelf life -
     // while bone and sinew, neither of which spoils, outlast both.
     [Fact]
@@ -133,4 +131,6 @@ public class WorldStateCorpseDecayTests
 
         Assert.False(world.IsDecayed(person));
     }
+
+    private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 10f, DriftMetresPerSeason = 0f };
 }

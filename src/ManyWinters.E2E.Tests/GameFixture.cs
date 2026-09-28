@@ -15,8 +15,26 @@ namespace ManyWinters.E2E.Tests;
 /// </summary>
 public sealed class GameFixture : IAsyncLifetime
 {
+    // The Win32 virtual-key code for F12, the game's "advance one tick" key.
+    private const int VkF12 = 0x7B;
+
+    // The prologue inscription's "closing words" button, which dismisses it. Every test boots into
+    // the same deterministic world (the band name is seed-derived and fixed), so the button always
+    // renders at the same place and this is a calibration, not a guess. Measured off a recorded
+    // boot frame (the parchment slip under the title), not derived by hand.
+    private const int PrologueClosingX = 568;
+    private const int PrologueClosingY = 362;
+
     private GameWindow? _window;
     private long _gameLogOffset;
+
+    private IntPtr Handle => _window?.Handle ?? throw new InvalidOperationException("GameFixture not initialized.");
+
+    /// <summary>Waits for the game to present the frame after the last posted input. A capture
+    /// taken sooner races the render: the world state is already there (the tick log proves it)
+    /// but the frame still shows the previous one, so a status bar or a freshly opened panel
+    /// lags a click by one to three frames.</summary>
+    public static void Settle(int milliseconds) => Thread.Sleep(milliseconds);
 
     public async ValueTask InitializeAsync()
     {
@@ -40,57 +58,12 @@ public sealed class GameFixture : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
-    // The next launch rotates godot.log away, and on CI the machine is gone with it: a failed
-    // wait says only that a line never came, while the log says what came instead. Kept beside
-    // the debug frames, which CI uploads on failure; one file per launch, named by when it ended.
-    private static void KeepGameLog()
-    {
-        var path = GameLogPath();
-        if (!File.Exists(path))
-        {
-            return;
-        }
-
-        var directory = Path.Combine(FindRepoRoot(), "artifacts", "e2e-debug");
-        Directory.CreateDirectory(directory);
-        var name = $"godot-{DateTime.UtcNow.ToString("HHmmss-fff", CultureInfo.InvariantCulture)}.log";
-        File.Copy(path, Path.Combine(directory, name), overwrite: true);
-    }
-
-    // The whole run's log, not the per-test offset: a script error at boot (building a view for
-    // every entity) precedes every test's own offset, and the tests above it can still pass while
-    // it sits there unread - this is the one place that reads the file from its start. Thrown
-    // rather than asserted with xunit's Assert: this runs from IAsyncLifetime.DisposeAsync, not a
-    // [Fact], and xunit surfaces an exception from here as this fixture's own failure regardless.
-    private static void AssertBootLogHasNoScriptError()
-    {
-        var path = GameLogPath();
-        if (!File.Exists(path))
-        {
-            return;
-        }
-
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var reader = new StreamReader(stream);
-        var log = reader.ReadToEnd();
-
-        var match = Regex.Match(log, @"NullReferenceException|at ManyWinters\.");
-        if (match.Success)
-        {
-            var context = log[Math.Max(0, match.Index - 200)..Math.Min(log.Length, match.Index + 400)];
-            throw new InvalidOperationException($"The game's log contains a script error:\n...{context}...");
-        }
-    }
-
     public void Click(int x, int y) => WindowInput.Click(Handle, x, y);
 
     public void RightClick(int x, int y) => WindowInput.RightClick(Handle, x, y);
 
     /// <summary>Holds a Win32 virtual-key code down for <paramref name="holdDuration"/> before releasing it — long enough for a held-key game action (e.g. camera tilt) to move, not just register.</summary>
     public void KeyPress(int virtualKeyCode, TimeSpan? holdDuration = null) => WindowInput.KeyPress(Handle, virtualKeyCode, holdDuration);
-
-    // The Win32 virtual-key code for F12, the game's "advance one tick" key.
-    private const int VkF12 = 0x7B;
 
     /// <summary>Steps the held clock forward exactly one tick (the game's "advance one tick"
     /// key), so an order placed while the clock stands - a craft, a building - is resolved once
@@ -147,13 +120,6 @@ public sealed class GameFixture : IAsyncLifetime
     }
 
     public Bitmap Screenshot() => WindowCapture.Capture(Handle);
-
-    // The prologue inscription's "closing words" button, which dismisses it. Every test boots into
-    // the same deterministic world (the band name is seed-derived and fixed), so the button always
-    // renders at the same place and this is a calibration, not a guess. Measured off a recorded
-    // boot frame (the parchment slip under the title), not derived by hand.
-    private const int PrologueClosingX = 568;
-    private const int PrologueClosingY = 362;
 
     /// <summary>Dismisses the prologue inscription (the "closing words" button) so clicks reach the
     /// world. The dismissal primes the tick accumulator, so the world resumes on the next frame and
@@ -223,31 +189,6 @@ public sealed class GameFixture : IAsyncLifetime
             : null;
     }
 
-    // The log from the current offset on, without moving it.
-    private string ReadUnread()
-    {
-        var path = GameLogPath();
-        if (!File.Exists(path))
-        {
-            return string.Empty;
-        }
-
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        stream.Seek(_gameLogOffset, SeekOrigin.Begin);
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
-    }
-
-    private static string GameLogPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Godot", "app_userdata", "ManyWinters Godot", "logs", "godot.log");
-
-    /// <summary>Waits for the game to present the frame after the last posted input. A capture
-    /// taken sooner races the render: the world state is already there (the tick log proves it)
-    /// but the frame still shows the previous one, so a status bar or a freshly opened panel
-    /// lags a click by one to three frames.</summary>
-    public static void Settle(int milliseconds) => Thread.Sleep(milliseconds);
-
     /// <summary>Writes the current frame to artifacts/e2e-debug/{name}.png for inspection - never
     /// asserted. What the suite claims, it claims through the game's own log; the frames are for
     /// the human reviewing a failure or a change.</summary>
@@ -259,7 +200,51 @@ public sealed class GameFixture : IAsyncLifetime
         shot.Save(Path.Combine(directory, name + ".png"), ImageFormat.Png);
     }
 
-    private IntPtr Handle => _window?.Handle ?? throw new InvalidOperationException("GameFixture not initialized.");
+    // The next launch rotates godot.log away, and on CI the machine is gone with it: a failed
+    // wait says only that a line never came, while the log says what came instead. Kept beside
+    // the debug frames, which CI uploads on failure; one file per launch, named by when it ended.
+    private static void KeepGameLog()
+    {
+        var path = GameLogPath();
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        var directory = Path.Combine(FindRepoRoot(), "artifacts", "e2e-debug");
+        Directory.CreateDirectory(directory);
+        var name = $"godot-{DateTime.UtcNow.ToString("HHmmss-fff", CultureInfo.InvariantCulture)}.log";
+        File.Copy(path, Path.Combine(directory, name), overwrite: true);
+    }
+
+    // The whole run's log, not the per-test offset: a script error at boot (building a view for
+    // every entity) precedes every test's own offset, and the tests above it can still pass while
+    // it sits there unread - this is the one place that reads the file from its start. Thrown
+    // rather than asserted with xunit's Assert: this runs from IAsyncLifetime.DisposeAsync, not a
+    // [Fact], and xunit surfaces an exception from here as this fixture's own failure regardless.
+    private static void AssertBootLogHasNoScriptError()
+    {
+        var path = GameLogPath();
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        var log = reader.ReadToEnd();
+
+        var match = Regex.Match(log, @"NullReferenceException|at ManyWinters\.");
+        if (match.Success)
+        {
+            var context = log[Math.Max(0, match.Index - 200)..Math.Min(log.Length, match.Index + 400)];
+            throw new InvalidOperationException($"The game's log contains a script error:\n...{context}...");
+        }
+    }
+
+    private static string GameLogPath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Godot", "app_userdata", "ManyWinters Godot", "logs", "godot.log");
 
     private static string GodotProjectPath() =>
         Path.Combine(FindRepoRoot(), "src", "ManyWinters.Godot");
@@ -273,5 +258,20 @@ public sealed class GameFixture : IAsyncLifetime
         }
 
         return dir?.FullName ?? throw new InvalidOperationException("Could not find repository root above " + AppContext.BaseDirectory);
+    }
+
+    // The log from the current offset on, without moving it.
+    private string ReadUnread()
+    {
+        var path = GameLogPath();
+        if (!File.Exists(path))
+        {
+            return string.Empty;
+        }
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        stream.Seek(_gameLogOffset, SeekOrigin.Begin);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }

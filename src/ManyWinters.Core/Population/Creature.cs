@@ -43,13 +43,6 @@ public abstract class Creature
 
     public CreatureTaskQueue Tasks { get; } = new();
 
-    // A plausible sex for someone nobody has an opinion about, drawn from their id like every
-    // other per-entity variation, so it survives a reload; spread first so close ids don't come
-    // out alike. What a caller with no stake reaches for - deliberately something you have to
-    // ask for.
-    public static Sex SexOf(CreatureId id) =>
-        (SeedHash.Avalanche(unchecked((uint)id.Seed)) & 1) == 0 ? Sex.Female : Sex.Male;
-
     // Ticks before which the simulation won't drop this creature into idling despite an empty
     // queue - lets the presentation layer buy the selected person a few ticks of standing still
     // between manual actions. 0: no exemption.
@@ -67,4 +60,11 @@ public abstract class Creature
     // for an animal, the band's camp for a person. Never null - the unknown person has the unknown
     // home range.
     public abstract HomeRange Home { get; init; }
+
+    // A plausible sex for someone nobody has an opinion about, drawn from their id like every
+    // other per-entity variation, so it survives a reload; spread first so close ids don't come
+    // out alike. What a caller with no stake reaches for - deliberately something you have to
+    // ask for.
+    public static Sex SexOf(CreatureId id) =>
+        (SeedHash.Avalanche(unchecked((uint)id.Seed)) & 1) == 0 ? Sex.Female : Sex.Male;
 }

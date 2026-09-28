@@ -5,6 +5,11 @@ namespace ManyWinters.Tests.Audio;
 public class FellingCascadeTests
 {
     private const int SampleRate = 22050;
+    private const int StandardChopCount = 5;
+
+    private const float WindowSeconds = 0.05f;
+
+    private const float CrashRegionSeconds = 0.3f;
 
     // Shipped materials from ImpactModelTests: stone is hard and dense but brittle, wood is soft,
     // light and tough. The tree itself is wood; the tool is stone, standing in for an axe head.
@@ -16,7 +21,6 @@ public class FellingCascadeTests
     // knob into the same handful of events and makes the early chopping busier than the scene
     // intends. Five is past that edge without being a round number either.
     private static readonly FellingTree Standard = new(Size: 0.55f, Wood: Wood, Tool: Stone);
-    private const int StandardChopCount = 5;
 
     [Fact]
     public void SameSeedRendersAnIdenticalBuffer()
@@ -106,8 +110,6 @@ public class FellingCascadeTests
         Assert.True(more.Length > fewer.Length);
     }
 
-    private const float WindowSeconds = 0.05f;
-
     private static float[] WindowRms(float[] samples)
     {
         var windowSamples = (int)(WindowSeconds * SampleRate);
@@ -147,8 +149,6 @@ public class FellingCascadeTests
 
         return count;
     }
-
-    private const float CrashRegionSeconds = 0.3f;
 
     private static float CrashRegionDominantFrequency(float[] samples)
     {

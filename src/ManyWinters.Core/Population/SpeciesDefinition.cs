@@ -38,28 +38,6 @@ public sealed record SpeciesDefinition(
     // taking a dead person's possessions works through a separate command instead.
     IReadOnlyList<SpeciesDefinition.CarcassYield>? Carcass = null)
 {
-    public sealed record DietEntry(MaterialId Material, float Digestibility);
-
-    // One item kind and how much of it a carcass of this species holds - taken off in the fixed
-    // order the species lists it (e.g. meat, hide, bone, sinew for a deer).
-    public sealed record CarcassYield(ItemKindId Item, int Amount);
-
-    // Group size and the shared HomeRange it spawns with - MinSize/MaxSize bound the herd's
-    // actual size, HomeRadius is the wander radius around the shared anchor, and
-    // DriftMetresPerSeason is the anchor's per-season move.
-    public sealed record HerdDefinition(int MinSize, int MaxSize, float HomeRadius, float DriftMetresPerSeason);
-
-    // The species' own mating rule: the climate she must be in to conceive (keyed on Climate,
-    // never a Season), how long she then carries the pregnancy, the per-tick chance an eligible
-    // female conceives, and how well fed (hunger below this threshold) she must be to count as
-    // eligible at all.
-    public sealed record BreedingDefinition(Climate Climate, long GestationTicks, float ConceptionChancePerTick, float SatietyHungerBelow);
-
-    // A species' own flight rule: break off and move directly away from the nearest living
-    // person once one is closer than FleeDistance, until the gap reaches SafeDistance, at
-    // SpeedPerTick.
-    public sealed record FleeDefinition(float FleeDistance, float SafeDistance, float SpeedPerTick);
-
     // Half-width of this species' footprint for collision resolution, in metres. Required, as is
     // the multiplier below, and required rather than defaulted: a species file that forgot either
     // would otherwise load as a creature with no footprint or no appetite rather than fail, and
@@ -93,4 +71,26 @@ public sealed record SpeciesDefinition(
 
         return 0f;
     }
+
+    public sealed record DietEntry(MaterialId Material, float Digestibility);
+
+    // One item kind and how much of it a carcass of this species holds - taken off in the fixed
+    // order the species lists it (e.g. meat, hide, bone, sinew for a deer).
+    public sealed record CarcassYield(ItemKindId Item, int Amount);
+
+    // Group size and the shared HomeRange it spawns with - MinSize/MaxSize bound the herd's
+    // actual size, HomeRadius is the wander radius around the shared anchor, and
+    // DriftMetresPerSeason is the anchor's per-season move.
+    public sealed record HerdDefinition(int MinSize, int MaxSize, float HomeRadius, float DriftMetresPerSeason);
+
+    // The species' own mating rule: the climate she must be in to conceive (keyed on Climate,
+    // never a Season), how long she then carries the pregnancy, the per-tick chance an eligible
+    // female conceives, and how well fed (hunger below this threshold) she must be to count as
+    // eligible at all.
+    public sealed record BreedingDefinition(Climate Climate, long GestationTicks, float ConceptionChancePerTick, float SatietyHungerBelow);
+
+    // A species' own flight rule: break off and move directly away from the nearest living
+    // person once one is closer than FleeDistance, until the gap reaches SafeDistance, at
+    // SpeedPerTick.
+    public sealed record FleeDefinition(float FleeDistance, float SafeDistance, float SpeedPerTick);
 }

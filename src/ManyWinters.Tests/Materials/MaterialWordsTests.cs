@@ -9,15 +9,6 @@ public class MaterialWordsTests
 {
     private static readonly MaterialId Id = new("test_material");
 
-    private static MaterialDefinition With(
-        float density = 0f,
-        float hardness = 0f,
-        float toughness = 0f,
-        float flexibility = 0f,
-        float elasticity = 0f,
-        float fibrousness = 0f) =>
-        new(Id, "Test Material", density, Hardness: hardness, Toughness: toughness, Flexibility: flexibility, Elasticity: elasticity, Fibrousness: fibrousness);
-
     [Fact]
     public void GrassReadsAsWhatItIs()
     {
@@ -114,4 +105,13 @@ public class MaterialWordsTests
 
         Assert.Equal(MaterialWords.For(stone), MaterialWords.For(stone));
     }
+
+    private static MaterialDefinition With(
+        float density = 0f,
+        float hardness = 0f,
+        float toughness = 0f,
+        float flexibility = 0f,
+        float elasticity = 0f,
+        float fibrousness = 0f) =>
+        new(Id, "Test Material", density, Hardness: hardness, Toughness: toughness, Flexibility: flexibility, Elasticity: elasticity, Fibrousness: fibrousness);
 }

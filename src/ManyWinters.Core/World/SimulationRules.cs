@@ -7,10 +7,10 @@ namespace ManyWinters.Core.World;
 // docs/development.md, "Inspections").
 public sealed record SimulationRules
 {
-    public static SimulationRules Default { get; } = new();
-
     // Not configurable - it's the length of the Season enum, and SeasonAt maps ticks onto that.
     private static readonly int SeasonsPerYear = Enum.GetValues<Season>().Length;
+
+    public static SimulationRules Default { get; } = new();
 
     public long TicksPerSeason { get; init; } = 75;
 
@@ -92,18 +92,6 @@ public sealed record SimulationRules
     // band one by one instead of on a single tick. HungerEatThreshold and HungerSeekFoodThreshold
     // are fixed, so a low draw also shortens the warning before death; keep this well under half.
     public float MaxHungerVariation { get; init; } = 0.2f;
-
-    // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
-    // draw: the same on every reload without being saved, and independent of creation order.
-    public float MaxHungerFor(CreatureId id)
-    {
-        // Bit 0 of the spread is what determines a creature's sex; skipping it keeps hunger
-        // tolerance independent of sex.
-        var spread = unchecked((uint)SeedHash.Avalanche(unchecked((uint)id.Seed))) >> 1;
-        var fraction = ((spread / (float)(uint.MaxValue >> 1)) * 2f) - 1f;
-
-        return MaxHunger * (1f + (fraction * MaxHungerVariation));
-    }
 
     // Below this a person leaves the food they carry alone; once they eat, EatCommand eats down
     // to zero, so meals are occasional events, not a bite per tick. Well below
@@ -269,6 +257,18 @@ public sealed record SimulationRules
     // sees it, so the band is already on the move.
     public int MinPauseTicks { get; } = 3;
     public int MaxPauseTicks { get; } = 10;
+
+    // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
+    // draw: the same on every reload without being saved, and independent of creation order.
+    public float MaxHungerFor(CreatureId id)
+    {
+        // Bit 0 of the spread is what determines a creature's sex; skipping it keeps hunger
+        // tolerance independent of sex.
+        var spread = unchecked((uint)SeedHash.Avalanche(unchecked((uint)id.Seed))) >> 1;
+        var fraction = ((spread / (float)(uint.MaxValue >> 1)) * 2f) - 1f;
+
+        return MaxHunger * (1f + (fraction * MaxHungerVariation));
+    }
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

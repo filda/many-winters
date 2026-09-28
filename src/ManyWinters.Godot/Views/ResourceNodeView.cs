@@ -51,15 +51,39 @@ internal partial class ResourceNodeView : SpriteEntityView
     private const int BranchVariantSalt = 407;
     private const int BranchBrightnessSalt = 408;
 
+    // Shared, kind-independent asset, not derived from this kind's texture path. Its anchor
+    // positions are pre-computed to clear the fruit-tree canopy family's shapes.
+    private const string SharedBranchesBasePath = "res://Content/branches/tree_branches.png";
+
     // For a kind with no .tres visual definition - a placeholder green, only seen if its art is
     // missing too.
     private static readonly Color DefaultColor = new(0.2f, 0.8f, 0.2f);
 
+    // How many trunk/canopy shape variants this kind has on disk: 1 for the unsuffixed
+    // original, then probing _v1, _v2, ... until one is missing. Cached per kind like the
+    // other lookups.
+    private static readonly Dictionary<EntityKindId, int> TreeVariantCountCache = new();
+
+    // Only kinds sharing the fruit-tree canopy formula, whose shapes the shared branch anchors
+    // were computed to clear. conifer_tree's tiered canopy was never checked, so it stays out
+    // rather than risk a branch drawn across its leaves.
+    private static readonly HashSet<string> KindsWithGenericBranches = new() { "apple", "pear", "deciduous_tree" };
+
+    private static readonly Dictionary<EntityKindId, bool> HasBranchLayerCache = new();
+    private static readonly Dictionary<EntityKindId, int> BranchVariantCountCache = new();
+
+    // Cached per kind, not loaded per node, for the same reason as below.
+    private static readonly Dictionary<EntityKindId, bool> HasTreeSpriteCache = new();
+    private static readonly Dictionary<EntityKindId, bool> HasFruitOverlayCache = new();
+    private static readonly Dictionary<EntityKindId, bool> HasTrunkCanopySplitCache = new();
+
+    // Cached per kind, not loaded per node: thousands of nodes of a handful of kinds each loading
+    // the same .tres resource in one frame reliably crashed Godot's C# bridge (a
+    // GCHandle race, "Handle is not initialized").
+    private static readonly Dictionary<EntityKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
+
     private readonly Entity _node;
     private readonly EntityKindId _kind;
-
-    // For WorldPresenter, which sends a view back to pending when its cell is un-revealed.
-    public Entity Node => _node;
     private readonly Action<Entity, MouseButton> _onClicked;
     private readonly Color _baseColor;
     private int _variantIndex;
@@ -80,16 +104,20 @@ internal partial class ResourceNodeView : SpriteEntityView
         _baseColor = LoadVisualDefinition(node.Kind)?.Color ?? DefaultColor;
     }
 
+    // For WorldPresenter, which sends a view back to pending when its cell is un-revealed.
+    public Entity Node => _node;
+
     // What WorldPresenter places this node by (origin half a height above the ground) and the
     // height every layer is created at.
     public float Size => NominalHeight;
 
-    // A kind's authored height where it has one, else a standing tree's or a ground icon's
-    // default. Static because the base class needs it before this view has fields.
-    private static float NominalHeightFor(EntityKindId kind, bool canFell)
+    // No-op for a kind without fruit art (_fruit stays null).
+    public void SetHasFruit(bool hasFruit)
     {
-        var visual = LoadVisualDefinition(kind);
-        return visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
+        if (_fruit is not null)
+        {
+            _fruit.Sprite.Visible = hasFruit;
+        }
     }
 
     protected override void Build()
@@ -184,51 +212,17 @@ internal partial class ResourceNodeView : SpriteEntityView
         return true;
     }
 
-    private Color LayerBrightnessVariation(int salt)
+    // A kind's authored height where it has one, else a standing tree's or a ground icon's
+    // default. Static because the base class needs it before this view has fields.
+    private static float NominalHeightFor(EntityKindId kind, bool canFell)
     {
-        var value = EntityVisualVariation.RangeFor(_node.Id.Seed, salt, BrightnessJitterMin, BrightnessJitterMax);
-        return new Color(value, value, value);
+        var visual = LoadVisualDefinition(kind);
+        return visual is { WorldHeight: > 0f } ? visual.WorldHeight : (canFell ? TreeSize : DefaultSize);
     }
-
-    // No-op for a kind without fruit art (_fruit stays null).
-    public void SetHasFruit(bool hasFruit)
-    {
-        if (_fruit is not null)
-        {
-            _fruit.Sprite.Visible = hasFruit;
-        }
-    }
-
-    // A kind with a dedicated standing-tree sprite ({kind}_tree.png alongside {kind}.png: apple,
-    // pear...) draws that instead of the icon. Driven by which file exists, not by CanFell - a
-    // fellable conifer/deciduous/bush only has the plain {kind}.png.
-    private string TexturePathFor() => BaseTexturePathFor(_kind);
 
     private static string BaseTexturePathFor(EntityKindId kind) => HasTreeSprite(kind)
         ? $"res://Content/resources/{kind.Value}/{kind.Value}_tree.png"
         : $"res://Content/resources/{kind.Value}/{kind.Value}.png";
-
-    // Fruit spots are authored per canopy variant, so they land inside the canopy shape this
-    // node actually drew.
-    private string FruitOverlayTexturePath() => TexturePaths.VariantSuffixed($"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png", _variantIndex);
-
-    // Split filenames sit alongside whatever BaseTexturePathFor uses as the whole tree:
-    // {kind}_tree_trunk.png for apple/pear, {kind}_trunk.png for conifer_tree/deciduous_tree
-    // (whose id already ends in "_tree"). A variant beyond the first adds a _vN suffix on top.
-    private string TrunkTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_trunk"), _variantIndex);
-
-    private string CanopyTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
-
-    // Shared, kind-independent asset, not derived from this kind's texture path. Its anchor
-    // positions are pre-computed to clear the fruit-tree canopy family's shapes.
-    private const string SharedBranchesBasePath = "res://Content/branches/tree_branches.png";
-
-    private string BranchesTexturePathFor() => TexturePaths.VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
-
-    // How many trunk/canopy shape variants this kind has on disk: 1 for the unsuffixed
-    // original, then probing _v1, _v2, ... until one is missing. Cached per kind like the
-    // other lookups.
-    private static readonly Dictionary<EntityKindId, int> TreeVariantCountCache = new();
 
     private static int TreeVariantCount(EntityKindId kind)
     {
@@ -254,14 +248,6 @@ internal partial class ResourceNodeView : SpriteEntityView
         TreeVariantCountCache[kind] = count;
         return count;
     }
-
-    // Only kinds sharing the fruit-tree canopy formula, whose shapes the shared branch anchors
-    // were computed to clear. conifer_tree's tiered canopy was never checked, so it stays out
-    // rather than risk a branch drawn across its leaves.
-    private static readonly HashSet<string> KindsWithGenericBranches = new() { "apple", "pear", "deciduous_tree" };
-
-    private static readonly Dictionary<EntityKindId, bool> HasBranchLayerCache = new();
-    private static readonly Dictionary<EntityKindId, int> BranchVariantCountCache = new();
 
     private static bool HasBranchLayer(EntityKindId kind)
     {
@@ -298,11 +284,6 @@ internal partial class ResourceNodeView : SpriteEntityView
         BranchVariantCountCache[kind] = count;
         return count;
     }
-
-    // Cached per kind, not loaded per node, for the same reason as below.
-    private static readonly Dictionary<EntityKindId, bool> HasTreeSpriteCache = new();
-    private static readonly Dictionary<EntityKindId, bool> HasFruitOverlayCache = new();
-    private static readonly Dictionary<EntityKindId, bool> HasTrunkCanopySplitCache = new();
 
     private static bool HasTreeSprite(EntityKindId kind)
     {
@@ -342,11 +323,6 @@ internal partial class ResourceNodeView : SpriteEntityView
         return exists;
     }
 
-    // Cached per kind, not loaded per node: thousands of nodes of a handful of kinds each loading
-    // the same .tres resource in one frame reliably crashed Godot's C# bridge (a
-    // GCHandle race, "Handle is not initialized").
-    private static readonly Dictionary<EntityKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
-
     private static ResourceVisualDefinition? LoadVisualDefinition(EntityKindId kind)
     {
         if (VisualDefinitionCache.TryGetValue(kind, out var cached))
@@ -359,4 +335,28 @@ internal partial class ResourceNodeView : SpriteEntityView
         VisualDefinitionCache[kind] = definition;
         return definition;
     }
+
+    private Color LayerBrightnessVariation(int salt)
+    {
+        var value = EntityVisualVariation.RangeFor(_node.Id.Seed, salt, BrightnessJitterMin, BrightnessJitterMax);
+        return new Color(value, value, value);
+    }
+
+    // A kind with a dedicated standing-tree sprite ({kind}_tree.png alongside {kind}.png: apple,
+    // pear...) draws that instead of the icon. Driven by which file exists, not by CanFell - a
+    // fellable conifer/deciduous/bush only has the plain {kind}.png.
+    private string TexturePathFor() => BaseTexturePathFor(_kind);
+
+    // Fruit spots are authored per canopy variant, so they land inside the canopy shape this
+    // node actually drew.
+    private string FruitOverlayTexturePath() => TexturePaths.VariantSuffixed($"res://Content/resources/{_kind.Value}/{_kind.Value}_tree_fruit.png", _variantIndex);
+
+    // Split filenames sit alongside whatever BaseTexturePathFor uses as the whole tree:
+    // {kind}_tree_trunk.png for apple/pear, {kind}_trunk.png for conifer_tree/deciduous_tree
+    // (whose id already ends in "_tree"). A variant beyond the first adds a _vN suffix on top.
+    private string TrunkTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_trunk"), _variantIndex);
+
+    private string CanopyTexturePathFor() => TexturePaths.VariantSuffixed(TexturePaths.InsertBeforeExtension(TexturePathFor(), "_canopy"), _variantIndex);
+
+    private string BranchesTexturePathFor() => TexturePaths.VariantSuffixed(SharedBranchesBasePath, _branchVariantIndex);
 }

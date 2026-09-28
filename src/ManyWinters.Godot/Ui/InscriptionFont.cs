@@ -11,8 +11,6 @@ namespace ManyWinters.Godot.Ui;
 // game's face.
 public static class InscriptionFont
 {
-    private const string FontDirectory = "res://Content/fonts";
-
     // Ink. Public, because the surfaces the game sets light-on-dark - the inscription overlay's
     // title and the loading screen - tint their own text with it rather than each repeating the
     // colour.
@@ -24,9 +22,11 @@ public static class InscriptionFont
     // The same ink stepped back, for text on paper that labels rather than speaks.
     public static readonly Color FadedDarkInk = new(0.20f, 0.14f, 0.09f, 0.62f);
 
+    private const string FontDirectory = "res://Content/fonts";
+    private const int OutlineSize = 10;
+
     // What a full-screen title is outlined with so it reads over anything.
     private static readonly Color Outline = new(0.16f, 0.12f, 0.08f);
-    private const int OutlineSize = 10;
 
     private static FontFile Title { get; } = ResourceLoader.Load<FontFile>($"{FontDirectory}/im-fell-english/IMFeENrm28P.ttf");
 

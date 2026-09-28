@@ -17,6 +17,14 @@ public sealed class ItemCatalog
         _forms = forms;
     }
 
+    public static ItemCatalog LoadFromDirectory(string rootPath, MaterialCatalog materials, FormCatalog forms)
+        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath), materials, forms);
+
+    // Takes documents, not a path: in an exported Godot build only Godot's file access reaches
+    // the content inside the .pck.
+    public static ItemCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents, MaterialCatalog materials, FormCatalog forms)
+        => new(JsonDefinitions.Parse<ItemDefinition>(documents, "Item"), materials, forms);
+
     public ItemDefinition Get(ItemKindId id) => _definitions[id];
 
     // Insulation is the material's, whatever it was made into. An undescribed item or material
@@ -69,21 +77,6 @@ public sealed class ItemCatalog
         _ => 0f,
     };
 
-    private float ChoppingScoreOf(Assembly.Part part) =>
-        (_forms.Find(part.Form)?.EdgeSharpness ?? 0f)
-        * (_materials.Find(part.Material)?.Hardness ?? 0f)
-        * MathF.Sqrt(part.Weight(_materials))
-        * part.Quality;
-
-    // What this lends to something lashed to it. A made thing lends the best its parts do, so a
-    // shaft stays a shaft after something else has been tied to its other end.
-    private float LeverageOf(Assembly assembly) => assembly switch
-    {
-        Assembly.Part part => _forms.Find(part.Form)?.HaftLeverage ?? 0f,
-        Assembly.Joined joined => Math.Max(LeverageOf(joined.Left), LeverageOf(joined.Right)),
-        _ => 0f,
-    };
-
     // An assembly weighs itself, but only this catalog knows the substances behind its parts -
     // so the weighing of both tiers is asked for in one place, and totalling an inventory's
     // weight needs no second catalog to add a worked thing to a stack of raw ones.
@@ -102,8 +95,6 @@ public sealed class ItemCatalog
     public ItemKindId? KindFor(MaterialId material, FormId form) =>
         _definitions.Values.FirstOrDefault(d => d.Material == material && d.Form == form)?.Id;
 
-    private float WeightOf(ItemDefinition definition) => (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume;
-
     public float HungerRestoredPerUnitFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.HungerRestoredPerUnit : 0f;
 
     // How long a thing of this kind lasts once it exists, from the material it was made of -
@@ -121,6 +112,8 @@ public sealed class ItemCatalog
         _ => null,
     };
 
+    public float CarryCapacityBonusFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.CarryCapacityBonus : 0f;
+
     private static long? ShorterOf(long? a, long? b) => (a, b) switch
     {
         (null, null) => null,
@@ -129,13 +122,20 @@ public sealed class ItemCatalog
         ({ } av, { } bv) => Math.Min(av, bv),
     };
 
-    public float CarryCapacityBonusFor(ItemKindId id) => _definitions.TryGetValue(id, out var definition) ? definition.CarryCapacityBonus : 0f;
+    private float ChoppingScoreOf(Assembly.Part part) =>
+        (_forms.Find(part.Form)?.EdgeSharpness ?? 0f)
+        * (_materials.Find(part.Material)?.Hardness ?? 0f)
+        * MathF.Sqrt(part.Weight(_materials))
+        * part.Quality;
 
-    public static ItemCatalog LoadFromDirectory(string rootPath, MaterialCatalog materials, FormCatalog forms)
-        => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath), materials, forms);
+    // What this lends to something lashed to it. A made thing lends the best its parts do, so a
+    // shaft stays a shaft after something else has been tied to its other end.
+    private float LeverageOf(Assembly assembly) => assembly switch
+    {
+        Assembly.Part part => _forms.Find(part.Form)?.HaftLeverage ?? 0f,
+        Assembly.Joined joined => Math.Max(LeverageOf(joined.Left), LeverageOf(joined.Right)),
+        _ => 0f,
+    };
 
-    // Takes documents, not a path: in an exported Godot build only Godot's file access reaches
-    // the content inside the .pck.
-    public static ItemCatalog LoadFromJson(IEnumerable<(string Source, string Json)> documents, MaterialCatalog materials, FormCatalog forms)
-        => new(JsonDefinitions.Parse<ItemDefinition>(documents, "Item"), materials, forms);
+    private float WeightOf(ItemDefinition definition) => (_materials.Find(definition.Material)?.Density ?? 0f) * definition.Volume;
 }

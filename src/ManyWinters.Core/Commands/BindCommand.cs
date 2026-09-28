@@ -23,6 +23,10 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
 
     private const float SkillGainPerBind = 1f;
 
+    // Nothing was done to it, so nothing was gained or spoiled: a raw stick is exactly as sound
+    // as wood is.
+    private const float UnworkedQuality = 1f;
+
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -80,6 +84,13 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
         Person.Skills.Increase(Skill, SkillGainPerBind);
     }
 
+    private static MaterialId? MaterialOf(WorldState world, CarriedThing target) => target switch
+    {
+        CarriedThing.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
+        CarriedThing.Worked { Thing: Assembly.Part part } => part.Material,
+        _ => null,
+    };
+
     // A joint is never better than the cord it is made of.
     private float StrengthOf(Assembly binding, WorldState world)
     {
@@ -95,13 +106,6 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
             .Select(target => MaterialOf(world, target))
             .OfType<MaterialId>()
             .Concat(binding is Assembly.Part part ? [part.Material] : Array.Empty<MaterialId>());
-
-    private static MaterialId? MaterialOf(WorldState world, CarriedThing target) => target switch
-    {
-        CarriedThing.Stock stock => world.Configuration.ItemCatalog.Get(stock.Kind).Material,
-        CarriedThing.Worked { Thing: Assembly.Part part } => part.Material,
-        _ => null,
-    };
 
     // The soundest cordage in the pack, so a person who has made a better cord uses it without
     // being told to. Anything the content says cannot lash is not cordage at all.
@@ -150,8 +154,4 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
                 throw new ArgumentOutOfRangeException(nameof(target), target, "Unknown kind of thing to bind.");
         }
     }
-
-    // Nothing was done to it, so nothing was gained or spoiled: a raw stick is exactly as sound
-    // as wood is.
-    private const float UnworkedQuality = 1f;
 }

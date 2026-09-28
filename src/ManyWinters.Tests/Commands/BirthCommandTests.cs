@@ -7,15 +7,6 @@ namespace ManyWinters.Tests.Commands;
 
 public class BirthCommandTests
 {
-    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
-
-    private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
-        world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);
-
-    private static Person SpawnMother(WorldState world, Position position) => SpawnAdult(world, "Sela", position, Sex.Female);
-
-    private static Person SpawnFather(WorldState world, Position position) => SpawnAdult(world, "Doran", position, Sex.Male);
-
     [Fact]
     public void AddsTheChildToTheWorld()
     {
@@ -335,4 +326,13 @@ public class BirthCommandTests
 
         Assert.Equal(ActionBlocker.AlreadyNursing, new BirthCommand("Ivy", mother, father).Blocker(world));
     }
+
+    private static long AdultAgeTicks(WorldState world) => world.Configuration.Rules.TicksPerYear * TestCatalogs.AdultAgeYears;
+
+    private static Person SpawnAdult(WorldState world, string name, Position position, Sex sex) =>
+        world.SpawnPerson(name, position, initialAgeTicks: AdultAgeTicks(world), sex: sex);
+
+    private static Person SpawnMother(WorldState world, Position position) => SpawnAdult(world, "Sela", position, Sex.Female);
+
+    private static Person SpawnFather(WorldState world, Position position) => SpawnAdult(world, "Doran", position, Sex.Male);
 }

@@ -28,6 +28,10 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
     // in an item's transitions and the only thing that reads it is the roll's seed.
     private static readonly TechniqueId Verb = new("sharpen");
 
+    // Whether there is anything on this object to sharpen at all, which is what the workbench
+    // asks before offering the attempt: a pick that leads nowhere is not an offer.
+    public static bool HasAnEdge(Assembly thing, WorldState world) => EdgeOf(thing, world) is not null;
+
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -85,10 +89,6 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
 
         Person.Skills.Increase(Skill, world.Configuration.Rules.SkillGainPerAttempt);
     }
-
-    // Whether there is anything on this object to sharpen at all, which is what the workbench
-    // asks before offering the attempt: a pick that leads nowhere is not an offer.
-    public static bool HasAnEdge(Assembly thing, WorldState world) => EdgeOf(thing, world) is not null;
 
     // The piece this object cuts with, wherever it sits inside it: the one whose shape presents
     // an edge and whose substance is hard enough to hold it. Mass and workmanship are left out -

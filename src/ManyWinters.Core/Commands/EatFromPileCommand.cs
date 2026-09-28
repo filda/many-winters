@@ -10,6 +10,9 @@ namespace ManyWinters.Core.Commands;
 // and the rest stays there for the next hungry person.
 public sealed record EatFromPileCommand(Creature Actor, Entity Pile) : ICommand
 {
+    // A pile of stock carries the item's kind directly.
+    public static ItemKindId FoodOf(Entity pile) => new(pile.Kind.Value);
+
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Actor.IsAlive)
@@ -40,7 +43,4 @@ public sealed record EatFromPileCommand(Creature Actor, Entity Pile) : ICommand
             world.RemoveEntity(Pile);
         }
     }
-
-    // A pile of stock carries the item's kind directly.
-    public static ItemKindId FoodOf(Entity pile) => new(pile.Kind.Value);
 }

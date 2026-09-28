@@ -9,13 +9,6 @@ public class RevealableExplorationTests
     private static readonly ExplorationCell FarCell = new(100, 100);
     private static readonly ExplorationCell HomeCell = ExplorationState.CellFor(new Position(0, 0));
 
-    private static ExplorationState ExploredAroundTheOrigin()
-    {
-        var exploration = new ExplorationState();
-        exploration.Update([new Position(0, 0)]);
-        return exploration;
-    }
-
     [Fact]
     public void WithoutTheRevealANeverExploredCellStaysUnknown()
     {
@@ -54,5 +47,12 @@ public class RevealableExplorationTests
         Assert.False(lens.IsExplored(FarCell));
         Assert.False(lens.IsVisible(FarCell));
         Assert.True(lens.IsVisible(HomeCell));
+    }
+
+    private static ExplorationState ExploredAroundTheOrigin()
+    {
+        var exploration = new ExplorationState();
+        exploration.Update([new Position(0, 0)]);
+        return exploration;
     }
 }

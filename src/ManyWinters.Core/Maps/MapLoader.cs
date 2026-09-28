@@ -8,23 +8,6 @@ namespace ManyWinters.Core.Maps;
 
 public static class MapLoader
 {
-    // North of the terrain patch's center: the real Rokytka runs well south of here, so the camp
-    // sits on dry ground.
-    private static readonly Position CampCenter = new(5, 250);
-
-    // Age spread in winters, mostly young/middle with a couple of elders (MaxLifespanYears is
-    // 10). Fixed rather than randomized so a new game is the same world twice.
-    private static readonly long[] StartingAgesInWinters = [2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5];
-
-    // 0-based indices into the arrays above of each starting person's mother/father; null means
-    // no recorded parent. Only the starting crowd gets family this way - every later tie comes
-    // from BirthCommand.
-    private static readonly int?[] StartingMotherIndex =
-        [10, null, null, null, 2, 8, null, 10, null, null, null, null, null, 8, 2];
-
-    private static readonly int?[] StartingFatherIndex =
-        [1, null, null, null, 6, 11, null, 1, null, null, null, null, null, 11, 6];
-
     // Disk-uniform scatter with minimum spacing reads as a loosely gathered crowd; a grid reads
     // as soldiers on parade. Seeded for reproducibility.
     private const int CrowdPlacementSeed = 1;
@@ -116,6 +99,46 @@ public static class MapLoader
     private const float RockAmount = 80f;
     private const float DeadWoodAmount = 60f;
 
+    // How far a starting herd's home range sits from camp, so grazing deer are never mistaken
+    // for camp's food scatter.
+    private const double MinHerdDistanceFromCamp = 60;
+    private const int HerdPlacementSeed = 9;
+    private const int HerdCount = 2;
+    // Drawn per herd instead of taking the first candidate that merely clears the distance check:
+    // ScatterDecorations has already run by the time this does, so the actual grass is on the map
+    // to look at - a herd's patch has to be where the grass is, or it starves regardless of how
+    // well it then forages within it, even with plenty of grass in the region overall.
+    private const int HerdCenterCandidateCount = 40;
+
+    // The walk a successor band makes from the old camp, far enough that the two camps read as
+    // separate, near enough that the open world between them stays in reach.
+    private const double MinCampDistance = 80;
+    private const double MaxCampDistance = 250;
+    private const int MaxCampPlacementAttempts = 30;
+
+    // Everything a camp scatters reaches at most CampFoodRadius from its center (the food; the
+    // starting stock sits 5/10 m out, the crowd within CrowdRadius). The camp center keeps that
+    // far, plus slack for a person's extent, inside the terrain edge, so the farthest of what
+    // the band brings still has ground under it.
+    private const float CampEdgeInset = CampFoodRadius + 4f;
+
+    // North of the terrain patch's center: the real Rokytka runs well south of here, so the camp
+    // sits on dry ground.
+    private static readonly Position CampCenter = new(5, 250);
+
+    // Age spread in winters, mostly young/middle with a couple of elders (MaxLifespanYears is
+    // 10). Fixed rather than randomized so a new game is the same world twice.
+    private static readonly long[] StartingAgesInWinters = [2, 4, 8, 1, 5, 3, 9, 2, 6, 1, 4, 7, 2, 3, 5];
+
+    // 0-based indices into the arrays above of each starting person's mother/father; null means
+    // no recorded parent. Only the starting crowd gets family this way - every later tie comes
+    // from BirthCommand.
+    private static readonly int?[] StartingMotherIndex =
+        [10, null, null, null, 2, 8, null, 10, null, null, null, null, null, 8, 2];
+
+    private static readonly int?[] StartingFatherIndex =
+        [1, null, null, null, 6, 11, null, 1, null, null, null, null, null, 11, 6];
+
     private static readonly EntityKindId ConiferTreeKind = new("conifer_tree");
     private static readonly EntityKindId DeciduousTreeKind = new("deciduous_tree");
     private static readonly EntityKindId BushKind = new("bush");
@@ -133,6 +156,7 @@ public static class MapLoader
     [
         new("rock_pile"), new("rock_boulder"), new("rock_cluster"),
     ];
+    private static readonly SpeciesId DeerSpeciesId = new("deer");
 
     public static LoadedMap LoadDefault(WorldConfiguration configuration)
     {
@@ -151,17 +175,17 @@ public static class MapLoader
         return new LoadedMap(world, CampCenter);
     }
 
-    // How far a starting herd's home range sits from camp, so grazing deer are never mistaken
-    // for camp's food scatter.
-    private const double MinHerdDistanceFromCamp = 60;
-    private const int HerdPlacementSeed = 9;
-    private const int HerdCount = 2;
-    // Drawn per herd instead of taking the first candidate that merely clears the distance check:
-    // ScatterDecorations has already run by the time this does, so the actual grass is on the map
-    // to look at - a herd's patch has to be where the grass is, or it starves regardless of how
-    // well it then forages within it, even with plenty of grass in the region overall.
-    private const int HerdCenterCandidateCount = 40;
-    private static readonly SpeciesId DeerSpeciesId = new("deer");
+    // Spawns a successor band into an existing world, picking a new camp 80..250 m from the old
+    // one, and returns the camp center for the caller to move the camera.
+    public static Position SpawnNewBand(WorldState world, Random idRng, Position oldCampCenter)
+    {
+        var campCenter = NextCampPosition(idRng, oldCampCenter);
+
+        SpawnBand(world, idRng, new Random(AlternativeNamingSeed), campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
+        SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
+
+        return campCenter;
+    }
 
     // Two herds of whatever species the content describes as "deer" (silently skipped if none is
     // defined - a minimal test configuration), each with its own drifting HomeRange, spawned on
@@ -262,30 +286,6 @@ public static class MapLoader
 
         return candidate;
     }
-
-    // Spawns a successor band into an existing world, picking a new camp 80..250 m from the old
-    // one, and returns the camp center for the caller to move the camera.
-    public static Position SpawnNewBand(WorldState world, Random idRng, Position oldCampCenter)
-    {
-        var campCenter = NextCampPosition(idRng, oldCampCenter);
-
-        SpawnBand(world, idRng, new Random(AlternativeNamingSeed), campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
-        SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
-
-        return campCenter;
-    }
-
-    // The walk a successor band makes from the old camp, far enough that the two camps read as
-    // separate, near enough that the open world between them stays in reach.
-    private const double MinCampDistance = 80;
-    private const double MaxCampDistance = 250;
-    private const int MaxCampPlacementAttempts = 30;
-
-    // Everything a camp scatters reaches at most CampFoodRadius from its center (the food; the
-    // starting stock sits 5/10 m out, the crowd within CrowdRadius). The camp center keeps that
-    // far, plus slack for a person's extent, inside the terrain edge, so the farthest of what
-    // the band brings still has ground under it.
-    private const float CampEdgeInset = CampFoodRadius + 4f;
 
     // A plain clamp to the terrain edge would pin the center there when the old camp sits near
     // it, leaving part of the crowd, stock and food off the map - and the walk itself could
