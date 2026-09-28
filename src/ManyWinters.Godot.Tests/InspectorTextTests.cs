@@ -107,7 +107,7 @@ public class InspectorTextTests
         var world = TestWorld.Create();
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
-        person.Tasks.Interrupt(new HuntTask(deer, range: world.Configuration.Rules.HuntingRange, speedPerTick: MoveCommand.SpeedPerTick));
+        person.Tasks.Interrupt(new HuntTask(deer, range: world.Configuration.Rules.HuntingRange, speedPerTick: world.Configuration.Rules.SpeedPerTick));
 
         Assert.Equal("Hunting", InspectorText.ForTask(person));
     }
@@ -119,7 +119,7 @@ public class InspectorTextTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
         deer.IsAlive = false;
-        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance, speedPerTick: MoveCommand.SpeedPerTick));
+        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance, speedPerTick: world.Configuration.Rules.SpeedPerTick));
 
         Assert.Equal("Butchering", InspectorText.ForTask(person));
     }

@@ -62,7 +62,7 @@ public class HuntTaskTests
     [Fact]
     public void ADirectedHuntClosesTheDistanceFasterThanAnIdleOne()
     {
-        var directedTask = new HuntTask(NewPrey(new Position(30, 0)), Range, MoveCommand.SpeedPerTick);
+        var directedTask = new HuntTask(NewPrey(new Position(30, 0)), Range, 1f);
         var directedHunter = NewHunter(new Position(0, 0));
         var idleTask = new HuntTask(NewPrey(new Position(30, 0)), Range, IdleSpeed);
         var idleHunter = NewHunter(new Position(0, 0));

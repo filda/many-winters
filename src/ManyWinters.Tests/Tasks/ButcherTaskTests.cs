@@ -66,7 +66,7 @@ public class ButcherTaskTests
     [Fact]
     public void ADirectedButcheringClosesTheDistanceFasterThanAnIdleOne()
     {
-        var directedTask = NewTask(speedPerTick: MoveCommand.SpeedPerTick);
+        var directedTask = NewTask(speedPerTick: 1f);
         var directedButcher = NewButcher(new Position(30, 10));
         var idleTask = NewTask();
         var idleButcher = NewButcher(new Position(30, 10));

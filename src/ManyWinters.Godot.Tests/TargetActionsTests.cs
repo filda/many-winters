@@ -627,7 +627,7 @@ public class TargetActionsTests
         Assert.Equal(world.Configuration.Rules.HuntingRange, pursuit.Range);
         // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
         // player-directed hunt walks like every other order the player gives.
-        Assert.Equal(MoveCommand.SpeedPerTick, pursuit.SpeedPerTick);
+        Assert.Equal(world.Configuration.Rules.SpeedPerTick, pursuit.SpeedPerTick);
     }
 
     [Fact]
@@ -646,7 +646,7 @@ public class TargetActionsTests
         Assert.Equal(world.Configuration.Rules.PileReachDistance, pursuit.Reach);
         // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
         // player-directed butchering walks like every other order the player gives.
-        Assert.Equal(MoveCommand.SpeedPerTick, pursuit.SpeedPerTick);
+        Assert.Equal(world.Configuration.Rules.SpeedPerTick, pursuit.SpeedPerTick);
     }
 
     // A carcass a butcher cannot reach into (nothing left, or their pack already full) is refused

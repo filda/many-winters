@@ -226,5 +226,10 @@ public sealed record SimulationRules
     public float HuntingMaxHitChance { get; } = 0.9f;
     public float? StartingCondition { get; } = 100f;
 
+    // The speed every player-directed walk uses - a purposeful trip, not the idle AI's unhurried
+    // pace (GatherTask.SpeedPerTick). Public: TargetActions builds HuntTask/ButcherTask with this
+    // same number rather than a copy of it.
+    public float SpeedPerTick { get; } = 1f;
+
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

@@ -120,14 +120,14 @@ internal static class TargetActions
                 world,
                 HuntCommand.Skill,
                 animal.Position,
-                new HuntTask(animal, rules.HuntingRange, MoveCommand.SpeedPerTick))
+                new HuntTask(animal, rules.HuntingRange, rules.SpeedPerTick))
             : ActionOffer.For(
                 "Butcher",
                 new ButcherCommand(actor, animal),
                 world,
                 ButcherCommand.Skill,
                 animal.Position,
-                new ButcherTask(animal, rules.PileReachDistance, MoveCommand.SpeedPerTick));
+                new ButcherTask(animal, rules.PileReachDistance, rules.SpeedPerTick));
 
         return new TargetMenu(heading, [offer]);
     }
