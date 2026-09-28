@@ -164,7 +164,7 @@ public class WorldStateNursingTests
     [Fact]
     public void SomebodyWithNoRecordedMotherIsNeverNursed()
     {
-        // Person.Unknown is long dead, so this falls out of the living-mother check.
+        // The sentinel unknown person is long dead, so this falls out of the living-mother check.
         var world = TestCatalogs.CreateWorld();
         var foundling = world.SpawnPerson("Bran", new Position(0, 0));
 

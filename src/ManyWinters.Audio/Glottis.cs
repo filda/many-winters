@@ -127,9 +127,9 @@ public sealed class Glottis
         var source = NormalizedLfWaveform(phase) * _loudness * _pulseAmplitude;
 
         // Breath is loudest during the open phase of each cycle, not evenly across it - upstream's
-        // own noise modulator - and (1 - sqrt(tenseness)) is where VoiceIdentity.Breath actually
-        // acts: SetSource's tenseness already carries 1 - Breath, so a breathier voice both leaks
-        // more aspiration here and, through _loudness below, buzzes less.
+        // own noise modulator - and (1 - sqrt(tenseness)) is where breathiness actually acts:
+        // tenseness already carries 1 minus breathiness, so a breathier voice both leaks more
+        // aspiration here and, through _loudness below, buzzes less.
         var voiced = 0.1f + (0.2f * MathF.Max(0.0f, MathF.Sin(2.0f * MathF.PI * phase)));
         var noiseModulator = (_tenseness * voiced) + ((1.0f - _tenseness) * 0.3f);
         var aspiration = (1.0f - MathF.Sqrt(_tenseness)) * noiseModulator * _aspirationFilter.Process(_aspirationNoise.Next());

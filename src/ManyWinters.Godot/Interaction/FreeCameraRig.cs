@@ -86,7 +86,7 @@ public sealed partial class FreeCameraRig : Node3D
         // depths that FogOfWarRenderer's depth-reconstruction shaders (fog_of_war_screen.gdshader,
         // fog_of_war_remembered.gdshader) cut a flat "ceiling" through unrelated canopies. 0.5 cuts
         // the ratio 10x; nothing is ever legitimately closer to the camera than that.
-        // CullMask excludes CloudFogMask.CloudLayerBit: that layer holds only CloudScatter's
+        // CullMask excludes the cloud-fog layer bit: that layer holds only the cloud scatter's
         // mask-only cloud proxies, which the default mask would draw on top of each real cloud.
         _camera = new Camera3D { Far = 5000f, Near = 0.5f, CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit };
         AddChild(_camera);

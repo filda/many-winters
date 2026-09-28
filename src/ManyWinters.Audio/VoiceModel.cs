@@ -24,9 +24,9 @@ public static class VoiceModel
         new(TongueIndex: 16.0f, TongueDiameter: 1.9f, LipDiameter: 0.7f), // back, close, rounded
     ];
 
-    // Every entry above keeps VocalTract.RestDiameter comfortably clear of zero at its own peak -
-    // a vowel that pinches shut by its own table entry would misfire the release-transient logic
-    // VocalTract's SetShape uses to tell a real stop's closure from a vowel passing through a
+    // Every entry above keeps the tract's rest-diameter formula comfortably clear of zero at its
+    // own peak - a vowel that pinches shut by its own table entry would misfire the
+    // release-transient logic used to tell a real stop's closure from a vowel passing through a
     // merely narrow shape on its way somewhere else.
 
     // The shape every vowel leans towards at low Energy, the same role NeutralFormants played in
@@ -54,8 +54,8 @@ public static class VoiceModel
     private const float TractScaleBase = 0.75f;
     private const float TractScaleRange = 0.5f;
 
-    // Same throat-vs-noise boundary the previous model's own pulse jitter needed - see Glottis's
-    // comment on RoughnessJitter for why a sixth is rough and a half is broken.
+    // Same throat-vs-noise boundary the previous model's own pulse jitter needed: a sixth is
+    // rough, a half is broken.
     private const float RoughnessJitterMin = 0.03f;
     private const float RoughnessJitterRange = 0.15f;
 
@@ -65,8 +65,7 @@ public static class VoiceModel
     private const float TensenessEnergyBoost = 0.35f;
 
     // Most syllables, not half. Consonants and the silence in front of them are what the ear reads
-    // as speech rather than as a run of voiced vowels; see VocalTract's own comment on why a
-    // release from a real closure needs no separately authored burst.
+    // as speech rather than as a run of voiced vowels.
     private const float ConsonantProbability = 0.8f;
     private const float ClosureMinSeconds = 0.025f;
     private const float ClosureRangeSeconds = 0.035f;
@@ -75,18 +74,17 @@ public static class VoiceModel
     // arriving at a vowel, not starting there.
     private const float GlideFraction = 0.4f;
 
-    // A gentle fall across the whole utterance, in steps rather than swept - see Glottis's own
-    // comment on why pitch changes once per syllable rather than continuously.
+    // A gentle fall across the whole utterance, in steps rather than swept.
     private const float Declination = 0.06f;
     private const float PitchStepJitterMin = 0.02f;
     private const float PitchStepJitterRange = 0.10f;
 
     private const float SlotJitter = 0.1f;
 
-    // Retuned once per block, not per sample - the same trade Biquad.Retune and the previous
-    // model's formant glide both make: a tongue's own glide is slow enough that the difference is
-    // inaudible, and stepping through the shape formula and the reflection-coefficient recompute
-    // every sample is not free.
+    // Retuned once per block, not per sample - the same trade a slowly retuned filter and the
+    // previous model's formant glide both make: a tongue's own glide is slow enough that the
+    // difference is inaudible, and stepping through the shape formula and the
+    // reflection-coefficient recompute every sample is not free.
     private const int ControlBlock = 64;
 
     // A short linear ramp at both ends of the render, not a per-syllable envelope: VocalTract's
@@ -229,11 +227,11 @@ public static class VoiceModel
         }
     }
 
-    // The one place VocalTract's own scale trick (see its comment on SubstepsPerSample) is turned
-    // back into the sample rate the caller asked for. Linear interpolation rather than a proper
-    // band-limited resampler: the ratio is always within TractScaleBase's own 0.75-1.25 range, and
-    // a stretch that gentle has no meaningful aliasing for a signal already lowpassed by nothing
-    // sharper than a two-pole waveguide junction.
+    // The one place VocalTract's own scale trick is turned back into the sample rate the caller
+    // asked for. Linear interpolation rather than a proper band-limited resampler: the ratio is
+    // always within TractScaleBase's own 0.75-1.25 range, and a stretch that gentle has no
+    // meaningful aliasing for a signal already lowpassed by nothing sharper than a two-pole
+    // waveguide junction.
     private static float[] Resample(float[] source, int fromRate, int toRate)
     {
         if (fromRate == toRate || source.Length == 0)

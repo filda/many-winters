@@ -5,9 +5,9 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// WorldState.BreedAnimals: a female conceives on a per-tick roll rather than a pair bond, so
-// most tests here pin ConceptionChancePerTick at 1 (a roll that would otherwise conceive) and
-// prove one condition blocks it, rather than searching for a seed/tick that happens to roll true.
+// A female conceives on a per-tick roll rather than a pair bond, so most tests here pin
+// ConceptionChancePerTick at 1 (a roll that would otherwise conceive) and prove one condition
+// blocks it, rather than searching for a seed/tick that happens to roll true.
 public class WorldStateBreedingTests
 {
     private const long TicksPerYear = 300;
@@ -15,7 +15,7 @@ public class WorldStateBreedingTests
     private const long ElderAgeTicks = 7 * TicksPerYear;
 
     // Loose enough that ordinary hunger drift across a handful of ticks never trips it by
-    // accident - the fed/not-fed tests below set Needs.Hunger explicitly instead.
+    // accident - the fed/not-fed tests below set Hunger explicitly instead.
     private const float LooseSatietyThreshold = 1000f;
 
     private static WorldState NewWorld(long gestationTicks = 150, float conceptionChancePerTick = 1f, float satietyHungerBelow = LooseSatietyThreshold, Climate climate = Climate.Mild) =>

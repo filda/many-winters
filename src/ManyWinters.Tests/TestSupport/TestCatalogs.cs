@@ -488,9 +488,9 @@ public static class TestCatalogs
 
     public static WorldState CreateWorld() => new(CreateConfiguration());
 
-    // Every Person.MaxHunger comes out at exactly SimulationRules.MaxHunger: the shipped game
-    // draws one per person, so a test pinning an exact tick of death would otherwise assert
-    // against a draw. Tests about the spread use CreateWorld.
+    // Every person's max hunger comes out exactly the same: the shipped game draws one per
+    // person, so a test pinning an exact tick of death would otherwise assert against a draw.
+    // Tests about the spread use CreateWorld.
     public static WorldConfiguration CreateConfigurationWithoutHungerVariation() =>
         CreateConfiguration() with { Rules = SimulationRules.Default with { MaxHungerVariation = 0f } };
 
@@ -523,22 +523,22 @@ public static class TestCatalogs
     public static WorldState CreateWorldWithShortCorpseDecay(long corpseDecayTicks, long bonesLingerTicks) =>
         new(CreateConfigurationWithShortCorpseDecay(corpseDecayTicks, bonesLingerTicks));
 
-    // For tests about WorldState.BreedAnimals that need a chance, gestation or satiety threshold
-    // other than the shipped deer.json's, so a condition can be proven with a handful of ticks
-    // instead of replaying the real numbers.
+    // For tests about animal breeding that need a chance, gestation or satiety threshold other
+    // than the shipped deer.json's, so a condition can be proven with a handful of ticks instead
+    // of replaying the real numbers.
     public static WorldConfiguration CreateConfigurationWithDeerBreeding(SpeciesDefinition.BreedingDefinition breeding) =>
         CreateConfiguration() with { SpeciesCatalog = CreateSpeciesCatalog(HumanSpecies, DeerSpecies with { Breeding = breeding }) };
 
-    // The shipped axe-grade sharp hafted tool HuntCommand's arithmetic is pinned against
-    // (SimulationRules.HuntingHitChancePerToolScore): a knapped wedge lashed to a stick, both
-    // practised to mastery (WorkAttempt.Practised is 1 at Skills.LevelAfter(50)). Built directly
-    // from the parts rather than by executing Knap/Twist/Bind, so a test can pin its exact
-    // chopping score without depending on those commands' own dice.
+    // The shipped axe-grade sharp hafted tool's arithmetic is pinned against the hunting
+    // hit-chance-per-tool-score constant: a knapped wedge lashed to a stick, both practised to
+    // mastery (skill level 50 makes Practised 1). Built directly from the parts rather than by
+    // executing Knap/Twist/Bind, so a test can pin its exact chopping score without depending on
+    // those commands' own dice.
     //
     // ChoppingScoreOf works out to EdgeSharpness(Wedge=1) * Hardness(Stone=1) * sqrt(weight
     // density(Stone=2)*volume(1)=2) * (1 + HaftLeverage(Stick=1) * JointStrength(0.5)) ~= 2.121 -
-    // the haft side scores nothing on its own (Stick has no EdgeSharpness), so the max in
-    // ItemCatalog.ChoppingScoreOf always picks the head's own reading.
+    // the haft side scores nothing on its own (Stick has no EdgeSharpness), so the max in the
+    // chopping-score formula always picks the head's own reading.
     public static Assembly CreateTestAxe(WorldState world)
     {
         var itemCatalog = world.Configuration.ItemCatalog;

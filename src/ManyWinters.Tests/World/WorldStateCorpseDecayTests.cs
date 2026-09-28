@@ -4,10 +4,10 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// A dead, unburied Animal's bones vanish SimulationRules.BonesLingerTicks after
-// SimulationRules.CorpseDecayTicks - a Person's never do, since the record of a band is its
-// graves. What perishable *goods* a corpse holds no longer follows CorpseDecayTicks: meat,
-// rawhide and the rest rot on each material's own shelf life, wherever they lie.
+// A dead, unburied Animal's bones vanish the bones-linger time after the corpse-decay time -
+// a Person's never do, since the record of a band is its graves. What perishable *goods* a
+// corpse holds no longer follows the corpse-decay time: meat, rawhide and the rest rot on each
+// material's own shelf life, wherever they lie.
 public class WorldStateCorpseDecayTests
 {
     private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 10f, DriftMetresPerSeason = 0f };

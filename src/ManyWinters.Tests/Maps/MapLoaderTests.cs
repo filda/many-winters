@@ -8,7 +8,7 @@ namespace ManyWinters.Tests.Maps;
 public class MapLoaderTests
 {
     // Spawning recurses into a person's recorded parent before spawning that person, so
-    // World.People ends up in this order of original age/parent-table indices - traced from
+    // the spawned people end up in this order of original age/parent-table indices - traced from
     // those tables, not from any name. Naming is procedural now, so a test can no longer identify
     // a starting person by a literal name; it identifies them by this fixed spawn position instead.
     private static readonly int[] SpawnOrderOriginalIndex = [10, 1, 0, 2, 3, 6, 4, 8, 11, 5, 7, 9, 12, 13, 14];
@@ -576,9 +576,9 @@ public class MapLoaderTests
             Assert.InRange(herdMembers.Count, TestCatalogs.DeerHerdMinSize, TestCatalogs.DeerHerdMaxSize);
             Assert.All(herdMembers, animal => Assert.Equal(TestCatalogs.DeerSpeciesId, animal.Species));
 
-            // MapLoader.SpawnAnimalHerds picks the herd's own centre by grass count nearby
-            // (BestHerdCenter), not merely by distance from camp - a herd placed anywhere on open
-            // ground could land somewhere with almost no grass in reach at all.
+            // A herd's own centre is picked by grass count nearby, not merely by distance from
+            // camp - a herd placed anywhere on open ground could land somewhere with almost no
+            // grass in reach at all.
             var grassNodesInHome = world.Entities.Count(e => e.Kind.Value == "grass" && WorldState.Distance(home.Anchor, e.Position) <= home.Radius);
             Assert.True(grassNodesInHome >= 20, $"expected at least 20 grass nodes within the herd's home, found {grassNodesInHome}.");
         }

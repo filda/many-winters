@@ -80,8 +80,9 @@ public class KinshipTests
         Assert.True(Kinship.AreCloseKin(first, second));
     }
 
-    // The case that would otherwise make the whole starting band one family: Person.Unknown is
-    // where every unrecorded line ends up, so sharing it is sharing nothing.
+    // The case that would otherwise make the whole starting band one family: the shared
+    // placeholder for an unrecorded parent is common to everyone with no ancestry, so sharing
+    // it is sharing nothing.
     [Fact]
     public void TwoPeopleWhoseParentsAreBothUnrecordedAreNotSiblings()
     {

@@ -31,8 +31,8 @@ public sealed class GroundClouds
     // Mean centre-to-centre spacing the scatter aims for; actual gaps vary (CloudSpotScatter).
     private const float MeanSpacingMeters = 5f;
 
-    // Fixed for reproducibility; distinct from CloudScatter.Seed so the two layers do not share
-    // a pattern.
+    // Fixed for reproducibility; distinct from the other cloud layer's own seed so the two
+    // layers do not share a pattern.
     private const int Seed = 23;
 
     // Everything this type adds goes beneath its own root, never beneath Main directly:
@@ -53,7 +53,7 @@ public sealed class GroundClouds
         Refresh();
     }
 
-    // Call after FogOfWarRenderer.Refresh - this reads the distance field that rebuild
+    // Call after the fog-of-war renderer refreshes - this reads the distance field that rebuild
     // just produced.
     public void Refresh()
     {

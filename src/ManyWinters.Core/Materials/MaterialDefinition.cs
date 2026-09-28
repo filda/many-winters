@@ -7,7 +7,7 @@ namespace ManyWinters.Core.Materials;
 public sealed record MaterialDefinition(
     MaterialId Id,
     string DisplayName,
-    // Weight per unit of ItemDefinition.Volume, roughly "1 is water"; only the scale relative
+    // Weight per unit of an item's Volume, roughly "1 is water"; only the scale relative
     // to carry capacity matters.
     float Density = 0f,
     // Cold insulation for anyone carrying anything made of this. Presence, not count: a second

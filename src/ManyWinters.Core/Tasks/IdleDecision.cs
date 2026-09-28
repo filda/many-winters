@@ -135,10 +135,10 @@ public static class IdleDecision
         // not a type check on the creature - a human never has one.
         if (world.Configuration.SpeciesCatalog.Get(creature.Species).Flee is { } flee)
         {
-            // Already running from something and not yet clear of it (FleeTask.IsComplete) -
-            // hand back the same instance rather than re-deriving from FleeDistance, or a flee
-            // already under way would be cut short the moment the gap merely passes FleeDistance
-            // on the way out to the wider SafeDistance.
+            // Already running from something and not yet clear of it - hand back the same instance
+            // rather than re-deriving from FleeDistance, or a flee already under way would be cut
+            // short the moment the gap merely passes FleeDistance on the way out to the wider
+            // SafeDistance.
             if (creature.Tasks.Current is FleeTask activeFlee)
             {
                 return activeFlee;

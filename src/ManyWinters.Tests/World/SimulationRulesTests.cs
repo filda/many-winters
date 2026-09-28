@@ -77,7 +77,7 @@ public class SimulationRulesTests
         Assert.InRange(below, 400, 600);
     }
 
-    // The draw reads every bit of the spread except the one Creature.SexOf takes, so lifespan
+    // The draw reads every bit of the spread except the one used to determine sex, so lifespan
     // and sex stay independent.
     [Fact]
     public void HowLongSomebodyLastsDoesNotFollowFromTheirSex()

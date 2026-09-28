@@ -100,8 +100,8 @@ public class VoiceModelTests
     // model built the opposite way around. Spectral flatness (the spectrum's geometric mean over
     // its arithmetic mean - 0 for a pure tone, 1 for white noise) measures the same underlying
     // fact, tonal versus noisy, without depending on how many peaks the tone happens to have:
-    // measured, 0.023 for a call against 0.028 for a mutter, in the direction VoiceIdentity.Breath
-    // and Glottis's own tenseness mapping intend.
+    // measured, 0.023 for a call against 0.028 for a mutter, in the direction breathiness and
+    // Glottis's own tenseness mapping intend.
     [Fact]
     public void ACallIsMoreVoicedAndLessBreathyThanAMutter()
     {

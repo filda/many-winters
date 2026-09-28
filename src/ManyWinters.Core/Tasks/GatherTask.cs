@@ -4,8 +4,8 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Tasks;
 
 // Autonomous "go gather from this resource" order from the idle AI, or "go eat from this pile"
-// for a hungry person. Only walks there; the taking happens elsewhere, since CreatureTask.Advance
-// sees only the Creature. Never completes - the caller re-evaluates it every tick.
+// for a hungry person. Only walks there; the taking happens elsewhere, since advancing only
+// sees the Creature. Never completes - the caller re-evaluates it every tick.
 // `reachDistance` is the maximum interaction distance, passed in as Advance has no world.
 public sealed class GatherTask(Entity target, float reachDistance) : CreatureTask
 {

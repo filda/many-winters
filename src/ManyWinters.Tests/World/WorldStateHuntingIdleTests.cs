@@ -20,8 +20,8 @@ public class WorldStateHuntingIdleTests
     private static Person NewPerson(WorldState world, Position position, bool huntingKnown = false, bool butcheringKnown = false, float hunger = 0f)
     {
         var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
-        // NeedsToSeekFoodUrgently gates on knowing how to eat at all (IdleDecision.KnowsHowToEat) -
-        // without it, hunger alone never opens the "seek food" branch these tests are about.
+        // Seeking food urgently gates on knowing how to eat at all - without it, hunger alone
+        // never opens the "seek food" branch these tests are about.
         person.KnownTechniques.Add(TestCatalogs.BasicEating);
         if (huntingKnown)
         {

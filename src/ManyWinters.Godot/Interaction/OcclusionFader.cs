@@ -78,7 +78,7 @@ internal sealed class OcclusionFader(
         return (cameraRig.RigGlobalPosition, null);
     }
 
-    // Walks BillboardSprite.LiveSprites rather than the scene tree: a per-frame FindChildren over
+    // Walks the live billboard-sprite list rather than the scene tree: a per-frame FindChildren over
     // every ResourceNode's Area3D subtree stuttered the whole frame, camera included. Ground
     // shadows are plain Sprite3Ds (GroundShadow), never billboards, so need no exclusion; only
     // the selection's own sprites do, since they sit at the target itself.

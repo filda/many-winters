@@ -55,11 +55,11 @@ public class PersonHomeRangeTests
         Assert.True(WorldState.Distance(start, person.Position) <= 8f + 0.01f);
     }
 
-    // IdleDecision.FindNearestGatherableEntity's fallback tier bounds its search by IdleSearchRadius
-    // from the creature's Home anchor, not from wherever the creature is standing - built
-    // explicitly here: a tree much nearer to the person than the camp is, but far enough from
-    // camp to fall outside IdleSearchRadius, must be ignored in favour of one further from the
-    // person but still within IdleSearchRadius of camp.
+    // The fallback food search bounds its search by IdleSearchRadius from the creature's home
+    // anchor, not from wherever the creature is standing - built explicitly here: a tree much
+    // nearer to the person than the camp is, but far enough from camp to fall outside
+    // IdleSearchRadius, must be ignored in favour of one further from the person but still
+    // within IdleSearchRadius of camp.
     [Fact]
     public void AnIdleSearchNeverReachesATreeFartherThanIdleSearchRadiusFromCampEvenIfNearerToThePersonThemself()
     {

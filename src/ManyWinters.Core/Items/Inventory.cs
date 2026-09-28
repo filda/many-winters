@@ -269,8 +269,8 @@ public sealed class Inventory
         }
     }
 
-    // The once-per-tick spoilage pass (WorldState.Advance): drops every stacked unit and every
-    // worked object whose time is up, wherever this Inventory sits (a pack, a carcass, a store's
+    // The once-per-tick spoilage pass: drops every stacked unit and every worked object whose
+    // time is up, wherever this Inventory sits (a pack, a carcass, a store's
     // shelves). Returns what stock was lost, for tests/logging; a lost assembly is simply gone
     // from Assemblies, the same as RemoveAssembly leaves no trace.
     public IReadOnlyList<(ItemKindId Kind, int Count)> Expire(long currentTick, ItemCatalog catalog)

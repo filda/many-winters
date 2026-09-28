@@ -98,8 +98,9 @@ public class InspectorTextTests
         Assert.Equal("Fleeing", InspectorText.ForTask(deer));
     }
 
-    // Only a Person ever runs hunting or butchering, but ForTask reads Creature.Tasks.Current
-    // alone, so a bare HuntTask/ButcherTask on any creature is enough to test the wording.
+    // Only a Person ever runs hunting or butchering, but the task wording only looks at the
+    // creature's current task, so a bare HuntTask/ButcherTask on any creature is enough to test
+    // the wording.
     [Fact]
     public void AHunterIsSaidToBeHunting()
     {

@@ -7,9 +7,10 @@ namespace ManyWinters.Audio;
 // ending at three different times.
 //
 // An earlier pass built this around Minnaert bubbles - gliding tones, the textbook water cue,
-// and the reason Oscillator.GlideTo exists. The ear threw them out: at any level where they
-// were audible they read as a fizzing drink, and what carries the sound is the splash. They are
-// gone rather than turned down, because a layer nothing is allowed to hear is not a layer.
+// and the reason the oscillator gained a frequency glide. The ear threw them out: at any
+// level where they were audible they read as a fizzing drink, and what carries the sound is
+// the splash. They are gone rather than turned down, because a layer nothing is allowed to hear
+// is not a layer.
 public static class LiquidModel
 {
     private const float BaseLengthSeconds = 0.35f;

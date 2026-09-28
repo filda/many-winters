@@ -49,7 +49,7 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
     private CollisionShape3D? _collisionShape;
     private bool _isHovered;
 
-    // The world height every layer is created at (BillboardSprite.Create) and the height
+    // The world height every layer is created at and the height
     // WorldPresenter placed this node by; the ground shadow and ground-contact correction are
     // measured against it.
     protected float NominalHeight { get; }
@@ -131,8 +131,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         return layer;
     }
 
-    // Re-points a layer at another image, keeping its world height. BillboardSprite.Apply
-    // resets Modulate to white, so the layer's base colour is handed back in here.
+    // Re-points a layer at another image, keeping its world height. Applying a new texture
+    // resets the tint to white, so the layer's base colour is handed back in here.
     protected void Retexture(SpriteLayer layer, string texturePath, Color baseModulate, Color fallbackColor)
     {
         BillboardSprite.Apply(layer.Sprite, texturePath, NominalHeight, fallbackColor);
@@ -160,8 +160,8 @@ internal abstract partial class SpriteEntityView : Area3D, IHoverable
         Position += GroundContactCorrection;
     }
 
-    // How far ScaleAndKeepGroundContact lifted this node above where WorldSpace.ToRender puts
-    // an unscaled one, so a later position handed in (PersonView's per-tick target) is lifted
+    // How far ScaleAndKeepGroundContact lifted this node above where an unscaled one would
+    // render, so a later position handed in (PersonView's per-tick target) is lifted
     // the same; otherwise the first tick walks every person down to the uncorrected height.
     protected Vector3 GroundContactCorrection { get; private set; }
 

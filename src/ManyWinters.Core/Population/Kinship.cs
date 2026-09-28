@@ -10,8 +10,9 @@ public static class Kinship
     private static bool IsParentOf(Person parent, Person child) =>
         ReferenceEquals(child.Mother, parent) || ReferenceEquals(child.Father, parent);
 
-    // Person.Unknown is where every unremembered line ends, so two people who merely both have
-    // unrecorded parents are not siblings - otherwise the whole starting band would be one family.
+    // The sentinel unknown person is where every unremembered line ends, so two people who merely
+    // both have unrecorded parents are not siblings - otherwise the whole starting band would be
+    // one family.
     private static bool ShareAParent(Person a, Person b) =>
         (IsRecorded(a.Mother) && (ReferenceEquals(a.Mother, b.Mother) || ReferenceEquals(a.Mother, b.Father)))
         || (IsRecorded(a.Father) && (ReferenceEquals(a.Father, b.Mother) || ReferenceEquals(a.Father, b.Father)));

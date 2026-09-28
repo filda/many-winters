@@ -11,7 +11,7 @@ namespace ManyWinters.Tests.Milestones;
 /// </summary>
 public class DeerHerdMilestoneTests
 {
-    // Mirrors SimulationRules.Default (TicksPerSeason 75 * 4 seasons).
+    // Mirrors the default simulation rules (TicksPerSeason 75 * 4 seasons).
     private const long TicksPerSeason = 75;
     private const long TicksPerYear = TicksPerSeason * 4;
 
@@ -70,9 +70,9 @@ public class DeerHerdMilestoneTests
         Assert.Contains(world.Animals, a => a.BirthTick > 0);
     }
 
-    // No food anywhere, so this is entirely SimulationRules.HungerPerTick (1) against MaxHunger
+    // No food anywhere, so this is entirely the hunger-per-tick rate (1) against MaxHunger
     // (~100, plus up to 20% variation) scaled down by the deer's own winter reserve
-    // (TestCatalogs.DeerHungerPerTickMultiplier 0.28) - the same arithmetic
+    // multiplier (0.28) - the same arithmetic
     // WinterSurvivalMilestoneTests relies on for a person, just stretched out by the multiplier.
     // A year's worth of season-weighted hunger (three Mild/Hot seasons at 1x plus one Cold at 2x,
     // 75 ticks apiece) comes to 375 effective ticks, times 0.28 is only ~105 - close enough to
@@ -92,7 +92,7 @@ public class DeerHerdMilestoneTests
     }
 
     // Runs a fresh herd through exactly one season that is not the deer's own breeding climate
-    // (Mild - deer.json, mirrored by TestCatalogs.DeerSpecies), with everything else that would
+    // (Mild - deer.json, mirrored in the test catalogs), with everything else that would
     // let them breed (a mate at home, plenty of grass) present. Nobody exists while the world
     // walks past the seasons before the one under test, so nothing can conceive on the way there.
     [Theory]
@@ -114,16 +114,16 @@ public class DeerHerdMilestoneTests
         Assert.Equal(herd.Count, world.Animals.Count);
     }
 
-    // Two fixes keep the herd from dying out: IdleDecision.FindNearestGatherableEntity no longer
+    // Two fixes keep the herd from dying out: the in-home food search no longer
     // sends a whole herd at the single node nearest its shared anchor, and its in-home tier now
-    // only counts a node that can still give a full harvest (GatherCommand.WouldYieldAFullHarvest)
-    // rather than any sliver above zero. MapLoader.SpawnAnimalHerds also places a herd where the
-    // grass actually is (BestHerdCenter), not merely far enough from camp. Even so, the herd still
+    // only counts a node that can still give a full harvest
+    // rather than any sliver above zero. Herd placement also places a herd where the
+    // grass actually is, not merely far enough from camp. Even so, the herd still
     // ends the year down from its starting 17 to 6, despite 5 births along the way - net decline,
     // just not extinction.
     //
-    // What closes the rest of the gap is the winter reserve (SpeciesDefinition.
-    // HungerPerTickMultiplier, tuned to 0.28): with it, the same shipped year ends at 18 living
+    // What closes the rest of the gap is the winter reserve (a hunger-per-tick multiplier
+    // tuned to 0.28): with it, the same shipped year ends at 18 living
     // deer, one more than the starting 17, and the cutoff is not a knife's edge - every multiplier
     // from 0.1 up to 0.28 lands on that same 18, while 0.29 already drops back to 16. That is
     // margin enough to assert "at least as many as it started with" outright.

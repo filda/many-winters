@@ -5,7 +5,7 @@ namespace ManyWinters.Core.Tasks;
 
 // "Close in on this deer": walks toward the *moving* prey with a fresh MoveTask every tick, the
 // same pattern FollowTask uses for a target that does not sit still. Only walks; the throw itself
-// happens elsewhere, since CreatureTask.Advance sees only the Creature and a throw costs time
+// happens elsewhere, since advancing only sees the Creature and a throw costs time
 // (NextAttemptTick) the way a workbench attempt does. Never completes on its own - a
 // reconsideration loop decides when hunting this prey stops being worth it.
 // speedPerTick comes from whoever installs this task: a player-directed hunt walks at the

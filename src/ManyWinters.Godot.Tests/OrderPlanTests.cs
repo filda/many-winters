@@ -3,7 +3,7 @@ using ManyWinters.Godot.Logic;
 
 namespace ManyWinters.Godot.Tests;
 
-// The decision OrderCoordinator.Perform acts on, pulled out here because OrderCoordinator itself
+// The decision a perform action acts on, pulled out here because OrderCoordinator itself
 // takes a WorldPresenter (Node-bound) and cannot be built without a running engine
 // (docs/development.md, Godot-layer testability).
 public class OrderPlanTests

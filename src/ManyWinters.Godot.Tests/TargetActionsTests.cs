@@ -612,7 +612,7 @@ public class TargetActionsTests
 
     // Both carry the animal itself as what pursues rather than a fixed spot - a deer moves, and a
     // carcass is reached with the pile's own standoff, so both are handed to the simulation's own
-    // tick loop instead of a one-shot walk-then-fire (ActionOffer.Pursuit).
+    // tick loop instead of a one-shot walk-then-fire.
     [Fact]
     public void HuntCarriesAPursuitTaskForTheDeerItself()
     {
@@ -625,8 +625,8 @@ public class TargetActionsTests
         var pursuit = Assert.IsType<HuntTask>(hunt.Pursuit);
         Assert.Same(deer, pursuit.Prey);
         Assert.Equal(world.Configuration.Rules.HuntingRange, pursuit.Range);
-        // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
-        // player-directed hunt walks like every other order the player gives.
+        // Directed speed, not the idle AI's own slower pace - a player-directed hunt walks like
+        // every other order the player gives.
         Assert.Equal(world.Configuration.Rules.SpeedPerTick, pursuit.SpeedPerTick);
     }
 
@@ -644,8 +644,8 @@ public class TargetActionsTests
         var pursuit = Assert.IsType<ButcherTask>(butcher.Pursuit);
         Assert.Same(deer, pursuit.Carcass);
         Assert.Equal(world.Configuration.Rules.PileReachDistance, pursuit.Reach);
-        // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own slower pace - a
-        // player-directed butchering walks like every other order the player gives.
+        // Directed speed, not the idle AI's own slower pace - a player-directed butchering walks
+        // like every other order the player gives.
         Assert.Equal(world.Configuration.Rules.SpeedPerTick, pursuit.SpeedPerTick);
     }
 

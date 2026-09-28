@@ -25,7 +25,7 @@ public static class SpritePixelHit
     // antialiased, so a hair of alpha at a silhouette's outer fringe is visually nothing.
     private const float OpaqueAlphaThreshold = 0.1f;
 
-    // Takes a screen point, the one thing every caller has: HoverArbiter.Revalidate has only
+    // Takes a screen point, the one thing every caller has: hover revalidation has only
     // the cursor, and SpriteEntityView projects a ray hit once and tests each layer against it.
     //
     // spriteCenterOverride pins the plane to a stable anchor: PersonView's walk bob moves its

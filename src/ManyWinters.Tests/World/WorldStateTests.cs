@@ -1105,9 +1105,8 @@ public class WorldStateTests
         Assert.Equal(lifespanTicks, person.DeathTick);
     }
 
-    // Old age is read off the person's species' LifeCycle (WorldState.LifeCycleOf), not a fixed
-    // number: two worlds built with different human lifespans kill their people at different
-    // ticks.
+    // Old age is read off the person's species' LifeCycle, not a fixed number: two worlds built
+    // with different human lifespans kill their people at different ticks.
     [Fact]
     public void AdvanceReadsTheMaximumLifespanOffTheCreaturesOwnSpeciesRatherThanAFixedNumber()
     {

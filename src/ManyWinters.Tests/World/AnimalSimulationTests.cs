@@ -162,10 +162,9 @@ public class AnimalSimulationTests
         Assert.IsType<GatherTask>(deer.Tasks.Current);
     }
 
-    // IdleDecision.FindNearestGatherableEntity's in-home tier only counts a node that would still
-    // give this deer a full harvest (GatherCommand.WouldYieldAFullHarvest) - a node down to a
-    // sliver still passes IsWorthGathering's plain "more than zero left", so without this a herd
-    // would nibble its barely-regrown home tuft at regen speed forever rather than falling
+    // The in-home food search only counts a node that would still give this deer a full harvest -
+    // a node down to a sliver still passes the plain "more than zero left" check, so without this
+    // a herd would nibble its barely-regrown home tuft at regen speed forever rather than falling
     // through to fuller grass further out.
     [Fact]
     public void AHerdWhoseHomeNodesAreNearlyEmptyGoesToTheFullerGrassOutsideTheHome()
@@ -191,10 +190,10 @@ public class AnimalSimulationTests
         Assert.Same(fullOutsideHome, gatherTask.Target);
     }
 
-    // IdleDecision.FindNearestGatherableEntity picks nearest-to-itself among nodes bounded by the
-    // shared Home, not nearest-to-the-shared-anchor - the earlier anchor-centred search sent every
-    // member of a herd at the single node nearest that one point, which starved the shipped map's
-    // herds even with plenty of grass in aggregate.
+    // The food search picks nearest-to-itself among nodes bounded by the shared home, not
+    // nearest-to-the-shared-anchor - the earlier anchor-centred search sent every member of a
+    // herd at the single node nearest that one point, which starved the shipped map's herds even
+    // with plenty of grass in aggregate.
     [Fact]
     public void AHerdWithSeveralGrassNodesInsideItsHomeEndsUpGatheringFromMoreThanOneNode()
     {
@@ -218,16 +217,15 @@ public class AnimalSimulationTests
         Assert.True(distinctTargets > 1, $"expected more than one distinct grazing target, found {distinctTargets}");
     }
 
-    // The winter reserve: SpeciesDefinition.HungerPerTickMultiplier scales
-    // SimulationRules.HungerPerTick per species. Human is 1, deer is
-    // TestCatalogs.DeerHungerPerTickMultiplier (mirrors deer.json).
+    // The winter reserve: each species scales the base hunger-per-tick rate by its own
+    // multiplier. Human is 1, deer mirrors the multiplier from deer.json.
     [Fact]
     public void APersonsHungerAccruesAtTheUnscaledRateWhileADeersIsScaledByItsSpecies()
     {
         var world = TestCatalogs.CreateWorldWithDeer();
         var rules = world.Configuration.Rules;
-        // Tick 0 is Spring (Mild, hunger multiplier 1 - SeasonParameters.Default) and far apart
-        // enough, with nothing edible nearby, that neither creature's task or diet affects hunger.
+        // Tick 0 is Spring (Mild, hunger multiplier 1) and far apart enough, with nothing edible
+        // nearby, that neither creature's task or diet affects hunger.
         var person = world.SpawnPerson("Ava", new Position(-500, -500), TestCatalogs.AdultAgeTicks);
         var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(500, 500), NewHome(new Position(500, 500)));
 

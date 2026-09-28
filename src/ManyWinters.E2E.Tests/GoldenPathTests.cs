@@ -55,7 +55,7 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     private const int GatherTicks = 30;
 
     // The selection panel's "Pack" line (the whole line is a button) opens the workbench. The
-    // panel is docked to the right edge (SelectionPanel.Width 300 + Margin 16); the line sits
+    // panel is docked to the right edge (width 300 + margin 16); the line sits
     // below the two meters - title bar 30 + padding 14 + the two meter rows + spacing puts it at
     // y 122..149 regardless of what the pack line says.
     private const int PackLineX = 986;
@@ -130,7 +130,7 @@ public sealed class BuildingPlacementTests : IClassFixture<GameFixture>
     private const int GatherTicks = 30;
 
     // The open ground the store is asked for on and placed at: the context menu opens exactly at
-    // the right-click point (ContextMenu.Open), so the menu's lines are offsets from here.
+    // the right-click point, so the menu's lines are offsets from here.
     private const int GroundX = 500;
     private const int GroundY = 500;
 
@@ -301,11 +301,10 @@ public sealed class ExtinctionTransitionTests : IClassFixture<GameFixture>
 /// held key drove the camera all the way up - and leaves both frames for the human reviewer.</summary>
 public sealed class BillboardRenderingTests : IClassFixture<GameFixture>
 {
-    // Win32 VK_PRIOR (Page Up) — FreeCameraRig.HandleInput reads Key.Pageup while held and steps
-    // _tiltDegrees toward MaxTiltDegrees (70°) at TiltSpeedDegreesPerSecond (45°/s). The tilt
-    // needs ~1.3s of the game's own time to cross the full 12–70° range - game time, not wall
-    // time: on a software renderer a frame can outlast any fixed hold, so the key is held until
-    // the limit's own log line says it got there.
+    // Win32 VK_PRIOR (Page Up) — holding it steps the camera's tilt toward its 70° max at
+    // 45°/s. The tilt needs ~1.3s of the game's own time to cross the full 12–70° range - game
+    // time, not wall time: on a software renderer a frame can outlast any fixed hold, so the key
+    // is held until the limit's own log line says it got there.
     private const int VkPageUp = 0x21;
 
     private readonly GameFixture _game;

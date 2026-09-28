@@ -10,8 +10,8 @@ namespace ManyWinters.Core.Commands;
 // edge in the game, and so the first object that can fell a tree.
 //
 // Nothing here names stone. Hard enough to hold an edge and brittle enough to fracture into one
-// is what knapping asks of a substance (MaterialAffordances.CanKnap), so a harder, more brittle
-// stone found later knaps better with no new code - which is the whole of section 1's split
+// is what knapping asks of a substance, so a harder, more brittle stone found later knaps
+// better with no new code - which is the whole of section 1's split
 // between what a thing is made of and what shape it has been brought to.
 public sealed record KnapCommand(Person Person, ItemKindId Item) : ICommand
 {

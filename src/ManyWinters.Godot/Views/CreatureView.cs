@@ -147,7 +147,7 @@ internal abstract partial class CreatureView : SpriteEntityView
     // independently animated parts.
     protected abstract void ApplyPose(Vector3 offset);
 
-    // `target` is where WorldSpace.ToRender puts an unscaled creature; this view stands a little
+    // `target` is the position an unscaled creature would render at; this view stands a little
     // higher than that, and so must its target.
     public void SetTargetPosition(Vector3 target, float overSeconds)
     {
@@ -190,7 +190,7 @@ internal abstract partial class CreatureView : SpriteEntityView
     {
     }
 
-    // Called every tick for every creature, whether or not WorldState.IsDecayed changed, the same
+    // Called every tick for every creature, whether or not the decayed flag changed, the same
     // way SetAlive is - the guard below is what makes the no-change case cost nothing. One-way:
     // there is no coming back from a decayed corpse, so a caller passing false once true is
     // already the case is simply ignored rather than un-deciding it.

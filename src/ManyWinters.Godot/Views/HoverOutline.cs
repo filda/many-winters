@@ -24,7 +24,7 @@ internal static class HoverOutline
     private const float RimScreenPixels = 2f;
 
     // As many textures as the shader has slots for. A fruit tree is the widest entity at four
-    // layers, and only two of those are traced (SpriteLayer.Outlines), so nothing comes close.
+    // layers, and only two of those draw outlines, so nothing comes close.
     private const int MaxLayers = 4;
 
     private static Shader? _shader;

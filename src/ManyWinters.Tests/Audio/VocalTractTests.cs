@@ -45,9 +45,9 @@ public class VocalTractTests
         Assert.True(maxAbs < 100.0f, $"max abs sample {maxAbs} suggests a runaway, not a resonance");
     }
 
-    // TongueDiameter is the width of the section the tongue's cosine hump carries - see
-    // VocalTract.RestDiameter. Widening it (towards an open vowel) lowers the resonance the same
-    // way a wider real vocal-tract section lowers the frequency it resonates at.
+    // TongueDiameter is the width of the section the tongue's cosine hump carries. Widening it
+    // (towards an open vowel) lowers the resonance the same way a wider real vocal-tract section
+    // lowers the frequency it resonates at.
     [Fact]
     public void WiderTractSectionLowersTheResonanceItProduces()
     {

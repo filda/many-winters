@@ -23,11 +23,11 @@ internal partial class ResourceNodeView : SpriteEntityView
     private const float MaxScale = 1.15f;
     private const float ShadowDiameterRatio = 0.7f / DefaultSize;
 
-    // A fraction in front of the canopy (BillboardSprite.Create's renderPriority): two
+    // A fraction in front of the canopy's draw priority: two
     // billboards at the same position and depth have no defined draw order and would z-fight.
     private const int FruitOverlayRenderPriority = 1;
 
-    // Distinct salts for EntityVisualVariation.RangeFor, so trunk and canopy brighten and dim
+    // Distinct salts for the brightness-variation range, so trunk and canopy brighten and dim
     // independently instead of as one uniform tint.
     private const int TrunkBrightnessSalt = 401;
     private const int CanopyBrightnessSalt = 402;
@@ -342,8 +342,8 @@ internal partial class ResourceNodeView : SpriteEntityView
         return exists;
     }
 
-    // Cached per kind, not loaded per node: thousands of nodes of a handful of kinds calling
-    // ResourceLoader.Load on the same .tres in one frame reliably crashed Godot's C# bridge (a
+    // Cached per kind, not loaded per node: thousands of nodes of a handful of kinds each loading
+    // the same .tres resource in one frame reliably crashed Godot's C# bridge (a
     // GCHandle race, "Handle is not initialized").
     private static readonly Dictionary<EntityKindId, ResourceVisualDefinition?> VisualDefinitionCache = new();
 

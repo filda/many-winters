@@ -15,8 +15,8 @@ namespace ManyWinters.Tools.E2EHarness;
 [SupportedOSPlatform("windows")]
 public sealed class GameWindow : IDisposable
 {
-    // Godot passes everything after this separator on to the game as its own user arguments
-    // (OS.GetCmdlineUserArgs) - the channel the session's modes ride on.
+    // Godot passes everything after this separator on to the game as its own user arguments -
+    // the channel the session's modes ride on.
     private const string UserArgsSeparator = "++";
 
     // The client-area size the suite's click targets and pixel baselines are calibrated for:
@@ -209,8 +209,8 @@ public sealed class GameWindow : IDisposable
     }
 
     /// <summary>
-    /// "Main ready." is the last line <c>Main._Ready</c> prints (src/ManyWinters.Godot/Main.cs),
-    /// once the world has finished building synchronously — the window can exist well before
+    /// "Main ready." is the last line printed once the world has finished building
+    /// synchronously — the window can exist well before
     /// that, still showing the boot splash image. A fresh launch renames the previous
     /// "godot.log" away and starts a new one near-immediately at boot (see docs/development.md,
     /// "Reading the game's output"), well before the window even exists, so reading the whole

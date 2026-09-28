@@ -85,7 +85,7 @@ public sealed record SimulationRules
     public float HearsayConfidence { get; } = 0.5f;
 
     // Hunger an average person dies at. Each person gets their own value around it, so this is
-    // the middle of a range, not a ceiling on Needs.Hunger.
+    // the middle of a range, not a ceiling on hunger itself.
     public float MaxHunger { get; init; } = 100f;
 
     // Fraction of MaxHunger a person's own value may sit above or below it, so a famine thins a
@@ -97,8 +97,8 @@ public sealed record SimulationRules
     // draw: the same on every reload without being saved, and independent of creation order.
     public float MaxHungerFor(CreatureId id)
     {
-        // Bit 0 of the spread is what Creature.SexOf reads; skipping it keeps hunger tolerance
-        // independent of sex.
+        // Bit 0 of the spread is what determines a creature's sex; skipping it keeps hunger
+        // tolerance independent of sex.
         var spread = unchecked((uint)SeedHash.Avalanche(unchecked((uint)id.Seed))) >> 1;
         var fraction = ((spread / (float)(uint.MaxValue >> 1)) * 2f) - 1f;
 
@@ -189,7 +189,7 @@ public sealed record SimulationRules
     // A thrown stone in bare hands: nearly hopeless.
     public float HuntingBaseHitChance { get; init; } = 0.05f;
 
-    // Scales Inventory.BestChoppingScore into a hit chance on top of the base above - a sharp
+    // Scales a tool's best chopping score into a hit chance on top of the base above - a sharp
     // stone hafted on a stick is a spear as much as an axe until form recognition tells them
     // apart (docs/materials-and-crafting-architecture.md section 8). Picked so the shipped
     // axe-grade sharp hafted tool - a knapped wedge lashed to a stick, both practised to mastery -
@@ -227,8 +227,8 @@ public sealed record SimulationRules
     public float? StartingCondition { get; } = 100f;
 
     // The speed every player-directed walk uses - a purposeful trip, not the idle AI's unhurried
-    // pace (GatherTask.SpeedPerTick). Public: TargetActions builds HuntTask/ButcherTask with this
-    // same number rather than a copy of it.
+    // pace. Public: TargetActions builds HuntTask/ButcherTask with this same number rather than a
+    // copy of it.
     public float SpeedPerTick { get; } = 1f;
     public float SkillGainPerAttempt { get; } = 1f;
     public float RepairConditionAmount { get; } = 25f;

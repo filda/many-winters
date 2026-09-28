@@ -12,7 +12,7 @@ public sealed record ItemDefinition(
     // Bulk of one unit, in arbitrary units; weight is this times the material's density. 0 for
     // anything that should not gate carry capacity.
     float Volume = 0f,
-    // Needs.Hunger relieved per unit eaten; 0 means "not food". Per item, not per material:
+    // Hunger relieved per unit eaten; 0 means "not food". Per item, not per material:
     // nothing reads a material's nutrition yet.
     float HungerRestoredPerUnit = 0f,
     // Flat carry-capacity bonus for having this kind at all - presence, not count. A property of

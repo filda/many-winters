@@ -33,7 +33,7 @@ internal sealed record BandRoster(string Title, string Summary, IReadOnlyList<Ro
         var living = world.People.Where(person => person.IsAlive).ToList();
         if (living.Count == 0)
         {
-            // A band that has just died out. BandArrival.Of refuses to describe one, and
+            // A band that has just died out - there is no arrival to describe, and
             // "0 people" is not a sentence about anybody.
             return new BandRoster("The band", "Nobody left.", []);
         }

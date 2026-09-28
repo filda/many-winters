@@ -61,9 +61,9 @@ internal partial class PersonView : CreatureView
         _aliveBodyModulate = body.Modulate;
         _body = Register(body, _standing.Body);
 
-        // AlphaCutMode.Disabled, not the default OpaquePrepass: an overlay at the body's exact
-        // position and depth needs ordinary alpha blending to composite cleanly, since
-        // OpaquePrepass has no defined order between two billboards at one depth.
+        // Ordinary alpha blending, not the default opaque-prepass mode: an overlay at the body's
+        // exact position and depth needs to composite cleanly, since the opaque-prepass mode has
+        // no defined order between two billboards at one depth.
         var clothing = BillboardSprite.Create(_standing.Clothing, Height, _standing.ClothingColor, SpriteBase3D.AlphaCutMode.Disabled, renderPriority: 1, excludeFromOcclusionFade: true);
         clothing.Modulate = SpriteTint.ModulateFor(_standing.ClothingColor);
         _clothing = Register(clothing, _standing.Clothing);
@@ -92,8 +92,8 @@ internal partial class PersonView : CreatureView
     }
 
     // Each layer swaps to its own generated lying-down variant - the same hairstyle/clothing
-    // this person had standing. Retexture carries the new base colour, since BillboardSprite.Apply
-    // resets Modulate to white.
+    // this person had standing. Retexture carries the new base colour, since applying a new
+    // texture resets the tint to white.
     protected override void OnAliveChanged(bool isAlive)
     {
         var look = isAlive ? _standing : _lying;
@@ -103,7 +103,7 @@ internal partial class PersonView : CreatureView
         Retexture(_hair, look.Hair, tint ?? SpriteTint.ModulateFor(look.HairColor), look.HairColor);
     }
 
-    // Once WorldState.IsDecayed: the same lying-down layers, tinted one step further towards
+    // Once decayed: the same lying-down layers, tinted one step further towards
     // bone. There is no bones art yet, and this only fires once a person is already dead, so
     // the lying-down look is already in place.
     protected override void OnDecayedChanged()

@@ -56,7 +56,7 @@ public abstract class Creature
     public long IdleGraceUntilTick { get; set; }
 
     // The nursing/following parent as seen by the shared simulation's infant-follows-mother rule.
-    // A Person always has one, even if it is Person.Unknown; an animal may have none.
+    // A Person always has one, even if it is the sentinel unknown person; an animal may have none.
     public abstract Creature? NursingMother { get; }
 
     // What this creature is - a human is a species too. Looked up in the species catalog for the
@@ -65,8 +65,8 @@ public abstract class Creature
 
     // The shared ground this creature wanders around, if it has one. An Animal always has one; a
     // Person has one once born or spawned into a real band and null otherwise - a person built
-    // outside any map, or Person.Unknown, wanders from wherever they stand instead. Exposed here
-    // as a covariant override the same way NursingMother is, so callers never have to ask "is
-    // this an Animal" to find it.
+    // outside any map, or the sentinel unknown person, wanders from wherever they stand instead.
+    // Exposed here as a covariant override the same way NursingMother is, so callers never have
+    // to ask "is this an Animal" to find it.
     public virtual HomeRange? Home { get; init; }
 }

@@ -111,8 +111,8 @@ internal static class TargetActions
         var heading = world.Configuration.SpeciesCatalog.Get(animal.Species).DisplayName;
         var rules = world.Configuration.Rules;
 
-        // Directed speed (MoveCommand.SpeedPerTick), not the idle AI's own unhurried pace: a
-        // player-issued hunt or butchering walks like every other order the player gives.
+        // Directed speed, not the idle AI's own unhurried pace: a player-issued hunt or
+        // butchering walks like every other order the player gives.
         var offer = animal.IsAlive
             ? ActionOffer.For(
                 "Hunt",

@@ -17,7 +17,7 @@ public sealed class SkillCatalog
     // every Advance, also against minimal test catalogs that never defined them.
     public SkillDefinition? Find(SkillTypeId id) => _definitions.GetValueOrDefault(id);
 
-    // WorldState.AutoTeachNearbyPeople tells every EfficientTechnique from a BaseTechnique -
+    // Teaching between neighbours tells every EfficientTechnique from a BaseTechnique -
     // only the latter spreads from standing near someone.
     public IEnumerable<SkillDefinition> Definitions => _definitions.Values;
 

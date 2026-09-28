@@ -24,7 +24,7 @@ public class IdleTaskTests
         var person = NewPerson(new Position(3, 4));
         var task = new IdleTask();
 
-        // Enough ticks to clear even the longest pre-leg pause (IdleTask.MaxPauseTicks).
+        // Enough ticks to clear even the longest pre-leg pause.
         for (var i = 0; i < 20; i++)
         {
             task.Advance(person);
@@ -44,8 +44,8 @@ public class IdleTaskTests
         {
             task.Advance(person);
 
-            // 8f mirrors IdleTask's private MaxWanderRadius; the epsilon covers floating-point
-            // drift only.
+            // 8f mirrors the private wander-radius cap; the epsilon covers floating-point drift
+            // only.
             Assert.True(WorldState.Distance(start, person.Position) <= 8f + 0.01f);
         }
     }
@@ -59,7 +59,7 @@ public class IdleTaskTests
         var avaTask = new IdleTask();
         var branTask = new IdleTask();
 
-        // Clears the longest possible pre-leg pause (IdleTask.MaxPauseTicks) for both.
+        // Clears the longest possible pre-leg pause for both.
         for (var i = 0; i < 20; i++)
         {
             avaTask.Advance(ava);
@@ -72,8 +72,8 @@ public class IdleTaskTests
     [Fact]
     public void ConsecutivePersonIdsDoNotWanderInLockstep()
     {
-        // Guards the seed avalanche in IdleTask.SeedFor: System.Random correlates badly on nearby
-        // small seeds (sequential person ids), which would read as synchronized wandering.
+        // Guards against seed avalanche: System.Random correlates badly on nearby small seeds
+        // (sequential person ids), which would read as synchronized wandering.
         var start = new Position(0, 0);
         var ava = new Person { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
         var bran = new Person { Id = TestIds.Person(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
@@ -254,7 +254,7 @@ public class IdleTaskTests
         var person = NewPerson(home.Anchor);
         var task = new IdleTask(home);
 
-        // Establishes which season "now" is (see HomeRange.Advance) without moving anything.
+        // Establishes which season "now" is without moving anything.
         home.Advance(0, ticksPerSeason);
 
         // A few legs near the original anchor, before it has moved anywhere.

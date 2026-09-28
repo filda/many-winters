@@ -16,8 +16,8 @@ public class FollowTaskTests
     [Fact]
     public void IsNeverComplete()
     {
-        // Weaning is WorldState.Advance's call, not the task's - it has no idea the child will
-        // one day stop needing this.
+        // Weaning is decided elsewhere in the simulation, not by the task - it has no idea the
+        // child will one day stop needing this.
         var mother = NewPerson("Sela", new Position(0, 0));
         var task = new FollowTask(mother, KeepWithin, Speed);
         var infant = NewPerson("Bran", new Position(0, 0));

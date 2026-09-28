@@ -5,11 +5,11 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// The once-per-tick spoilage pass in WorldState.Advance - wherever a perishable thing lies (a
-// ground pile, a building's storage, a pack carried between containers), it vanishes its
-// material's ShelfLifeTicks after it came to be, full stop. Inventory's tests (InventoryTests)
-// cover the ledger/transfer mechanics directly; these are about WorldState running that pass
-// over the whole map.
+// The once-per-tick spoilage pass - wherever a perishable thing lies (a ground pile, a
+// building's storage, a pack carried between containers), it vanishes its material's
+// ShelfLifeTicks after it came to be, full stop. Inventory's tests (InventoryTests) cover the
+// ledger/transfer mechanics directly; these are about WorldState running that pass over the
+// whole map.
 public class WorldStateSpoilageTests
 {
     [Fact]
@@ -49,8 +49,8 @@ public class WorldStateSpoilageTests
     // Dropping is not a transfer the way Deposit/Withdraw/Loot/Butcher/PickUp are - a pile holds
     // one tick for however many units land in it - but it must not be a way to launder a
     // nearly-spoiled stack back to fresh either: the pile takes the OLDEST tick among what was
-    // dropped (Inventory.RemoveDated), and PickUpItemCommand carries that same tick back into the
-    // pack, so the round trip changes nothing about when the meat spoils.
+    // dropped, and PickUpItemCommand carries that same tick back into the pack, so the round
+    // trip changes nothing about when the meat spoils.
     [Fact]
     public void DroppingAndPickingUpMeatPreservesItsOriginalAgeRatherThanRefreshingIt()
     {

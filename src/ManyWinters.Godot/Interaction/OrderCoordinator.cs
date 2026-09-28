@@ -57,9 +57,9 @@ internal sealed class OrderCoordinator(
         {
             case OrderDispatch.InstallPursuit:
                 // Hunt and Butcher both work this way: the task walks (or does not need to) and
-                // WorldState.Advance runs the command itself every tick the task stays current,
-                // so there is nothing here to remember and re-check on arrival - unlike every
-                // other directed action, which is a single attempt once the walk ends.
+                // the simulation's own advance step runs the command itself every tick the task
+                // stays current, so there is nothing here to remember and re-check on arrival -
+                // unlike every other directed action, which is a single attempt once the walk ends.
                 _pendingOrders.Forget(person);
                 person.Tasks.Interrupt(offer.Pursuit!);
                 break;

@@ -57,7 +57,7 @@ public sealed record SpeciesDefinition(
 
     // The species' own mating rule: the climate she must be in to conceive (keyed on Climate,
     // never a Season), how long she then carries the pregnancy, the per-tick chance an eligible
-    // female conceives, and how well fed (Needs.Hunger below this) she must be to count as
+    // female conceives, and how well fed (hunger below this threshold) she must be to count as
     // eligible at all.
     public sealed record BreedingDefinition(Climate Climate, long GestationTicks, float ConceptionChancePerTick, float SatietyHungerBelow);
 

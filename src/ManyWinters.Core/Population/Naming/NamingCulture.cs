@@ -6,7 +6,7 @@ public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Pe
 {
     // Slow enough that no single generation overwrites the naming tradition it was handed
     // (docs/Procedural Name Generation Plan.md, "Cultural Memory"); the last ~12 births (roughly
-    // one generation, SimulationRules.Default) count for the separate NamingTrend on top.
+    // one generation under the default simulation rules) count for the separate NamingTrend on top.
     private const float CultureDecayPerObservation = 0.98f;
     private const int RecentTrendWindow = 12;
 
@@ -43,9 +43,10 @@ public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Pe
         return PhoneticNameGenerator.GenerateChild(rng, culture, trend, motherName: null, fatherName: null, existingNames, siblingNames: []);
     }
 
-    // Cached against People.Count + Forebears.Count (both only ever grow): rebuilding the whole
-    // profile from history is cheap once, but StartFamilies calls NameForNewborn speculatively
-    // for every eligible pair on every tick, and only some of those become an actual birth.
+    // Cached against the total number of people and forebears (both only ever grow): rebuilding
+    // the whole profile from history is cheap once, but StartFamilies calls NameForNewborn
+    // speculatively for every eligible pair on every tick, and only some of those become an
+    // actual birth.
     private (CultureProfile Culture, CultureProfile Trend, HashSet<string> ExistingNames) NamingProfiles()
     {
         var version = people.Count + forebears.Count;

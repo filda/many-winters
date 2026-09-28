@@ -4,7 +4,7 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Core.Tasks;
 
 // A small aimless walk, one leg at a time via an internal MoveTask. Never completes; a real
-// order replaces it via CreatureTaskQueue.Interrupt.
+// order replaces it.
 //
 // Without a home (every Person today): anchored wherever the creature happened to be standing on
 // the first Advance, radius drawn once from its own id. With one (every Animal): anchored on the

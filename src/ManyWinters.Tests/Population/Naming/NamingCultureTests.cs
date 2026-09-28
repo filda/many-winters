@@ -25,8 +25,8 @@ public class NamingCultureTests
         var world = TestCatalogs.CreateWorld();
         var name = world.Naming.GenerateUnrelatedName(new Random(42));
 
-        // Somebody is now called that; the cache (keyed on People.Count + Forebears.Count) must
-        // rebuild so the next draw - even from the same seed - avoids repeating it.
+        // Somebody is now called that; the cache (keyed on how many people and forebears exist)
+        // must rebuild so the next draw - even from the same seed - avoids repeating it.
         world.SpawnPerson(name, new Position(0, 0));
 
         var afterAdding = world.Naming.GenerateUnrelatedName(new Random(42));

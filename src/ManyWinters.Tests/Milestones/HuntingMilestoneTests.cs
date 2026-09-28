@@ -13,12 +13,11 @@ namespace ManyWinters.Tests.Milestones;
 /// this milestone needs.
 ///
 /// What "survives" means here needed measuring rather than assuming: a solo hunt has to close a
-/// real gap to reach a fleeing or just-killed deer at
-/// <see cref="ManyWinters.Core.World.SimulationRules.HuntingRange"/>, which costs time a hungry
-/// person does not always have, so an individual miss is a real death - hunting creates injury
-/// risk, and losing a skilled hunter reduces future food security. The band as a whole is what
-/// has to survive; at least one member reaching the end of the year, fed entirely by the herd, is
-/// what proves the loop rather than a lucky single meal.
+/// real gap to reach a fleeing or just-killed deer at the configured hunting range, which costs
+/// time a hungry person does not always have, so an individual miss is a real death - hunting
+/// creates injury risk, and losing a skilled hunter reduces future food security. The band as a
+/// whole is what has to survive; at least one member reaching the end of the year, fed entirely
+/// by the herd, is what proves the loop rather than a lucky single meal.
 /// </summary>
 public class HuntingMilestoneTests
 {
@@ -53,9 +52,9 @@ public class HuntingMilestoneTests
     // closing, not how a band comes to learn the rest, so efficient_hunting is granted alongside
     // basic_hunting: a band that has "been shown how" and hunts all year round is a practised
     // one, not one on its very first attempt. Each carries the shipped axe-grade sharp hafted
-    // tool (TestCatalogs.CreateTestAxe) so a miss is the exception rather than the rule.
+    // tool so a miss is the exception rather than the rule.
     //
-    // Ids are drawn from a seeded Random rather than left to CreatureId.New()'s own Guid, and
+    // Ids are drawn from a seeded Random rather than left to their own default random guid, and
     // `masterSeed` is not tuned to a knife-edge: what a throw lands on, which way a spooked deer
     // runs, and where everyone's idle wander drifts to all come from the same ids, so the whole
     // year is one deterministic replay once they're fixed - a test should not depend on real

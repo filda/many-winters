@@ -131,7 +131,7 @@ public class MakeCommandTests
         Assert.Equal(1, person.Inventory.Get(TestCatalogs.WarmClothing));
     }
 
-    // Insulation is read off the material, whatever the garment (ItemCatalog.InsulationFor) - a
+    // Insulation is read off the material, whatever the garment - a
     // band making do with rawhide is exactly as warm as one with tanned hide.
     [Fact]
     public void RawhideClothingInsulatesExactlyAsMuchAsWarmClothing()

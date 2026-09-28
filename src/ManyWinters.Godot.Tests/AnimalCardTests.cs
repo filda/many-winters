@@ -38,8 +38,8 @@ public class AnimalCardTests
         Assert.Equal("deceased", AnimalCard.For(world, deer).Beside);
     }
 
-    // The same wording a person's own card uses: once WorldState.IsDecayed there is nothing left
-    // to call it but its bones.
+    // The same wording a person's own card uses: once the corpse has decayed there is nothing
+    // left to call it but its bones.
     [Fact]
     public void TheDecayedSayBonesInsteadOfDeceased()
     {

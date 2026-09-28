@@ -81,9 +81,8 @@ public sealed class WorldState
     // Only a pile-category entity fires this today.
     public event Action<Entity>? EntityRemoved;
 
-    // A dead, unburied animal whose bones have finally lingered past
-    // SimulationRules.BonesLingerTicks - fired by the decay pass in Advance, mirroring
-    // EntityRemoved.
+    // A dead, unburied animal whose bones have finally lingered past the bones-linger time -
+    // fired by the decay pass in Advance, mirroring EntityRemoved.
     public event Action<Animal>? AnimalRemoved;
 
     // Add* take a finished object: what it is made of is the caller's business
@@ -132,8 +131,8 @@ public sealed class WorldState
     }
 
     // Called once a pile's StaticAmount reaches zero: an empty pile has nothing left for anyone
-    // to point at. A growable entity that dies is never removed this way - it stays in Entities
-    // with Growth.IsAlive false.
+    // to point at. A growable entity that dies is never removed this way - it stays in Entities,
+    // marked no longer alive in its growth state.
     public void RemoveEntity(Entity entity)
     {
         _entities.Remove(entity);
@@ -141,7 +140,7 @@ public sealed class WorldState
     }
 
     // Bones gone into the ground: the corpse's own decay pass (Advance) calls this once its
-    // bones have lingered past SimulationRules.BonesLingerTicks. Never called for a Person - see
+    // bones have lingered past the bones-linger time. Never called for a Person - see
     // AnimalRemoved.
     private void RemoveAnimal(Animal animal)
     {
@@ -310,8 +309,8 @@ public sealed class WorldState
                         hungerMultiplier *= rules.NursingHungerMultiplier;
                     }
 
-                    // The species' own winter reserve (SpeciesDefinition.HungerPerTickMultiplier) -
-                    // 1 for a human, so this changes nothing about a person.
+                    // The species' own winter reserve - 1 for a human, so this changes nothing
+                    // about a person.
                     var speciesHungerMultiplier = Configuration.SpeciesCatalog.Get(creature.Species).HungerPerTickMultiplier;
 
                     creature.Needs.Hunger = Math.Min(creature.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier * speciesHungerMultiplier), creature.MaxHunger);
@@ -709,8 +708,8 @@ public sealed class WorldState
     }
 
     // Once somebody knows a technique and how to teach, anyone nearby may pick it up without a
-    // player action; SimulationRules.CasualTeachingChancePerTick says why it is a per-tick roll.
-    // Every living pair every tick: O(n^2) is negligible at tens of people.
+    // player action, via a per-tick chance roll. Every living pair every tick: O(n^2) is
+    // negligible at tens of people.
     private void AutoTeachNearbyPeople(long currentTick)
     {
         var skillCatalog = Configuration.SkillCatalog;
@@ -959,7 +958,7 @@ public sealed class WorldState
         }
     }
 
-    // Whether this creature's corpse has crossed SimulationRules.CorpseDecayTicks - derived
+    // Whether this creature's corpse has crossed the corpse-decay time - derived
     // rather than stored. A living creature, or one that never died in this world (no
     // DeathTick), is never decayed. BuryCommand asks this to tell an
     // unmarked grave from a marked one; the >= here (as opposed to Advance's own one-time ==)

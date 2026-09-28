@@ -40,11 +40,11 @@ public sealed record PresentationSettings
     // selected person is exempt.
     public float PersonClickScreenRadius { get; } = 20f;
 
-    // Inside SimulationRules.MaxInteractionDistance (2f), but far enough that the person's sprite
+    // Inside the world's max interaction distance (2f), but far enough that the person's sprite
     // doesn't overlap the node's - a visual standoff, hence here and not among the world's rules.
     public float ApproachDistance { get; } = 1.2f;
 
-    // Same standoff as ApproachDistance, scaled down for SimulationRules.PileReachDistance (1f):
+    // Same standoff as ApproachDistance, scaled down for the world's pile-reach distance (1f):
     // a pile sits underfoot, so the ordinary approach distance would leave the walk short of
     // reach and the order stuck (EatFromPileCommand, PickUpItemCommand).
     public float PileApproachDistance { get; } = 0.6f;

@@ -186,7 +186,7 @@ public class SaveGameServiceTests
     }
 
     // Sex is saved because somebody may have chosen it; MaxHunger is not, being redrawn off the
-    // id (Person.MaxHunger). A loaded band must go on starving at the same numbers as before.
+    // id. A loaded band must go on starving at the same numbers as before.
     [Fact]
     public void RoundTripLeavesEveryoneStarvingAtTheSameMaxHungerTheyHadBefore()
     {
@@ -215,8 +215,8 @@ public class SaveGameServiceTests
         }
     }
 
-    // Person.Home is resolved against HomeRangeSaveData like Animal.Home already was - by id,
-    // once the home ranges themselves have been restored.
+    // A person's home range is resolved against HomeRangeSaveData like an animal's already was -
+    // by id, once the home ranges themselves have been restored.
     [Fact]
     public void RoundTripResolvesAPersonsHomeRangeById()
     {
@@ -612,7 +612,7 @@ public class SaveGameServiceTests
     }
 
     // A carcass's meat no longer decays with the body (CorpseDecayTicks) - it rots on its own
-    // material's shelf life, tracked in the age ledger (Inventory.Ages), which has to survive a
+    // material's shelf life, tracked in the age ledger, which has to survive a
     // save/load and still fire exactly once, not once on load and once again when Advance
     // revisits the same tick.
     [Fact]
@@ -656,7 +656,7 @@ public class SaveGameServiceTests
         }
     }
 
-    // Animal.PregnantSinceTick: a mother mid-way through gestation has to still be pregnant, at
+    // A mother mid-way through gestation has to still be pregnant, at
     // the same tick, after a reload - a silent omission here would end every pregnancy in
     // progress the moment somebody saved.
     [Fact]

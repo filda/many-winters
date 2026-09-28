@@ -112,7 +112,7 @@ internal sealed record SelectionCard(
         return Hungry.Lerp(Starving, travelled);
     }
 
-    // Person.Mother and Father are never null - an unremembered parent is Person.Unknown, and a
-    // card should say nothing rather than name them "Unknown".
+    // Mother and Father are never null - an unremembered parent is a sentinel unknown person, and
+    // a card should say nothing rather than name them "Unknown".
     private static string? NameOrNull(Person parent) => ReferenceEquals(parent, Person.Unknown) ? null : parent.Name;
 }

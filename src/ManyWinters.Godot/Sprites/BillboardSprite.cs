@@ -20,7 +20,7 @@ public static class BillboardSprite
     private static readonly HashSet<Sprite3D> _excludedFromOcclusionFade = new();
 
     // Billboards the game's occlusion fade is currently ghosting. A set rather than a read of
-    // Modulate.A: SpritePixelHit needs it (what the player sees through, they click through),
+    // Modulate.A: pixel-hit testing needs it (what the player sees through, they click through),
     // and Modulate is written by the fade and the views' tinting alike, so it is not a
     // reliable record.
     private static readonly HashSet<Sprite3D> _occlusionFaded = new();

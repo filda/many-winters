@@ -22,7 +22,7 @@ public static class PanelChrome
 
     // Dried paper, for the player's own card and the pages it shares a look with - the game reads
     // as a chronicle, so what the player holds is a page rather than a smoked-glass overlay. Text
-    // on it wants InscriptionFont.DarkInk, not the light Ink the panels over the world use.
+    // on it wants dark ink, not the light ink the panels over the world use.
     //
     // No content margin: the grain is laid in as a child, and a container insets its children by
     // exactly this, which left a clean unweathered frame around the dirty middle. The padding is

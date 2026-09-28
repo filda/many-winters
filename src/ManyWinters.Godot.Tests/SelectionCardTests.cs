@@ -45,7 +45,7 @@ public class SelectionCardTests
         Assert.Equal("deceased", SelectionCard.For(world, person).Beside);
     }
 
-    // Once WorldState.IsDecayed the world itself has forgotten who this was - there is nothing
+    // Once a corpse has decayed the world itself has forgotten who this was - there is nothing
     // left to call it but its bones.
     [Fact]
     public void TheDecayedSayBonesInsteadOfDeceased()
@@ -72,8 +72,8 @@ public class SelectionCardTests
         Assert.Equal("Son of Sela and Doran", SelectionCard.For(world, child).Parents);
     }
 
-    // Person.Mother and Father are never null - an unremembered parent is Person.Unknown, and the
-    // card must not introduce somebody called "Unknown".
+    // A person's mother and father are never null - an unremembered parent is represented as
+    // Unknown, and the card must not introduce somebody called "Unknown".
     [Fact]
     public void APersonWithNoRememberedParentsSaysNothingAboutThem()
     {

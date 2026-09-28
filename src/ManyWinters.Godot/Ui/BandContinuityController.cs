@@ -29,8 +29,8 @@ internal sealed class BandContinuityController
 
     private EndingAnnouncements _endingAnnouncements = new();
 
-    // Captured the one moment BandArrival.Of really means "just arrived"; read again later only
-    // for its live population counts.
+    // Captured the one moment the arrival announcement really means "just arrived"; read again
+    // later only for its live population counts.
     public long ArrivalTick { get; private set; }
 
     public Position CampCenter { get; private set; }

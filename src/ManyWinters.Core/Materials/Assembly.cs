@@ -36,7 +36,7 @@ public abstract record Assembly
     public long MadeTick { get; init; }
 
     // Quality (0-1) is how well the piece was worked. Volume is bulk in the same arbitrary units
-    // as ItemDefinition.Volume, so an assembly's weight comes out comparable to a stackable
+    // as an item's own Volume, so an assembly's weight comes out comparable to a stackable
     // item's.
     public sealed record Part(MaterialId Material, FormId Form, float Quality = 0f, float Volume = 0f) : Assembly
     {

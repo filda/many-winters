@@ -55,7 +55,7 @@ public sealed partial class WorldPresenter : Node3D
     private readonly Dictionary<EntityId, Entity> _pendingResourceNodes = new();
 
     // Updated each RefreshExploration call. Simulation space (X, Y on the ground plane), not
-    // render space, so comparing against Entity.Position needs no per-node WorldSpace
+    // render space, so comparing against an entity's position needs no per-node coordinate
     // conversion. Radius starts at 0 so nothing is in view before the first update - the
     // constructor passes the camera's actual starting values instead.
     private Position _viewCenter;
@@ -87,10 +87,10 @@ public sealed partial class WorldPresenter : Node3D
         world.AnimalAdded += CreateAnimalView;
         world.EntityAdded += CreateEntityView;
         world.GraveAdded += CreateGraveView;
-        // Only a pile-category entity ever fires this: a felled or withered resource stays in
-        // Entities with Growth.IsAlive false instead, and a building is never removed.
+        // Only a pile-category entity ever fires this: a felled or withered resource stays as an
+        // entity that is simply no longer alive instead, and a building is never removed.
         world.EntityRemoved += entity => RemoveItemPileView(entity.Id);
-        // A dead, unburied animal's bones vanish SimulationRules.BonesLingerTicks past decay - the
+        // A dead, unburied animal's bones vanish once the bones-linger time passes decay - the
         // corpse the presenter has been dimming through fog of war for a season is finally gone
         // from the world, not merely marked.
         world.AnimalRemoved += animal => RemoveAnimalView(animal.Id);
@@ -160,9 +160,10 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
-    // Driven by WorldState.AnimalRemoved (subscribed in the constructor): unlike RemovePersonView,
-    // which fires from an order the player gave, nothing outside this class asks for this - the
-    // world forgets the animal's bones on its own once they have lingered long enough.
+    // Fired when the world removes an animal (subscribed in the constructor): unlike
+    // RemovePersonView, which fires from an order the player gave, nothing outside this class
+    // asks for this - the world forgets the animal's bones on its own once they have lingered
+    // long enough.
     private void RemoveAnimalView(CreatureId id)
     {
         if (_animalViews.TryGetValue(id, out var view))
@@ -182,8 +183,8 @@ public sealed partial class WorldPresenter : Node3D
 
     // Person or animal, whichever this id belongs to - the one place callers ask "where is the
     // creature I care about" without knowing which kind of view answers. A person's id space is
-    // disjoint from an animal's (both drawn from CreatureId.New), so at most one dictionary ever
-    // has it.
+    // disjoint from an animal's (both drawn from the same id generator), so at most one
+    // dictionary ever has it.
     public Vector3? GetCreatureGlobalPosition(CreatureId id) =>
         _personViews.TryGetValue(id, out var personView) ? personView.GlobalPosition
         : _animalViews.TryGetValue(id, out var animalView) ? animalView.GlobalPosition
@@ -354,8 +355,8 @@ public sealed partial class WorldPresenter : Node3D
             }
         }
 
-        // An animal never contributes to the fog itself (WorldState.RefreshExploration draws it
-        // only from living people), so unlike a person's own view above, a living animal's view
+        // An animal never contributes to the fog itself (exploration is revealed only by living
+        // people), so unlike a person's own view above, a living animal's view
         // dims exactly like a resource node's or a building's whenever it drifts out of sight.
         foreach (var animal in _animals)
         {
@@ -489,8 +490,8 @@ public sealed partial class WorldPresenter : Node3D
         _itemPileViews[pile.Id] = view;
     }
 
-    // Driven by WorldState.EntityRemoved, unlike a felled resource or a buried person - a pile
-    // shrinks and vanishes from an ordinary command, not a special one that needs recognising,
+    // Fired when the world removes an item pile, unlike a felled resource or a buried person -
+    // a pile shrinks and vanishes from an ordinary command, not a special one that needs recognising,
     // so the event is enough.
     private void RemoveItemPileView(EntityId id)
     {

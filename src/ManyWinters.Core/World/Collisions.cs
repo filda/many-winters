@@ -5,11 +5,11 @@ namespace ManyWinters.Core.World;
 public static class Collisions
 {
     // MoveTask/IdleTask aim at a destination with no awareness of what else is there, so this
-    // untangles the overlap afterwards, every tick (O(n^2), as AutoTeachNearbyPeople). Every
+    // untangles the overlap afterwards, every tick (O(n^2)). Every
     // living creature, person or animal - a deer and a person are pushed apart using their own
     // species' radii rather than one shared constant. Separations are computed against
-    // start-of-tick positions and summed into one clamped push per creature
-    // (SimulationRules.MaxCollisionPushPerTick), so discovery order cannot bias the result.
+    // start-of-tick positions and summed into one clamped push per creature, so discovery order
+    // cannot bias the result.
     public static void Resolve(WorldState world)
     {
         var speciesCatalog = world.Configuration.SpeciesCatalog;

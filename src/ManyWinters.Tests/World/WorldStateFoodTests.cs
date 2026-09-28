@@ -5,8 +5,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// WorldState.HungerRestoredPerUnitFor: nutrition is the item's own, digestibility the species',
-// and this is the one place the two are combined.
+// Nutrition is the item's own, digestibility the species', and this is the one place the two
+// are combined.
 public class WorldStateFoodTests
 {
     [Fact]

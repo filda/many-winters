@@ -72,7 +72,7 @@ public partial class Main : Node3D
         var map = MapLoader.LoadDefault(configuration);
         _world = map.World;
 
-        // Everyone idles for up to IdleTask.MaxPauseTicks before their first wander leg, and with
+        // Everyone idles for up to the idle task's max pause before their first wander leg, and with
         // the prologue holding the clock a band that then stood still read as stuck. Running those
         // ticks before the views exist keeps the same deterministic world, watched from a few
         // ticks in; it costs the band that much hunger before the player can act.

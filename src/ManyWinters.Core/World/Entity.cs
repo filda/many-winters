@@ -32,14 +32,14 @@ public sealed class Entity
     public GrowthState? Growth { get; init; }
 
     // A static, non-regenerating stock - a pile someone drops. Null for anything else.
-    // Floor-gated like GrowthState.RemainingAmount, but never regenerates and deletes the
-    // entity once it reaches zero.
+    // Floor-gated like a growing resource's remaining amount, but never regenerates and deletes
+    // the entity once it reaches zero.
     public int? StaticAmount { get; set; }
 
     // When a StaticAmount pile came to be, for the spoilage pass - one tick for the whole pile
     // rather than a ledger like Inventory's, since a pile is one drop, not a pack built up over
     // time. Set when the pile is dropped; null for anything that isn't a stock pile (a Made thing
-    // ages by its own Assembly.MadeTick instead, and a Growable resource never spoils - it grows).
+    // ages by its own made-tick instead, and a Growable resource never spoils - it grows).
     public long? DroppedTick { get; init; }
 
     // One worked object lying where somebody put it down - a cord, an axe. Null for a pile of

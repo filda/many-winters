@@ -104,8 +104,8 @@ public class WorldStateCollisionTests
         AssertPosition(0.5, 0, b.Position);
     }
 
-    // 0.35 (human) + 0.6 (deer, TestCatalogs.DeerCollisionRadius) apart, using each creature's
-    // species radius rather than one shared constant.
+    // 0.35 (human) + 0.6 (deer) apart, using each creature's species radius rather than one
+    // shared constant.
     [Fact]
     public void ADeerAndAPersonStandingTooCloseArePushedApartUsingTheirOwnSpeciesRadii()
     {

@@ -6,8 +6,8 @@ namespace ManyWinters.Tests.Milestones;
 
 /// <summary>
 /// Winter's pressure is real, not a label: someone fine all year starves once they stop
-/// gathering as winter begins. Distinct from
-/// <see cref="SurvivalMilestoneTests.PeopleStarveWithoutAnyGathering"/>, which never gathers.
+/// gathering as winter begins. Distinct from the always-starving control test, which never
+/// gathers.
 /// </summary>
 public class WinterSurvivalMilestoneTests
 {
@@ -17,7 +17,7 @@ public class WinterSurvivalMilestoneTests
     public void PeopleWhoStopGatheringRightAsWinterBeginsStarveDuringIt()
     {
         // The 50-tick winter window is sized to the shared threshold; a hardy person's own
-        // MaxHunger draw (SimulationRules.MaxHungerFor) could ride out the margin.
+        // MaxHunger draw could ride out the margin.
         var world = TestCatalogs.CreateWorldWithoutHungerVariation();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);

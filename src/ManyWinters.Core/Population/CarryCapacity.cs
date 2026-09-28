@@ -2,7 +2,7 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Population;
 
-// Carry weight before any equipped gear bonus (WorldState.MaxCarryWeightFor adds that): grows
+// Carry weight before any equipped gear bonus (added elsewhere): grows
 // from a fraction at birth to the adult baseline, holds through the prime years, then eases
 // down a little toward the end of a lifespan. The turning ages are the creature's own LifeCycle's.
 public static class CarryCapacity

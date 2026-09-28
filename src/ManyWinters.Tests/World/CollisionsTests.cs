@@ -3,8 +3,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// Direct calls to Collisions.Resolve rather than through Advance - WorldStateCollisionTests
-// already covers the same behaviour through a full tick, and stays as is.
+// These tests call Resolve directly instead of running a full tick - WorldStateCollisionTests
+// already covers the same behaviour end to end, so this file stays as is.
 public class CollisionsTests
 {
     [Fact]

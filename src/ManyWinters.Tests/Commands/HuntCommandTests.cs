@@ -139,7 +139,7 @@ public class HuntCommandTests
     [Fact]
     public void AHitKillsThePreyWithHuntedAsTheCauseAndFillsItsCarcass()
     {
-        // The chance is capped at 0.9 (HuntCommand.MaxHitChance) however generous the rules -
+        // The chance is capped at 0.9 however generous the rules -
         // there is no configuration that makes a hit literal certainty - so this pins the same
         // fixed hunter/prey ids other determinism tests rely on, chosen because they roll a hit
         // at tick 0 against this chance.
@@ -257,7 +257,7 @@ public class HuntCommandTests
         Assert.Contains(false, outcomes);
     }
 
-    // The chance arithmetic (SimulationRules.HuntingHitChancePerToolScore): rather than pin one
+    // The tool-score hit-chance arithmetic: rather than pin one
     // seed that happens to land where expected, this runs many independent (hunter, prey) pairs
     // at the same tick - deterministic (SeedHash, not real randomness) and reproducible every
     // run - and checks the observed hit rate against what the formula predicts.
@@ -303,8 +303,8 @@ public class HuntCommandTests
         Assert.InRange(observed, expected - 0.045f, expected + 0.045f);
     }
 
-    // The shipped axe-grade sharp hafted tool lands the hit rate
-    // SimulationRules.HuntingHitChancePerToolScore was picked for.
+    // The shipped axe-grade sharp hafted tool lands the hit rate the tool-score formula was
+    // picked for.
     [Fact]
     public void TheShippedAxeGradeToolLandsAroundThePickedHitRate()
     {

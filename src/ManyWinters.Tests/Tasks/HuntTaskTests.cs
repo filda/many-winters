@@ -5,7 +5,7 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
-// HuntTask only ever walks - the throw itself is WorldState.Advance's call, gated on range and
+// HuntTask only ever walks - the throw itself is decided elsewhere, gated on range and
 // NextAttemptTick, tested at that level. Closes in on *moving* prey with a fresh MoveTask every
 // tick, the same pattern FollowTask uses for a target that does not sit still.
 public class HuntTaskTests
@@ -13,8 +13,7 @@ public class HuntTaskTests
     private const float Range = 10f;
 
     // Most tests here are about the walk itself, not about which speed installed it, so they all
-    // share the idle AI's unhurried pace (IdleDecision.DecideIdleTask) unless the test says
-    // otherwise.
+    // share the idle AI's unhurried pace unless the test says otherwise.
     private const float IdleSpeed = GatherTask.SpeedPerTick;
 
     private static Person NewHunter(Position position) =>
@@ -54,10 +53,9 @@ public class HuntTaskTests
         Assert.Equal(IdleSpeed, task.SpeedPerTick);
     }
 
-    // The bug this constructor parameter fixes: a player-directed hunt (TargetActions,
-    // MoveCommand.SpeedPerTick) has to close the gap faster than the autonomous idle AI's
-    // unhurried pace (IdleDecision.DecideIdleTask, GatherTask.SpeedPerTick) - both used to
-    // hard-code the slower one regardless of who sent the hunter.
+    // The bug this constructor parameter fixes: a player-directed hunt has to close the gap
+    // faster than the autonomous idle AI's unhurried pace - both used to hard-code the slower one
+    // regardless of who sent the hunter.
     [Fact]
     public void ADirectedHuntClosesTheDistanceFasterThanAnIdleOne()
     {

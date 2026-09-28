@@ -72,8 +72,8 @@ public class BuryCommandTests
     [Fact]
     public void BuryingWithTheTechniqueNamesUnrememberedParentsAsUnknown()
     {
-        // No null to check: a person nobody remembers the parents of has Person.Unknown for
-        // both, and that is what the grave records.
+        // No null to check: a person nobody remembers the parents of has the shared placeholder
+        // for an unknown parent for both, and that is what the grave records.
         var world = TestCatalogs.CreateWorld();
         var buryingPerson = world.SpawnPerson("Bran", new Position(0, 0));
         buryingPerson.KnownTechniques.Add(TestCatalogs.EfficientBurial);

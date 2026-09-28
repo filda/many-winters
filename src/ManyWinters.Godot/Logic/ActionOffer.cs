@@ -38,9 +38,9 @@ internal readonly record struct ActionOffer
 
     // The task that chases this offer down rather than a one-shot walk to a fixed spot - set only
     // for an offer aimed at something that moves or that the simulation's own tick loop already
-    // knows how to keep at (HuntTask, ButcherTask: WorldState.Advance runs their command every
-    // tick the task is current, walking or not). OrderCoordinator installs this directly via
-    // Tasks.Interrupt instead of a MoveTask, so there is nothing for PendingOrders to re-check -
+    // knows how to keep at (HuntTask, ButcherTask: the tick loop runs their command every
+    // tick the task is current, walking or not). OrderCoordinator installs this directly as an
+    // interrupt instead of a MoveTask, so there is nothing for PendingOrders to re-check -
     // the loop owns the attempt from here on.
     public CreatureTask? Pursuit { get; }
 

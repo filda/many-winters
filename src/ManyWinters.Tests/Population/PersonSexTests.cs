@@ -21,7 +21,7 @@ public class PersonSexTests
         Assert.Equal(Sex.Male, person.Sex);
     }
 
-    // Person.Sex is required, so a caller with no opinion has to ask for a draw out loud, as
+    // A person's sex is required, so a caller with no opinion has to ask for a draw out loud, as
     // SpawnPersonCommand and BirthCommand do; nothing derives one silently.
     [Fact]
     public void SexOfDrawsOneForACallerWithNoOpinion()

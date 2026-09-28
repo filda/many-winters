@@ -53,7 +53,7 @@ public sealed class VocalTract
     // at would only place formants correctly for a tract about twice as long as a human one. This
     // is upstream's own fixed choice, made for the same reason - VoiceModel is what stretches or
     // compresses a whole render's sample rate to turn this fixed section count into a shorter or
-    // longer physical tract for VoiceIdentity.Tract, rather than varying this substep count.
+    // longer physical tract for a differently sized voice, rather than varying this substep count.
     private const int SubstepsPerSample = 2;
     private const float OutputScale = 0.125f;
 
@@ -72,9 +72,9 @@ public sealed class VocalTract
     // longer covered by that guarantee. Upstream interpolates every sample for exactly this reason
     // (its own comment calls it out); an early port of this file that snapped coefficients straight
     // to their new values at each SetShape call instead - reasoning that a shape glides slowly
-    // enough for the jump to be inaudible, the same trade Biquad.Retune makes - measurably blew up
-    // within a few syllables, worst around a stop consonant's closure and release, exactly where
-    // the shape changes fastest and the jump is largest.
+    // enough for the jump to be inaudible, the same trade that works for a slowly retuned filter
+    // elsewhere - measurably blew up within a few syllables, worst around a stop consonant's
+    // closure and release, exactly where the shape changes fastest and the jump is largest.
     private readonly float[] _reflection = new float[SectionCount];
     private readonly float[] _newReflection = new float[SectionCount];
 

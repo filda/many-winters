@@ -37,7 +37,7 @@ public sealed record PersonSaveData(
     long? DeathTick,
     DeathCause? CauseOfDeath,
     bool IsBuried,
-    // Guid.Empty is Person.Unknown, the only Person outside People and Forebears.
+    // Guid.Empty is the sentinel unknown person, the only one outside People and Forebears.
     Guid MotherId,
     Guid FatherId,
     // Stored, not re-derived from the id: MapLoader pins the starting band's sex, and a pinned
@@ -46,8 +46,8 @@ public sealed record PersonSaveData(
     // Set per band rather than per rules, so it has to survive a reload.
     float Curiosity,
     // The shared camp anchor this person wanders around - null for one with none, which is every
-    // save written before this existed. Resolved against HomeRangeSaveData like
-    // AnimalSaveData.HomeRangeId.
+    // save written before this existed. Resolved against HomeRangeSaveData the same way an
+    // animal's save data does.
     Guid? HomeRangeId = null);
 
 // One bond per pair, not per direction - Affections is symmetric; which id is A is storage
@@ -154,8 +154,8 @@ public sealed record AnimalSaveData(
     // Null for a male and for a female not currently carrying.
     long? PregnantSinceTick = null,
     // What a dead animal's carcass still holds - null for one still alive, since a living animal
-    // never carries anything (every animal's SpeciesDefinition.CanCarry is false today). Last and
-    // nullable so a save written before butchering existed still reads.
+    // never carries anything (no species allows carrying today). Last and nullable so a save
+    // written before butchering existed still reads.
     IReadOnlyList<ItemStackSaveData>? Inventory = null);
 
 public sealed record HomeRangeSaveData(Guid Id, double AnchorX, double AnchorY, float Radius, float DriftMetresPerSeason);

@@ -78,7 +78,7 @@ public class SpriteExtentsTests
     [Fact]
     public void AMissingTextureUsesTheWholeSquareCanvasAsItsExtent()
     {
-        // SpriteVisibleExtent.Compute falls back to a 1x1 canvas with the whole thing "used" when
+        // Computing the visible extent falls back to a 1x1 canvas with the whole thing "used" when
         // a texture path does not exist on disk - the same square BillboardSprite's placeholder
         // quad draws, so a kind missing its art is still fully clickable rather than invisible to
         // picking.
@@ -200,9 +200,9 @@ public class SpriteExtentsTests
     [Fact]
     public void AScaledExtentIsTheSameSizeTheSpriteActuallyRenders()
     {
-        // SpritePixelHit's hit plane comes from BillboardUv.RenderedSize, collision boxes and
+        // The pixel-hit plane comes from the rendered size, collision boxes and
         // marker anchors from a nominal extent scaled by the same factor. They agree only
-        // because BillboardSprite.Apply sets PixelSize = worldHeight / canvasHeight.
+        // because PixelSize is set to worldHeight / canvasHeight.
         var pixelSize = WorldHeight / Canvas.Y;
         const float HoverScale = 1.1f;
 

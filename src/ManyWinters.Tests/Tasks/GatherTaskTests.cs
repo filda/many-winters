@@ -23,7 +23,7 @@ public class GatherTaskTests
     [Fact]
     public void IsNeverComplete()
     {
-        // WorldState.Advance decides every tick whether this is still worth doing, as for IdleTask.
+        // Whether this is still worth doing gets decided elsewhere in the simulation each tick.
         var task = NewTask();
         var person = NewPerson(new Position(30, 10));
 

@@ -5,7 +5,7 @@ namespace ManyWinters.Core.Materials;
 
 // The shape a material has been worked into - fibre, stick, lump, wedge, vessel - as opposed to
 // the substance (MaterialId). An axe is a wedge of a hard material; a stone lump cannot cut
-// where a stone wedge can, which is the difference ItemCatalog.ChoppingScoreFor reads off a
+// where a stone wedge can, which is the difference a chopping score calculation reads off a
 // form's EdgeSharpness.
 [JsonConverter(typeof(FormIdJsonConverter))]
 public readonly record struct FormId(string Value)

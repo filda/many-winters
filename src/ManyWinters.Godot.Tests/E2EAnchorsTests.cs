@@ -32,8 +32,8 @@ public class E2EAnchorsTests
         var world = TestWorld.Create();
         var campCenter = new Position(0, 0);
 
-        // TestWorld.Stump yields Wood; TestWorld.AppleTree yields Apple - not wood, so it must
-        // never be picked even though this one sits closer to camp.
+        // A stump yields Wood; an apple tree yields Apple - not wood, so it must never be picked
+        // even though this one sits closer to camp.
         var apple = new Entity { Kind = TestWorld.AppleTree, Category = EntityCategory.Growable, Position = new Position(1, 0) };
         var farStump = new Entity { Kind = TestWorld.Stump, Category = EntityCategory.Growable, Position = new Position(20, 0) };
         var nearStump = new Entity { Kind = TestWorld.Stump, Category = EntityCategory.Growable, Position = new Position(5, 0) };

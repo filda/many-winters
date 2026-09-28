@@ -54,7 +54,8 @@ public sealed record EatCommand(Creature Actor, ItemKindId FoodItem) : ICommand
         }
 
         // Nothing to put right. The player's Eat button deliberately stops here rather than at
-        // WorldState.IsHungryEnoughToEat: being told to eat is not the same as deciding to.
+        // the check idle decision-making uses to decide someone is hungry enough to eat on their
+        // own: being told to eat is not the same as deciding to.
         if (actor.Needs.Hunger <= 0f)
         {
             return ActionBlocker.NotHungry;

@@ -1,7 +1,6 @@
 namespace ManyWinters.Core.Continuity;
 
-// What has become of a band's line - read off its living and dead (BandEnding.FateOf), never
-// stored.
+// What has become of a band's line - read off its living and dead, never stored.
 public enum BandFate
 {
     // Men and women both still living: the line can go on.

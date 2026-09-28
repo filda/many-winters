@@ -19,9 +19,10 @@ internal static class SpriteVisibleExtent
             {
                 // No art for this kind yet: the billboard falls back to a flat opaque quad the
                 // full size of the canvas, so the used rect must be the whole square rather than
-                // an empty read. Checked before TextureCache.Get, not after it throws: Get wraps
-                // a bare ResourceLoader.Load, which returns null for a missing resource, and
-                // GetImage() on that null crashed for every entity missing its texture.
+                // an empty read. Checked before loading through the texture cache, not after it
+                // throws: the cache wraps a bare ResourceLoader.Load, which returns null for a
+                // missing resource, and GetImage() on that null crashed for every entity missing
+                // its texture.
                 used = (Vector2.Zero, Vector2.One, Vector2.One);
             }
             else

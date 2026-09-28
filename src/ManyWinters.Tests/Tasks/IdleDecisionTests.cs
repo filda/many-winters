@@ -4,8 +4,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.Tasks;
 
-// Direct calls to IdleDecision.Reconsider rather than through Advance - WorldStateTests already
-// covers the same behaviour through a full tick, and stays as is.
+// These tests call Reconsider directly instead of running a full tick - WorldStateTests already
+// covers the same behaviour end to end, so this file stays as is.
 public class IdleDecisionTests
 {
     [Fact]

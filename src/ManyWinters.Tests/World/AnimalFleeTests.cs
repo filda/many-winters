@@ -5,8 +5,8 @@ using ManyWinters.Tests.TestSupport;
 
 namespace ManyWinters.Tests.World;
 
-// A species with SpeciesDefinition.Flee (deer) breaks off whatever it is doing the moment a
-// living person comes within FleeDistance, and a species with none (a person) never does.
+// A species flagged to flee (deer) breaks off whatever it is doing the moment a living person
+// comes within FleeDistance, and a species without that flag (a person) never does.
 public class AnimalFleeTests
 {
     private static HomeRange NewHome(Position anchor, float radius = 20f) => new(anchor) { Radius = radius, DriftMetresPerSeason = 0f };
@@ -79,9 +79,8 @@ public class AnimalFleeTests
         Assert.IsNotType<FleeTask>(person.Tasks.Current);
     }
 
-    // The same threat does not restart the task every tick (IdleDecision.KeepsCurrentTask) - proven
-    // by reference identity of the FleeTask instance across several ticks while the threat stays
-    // in range the whole time.
+    // The same threat does not restart the task every tick - proven by reference identity of the
+    // FleeTask instance across several ticks while the threat stays in range the whole time.
     [Fact]
     public void TheSameThreatDoesNotRestartTheFleeTaskEveryTick()
     {
@@ -110,7 +109,7 @@ public class AnimalFleeTests
         // Pinned ids: the idle wander runs on the id's seed, and a fresh Guid each run let the
         // mother now and then trail the fleeing calf so closely that it never left her reach.
         var mother = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0, 0), home, TestCatalogs.AdultAgeTicks, Sex.Female, id: TestIds.Animal(1));
-        // At the mother's nursing reach (2, exactly SimulationRules.MaxInteractionDistance).
+        // At the mother's nursing reach (2, exactly the max interaction distance).
         var calf = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(2, 0), home, initialAgeTicks: 0, sex: Sex.Male, mother: mother, id: TestIds.Animal(2));
         Assert.True(world.IsBeingNursed(calf));
 

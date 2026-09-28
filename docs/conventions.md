@@ -26,7 +26,7 @@ These are general engineering conventions carried over from other projects, kept
 - A comment earns its place by carrying the WHY that isn't visible in the code: a hidden constraint, an invariant, a workaround for a specific bug or quirk, a reason a naive approach fails, why an order of operations matters, why a magic number is what it is. If deleting the comment would lose no information a reader couldn't get from the code itself, delete it.
 - Keep it as short as the reasoning allows. Cut filler and restated context; state the constraint and move on.
 - Don't say the same thing twice. If a nearby comment already covers the point, don't repeat it in a different wording.
-- Don't name another class or method purely as a "see X.Y" pointer with nothing else added — that comment now breaks whenever X.Y is renamed or moved, even though nothing here actually changed. Describe the concept instead. A pointer to a stable doc file, or to a genuinely permanent architectural anchor, is fine.
+- Don't name another type's members in a comment — no "(WorldState.DecideIdleTask)", no "X.Y's in-home tier does…". Such a comment breaks whenever X.Y is renamed or moved, even though nothing here changed, and a refactor then has to touch files it never touched in code. If the why still needs saying, say it in plain words without the name; usually it doesn't, and the comment goes. A pointer to a stable doc file is fine.
 
 ## Consistency
 

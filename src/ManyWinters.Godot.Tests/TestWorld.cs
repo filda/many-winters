@@ -87,7 +87,7 @@ internal static class TestWorld
 
     internal static WorldState Create() => Create(SimulationRules.Default);
 
-    // A short decay window, for tests that need a creature past WorldState.IsDecayed without
+    // A short decay window, for tests that need an already-decayed creature without
     // simulating a season of ticks - mirrors the other project's own short-decay test world, a
     // deliberate copy like every other catalog here rather than a shared one with that project.
     internal static WorldState CreateWithShortCorpseDecay(long corpseDecayTicks) =>
@@ -258,7 +258,7 @@ internal static class TestWorld
     }
 
     // Grown, on a home range of its own - the animal counterpart of AddAdult, for AnimalCard and
-    // InspectorText.ForTask tests that need a Creature which is not a Person.
+    // task-wording tests that need a Creature which is not a Person.
     internal static Animal AddAdultAnimal(WorldState world, Position position, Sex sex = Sex.Female)
     {
         var home = new HomeRange(position) { Radius = 10f, DriftMetresPerSeason = 0f };

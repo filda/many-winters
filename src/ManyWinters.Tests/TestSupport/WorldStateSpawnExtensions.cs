@@ -7,8 +7,8 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Tests.TestSupport;
 
-// Test-only shorthand: WorldState.Add* only accepts a finished object, and most tests just need
-// a person/node/building/grave to exist.
+// Test-only shorthand: the world's add methods only accept a finished object, and most tests
+// just need a person/node/building/grave to exist.
 public static class WorldStateSpawnExtensions
 {
     public static Person SpawnPerson(

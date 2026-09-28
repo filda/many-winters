@@ -379,8 +379,9 @@ public static class MapLoader
         // family and herd milestone tests the first time this was tried. It still has to be
         // deterministic (every id in this game drives per-entity variation off its seed), so it
         // is drawn from its own Random instead, seeded off forebearDeathTick mixed with a salt
-        // the same way HomeRange.Advance mixes an id and a season: forebearDeathTick is a fixed
-        // constant for the starting band (LoadDefault always passes the same one) but a distinct,
+        // the same way an id and a season are mixed elsewhere for a deterministic reseed:
+        // forebearDeathTick is a fixed constant for the starting band (LoadDefault always passes
+        // the same one) but a distinct,
         // ever-increasing value for every successor (SpawnNewBand passes the current tick, which
         // only grows across a playthrough) - so two LoadDefault calls agree, and a successor's
         // camp id never collides with the band before it, without threading a band index through.

@@ -10,7 +10,7 @@ namespace ManyWinters.Core.Commands;
 // separate bootstrap.
 public sealed record TeachCommand(Person Teacher, Person Student, TechniqueId Technique) : ICommand
 {
-    // Public: WorldState.AutoTeachNearbyPeople skips teachers who cannot teach, and Main.cs
+    // Public: the game's automatic teaching pass skips teachers who cannot teach, and Main.cs
     // grants it the first time the player directs someone to teach.
     public static readonly SkillTypeId TeachingSkill = new("teaching");
 

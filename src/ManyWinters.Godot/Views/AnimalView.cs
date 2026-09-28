@@ -75,18 +75,18 @@ internal partial class AnimalView : CreatureView
     protected override void ApplyPose(Vector3 offset) => _body.Sprite.Position = offset;
 
     // No corpse art exists for any species yet, so a dead animal only stops moving (CreatureView's
-    // job) and drains to the same dead tint a person's corpse takes - PersonLook.DeadTint, not a
+    // job) and drains to the same dead tint a person's corpse takes, not a
     // fresh one, since it is already the game's one answer to "this body is not alive".
     protected override void OnAliveChanged(bool isAlive) =>
         _body.BaseModulate = PersonLook.TintFor(isAlive, isDecayed: false) ?? _aliveModulate;
 
-    // Once WorldState.IsDecayed: the one layer tinted one step further, the same as a person's
+    // Once decayed: the one layer tinted one step further, the same as a person's
     // corpse - no bones art exists here either.
     protected override void OnDecayedChanged() =>
         _body.BaseModulate = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;
 
     // A kind with a species PNG (res://Content/species/{id}/{id}.png) draws it; absent,
-    // BillboardSprite.Create already falls back to a flat tinted quad, which is the whole point -
+    // sprite creation already falls back to a flat tinted quad, which is the whole point -
     // no deer art exists yet.
     private static string TexturePathFor(SpeciesId species) => $"res://Content/species/{species.Value}/{species.Value}.png";
 
