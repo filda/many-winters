@@ -18,7 +18,7 @@ public sealed class GameFixture : IAsyncLifetime
     private GameWindow? _window;
     private long _gameLogOffset;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // 60 s, not 30: the presenter builds a view for every resource node (thousands), so a
         // cold boot - first run after a build, or a loaded machine - can exceed 30 s before
@@ -32,11 +32,11 @@ public sealed class GameFixture : IAsyncLifetime
         _gameLogOffset = File.Exists(GameLogPath()) ? new FileInfo(GameLogPath()).Length : 0;
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _window?.Dispose();
         AssertBootLogHasNoScriptError();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     // The whole run's log, not the per-test offset: a script error at boot (building a view for
