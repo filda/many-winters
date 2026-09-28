@@ -6,9 +6,6 @@ namespace ManyWinters.Core.Commands;
 
 public sealed record RepairCommand(Person Person, Entity Building) : ICommand
 {
-    private const float RepairConditionAmount = 25f;
-    private const float MaxCondition = 100f;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -16,7 +13,7 @@ public sealed record RepairCommand(Person Person, Entity Building) : ICommand
             return ActionBlocker.ActorIsDead;
         }
 
-        if (Building.Condition is null or >= MaxCondition)
+        if (Building.Condition is null || Building.Condition >= world.Configuration.Rules.MaxCondition)
         {
             return ActionBlocker.NothingToRepair;
         }
@@ -39,7 +36,7 @@ public sealed record RepairCommand(Person Person, Entity Building) : ICommand
         }
 
         Person.Inventory.Remove(CostItem(world), RepairCost(world));
-        Building.Condition = Math.Min(MaxCondition, Building.Condition!.Value + RepairConditionAmount);
+        Building.Condition = Math.Min(world.Configuration.Rules.MaxCondition, Building.Condition!.Value + world.Configuration.Rules.RepairConditionAmount);
     }
 
     private ItemKindId CostItem(WorldState world) => Recipe(world).InputItem;

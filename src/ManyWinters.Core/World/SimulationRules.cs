@@ -231,6 +231,8 @@ public sealed record SimulationRules
     // same number rather than a copy of it.
     public float SpeedPerTick { get; } = 1f;
     public float SkillGainPerAttempt { get; } = 1f;
+    public float RepairConditionAmount { get; } = 25f;
+    public float MaxCondition { get; } = 100f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }
