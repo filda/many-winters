@@ -230,6 +230,7 @@ public sealed record SimulationRules
     // pace (GatherTask.SpeedPerTick). Public: TargetActions builds HuntTask/ButcherTask with this
     // same number rather than a copy of it.
     public float SpeedPerTick { get; } = 1f;
+    public float SkillGainPerAttempt { get; } = 1f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

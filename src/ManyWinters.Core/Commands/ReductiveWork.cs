@@ -23,8 +23,6 @@ internal sealed record ReductiveWork(
     // What to say when the substance will not take it - the one refusal specific to this verb.
     ActionBlocker Refusal)
 {
-    private const float SkillGainPerAttempt = 1f;
-
     internal ActionBlocker Blocker(Person person, ItemKindId item, WorldState world)
     {
         if (!person.IsAlive)
@@ -96,7 +94,7 @@ internal sealed record ReductiveWork(
             }
         }
 
-        person.Skills.Increase(Skill, SkillGainPerAttempt);
+        person.Skills.Increase(Skill, world.Configuration.Rules.SkillGainPerAttempt);
     }
 
     private FormTransition? Transition(ItemKindId item, WorldState world) =>
