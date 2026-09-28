@@ -40,4 +40,16 @@ public class SeedHashTests
             Assert.True(seen.Add(SeedHash.Avalanche(seed)), $"seed {seed} collided");
         }
     }
+
+    [Fact]
+    public void StableStringHashIsAFixedFunctionOfItsInput()
+    {
+        // Every deterministic roll keyed off a string (a material, a technique, a skill) needs
+        // the same input to hash the same way on every run and every machine - a replay must not
+        // fork over string.GetHashCode()'s per-process randomization. The literal pins the
+        // current djb2-xor algorithm, so a change of algorithm is caught here rather than only
+        // showing up as a shifted roll somewhere else.
+        Assert.Equal(SeedHash.StableStringHash("plant_fibre"), SeedHash.StableStringHash("plant_fibre"));
+        Assert.Equal(-36856793, SeedHash.StableStringHash("plant_fibre"));
+    }
 }

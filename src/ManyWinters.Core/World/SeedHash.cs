@@ -20,4 +20,16 @@ public static class SeedHash
 
         return unchecked((int)value);
     }
+
+    // Not string.GetHashCode(): .NET randomizes it per process, and this roll must be stable.
+    public static int StableStringHash(string value)
+    {
+        var hash = 5381;
+        foreach (var c in value)
+        {
+            hash = unchecked((hash * 33) ^ c);
+        }
+
+        return hash;
+    }
 }
