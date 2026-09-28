@@ -119,7 +119,7 @@ public class InspectorTextTests
         var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
         var deer = TestWorld.AddAdultAnimal(world, new Position(3, 4));
         deer.IsAlive = false;
-        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance, speedPerTick: world.Configuration.Rules.SpeedPerTick));
+        person.Tasks.Interrupt(new ButcherTask(deer, reach: world.Configuration.Rules.PileReachDistance, speedPerTick: world.Configuration.Rules.SpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach));
 
         Assert.Equal("Butchering", InspectorText.ForTask(person));
     }

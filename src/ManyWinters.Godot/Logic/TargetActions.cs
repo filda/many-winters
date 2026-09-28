@@ -127,7 +127,7 @@ internal static class TargetActions
                 world,
                 ButcherCommand.Skill,
                 animal.Position,
-                new ButcherTask(animal, rules.PileReachDistance, rules.SpeedPerTick));
+                new ButcherTask(animal, rules.PileReachDistance, rules.SpeedPerTick, rules.ApproachFractionOfReach));
 
         return new TargetMenu(heading, [offer]);
     }

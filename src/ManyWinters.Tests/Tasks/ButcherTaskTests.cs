@@ -30,7 +30,7 @@ public class ButcherTaskTests
         };
 
     private static ButcherTask NewTask(float? reach = null, Animal? carcass = null, float speedPerTick = IdleSpeed) =>
-        new(carcass ?? NewCarcass(), reach ?? Reach, speedPerTick);
+        new(carcass ?? NewCarcass(), reach ?? Reach, speedPerTick, 0.6f);
 
     [Fact]
     public void IsNeverComplete()

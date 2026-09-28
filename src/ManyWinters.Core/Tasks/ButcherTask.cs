@@ -11,7 +11,12 @@ namespace ManyWinters.Core.Tasks;
 // player-directed butchering walks at the directed speed like every other order, while the
 // autonomous idle AI passes GatherTask's unhurried pace - the same asymmetry every other directed
 // order already has against idling.
-public sealed class ButcherTask(Animal carcass, float reach, float speedPerTick) : CreatureTask
+public sealed class ButcherTask(
+    Animal carcass,
+    float reach,
+    float speedPerTick,
+    float approachFractionOfReach
+    ) : CreatureTask
 {
     // Stop short of the carcass rather than on it, the same standoff GatherTask uses.
     private const float ApproachFractionOfReach = 0.6f;
@@ -39,7 +44,7 @@ public sealed class ButcherTask(Animal carcass, float reach, float speedPerTick)
 
         // Stryker disable once Assignment: a carcass does not move, so recomputing walks the
         // same route.
-        _approachPosition ??= Position.Approach(creature.Position, Carcass.Position, Reach * ApproachFractionOfReach);
+        _approachPosition ??= Position.Approach(creature.Position, Carcass.Position, Reach * approachFractionOfReach);
         // Stryker disable once Assignment: the reach check above always ends the leg first, so
         // a rebuilt MoveTask steps identically.
         _move ??= new MoveTask(_approachPosition.Value, SpeedPerTick);

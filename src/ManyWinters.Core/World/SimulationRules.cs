@@ -250,6 +250,7 @@ public sealed record SimulationRules
     public float CultureWeight { get; } = 0.5f;
     public float TrendWeight { get; } = 0.3f;
     public float ParentWeight { get; } = 0.2f;
+    public float ApproachFractionOfReach { get; } = 0.6f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

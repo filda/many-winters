@@ -186,7 +186,7 @@ public static class IdleDecision
         {
             if (IsKnownSkill(world, creature, ButcherCommand.Skill) && FindNearestDeadAnimalWithMeat(world, searchOrigin) is { } carcass)
             {
-                return new ButcherTask(carcass, world.Configuration.Rules.PileReachDistance, GatherTask.SpeedPerTick);
+                return new ButcherTask(carcass, world.Configuration.Rules.PileReachDistance, GatherTask.SpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
             }
 
             if (IsKnownSkill(world, creature, HuntCommand.Skill) && FindNearestHuntablePrey(world, searchOrigin) is { } prey)
