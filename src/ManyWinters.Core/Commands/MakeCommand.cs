@@ -12,8 +12,6 @@ namespace ManyWinters.Core.Commands;
 // is placed wherever the maker is standing.
 public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Position = null) : ICommand
 {
-    private const float StartingCondition = 100f;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -61,7 +59,7 @@ public sealed record MakeCommand(Person Person, ItemKindId Output, Position? Pos
             Kind = new EntityKindId(Output.Value),
             Category = EntityCategory.Building,
             Position = TargetPosition,
-            Condition = StartingCondition,
+            Condition = world.Configuration.Rules.StartingCondition,
             Storage = new Inventory(),
         });
     }

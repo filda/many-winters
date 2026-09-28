@@ -224,6 +224,7 @@ public sealed record SimulationRules
     // Nothing scales past this - even a master hunter with the best tool in the game misses one
     // throw in ten.
     public float HuntingMaxHitChance { get; } = 0.9f;
+    public float? StartingCondition { get; } = 100f;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }
