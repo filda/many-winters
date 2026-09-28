@@ -246,5 +246,10 @@ public sealed record SimulationRules
 
     public int RecentTrendWindow { get; } = 12;
 
+    // The plan's 50/30/20 split between long-term culture, recent trend and either parent.
+    public float CultureWeight { get; } = 0.5f;
+    public float TrendWeight { get; } = 0.3f;
+    public float ParentWeight { get; } = 0.2f;
+
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

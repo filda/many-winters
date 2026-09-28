@@ -12,11 +12,6 @@ public static class PhoneticNameGenerator
     // an unlucky sibling clash.
     private const int CandidateCount = 8;
 
-    // The plan's 50/30/20 split between long-term culture, recent trend and either parent.
-    private const float CultureWeight = 0.5f;
-    private const float TrendWeight = 0.3f;
-    private const float ParentWeight = 0.2f;
-
     private static readonly CultureProfile GlobalProfile = BuildGlobalProfile();
 
     // Step 1 of the plan: the founding generation has no naming history to draw on, so it comes
@@ -31,9 +26,13 @@ public static class PhoneticNameGenerator
         string? motherName,
         string? fatherName,
         IReadOnlySet<string> existingNames,
-        IReadOnlyList<string> siblingNames)
+        IReadOnlyList<string> siblingNames,
+        float cultureWeight,
+        float trendWeight,
+        float parentWeight
+        )
     {
-        var blended = BlendForChild(culture, trend, motherName, fatherName);
+        var blended = BlendForChild(culture, trend, motherName, fatherName, cultureWeight, trendWeight, parentWeight);
         return GenerateFrom(rng, blended, existingNames, siblingNames);
     }
 
@@ -67,17 +66,25 @@ public static class PhoneticNameGenerator
         return profile;
     }
 
-    private static CultureProfile BlendForChild(CultureProfile culture, CultureProfile trend, string? motherName, string? fatherName)
+    private static CultureProfile BlendForChild(
+        CultureProfile culture,
+        CultureProfile trend,
+        string? motherName,
+        string? fatherName,
+        float cultureWeight,
+        float trendWeight,
+        float parentWeight
+        )
     {
         var blended = new CultureProfile();
-        Merge(blended.Onsets, culture.Onsets, CultureWeight);
-        Merge(blended.Onsets, trend.Onsets, TrendWeight);
-        Merge(blended.Nuclei, culture.Nuclei, CultureWeight);
-        Merge(blended.Nuclei, trend.Nuclei, TrendWeight);
-        Merge(blended.Codas, culture.Codas, CultureWeight);
-        Merge(blended.Codas, trend.Codas, TrendWeight);
-        Merge(blended.SyllableCounts, culture.SyllableCounts, CultureWeight);
-        Merge(blended.SyllableCounts, trend.SyllableCounts, TrendWeight);
+        Merge(blended.Onsets, culture.Onsets, cultureWeight);
+        Merge(blended.Onsets, trend.Onsets, trendWeight);
+        Merge(blended.Nuclei, culture.Nuclei, cultureWeight);
+        Merge(blended.Nuclei, trend.Nuclei, trendWeight);
+        Merge(blended.Codas, culture.Codas, cultureWeight);
+        Merge(blended.Codas, trend.Codas, trendWeight);
+        Merge(blended.SyllableCounts, culture.SyllableCounts, cultureWeight);
+        Merge(blended.SyllableCounts, trend.SyllableCounts, trendWeight);
 
         // A parent's own syllable features nudge the draw without ever being concatenated into
         // it directly (the plan's "Bran + Mira -> Bramira" is explicitly what this is not).
@@ -90,9 +97,9 @@ public static class PhoneticNameGenerator
 
             foreach (var syllable in NameSyllables.Split(parentName))
             {
-                blended.Onsets.Add(syllable.Onset, ParentWeight);
-                blended.Nuclei.Add(syllable.Nucleus, ParentWeight);
-                blended.Codas.Add(syllable.Coda, ParentWeight);
+                blended.Onsets.Add(syllable.Onset, parentWeight);
+                blended.Nuclei.Add(syllable.Nucleus, parentWeight);
+                blended.Codas.Add(syllable.Coda, parentWeight);
             }
         }
 

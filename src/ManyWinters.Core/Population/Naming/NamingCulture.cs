@@ -2,7 +2,15 @@ using ManyWinters.Core.World;
 
 namespace ManyWinters.Core.Population.Naming;
 
-public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Person> forebears, float CultureDecayPerObservation, int RecentTrendWindow)
+public sealed class NamingCulture(
+    IReadOnlyList<Person> people,
+    IReadOnlyList<Person> forebears,
+    float CultureDecayPerObservation,
+    int RecentTrendWindow,
+    float CultureWeight,
+    float TrendWeight,
+    float ParentWeight
+    )
 {
     private int _namingHistoryVersion = -1;
     private CultureProfile? _cachedCultureProfile;
@@ -26,7 +34,7 @@ public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Pe
         var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ (uint)(father.Id.Seed * 19349663) ^ ((uint)tick * 2654435761u));
         var rng = new Random(SeedHash.Avalanche(mixed));
 
-        return PhoneticNameGenerator.GenerateChild(rng, culture, trend, mother.Name, father.Name, existingNames, siblingNames);
+        return PhoneticNameGenerator.GenerateChild(rng, culture, trend, mother.Name, father.Name, existingNames, siblingNames, CultureWeight, TrendWeight, ParentWeight);
     }
 
     // A name for someone with no parents to inherit from, drawn from the current naming culture
@@ -34,7 +42,7 @@ public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Pe
     public string GenerateUnrelatedName(Random rng)
     {
         var (culture, trend, existingNames) = NamingProfiles();
-        return PhoneticNameGenerator.GenerateChild(rng, culture, trend, motherName: null, fatherName: null, existingNames, siblingNames: []);
+        return PhoneticNameGenerator.GenerateChild(rng, culture, trend, motherName: null, fatherName: null, existingNames, siblingNames: [], CultureWeight, TrendWeight, ParentWeight);
     }
 
     // Cached against the total number of people and forebears (both only ever grow): rebuilding

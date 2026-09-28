@@ -46,7 +46,7 @@ public class PhoneticNameGeneratorTests
 
         for (var i = 0; i < 50; i++)
         {
-            var name = PhoneticNameGenerator.GenerateChild(rng, culture, trend, "Bran", "Mira", existing, siblingNames: []);
+            var name = PhoneticNameGenerator.GenerateChild(rng, culture, trend, "Bran", "Mira", existing, siblingNames: [], 0.5f, 0.3f, 0.2f);
 
             Assert.True(Phonotactics.IsPronounceable(name));
             Assert.NotEqual("Bramira", name, StringComparer.OrdinalIgnoreCase);
@@ -64,7 +64,7 @@ public class PhoneticNameGeneratorTests
 
         for (var i = 0; i < 50; i++)
         {
-            var name = PhoneticNameGenerator.GenerateChild(rng, culture, trend, "Bran", "Doran", existing, siblingNames: ["Doran"]);
+            var name = PhoneticNameGenerator.GenerateChild(rng, culture, trend, "Bran", "Doran", existing, siblingNames: ["Doran"], 0.5f, 0.3f, 0.2f);
             Assert.DoesNotContain(name, existing);
             existing.Add(name);
         }

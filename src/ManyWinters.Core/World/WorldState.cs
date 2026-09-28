@@ -26,7 +26,15 @@ public sealed class WorldState
     public WorldState(WorldConfiguration configuration)
     {
         Configuration = configuration;
-        Naming = new NamingCulture(_people, _forebears, Configuration.Rules.CultureDecayPerObservation, Configuration.Rules.RecentTrendWindow);
+        Naming = new NamingCulture(
+            _people,
+            _forebears,
+            Configuration.Rules.CultureDecayPerObservation,
+            Configuration.Rules.RecentTrendWindow,
+            Configuration.Rules.CultureWeight,
+            Configuration.Rules.TrendWeight,
+            Configuration.Rules.ParentWeight
+            );
     }
 
     public SimulationClock Clock { get; } = new();
