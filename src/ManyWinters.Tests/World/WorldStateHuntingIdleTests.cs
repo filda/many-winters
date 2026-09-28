@@ -13,6 +13,10 @@ public class WorldStateHuntingIdleTests
 {
     private static HomeRange NewHome(Position anchor) => new(anchor) { Radius = 15f, DriftMetresPerSeason = 0f };
 
+    // "Urgently hungry" in these tests is 60, above HungerSeekFoodThreshold (50) but under the
+    // lowest MaxHunger anyone can draw (MaxHunger 100 minus MaxHungerVariation 20%): the id is a
+    // fresh Guid every run, and at 80 about one run in forty starved the person on the first
+    // tick, freezing whatever task they held.
     private static Person NewPerson(WorldState world, Position position, bool huntingKnown = false, bool butcheringKnown = false, float hunger = 0f)
     {
         var person = world.SpawnPerson("Ava", position, initialAgeTicks: TestCatalogs.AdultAgeTicks);
@@ -39,7 +43,7 @@ public class WorldStateHuntingIdleTests
         var world = TestCatalogs.CreateWorldWithDeer();
         var position = new Position(0, 0);
         var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
-        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 80f);
+        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 60f);
 
         world.Advance(1);
 
@@ -117,14 +121,14 @@ public class WorldStateHuntingIdleTests
         var world = TestCatalogs.CreateWorldWithDeer();
         var position = new Position(0, 0);
         world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
-        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 80f);
+        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 60f);
         hunter.Inventory.Add(TestCatalogs.MeatItem, 10);
         hunter.KnownTechniques.Add(TestCatalogs.BasicEating);
 
         world.Advance(1);
 
         Assert.IsNotType<HuntTask>(hunter.Tasks.Current);
-        Assert.True(hunter.Needs.Hunger < 80f, "TryAutoEat should have eaten from the pack.");
+        Assert.True(hunter.Needs.Hunger < 60f, "TryAutoEat should have eaten from the pack.");
     }
 
     // Butchering wins over hunting when both are known: a carcass already on the ground is a
@@ -138,7 +142,7 @@ public class WorldStateHuntingIdleTests
         carcass.IsAlive = false;
         carcass.Inventory.Add(TestCatalogs.MeatItem, TestCatalogs.DeerCarcassMeat);
         world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
-        var person = NewPerson(world, position, huntingKnown: true, butcheringKnown: true, hunger: 80f);
+        var person = NewPerson(world, position, huntingKnown: true, butcheringKnown: true, hunger: 60f);
 
         world.Advance(1);
 
@@ -156,7 +160,7 @@ public class WorldStateHuntingIdleTests
         var pickedClean = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(3, 0), NewHome(new Position(3, 0)));
         pickedClean.IsAlive = false;
         var livingDeer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
-        var person = NewPerson(world, position, huntingKnown: true, butcheringKnown: true, hunger: 80f);
+        var person = NewPerson(world, position, huntingKnown: true, butcheringKnown: true, hunger: 60f);
 
         world.Advance(1);
 
@@ -171,7 +175,7 @@ public class WorldStateHuntingIdleTests
         var world = TestCatalogs.CreateWorldWithDeer();
         var position = new Position(0, 0);
         world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
-        var person = NewPerson(world, position, hunger: 80f);
+        var person = NewPerson(world, position, hunger: 60f);
 
         world.Advance(1);
 
@@ -186,7 +190,7 @@ public class WorldStateHuntingIdleTests
         var world = TestCatalogs.CreateWorldWithDeer();
         var position = new Position(0, 0);
         var deer = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(5, 0), NewHome(new Position(5, 0)));
-        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 80f);
+        var hunter = NewPerson(world, position, huntingKnown: true, hunger: 60f);
 
         world.Advance(1);
         Assert.IsType<HuntTask>(hunter.Tasks.Current);
@@ -205,7 +209,7 @@ public class WorldStateHuntingIdleTests
         var carcass = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(0.5, 0), NewHome(new Position(0.5, 0)));
         carcass.IsAlive = false;
         carcass.Inventory.Add(TestCatalogs.MeatItem, 1);
-        var butcher = NewPerson(world, position, butcheringKnown: true, hunger: 80f);
+        var butcher = NewPerson(world, position, butcheringKnown: true, hunger: 60f);
 
         world.Advance(1);
         Assert.IsType<ButcherTask>(butcher.Tasks.Current);
@@ -227,7 +231,7 @@ public class WorldStateHuntingIdleTests
         var carcass = world.SpawnAnimal(TestCatalogs.DeerSpeciesId, new Position(3, 0), NewHome(new Position(3, 0)));
         carcass.IsAlive = false;
         carcass.Inventory.Add(TestCatalogs.BoneItem, TestCatalogs.DeerCarcassBone);
-        var person = NewPerson(world, position, butcheringKnown: true, hunger: 80f);
+        var person = NewPerson(world, position, butcheringKnown: true, hunger: 60f);
 
         world.Advance(1);
 
