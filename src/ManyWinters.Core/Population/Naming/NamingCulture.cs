@@ -44,9 +44,9 @@ public sealed class NamingCulture(IReadOnlyList<Person> people, IReadOnlyList<Pe
     }
 
     // Cached against the total number of people and forebears (both only ever grow): rebuilding
-    // the whole profile from history is cheap once, but StartFamilies calls NameForNewborn
-    // speculatively for every eligible pair on every tick, and only some of those become an
-    // actual birth.
+    // the whole profile from history is cheap once, but the family-starting pass calls
+    // NameForNewborn speculatively for every eligible pair on every tick, and only some of those
+    // become an actual birth.
     private (CultureProfile Culture, CultureProfile Trend, HashSet<string> ExistingNames) NamingProfiles()
     {
         var version = people.Count + forebears.Count;

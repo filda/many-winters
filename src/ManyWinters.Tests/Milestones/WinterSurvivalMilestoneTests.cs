@@ -42,8 +42,8 @@ public class WinterSurvivalMilestoneTests
         Assert.Equal(Season.Winter, world.CurrentSeason);
         Assert.True(person.IsAlive);
 
-        // The loop above leaves a stockpile that TryAutoEat would live on through the 50 winter
-        // ticks; clearing it models someone truly out of reserves.
+        // The loop above leaves a stockpile they would eat their way through the 50 winter ticks
+        // on; clearing it models someone truly out of reserves.
         person.Inventory.Remove(TestCatalogs.AppleItem, person.Inventory.Get(TestCatalogs.AppleItem));
 
         // Next to an all-but-infinite apple node, DecideIdleTask would resume gathering once

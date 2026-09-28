@@ -113,8 +113,8 @@ public class WorldStateHuntingIdleTests
         Assert.IsNotType<HuntTask>(hunter.Tasks.Current);
     }
 
-    // TryAutoEat, not a fresh hunt: someone hungry who already carries food eats it down rather
-    // than being sent after more.
+    // Eating from the pack, not a fresh hunt: someone hungry who already carries food eats it
+    // down rather than being sent after more.
     [Fact]
     public void AHungryHunterWithMeatAlreadyInThePackEatsRatherThanHunting()
     {

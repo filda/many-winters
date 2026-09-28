@@ -179,7 +179,7 @@ public static class TestCatalogs
 
     // Mirrors meat.json: meat is roughly five times as calorie-dense as fruit (apple/pear/potato/
     // mushroom all restore FoodHungerRestoredPerUnit=1), the same order of magnitude real meat
-    // and fruit differ by. A typical meal (TryAutoEat fires at HungerEatThreshold=25, eating down
+    // and fruit differ by. A typical meal (eating from the pack starts at hunger 25 and eats down
     // to zero) needs 25 apple units but only 5 meat units, so a deer's carcass (30 meat) covers
     // about six meals - enough for a shipped band, not just one person.
     private const float MeatHungerRestoredPerUnit = 5f;

@@ -508,8 +508,8 @@ public class WorldStateTests
     }
 
     // Meat is food like any other once a species digests it: a starving person with a raw
-    // carcass haul in their pack eats it the same way TryAutoEat already handles apples, with
-    // no cooking step required.
+    // carcass haul in their pack eats it the same way they already eat apples from it, with no
+    // cooking step required.
     [Fact]
     public void AStarvingPersonWithMeatInThePackEatsItAutonomously()
     {

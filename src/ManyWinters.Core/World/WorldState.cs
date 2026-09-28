@@ -57,7 +57,7 @@ public sealed class WorldState
     public IReadOnlyList<Person> Forebears => _forebears;
 
     // The second kind of Creature: simulated in Advance alongside People, but never a target of
-    // the people-only passes (casual teaching, AdvanceAffections, StartFamilies, ...).
+    // the people-only passes (casual teaching, affection, family-starting, ...).
     public IReadOnlyList<Animal> Animals => _animals;
 
     public IReadOnlyList<Entity> Entities => _entities;
@@ -138,10 +138,9 @@ public sealed class WorldState
         EntityRemoved?.Invoke(entity);
     }
 
-    // Bones gone into the ground: the corpse's own decay pass (Advance) calls this once its
-    // bones have lingered past the bones-linger time. Never called for a Person - see
-    // AnimalRemoved.
-    private void RemoveAnimal(Animal animal)
+    // Bones gone into the ground: the decay pass calls this once its bones have lingered past
+    // the bones-linger time. Never called for a Person - see AnimalRemoved.
+    internal void RemoveAnimal(Animal animal)
     {
         _animals.Remove(animal);
         AnimalRemoved?.Invoke(animal);
@@ -161,7 +160,7 @@ public sealed class WorldState
     public bool IsWithinReach(Position a, Position b, float rangeMultiplier = 1f) =>
         Distance(a, b) <= Configuration.Rules.MaxInteractionDistance * rangeMultiplier;
 
-    // The one "hungry enough to bother" test, shared by TryAutoEat and GatherCommand's eating at
+    // The one "hungry enough to bother" test, shared by eating from one's own pack and eating at
     // the source. The player's Eat button deliberately bypasses it: being told to eat is not the
     // same as deciding to.
     public bool IsHungryEnoughToEat(Creature creature) => creature.Needs.Hunger >= Configuration.Rules.HungerEatThreshold;
@@ -181,7 +180,7 @@ public sealed class WorldState
 
     // A creature's own species' age bands and lifespan. A dictionary lookup per call is fine at
     // tens of people per tick; nothing here caches it.
-    private LifeCycle LifeCycleOf(Creature creature) => Configuration.SpeciesCatalog.Get(creature.Species).LifeCycle;
+    public LifeCycle LifeCycleOf(Creature creature) => Configuration.SpeciesCatalog.Get(creature.Species).LifeCycle;
 
     // The only place that answers "how much hunger does this item put right for this creature":
     // nutrition is the item's own, digestibility is the species' - a wolf can eat a pear but it
@@ -238,8 +237,6 @@ public sealed class WorldState
     {
         var rules = Configuration.Rules;
         var seasonParameters = Configuration.SeasonParameters;
-        var itemCatalog = Configuration.ItemCatalog;
-        var resourceCatalog = Configuration.ResourceCatalog;
 
         var startTick = Clock.CurrentTick;
         Clock.Advance(ticks);
@@ -292,94 +289,16 @@ public sealed class WorldState
                     new ButcherCommand(butcher, activeButcher.Carcass).Execute(this);
                 }
 
-                // An infant at its mother's side is fed and not hungry; the cost lands on her
-                // as NursingHungerMultiplier below. Once she dies or leaves it behind, the
-                // countdown is real.
-                if (IsBeingNursed(creature))
-                {
-                    creature.Needs.Hunger = 0f;
-                }
-                else
-                {
-                    var insulation = creature.Inventory.Counts.Keys.Sum(kind => itemCatalog.InsulationFor(kind));
-                    var hungerMultiplier = Math.Max(1f, baseHungerMultiplier - insulation);
-                    if (NursingInfantOf(creature) is not null)
-                    {
-                        hungerMultiplier *= rules.NursingHungerMultiplier;
-                    }
-
-                    // The species' own winter reserve - 1 for a human, so this changes nothing
-                    // about a person.
-                    var speciesHungerMultiplier = Configuration.SpeciesCatalog.Get(creature.Species).HungerPerTickMultiplier;
-
-                    creature.Needs.Hunger = Math.Min(creature.Needs.Hunger + (rules.HungerPerTick * hungerMultiplier * speciesHungerMultiplier), creature.MaxHunger);
-                }
-
-                TryAutoEat(creature);
-
-                var diedOfOldAge = AgeInYearsAt(creature, currentTick) >= LifeCycleOf(creature).MaxLifespanYears;
-                // Their own MaxHunger, not the rules'.
-                if (creature.Needs.Hunger >= creature.MaxHunger || diedOfOldAge)
-                {
-                    creature.IsAlive = false;
-                    creature.DeathTick = currentTick;
-                    creature.CauseOfDeath = diedOfOldAge ? DeathCause.OldAge : DeathCause.Hunger;
-                    FillCarcass(creature);
-                }
+                Metabolism.Advance(this, creature, currentTick, baseHungerMultiplier);
             }
 
-            // A year further on, a dead animal's bones themselves are gone - a person's never
-            // are. Snapshotted: RemoveAnimal mutates _animals mid-iteration otherwise.
-            foreach (var animal in _animals.ToList())
-            {
-                if (animal.IsAlive || animal.DeathTick is not { } deathTick)
-                {
-                    continue;
-                }
-
-                if (currentTick - deathTick == rules.CorpseDecayTicks + rules.BonesLingerTicks)
-                {
-                    RemoveAnimal(animal);
-                }
-            }
-
-            // Spoilage: every stack and worked object, in every creature's pack (alive or dead -
-            // a corpse's meat rots on its own clock, not at CorpseDecayTicks), in every
-            // building's storage, and on every ground pile or Made thing lying loose. What a
-            // resource node itself holds never spoils - it grows.
-            foreach (var creature in AllCreatures())
-            {
-                creature.Inventory.Expire(currentTick, itemCatalog);
-            }
-
-            foreach (var entity in _entities.ToList())
-            {
-                entity.Storage?.Expire(currentTick, itemCatalog);
-
-                if (entity.Made is { } made
-                    && itemCatalog.ShelfLifeTicksOf(made) is { } madeShelfLife
-                    && currentTick - made.MadeTick >= madeShelfLife)
-                {
-                    RemoveEntity(entity);
-                    continue;
-                }
-
-                if (entity is { Category: EntityCategory.Pile, Made: null, StaticAmount: > 0, DroppedTick: { } droppedTick }
-                    && itemCatalog.ShelfLifeFor(new ItemKindId(entity.Kind.Value)) is { } pileShelfLife
-                    && currentTick - droppedTick >= pileShelfLife)
-                {
-                    entity.StaticAmount = 0;
-                    RemoveEntity(entity);
-                }
-            }
+            Decay.Advance(this, currentTick);
 
             CasualTeaching.Advance(this, currentTick);
             IdleDiscovery.LearnWhatIsInHand(this);
             Hearsay.Advance(this, currentTick);
             IdleDiscovery.DiscoverByFiddling(this, currentTick);
-            AdvanceAffections();
-            StartFamilies(currentTick);
-            BreedAnimals(currentTick, climate);
+            Families.Advance(this, currentTick, climate);
             Collisions.Resolve(this);
             RefreshExploration();
 
@@ -388,32 +307,7 @@ public sealed class WorldState
                 homeRange.Advance(currentTick, rules.TicksPerSeason);
             }
 
-            foreach (var entity in _entities)
-            {
-                if (entity.Growth is not { IsAlive: true } growth)
-                {
-                    continue;
-                }
-
-                var definition = resourceCatalog.Get(entity.Kind);
-                if (definition.IsInhospitable(climate))
-                {
-                    growth.ColdStress += 1f;
-                    if (growth.ColdStress >= definition.TicksToWither)
-                    {
-                        growth.IsAlive = false;
-                        growth.DeathTick = currentTick;
-                        growth.CauseOfDeath = ResourceDeathCause.Climate;
-                    }
-
-                    continue;
-                }
-
-                growth.ColdStress = 0f;
-
-                var regenPerTick = definition.RegenPerTick * regenMultiplier;
-                growth.RemainingAmount = Math.Min(growth.MaxAmount, growth.RemainingAmount + regenPerTick);
-            }
+            Regrowth.Advance(this, currentTick, climate, regenMultiplier);
         }
 
         foreach (var entity in _entities)
@@ -433,144 +327,6 @@ public sealed class WorldState
         && ReferenceEquals(creature.NursingMother, mother)
         && LifeStageOf(creature) == LifeStage.Infant
         && IsWithinReach(creature.Position, mother.Position);
-
-    // Time together grows a bond, time apart loses it, for every living pair every tick (O(n^2),
-    // negligible at tens of people). Pairs involving the dead are skipped rather than decayed,
-    // so what someone meant to others is still there to read after they are gone.
-    private void AdvanceAffections()
-    {
-        var rules = Configuration.Rules;
-        for (var i = 0; i < _people.Count; i++)
-        {
-            var first = _people[i];
-            if (!first.IsAlive)
-            {
-                continue;
-            }
-
-            for (var j = i + 1; j < _people.Count; j++)
-            {
-                var second = _people[j];
-                if (!second.IsAlive)
-                {
-                    continue;
-                }
-
-                var together = Distance(first.Position, second.Position) <= rules.TogetherDistance;
-                var delta = together ? rules.AffectionGainedPerTickTogether : -rules.AffectionLostPerTickApart;
-                Affections.Change(first.Id, second.Id, delta, rules.MaxAffection);
-            }
-        }
-    }
-
-    // Where children come from when nobody asks. Whether a birth is possible is BirthCommand's
-    // business; this pass adds only the bond threshold. Iterates a snapshot because BirthCommand
-    // adds to _people: a child must not become a candidate parent on the tick it is born.
-    private void StartFamilies(long currentTick)
-    {
-        var threshold = Configuration.Rules.AffectionNeededToHaveAChild;
-        var candidates = _people.Where(person => person.IsAlive && IsOldEnoughForChildren(person)).ToList();
-
-        for (var i = 0; i < candidates.Count; i++)
-        {
-            for (var j = i + 1; j < candidates.Count; j++)
-            {
-                var first = candidates[i];
-                var second = candidates[j];
-                if (Affections.Between(first.Id, second.Id) < threshold)
-                {
-                    continue;
-                }
-
-                var mother = first.Sex == Sex.Female ? first : second;
-                var father = ReferenceEquals(mother, first) ? second : first;
-
-                // Alive, grown, one of each sex, not kin, within reach, mother not nursing - all
-                // checked inside; it declines silently like any other command.
-                new BirthCommand(Naming.NameForNewborn(mother, father, currentTick), mother, father).Execute(this);
-            }
-        }
-    }
-
-    // Where fawns come from when nobody asks - the animal counterpart of StartFamilies, but no
-    // pair state: a female's own id and the tick decide everything. Iterates a snapshot of
-    // _animals because giving birth adds to it, the same "a child must not become a candidate on
-    // the tick it is born" guard StartFamilies uses.
-    private void BreedAnimals(long currentTick, Climate climate)
-    {
-        var mothers = _animals.Where(animal => animal.IsAlive && animal.Sex == Sex.Female).ToList();
-
-        foreach (var mother in mothers)
-        {
-            if (Configuration.SpeciesCatalog.Get(mother.Species).Breeding is not { } breeding)
-            {
-                continue;
-            }
-
-            if (mother.PregnantSinceTick is { } pregnantSinceTick)
-            {
-                if (currentTick - pregnantSinceTick >= breeding.GestationTicks)
-                {
-                    GiveBirth(mother, currentTick);
-                }
-
-                continue;
-            }
-
-            if (LifeStageOf(mother) != LifeStage.Adult
-                || NursingInfantOf(mother) is not null
-                || mother.Needs.Hunger >= breeding.SatietyHungerBelow
-                || climate != breeding.Climate
-                || !HasAdultMaleOfHerOwnSpeciesAtHome(mother))
-            {
-                continue;
-            }
-
-            if (PassesConceptionRoll(mother, currentTick, breeding.ConceptionChancePerTick))
-            {
-                mother.PregnantSinceTick = currentTick;
-            }
-        }
-    }
-
-    // Same HomeRange reference, not merely nearby - a herd shares one anchor, so "at home" is
-    // exactly "in this herd" rather than a distance check.
-    private bool HasAdultMaleOfHerOwnSpeciesAtHome(Animal mother) =>
-        _animals.Any(candidate =>
-            candidate.IsAlive
-            && candidate.Sex == Sex.Male
-            && candidate.Species == mother.Species
-            && ReferenceEquals(candidate.Home, mother.Home)
-            && LifeStageOf(candidate) == LifeStage.Adult);
-
-    // What spawning does for a fawn born mid-game rather than drawn at map load: same position
-    // and Home as its mother, her as Mother, sex off its own freshly drawn id, and whatever the
-    // species starts every newborn knowing.
-    private void GiveBirth(Animal mother, long currentTick)
-    {
-        var id = NewbornIdFor(mother.Id, currentTick);
-        Execute(new SpawnAnimalCommand(id, mother.Species, mother.Position, mother.Home, Creature.SexOf(id), currentTick, mother));
-        mother.PregnantSinceTick = null;
-    }
-
-    // Deterministic from the mother's own id and the tick, as a newborn's name is drawn from both
-    // parents' ids and the tick - a fawn has only one parent in this rule, so her id alone is the
-    // seed.
-    private static CreatureId NewbornIdFor(CreatureId motherId, long currentTick)
-    {
-        var mixed = unchecked((uint)(motherId.Seed * 2654435761u) ^ ((uint)currentTick * 40503u));
-        return CreatureId.New(new Random(SeedHash.Avalanche(mixed)));
-    }
-
-    // Deterministic from the mother and the tick, as every other roll is.
-    private static bool PassesConceptionRoll(Animal mother, long currentTick, float chance)
-    {
-        var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ ((uint)currentTick * 19349663u));
-
-        // Stryker disable once Equality: NextDouble() returning exactly `chance` has probability
-        // zero, so < and <= are the same roll
-        return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
-    }
 
     // What a dead creature leaves behind, put into its own Inventory once at the moment it dies -
     // whatever the cause, hunger and old age included, and however starved or old it died:
@@ -601,29 +357,6 @@ public sealed class WorldState
     // is deliberate, since a caller may ask on any tick, not just the one decay happened on.
     public bool IsDecayed(Creature creature) =>
         creature.DeathTick is { } deathTick && Clock.CurrentTick - deathTick >= Configuration.Rules.CorpseDecayTicks;
-
-    // Same behaviour as the player's Eat button: eats through whatever food is on hand until no
-    // longer hungry. Runs every tick whatever task is active, even a player-issued one - a
-    // starving creature should not wait for a free moment to eat from their own pack.
-    private void TryAutoEat(Creature creature)
-    {
-        // A meal, not a nibble: nothing until hunger has built up, then EatCommand eats to zero.
-        if (!IsHungryEnoughToEat(creature))
-        {
-            return;
-        }
-
-        foreach (var kind in creature.Inventory.Counts.Keys.ToList())
-        {
-            // Stryker disable once Equality,Statement,Block: EatCommand no-ops at zero hunger anyway, so this only saves the remaining calls
-            if (creature.Needs.Hunger <= 0f)
-            {
-                break;
-            }
-
-            new EatCommand(creature, kind).Execute(this);
-        }
-    }
 
     private void RefreshExploration() =>
         Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));
