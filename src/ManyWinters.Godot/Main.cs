@@ -308,7 +308,7 @@ public partial class Main : Node3D
 
     private void OnSpawnButtonPressed()
     {
-        var name = _world.GenerateUnrelatedName(Random.Shared);
+        var name = _world.Naming.GenerateUnrelatedName(Random.Shared);
         var position = FindFreeSpawnPosition();
 
         // Borrows the nearest living person's home rather than founding a new one: a

@@ -31,7 +31,7 @@ public sealed class FleeTask(Creature threat, SpeciesDefinition.FleeDefinition f
         if (distance <= 0d)
         {
             // Standing exactly on the threat: no direction to flee in yet, next tick's collision
-            // resolution (WorldState.ResolveCollisions) is what actually separates them.
+            // resolution is what actually separates them.
             return;
         }
 

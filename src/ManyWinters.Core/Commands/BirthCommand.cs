@@ -62,8 +62,7 @@ public sealed record BirthCommand(string Name, Person Mother, Person Father) : I
         // Drawn before the Person exists because the sex is drawn from the id.
         var id = CreatureId.New();
 
-        // Born where its mother is; WorldState.ResolveCollisions untangles the overlap the same
-        // tick.
+        // Born where its mother is; collision resolution untangles the overlap the same tick.
         var child = new Person
         {
             Id = id,

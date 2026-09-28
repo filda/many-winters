@@ -10,7 +10,7 @@ using ManyWinters.Core.Time;
 
 namespace ManyWinters.Core.World;
 
-public sealed class WorldState(WorldConfiguration configuration)
+public sealed class WorldState
 {
     // A floor, not a tuning knob - a building can't be in negative repair.
     private const float MinCondition = 0f;
@@ -21,6 +21,14 @@ public sealed class WorldState(WorldConfiguration configuration)
     private readonly List<Entity> _entities = new();
     private readonly List<Grave> _graves = new();
     private readonly List<HomeRange> _homeRanges = new();
+
+    // Naming's live People/Forebears references make this an ordinary constructor rather than a
+    // primary one: a field initializer cannot refer to another instance field.
+    public WorldState(WorldConfiguration configuration)
+    {
+        Configuration = configuration;
+        Naming = new NamingCulture(_people, _forebears);
+    }
 
     public SimulationClock Clock { get; } = new();
 
@@ -34,9 +42,13 @@ public sealed class WorldState(WorldConfiguration configuration)
     // anything, so there is nothing to have a word for.
     public Vocabulary Vocabulary { get; } = new();
 
+    // What this band calls its newborns, rebuilt from People/Forebears rather than saved on its
+    // own.
+    public NamingCulture Naming { get; }
+
     // Catalogs, calendar and tuning numbers - fixed for the world's lifetime and not part of a
     // save file.
-    public WorldConfiguration Configuration { get; } = configuration;
+    public WorldConfiguration Configuration { get; }
 
     public IReadOnlyList<Person> People => _people;
 
@@ -221,7 +233,7 @@ public sealed class WorldState(WorldConfiguration configuration)
     }
 
     // Every living Person then every living Animal, for the per-creature passes in Advance and
-    // for anything (NursingInfantOf, ResolveCollisions) that has to look across both.
+    // for anything (NursingInfantOf, collision resolution) that has to look across both.
     private IEnumerable<Creature> AllCreatures() => _people.Cast<Creature>().Concat(_animals);
 
     public void Advance(long ticks)
@@ -383,7 +395,7 @@ public sealed class WorldState(WorldConfiguration configuration)
             AdvanceAffections();
             StartFamilies(currentTick);
             BreedAnimals(currentTick, climate);
-            ResolveCollisions();
+            Collisions.Resolve(this);
             RefreshExploration();
 
             foreach (var homeRange in _homeRanges)
@@ -660,8 +672,8 @@ public sealed class WorldState(WorldConfiguration configuration)
     // plus a small margin for its own footprint), not nearest-to-the-shared-anchor: the anchor
     // bounds where the herd may graze, it is not everybody's common destination. Picking nearest
     // to the anchor instead sent every member of a herd at the single node nearest that one point,
-    // where ResolveCollisions then kept most of them outside MaxInteractionDistance and nobody
-    // ate.
+    // where collision resolution then kept most of them outside MaxInteractionDistance and
+    // nobody ate.
     //
     // The in-home tier also only counts a node that can still give this creature a full harvest,
     // not merely IsWorthGathering's "more than zero left": a home tuft that regrew to a sliver
@@ -1136,7 +1148,7 @@ public sealed class WorldState(WorldConfiguration configuration)
 
                 // Alive, grown, one of each sex, not kin, within reach, mother not nursing - all
                 // checked inside; it declines silently like any other command.
-                new BirthCommand(NameForNewborn(mother, father, currentTick), mother, father).Execute(this);
+                new BirthCommand(Naming.NameForNewborn(mother, father, currentTick), mother, father).Execute(this);
             }
         }
     }
@@ -1202,8 +1214,9 @@ public sealed class WorldState(WorldConfiguration configuration)
         mother.PregnantSinceTick = null;
     }
 
-    // Deterministic from the mother's own id and the tick, as NameForNewborn is from two parents'
-    // ids and the tick - a fawn has only one parent in this rule, so her id alone is the seed.
+    // Deterministic from the mother's own id and the tick, as a newborn's name is drawn from both
+    // parents' ids and the tick - a fawn has only one parent in this rule, so her id alone is the
+    // seed.
     private static CreatureId NewbornIdFor(CreatureId motherId, long currentTick)
     {
         var mixed = unchecked((uint)(motherId.Seed * 2654435761u) ^ ((uint)currentTick * 40503u));
@@ -1218,63 +1231,6 @@ public sealed class WorldState(WorldConfiguration configuration)
         // Stryker disable once Equality: NextDouble() returning exactly `chance` has probability
         // zero, so < and <= are the same roll
         return new Random(SeedHash.Avalanche(mixed)).NextDouble() < chance;
-    }
-
-    // Slow enough that no single generation overwrites the naming tradition it was handed
-    // (docs/Procedural Name Generation Plan.md, "Cultural Memory"); the last ~12 births (roughly
-    // one generation, SimulationRules.Default) count for the separate NamingTrend on top.
-    private const float CultureDecayPerObservation = 0.98f;
-    private const int RecentTrendWindow = 12;
-
-    private int _namingHistoryVersion = -1;
-    private CultureProfile? _cachedCultureProfile;
-    private CultureProfile? _cachedTrendProfile;
-    private HashSet<string>? _cachedExistingNames;
-
-    // Deterministic from the parents and the tick, so a replayed world names the same children.
-    // The culture it draws from is rebuilt from People/Forebears rather than saved separately.
-    //
-    // Public because a child the player asks for is named the same way as one the band has of
-    // its own accord: BirthCommand takes the name, so somebody has to draw it, and there is only
-    // one right way to draw it.
-    public string NameForNewborn(Person mother, Person father, long tick)
-    {
-        var (culture, trend, existingNames) = NamingProfiles();
-        var siblingNames = _people
-            .Where(person => ReferenceEquals(person.Mother, mother) && ReferenceEquals(person.Father, father))
-            .Select(person => person.Name)
-            .ToList();
-
-        var mixed = unchecked((uint)(mother.Id.Seed * 73856093) ^ (uint)(father.Id.Seed * 19349663) ^ ((uint)tick * 2654435761u));
-        var rng = new Random(SeedHash.Avalanche(mixed));
-
-        return PhoneticNameGenerator.GenerateChild(rng, culture, trend, mother.Name, father.Name, existingNames, siblingNames);
-    }
-
-    // A name for someone with no parents to inherit from, drawn from the current naming culture
-    // rather than a curated pool - what the player's manual "Spawn Person" button uses.
-    public string GenerateUnrelatedName(Random rng)
-    {
-        var (culture, trend, existingNames) = NamingProfiles();
-        return PhoneticNameGenerator.GenerateChild(rng, culture, trend, motherName: null, fatherName: null, existingNames, siblingNames: []);
-    }
-
-    // Cached against People.Count + Forebears.Count (both only ever grow): rebuilding the whole
-    // profile from history is cheap once, but StartFamilies calls NameForNewborn speculatively
-    // for every eligible pair on every tick, and only some of those become an actual birth.
-    private (CultureProfile Culture, CultureProfile Trend, HashSet<string> ExistingNames) NamingProfiles()
-    {
-        var version = _people.Count + _forebears.Count;
-        if (version != _namingHistoryVersion || _cachedCultureProfile is null || _cachedTrendProfile is null || _cachedExistingNames is null)
-        {
-            var history = _forebears.Concat(_people).OrderBy(person => person.BirthTick).Select(person => person.Name).ToList();
-            _cachedCultureProfile = CultureProfile.Build(history, CultureDecayPerObservation);
-            _cachedTrendProfile = CultureProfile.BuildRecentTrend(history, RecentTrendWindow);
-            _cachedExistingNames = new HashSet<string>(history, StringComparer.OrdinalIgnoreCase);
-            _namingHistoryVersion = version;
-        }
-
-        return (_cachedCultureProfile, _cachedTrendProfile, _cachedExistingNames);
     }
 
     // Deterministic from the ids' seeds and the tick, rather than a shared Random: reproducible
@@ -1359,111 +1315,6 @@ public sealed class WorldState(WorldConfiguration configuration)
 
             new EatCommand(creature, kind).Execute(this);
         }
-    }
-
-    // MoveTask/IdleTask aim at a destination with no awareness of what else is there, so this
-    // untangles the overlap afterwards, every tick (O(n^2), as AutoTeachNearbyPeople). Every
-    // living creature, person or animal - a deer and a person are pushed apart using their own
-    // species' radii rather than one shared constant. Separations are computed against
-    // start-of-tick positions and summed into one clamped push per creature
-    // (SimulationRules.MaxCollisionPushPerTick), so discovery order cannot bias the result.
-    private void ResolveCollisions()
-    {
-        var speciesCatalog = Configuration.SpeciesCatalog;
-        var maxPushPerTick = Configuration.Rules.MaxCollisionPushPerTick;
-        var resourceCatalog = Configuration.ResourceCatalog;
-        var creatures = AllCreatures().Where(creature => creature.IsAlive).ToList();
-        var radii = creatures.Select(creature => speciesCatalog.Get(creature.Species).CollisionRadius).ToList();
-        var pushes = new (double X, double Y)[creatures.Count];
-
-        for (var i = 0; i < creatures.Count; i++)
-        {
-            for (var j = i + 1; j < creatures.Count; j++)
-            {
-                if (!TrySeparation(creatures[i].Position, creatures[j].Position, radii[i] + radii[j], out var pushX, out var pushY))
-                {
-                    continue;
-                }
-
-                pushes[i] = (pushes[i].X + (pushX / 2), pushes[i].Y + (pushY / 2));
-                pushes[j] = (pushes[j].X - (pushX / 2), pushes[j].Y - (pushY / 2));
-            }
-        }
-
-        for (var i = 0; i < creatures.Count; i++)
-        {
-            var creature = creatures[i];
-            var (pushX, pushY) = pushes[i];
-            foreach (var entity in _entities)
-            {
-                if (entity.Growth is not { IsAlive: true })
-                {
-                    continue;
-                }
-
-                var collisionRadius = resourceCatalog.Get(entity.Kind).CollisionRadius;
-                if (collisionRadius <= 0f
-                    || !TrySeparation(creature.Position, entity.Position, radii[i] + collisionRadius, out var nodePushX, out var nodePushY))
-                {
-                    continue;
-                }
-
-                pushX += nodePushX;
-                pushY += nodePushY;
-            }
-
-            ApplyClampedPush(creature, pushX, pushY, maxPushPerTick);
-        }
-    }
-
-    private static void ApplyClampedPush(Creature creature, double pushX, double pushY, float maxPushPerTick)
-    {
-        var magnitude = Math.Sqrt((pushX * pushX) + (pushY * pushY));
-        // Stryker disable once Equality,Statement,Block: falling through adds a zero push and lands on the same spot
-        if (magnitude <= 0.0)
-        {
-            return;
-        }
-        // Stryker disable once Equality: at exactly the cap the scale is 1, so clamping changes nothing
-        if (magnitude > maxPushPerTick)
-        {
-            var scale = maxPushPerTick / magnitude;
-            pushX *= scale;
-            pushY *= scale;
-        }
-
-        creature.Position = new Position(creature.Position.X + pushX, creature.Position.Y + pushY);
-    }
-
-    // A true result moves `a` away from `b` by (pushX, pushY); `b` gets the negation, wherever
-    // the caller applies it. False once far enough apart. Coincident positions fall back to a
-    // fixed direction rather than staying stuck together.
-    private static bool TrySeparation(Position a, Position b, float minDistance, out double pushX, out double pushY)
-    {
-        var dx = a.X - b.X;
-        var dy = a.Y - b.Y;
-        var distance = Math.Sqrt((dx * dx) + (dy * dy));
-        // Stryker disable once Equality: at exactly the minimum the overlap is zero, so either branch stands still
-        if (distance >= minDistance)
-        {
-            pushX = 0;
-            pushY = 0;
-            // Stryker disable once Boolean: both out parameters are zero here, so either answer leaves every position as it was
-            return false;
-        }
-
-        var overlap = minDistance - distance;
-        // Stryker disable once Equality: two positions exactly this far apart has probability zero
-        if (distance < 0.0001)
-        {
-            pushX = overlap;
-            pushY = 0;
-            return true;
-        }
-
-        pushX = dx / distance * overlap;
-        pushY = dy / distance * overlap;
-        return true;
     }
 
     private void RefreshExploration() =>

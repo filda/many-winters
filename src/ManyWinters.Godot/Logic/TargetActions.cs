@@ -241,7 +241,7 @@ internal static class TargetActions
     {
         var mother = actor.Sex == Sex.Female ? actor : target;
         var father = ReferenceEquals(mother, actor) ? target : actor;
-        var name = world.NameForNewborn(mother, father, world.Clock.CurrentTick);
+        var name = world.Naming.NameForNewborn(mother, father, world.Clock.CurrentTick);
 
         return ActionOffer.For("Have a child", new BirthCommand(name, mother, father), world, target: target.Position);
     }
