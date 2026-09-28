@@ -41,7 +41,7 @@ public class CreatureTaskQueueTests
     public void AdvanceIfCompletePullsNextTaskWhenNoneIsCurrent()
     {
         var queue = new CreatureTaskQueue();
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         queue.Enqueue(task);
 
         queue.AdvanceIfComplete();
@@ -67,7 +67,7 @@ public class CreatureTaskQueueTests
     {
         var queue = new CreatureTaskQueue();
         var first = new CompletableTask();
-        var second = new IdleTask();
+        var second = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         queue.Enqueue(first);
         queue.Enqueue(second);
         queue.AdvanceIfComplete();
@@ -82,7 +82,7 @@ public class CreatureTaskQueueTests
     public void InterruptSetsTheGivenTaskAsCurrentImmediately()
     {
         var queue = new CreatureTaskQueue();
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         queue.Interrupt(task);
 
@@ -93,10 +93,10 @@ public class CreatureTaskQueueTests
     public void InterruptReplacesWhicheverTaskWasAlreadyCurrent()
     {
         var queue = new CreatureTaskQueue();
-        var first = new IdleTask();
+        var first = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         queue.Enqueue(first);
         queue.AdvanceIfComplete();
-        var replacement = new IdleTask();
+        var replacement = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         queue.Interrupt(replacement);
 
@@ -135,7 +135,7 @@ public class CreatureTaskQueueTests
     {
         var queue = new CreatureTaskQueue();
         var first = new CompletableTask { Completed = true };
-        var second = new IdleTask();
+        var second = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         queue.Interrupt(first);
         queue.Enqueue(second);
 

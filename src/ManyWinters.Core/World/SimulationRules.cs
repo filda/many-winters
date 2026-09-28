@@ -256,6 +256,15 @@ public sealed record SimulationRules
     // installs, so the three autonomous foraging tasks all walk at the same unhurried pace; tests
     // reuse it too, to build an idle-speed task without duplicating the number.
     public float GatherSpeedPerTick { get; } = 0.3f;
+    public float MinWanderRadius { get; } = 3f;
+    public float MaxWanderRadius { get; } = 8f;
+    public float IdleSpeedPerTick { get; } = 0.15f;
+
+    // A pause between wander legs (and before the first), or idle reads as restless constant
+    // walking. The ceiling is public because startup runs the world that long before the player
+    // sees it, so the band is already on the move.
+    public int MinPauseTicks { get; } = 3;
+    public int MaxPauseTicks { get; } = 10;
 
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

@@ -10,18 +10,15 @@ namespace ManyWinters.Core.Tasks;
 // the first Advance, radius drawn once from its own id. With one (every Animal): anchored on the
 // home range's own drifting Anchor, re-read every leg so the wander follows it, and radius is the
 // home's own.
-public sealed class IdleTask(HomeRange? home = null) : CreatureTask
+public sealed class IdleTask(
+    HomeRange? home,
+    float minWanderRadius,
+    float maxWanderRadius,
+    float speedPerTick,
+    int minPauseTicks,
+    int maxPauseTicks
+    ) : CreatureTask
 {
-    private const float MinWanderRadius = 3f;
-    private const float MaxWanderRadius = 8f;
-    private const float SpeedPerTick = 0.15f;
-
-    // A pause between wander legs (and before the first), or idle reads as restless constant
-    // walking. The ceiling is public because startup runs the world that long before the player
-    // sees it, so the band is already on the move.
-    private const int MinPauseTicks = 3;
-    public const int MaxPauseTicks = 10;
-
     // Seeded from the person, so a wander path is reproducible from a start tick regardless of
     // simulation order.
     private Random? _rng;
@@ -44,7 +41,7 @@ public sealed class IdleTask(HomeRange? home = null) : CreatureTask
             {
                 _anchor = creature.Position;
                 // Drawn once per person, not per leg: how far this one tends to roam.
-                _wanderRadius = MinWanderRadius + ((float)_rng.NextDouble() * (MaxWanderRadius - MinWanderRadius));
+                _wanderRadius = minWanderRadius + ((float)_rng.NextDouble() * (maxWanderRadius - minWanderRadius));
             }
             else
             {
@@ -62,7 +59,7 @@ public sealed class IdleTask(HomeRange? home = null) : CreatureTask
                 return;
             }
 
-            _currentLeg = new MoveTask(NextWanderDestination(home?.Anchor ?? _anchor!.Value), SpeedPerTick);
+            _currentLeg = new MoveTask(NextWanderDestination(home?.Anchor ?? _anchor!.Value), speedPerTick);
         }
 
         _currentLeg.Advance(creature);
@@ -73,7 +70,7 @@ public sealed class IdleTask(HomeRange? home = null) : CreatureTask
         }
     }
 
-    private int NextPauseTicks() => MinPauseTicks + _rng!.Next(MaxPauseTicks - MinPauseTicks + 1);
+    private int NextPauseTicks() => minPauseTicks + _rng!.Next(maxPauseTicks - minPauseTicks + 1);
 
     // Uniform over the disk's area: independent uniform angle and radius would bunch samples near
     // the anchor.

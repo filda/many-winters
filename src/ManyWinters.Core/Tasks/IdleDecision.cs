@@ -205,7 +205,14 @@ public static class IdleDecision
 
         // Null for a creature with no home (every Person today), exactly IdleTask's own default;
         // an Animal's home range is what its wander legs and radius come from instead.
-        return new IdleTask(creature.Home);
+        return new IdleTask(
+            creature.Home,
+            world.Configuration.Rules.MinWanderRadius,
+            world.Configuration.Rules.MaxWanderRadius,
+            world.Configuration.Rules.IdleSpeedPerTick,
+            world.Configuration.Rules.MinPauseTicks,
+            world.Configuration.Rules.MaxPauseTicks
+            );
     }
 
     private static bool IsKnownSkill(WorldState world, Creature creature, SkillTypeId skill)

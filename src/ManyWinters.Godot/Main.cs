@@ -3,7 +3,6 @@ using ManyWinters.Core.Commands;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
-using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Logic;
 using ManyWinters.Godot.Views;
@@ -77,7 +76,7 @@ public partial class Main : Node3D
         // ticks before the views exist keeps the same deterministic world, watched from a few
         // ticks in; it costs the band that much hunger before the player can act.
         await Building(35, "Waking the band");
-        _world.Advance(IdleTask.MaxPauseTicks + 1);
+        _world.Advance(_world.Configuration.Rules.MaxPauseTicks + 1);
 
         await Building(45, "Hanging the sky");
         _exploration = new RevealableExploration(_world.Exploration);

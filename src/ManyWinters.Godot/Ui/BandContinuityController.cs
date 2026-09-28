@@ -1,7 +1,6 @@
 using Godot;
 using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Maps;
-using ManyWinters.Core.Tasks;
 using ManyWinters.Core.World;
 using ManyWinters.Godot.Fog;
 using ManyWinters.Godot.Interaction;
@@ -126,7 +125,7 @@ internal sealed class BandContinuityController
         _endingAnnouncements = new EndingAnnouncements();
 
         // Brief pre-roll so the new band is not standing still behind the prologue.
-        _world.Advance(IdleTask.MaxPauseTicks + 1);
+        _world.Advance(_world.Configuration.Rules.MaxPauseTicks + 1);
 
         // The game loop is blocked while the inscription is up, so refresh the fog here rather
         // than waiting for it.

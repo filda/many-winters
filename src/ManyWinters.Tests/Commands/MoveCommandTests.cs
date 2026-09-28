@@ -24,7 +24,7 @@ public class MoveCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = world.SpawnPerson("Ava", new Position(0, 0));
-        var previousTask = new IdleTask();
+        var previousTask = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         person.Tasks.Interrupt(previousTask);
 
         world.Execute(new MoveCommand(person, new Position(5, 5)));

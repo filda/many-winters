@@ -32,7 +32,7 @@ public class IdleDiscoveryTests
     private static Person Idler(WorldState world, float curiosity = 1f)
     {
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks, curiosity: curiosity);
-        person.Tasks.Interrupt(new IdleTask());
+        person.Tasks.Interrupt(new IdleTask(null, 3f, 8f, 0.15f, 3, 10));
 
         return person;
     }
@@ -141,7 +141,7 @@ public class IdleDiscoveryTests
 
         var eager = Idler(world);
         var incurious = world.SpawnPerson("Bran", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks, curiosity: 0f);
-        incurious.Tasks.Interrupt(new IdleTask());
+        incurious.Tasks.Interrupt(new IdleTask(null, 3f, 8f, 0.15f, 3, 10));
 
         eager.Inventory.Add(TestCatalogs.GrassItem, 50);
         incurious.Inventory.Add(TestCatalogs.GrassItem, 50);

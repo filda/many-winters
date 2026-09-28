@@ -13,7 +13,7 @@ public class IdleTaskTests
     [Fact]
     public void IsNeverComplete()
     {
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         Assert.False(task.IsComplete);
     }
@@ -22,7 +22,7 @@ public class IdleTaskTests
     public void AdvanceMovesThePersonInsteadOfLeavingThemFrozen()
     {
         var person = NewPerson(new Position(3, 4));
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         // Enough ticks to clear even the longest pre-leg pause.
         for (var i = 0; i < 20; i++)
@@ -38,7 +38,7 @@ public class IdleTaskTests
     {
         var start = new Position(3, 4);
         var person = NewPerson(start);
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         for (var i = 0; i < 500; i++)
         {
@@ -56,8 +56,8 @@ public class IdleTaskTests
         var start = new Position(3, 4);
         var ava = new Person { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
         var bran = new Person { Id = TestIds.Person(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
-        var avaTask = new IdleTask();
-        var branTask = new IdleTask();
+        var avaTask = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
+        var branTask = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         // Clears the longest possible pre-leg pause for both.
         for (var i = 0; i < 20; i++)
@@ -77,8 +77,8 @@ public class IdleTaskTests
         var start = new Position(0, 0);
         var ava = new Person { Id = TestIds.Person(1), Name = "Ava", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
         var bran = new Person { Id = TestIds.Person(2), Name = "Bran", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
-        var avaTask = new IdleTask();
-        var branTask = new IdleTask();
+        var avaTask = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
+        var branTask = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         var sawADivergentTick = false;
         for (var i = 0; i < 50; i++)
@@ -107,7 +107,7 @@ public class IdleTaskTests
         var farthestReached = Enumerable.Range(1, 30).Select(id =>
         {
             var person = new Person { Id = TestIds.Person(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
-            var task = new IdleTask();
+            var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
             var farthest = 0.0;
             for (var i = 0; i < 800; i++)
             {
@@ -132,7 +132,7 @@ public class IdleTaskTests
         {
             var start = new Position(0, 0);
             var person = new Person { Id = TestIds.Person(id), Name = $"Person {id}", BirthTick = 0, Position = start, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };
-            var task = new IdleTask();
+            var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
             var still = 0;
             while (still < 100)
             {
@@ -156,7 +156,7 @@ public class IdleTaskTests
     public void StandsStillBetweenLegsInsteadOfWalkingEveryTick()
     {
         var person = NewPerson(new Position(0, 0));
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         var previous = person.Position;
         var stillTicks = 0;
 
@@ -179,7 +179,7 @@ public class IdleTaskTests
     public void SetsOffAgainAfterFinishingALegInsteadOfSettlingWhereItEnded()
     {
         var person = NewPerson(new Position(0, 0));
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
         var previous = person.Position;
         var movedLate = false;
 
@@ -219,7 +219,7 @@ public class IdleTaskTests
             Father = Person.Unknown,
             Sex = TestPeople.AnySex,
         };
-        var task = new IdleTask();
+        var task = new IdleTask(null, 3f, 8f, 0.15f, 3, 10);
 
         for (var i = 0; i < ticks; i++)
         {
@@ -237,7 +237,7 @@ public class IdleTaskTests
         // accident of the no-home behaviour.
         var home = new HomeRange(new Position(100, 100)) { Radius = 6f, DriftMetresPerSeason = 0f };
         var person = NewPerson(home.Anchor);
-        var task = new IdleTask(home);
+        var task = new IdleTask(home, 3f, 8f, 0.15f, 3, 10);
 
         for (var i = 0; i < 500; i++)
         {
@@ -252,7 +252,7 @@ public class IdleTaskTests
         const long ticksPerSeason = 75;
         var home = new HomeRange(new Position(0, 0)) { Radius = 5f, DriftMetresPerSeason = 50f };
         var person = NewPerson(home.Anchor);
-        var task = new IdleTask(home);
+        var task = new IdleTask(home, 3f, 8f, 0.15f, 3, 10);
 
         // Establishes which season "now" is without moving anything.
         home.Advance(0, ticksPerSeason);
@@ -285,8 +285,8 @@ public class IdleTaskTests
         var first = NewPerson(start);
         var second = NewPerson(start);
 
-        new IdleTask().Advance(first);
-        new IdleTask().Advance(second);
+        new IdleTask(null, 3f, 8f, 0.15f, 3, 10).Advance(first);
+        new IdleTask(null, 3f, 8f, 0.15f, 3, 10).Advance(second);
 
         Assert.Equal(first.Position, second.Position);
     }
