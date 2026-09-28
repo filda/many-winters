@@ -1,1 +1,6 @@
-{ "id": "potato", "displayName": "Potato Flesh", "density": 1, "shelfLifeTicks": 300 }
+{
+  "id": "potato",
+  "displayName": "Potato Flesh",
+  "density": 1,
+  "shelfLifeTicks": 300
+}

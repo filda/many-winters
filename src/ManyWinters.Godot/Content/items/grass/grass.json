@@ -1,1 +1,15 @@
-{ "id": "grass", "displayName": "Grass", "material": "plant_fibre", "form": "fibre", "volume": 5, "hungerRestoredPerUnit": 0.5, "transitions": [{ "verb": "twist", "form": "cord", "inputAmount": 3 }] }
+{
+  "id": "grass",
+  "displayName": "Grass",
+  "material": "plant_fibre",
+  "form": "fibre",
+  "volume": 5,
+  "hungerRestoredPerUnit": 0.5,
+  "transitions": [
+    {
+      "verb": "twist",
+      "form": "cord",
+      "inputAmount": 3
+    }
+  ]
+}

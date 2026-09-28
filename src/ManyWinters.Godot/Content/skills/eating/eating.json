@@ -1,1 +1,6 @@
-{ "id": "eating", "displayName": "Eating", "baseTechnique": "basic_eating", "efficientTechnique": "efficient_eating" }
+{
+  "id": "eating",
+  "displayName": "Eating",
+  "baseTechnique": "basic_eating",
+  "efficientTechnique": "efficient_eating"
+}

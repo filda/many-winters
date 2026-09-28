@@ -1,1 +1,5 @@
-{ "output": "warm_clothing", "inputItem": "hide", "inputAmount": 2 }
+{
+  "output": "warm_clothing",
+  "inputItem": "hide",
+  "inputAmount": 2
+}

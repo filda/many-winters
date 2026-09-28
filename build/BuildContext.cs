@@ -18,6 +18,11 @@ public sealed class BuildContext(ICakeContext context) : FrostingContext(context
 
     public string GodotProjectPath => Path.Combine(RootDirectory, "src", "ManyWinters.Godot");
 
+    public string ContentDirectory => Path.Combine(GodotProjectPath, "Content");
+
+    // Generated terrain data (heightmap, waterways), not hand-edited definitions; FormatJson leaves it alone.
+    public string TerrainContentDirectory => Path.Combine(ContentDirectory, "terrain");
+
     public string SynthPrototypeProjectPath => Path.Combine(RootDirectory, "src", "ManyWinters.Tools", "SynthPrototype", "ManyWinters.Tools.SynthPrototype.csproj");
 
     // The test projects inside ManyWinters.sln, which the Test target runs one by one.

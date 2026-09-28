@@ -1,1 +1,8 @@
-{ "id": "pear", "displayName": "Pear", "material": "pear", "form": "whole", "volume": 1, "hungerRestoredPerUnit": 1 }
+{
+  "id": "pear",
+  "displayName": "Pear",
+  "material": "pear",
+  "form": "whole",
+  "volume": 1,
+  "hungerRestoredPerUnit": 1
+}

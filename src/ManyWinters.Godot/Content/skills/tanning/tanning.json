@@ -1,1 +1,6 @@
-{ "id": "tanning", "displayName": "Tanning", "baseTechnique": "basic_tanning", "efficientTechnique": "efficient_tanning" }
+{
+  "id": "tanning",
+  "displayName": "Tanning",
+  "baseTechnique": "basic_tanning",
+  "efficientTechnique": "efficient_tanning"
+}

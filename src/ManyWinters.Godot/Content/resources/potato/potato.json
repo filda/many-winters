@@ -3,6 +3,11 @@
   "displayName": "Potato",
   "skill": "root_digging",
   "yieldsItem": "potato",
-  "climateYields": [{ "climate": "Cold", "multiplier": 0.4 }],
+  "climateYields": [
+    {
+      "climate": "Cold",
+      "multiplier": 0.4
+    }
+  ],
   "regenPerTick": 1
 }

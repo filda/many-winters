@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Cake.Core.Diagnostics;
 using Cake.Frosting;
@@ -97,6 +100,72 @@ public sealed class LineEndingsTask : FrostingTask<BuildContext>
         {
             throw new InvalidOperationException(
                 "Tracked files with CRLF or mixed line endings in the working tree; rewrite them with LF:"
+                + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+        }
+    }
+}
+
+// Content definitions are edited by hand, so they are kept one key per line: a one-line file
+// makes every edit a whole-file diff and two people touching different keys a merge conflict.
+// The canonical shape is whatever Utf8JsonWriter's indented mode writes (two spaces, matching
+// .editorconfig), with LF line endings and a trailing newline.
+internal static class ContentJson
+{
+    public static IEnumerable<string> Files(BuildContext context) =>
+        Directory.EnumerateFiles(context.ContentDirectory, "*.json", SearchOption.AllDirectories)
+            .Where(path => !path.StartsWith(context.TerrainContentDirectory, StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal);
+
+    public static string Format(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+        {
+            document.WriteTo(writer);
+        }
+
+        // .NET 8 has no NewLine option on the writer and uses Environment.NewLine.
+        return Encoding.UTF8.GetString(buffer.ToArray()).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n";
+    }
+
+    public static IReadOnlyList<string> Misformatted(BuildContext context) =>
+        Files(context)
+            .Where(path => File.ReadAllText(path) != Format(File.ReadAllText(path)))
+            .Select(path => Path.GetRelativePath(context.RootDirectory, path))
+            .ToList();
+}
+
+[TaskName("FormatJson")]
+public sealed class FormatJsonTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        foreach (var path in ContentJson.Files(context))
+        {
+            var original = File.ReadAllText(path);
+            var formatted = ContentJson.Format(original);
+            if (formatted == original)
+            {
+                continue;
+            }
+
+            File.WriteAllText(path, formatted);
+            context.Log.Information(Verbosity.Normal, "Reformatted {0}", Path.GetRelativePath(context.RootDirectory, path));
+        }
+    }
+}
+
+[TaskName("FormatJsonCheck")]
+public sealed class FormatJsonCheckTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        var offenders = ContentJson.Misformatted(context);
+        if (offenders.Count != 0)
+        {
+            throw new InvalidOperationException(
+                "Content JSON files not in the canonical form; run --target=FormatJson:"
                 + Environment.NewLine + string.Join(Environment.NewLine, offenders));
         }
     }
@@ -229,6 +298,7 @@ public sealed class RenderAudioTask : FrostingTask<BuildContext>
 
 [TaskName("CI")]
 [IsDependentOn(typeof(LineEndingsTask))]
+[IsDependentOn(typeof(FormatJsonCheckTask))]
 [IsDependentOn(typeof(RestoreTask))]
 [IsDependentOn(typeof(FormatTask))]
 [IsDependentOn(typeof(BuildTask))]

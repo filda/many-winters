@@ -1,1 +1,4 @@
-{ "id": "vessel", "displayName": "Vessel" }
+{
+  "id": "vessel",
+  "displayName": "Vessel"
+}

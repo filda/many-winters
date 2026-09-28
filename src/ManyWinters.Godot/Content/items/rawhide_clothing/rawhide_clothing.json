@@ -1,1 +1,7 @@
-{ "id": "rawhide_clothing", "displayName": "Rawhide Clothing", "material": "rawhide", "form": "garment", "volume": 4 }
+{
+  "id": "rawhide_clothing",
+  "displayName": "Rawhide Clothing",
+  "material": "rawhide",
+  "form": "garment",
+  "volume": 4
+}

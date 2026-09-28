@@ -1,1 +1,8 @@
-{ "id": "mushroom", "displayName": "Mushroom", "material": "mushroom", "form": "whole", "volume": 1, "hungerRestoredPerUnit": 1 }
+{
+  "id": "mushroom",
+  "displayName": "Mushroom",
+  "material": "mushroom",
+  "form": "whole",
+  "volume": 1,
+  "hungerRestoredPerUnit": 1
+}

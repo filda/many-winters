@@ -1,1 +1,8 @@
-{ "id": "basket", "displayName": "Basket", "material": "wood", "form": "vessel", "volume": 4, "carryCapacityBonus": 20 }
+{
+  "id": "basket",
+  "displayName": "Basket",
+  "material": "wood",
+  "form": "vessel",
+  "volume": 4,
+  "carryCapacityBonus": 20
+}

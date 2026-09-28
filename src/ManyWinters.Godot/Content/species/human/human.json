@@ -8,10 +8,25 @@
     "maxLifespanYears": 10
   },
   "diet": [
-    { "material": "apple", "digestibility": 1 },
-    { "material": "pear", "digestibility": 1 },
-    { "material": "mushroom", "digestibility": 1 },
-    { "material": "potato", "digestibility": 1 },
-    { "material": "meat", "digestibility": 1 }
+    {
+      "material": "apple",
+      "digestibility": 1
+    },
+    {
+      "material": "pear",
+      "digestibility": 1
+    },
+    {
+      "material": "mushroom",
+      "digestibility": 1
+    },
+    {
+      "material": "potato",
+      "digestibility": 1
+    },
+    {
+      "material": "meat",
+      "digestibility": 1
+    }
   ]
 }

@@ -1,1 +1,5 @@
-{ "id": "wedge", "displayName": "Wedge", "edgeSharpness": 1 }
+{
+  "id": "wedge",
+  "displayName": "Wedge",
+  "edgeSharpness": 1
+}

@@ -1,1 +1,7 @@
-{ "id": "storage_hut", "displayName": "Storage Hut", "material": "wood", "form": "shelter", "volume": 200 }
+{
+  "id": "storage_hut",
+  "displayName": "Storage Hut",
+  "material": "wood",
+  "form": "shelter",
+  "volume": 200
+}

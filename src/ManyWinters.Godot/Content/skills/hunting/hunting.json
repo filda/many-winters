@@ -1,1 +1,6 @@
-{ "id": "hunting", "displayName": "Hunting", "baseTechnique": "basic_hunting", "efficientTechnique": "efficient_hunting" }
+{
+  "id": "hunting",
+  "displayName": "Hunting",
+  "baseTechnique": "basic_hunting",
+  "efficientTechnique": "efficient_hunting"
+}

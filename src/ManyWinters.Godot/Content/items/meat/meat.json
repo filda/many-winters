@@ -1,1 +1,8 @@
-{ "id": "meat", "displayName": "Meat", "material": "meat", "form": "lump", "volume": 1, "hungerRestoredPerUnit": 5 }
+{
+  "id": "meat",
+  "displayName": "Meat",
+  "material": "meat",
+  "form": "lump",
+  "volume": 1,
+  "hungerRestoredPerUnit": 5
+}

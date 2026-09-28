@@ -1,1 +1,7 @@
-{ "id": "hide", "displayName": "Hide", "material": "hide", "form": "whole", "volume": 3 }
+{
+  "id": "hide",
+  "displayName": "Hide",
+  "material": "hide",
+  "form": "whole",
+  "volume": 3
+}

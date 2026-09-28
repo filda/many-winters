@@ -1,1 +1,5 @@
-{ "id": "cord", "displayName": "Cord", "lashingStrength": 1 }
+{
+  "id": "cord",
+  "displayName": "Cord",
+  "lashingStrength": 1
+}

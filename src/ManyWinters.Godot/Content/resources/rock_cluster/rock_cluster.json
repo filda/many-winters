@@ -1,1 +1,8 @@
-{ "id": "rock_cluster", "displayName": "Rock Cluster", "skill": "mining", "yieldsItem": "stone", "regenPerTick": 0, "collisionRadius": 0.45 }
+{
+  "id": "rock_cluster",
+  "displayName": "Rock Cluster",
+  "skill": "mining",
+  "yieldsItem": "stone",
+  "regenPerTick": 0,
+  "collisionRadius": 0.45
+}

@@ -163,11 +163,16 @@ dotnet run --project build/ManyWinters.Build.csproj -- --target=Screenshot --out
 
 # Render the audio prototype's listening set into artifacts/audio
 dotnet run --project build/ManyWinters.Build.csproj -- --target=RenderAudio
+
+# Rewrite the content definitions under src/ManyWinters.Godot/Content into their canonical JSON form
+dotnet run --project build/ManyWinters.Build.csproj -- --target=FormatJson
 ```
 
-The `CI` target is the whole local gate: the line-ending check, restore, formatting, the Release build, InspectCode, tests and (on Windows) the E2E suite, stopping at the first failure. Run it before considering a change done. In CI the same checks split into parallel jobs instead of the single target — LineEndings and Format run first, each on its own runner, and the Build, Test and InspectCode job starts once both pass (they share one Release build); the E2E suite runs in its own Windows job and gates the release. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build, and it is the home for every repository task that needs a process launched, a log parsed or a Win32 call made. Do not add shell scripts beside it.
+The `CI` target is the whole local gate: the line-ending check, the content JSON check, restore, formatting, the Release build, InspectCode, tests and (on Windows) the E2E suite, stopping at the first failure. Run it before considering a change done. In CI the same checks split into parallel jobs instead of the single target — LineEndings and Format run first, each on its own runner, and the Build, Test and InspectCode job starts once both pass (they share one Release build); the E2E suite runs in its own Windows job and gates the release. The build project is intentionally separate from `ManyWinters.sln`: it orchestrates the solution rather than becoming part of the product build, and it is the home for every repository task that needs a process launched, a log parsed or a Win32 call made. Do not add shell scripts beside it.
 
 `RenderAudio` is deliberately outside the `CI` gate: it writes WAVs for a human to listen to, and the listening *is* the check (`docs/audio-synthesis-prototype-plan.md`). Its output lands in the git-ignored `artifacts/` folder.
+
+`FormatJson` rewrites every `*.json` under `src/ManyWinters.Godot/Content` (except the generated terrain data) as `System.Text.Json` indents it: one key per line, two spaces, LF, trailing newline. Those files are edited by hand, and a one-line file turns every edit into a whole-file diff and a merge conflict. `FormatJsonCheck` is the read-only half that the `CI` target and the `format` job run; when it fails, run `FormatJson` and commit the result.
 
 `Screenshot` captures the window's own composited surface through `PrintWindow`, so the game may be behind other windows. It picks the main window whose title starts with "ManyWinters Godot" and skips the editor; `--pid=<n>` or `--title=<prefix>` override that.
 

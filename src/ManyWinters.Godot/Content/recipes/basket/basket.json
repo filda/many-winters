@@ -1,1 +1,5 @@
-{ "output": "basket", "inputItem": "wood", "inputAmount": 8 }
+{
+  "output": "basket",
+  "inputItem": "wood",
+  "inputAmount": 8
+}

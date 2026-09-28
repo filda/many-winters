@@ -8,10 +8,19 @@
     "maxLifespanYears": 8
   },
   "diet": [
-    { "material": "plant_fibre", "digestibility": 1 },
-    { "material": "apple", "digestibility": 1 }
+    {
+      "material": "plant_fibre",
+      "digestibility": 1
+    },
+    {
+      "material": "apple",
+      "digestibility": 1
+    }
   ],
-  "innateTechniques": ["basic_eating", "basic_foraging"],
+  "innateTechniques": [
+    "basic_eating",
+    "basic_foraging"
+  ],
   "canCarry": false,
   "collisionRadius": 0.6,
   "herd": {
@@ -33,9 +42,21 @@
     "speedPerTick": 0.6
   },
   "carcass": [
-    { "item": "meat", "amount": 30 },
-    { "item": "rawhide", "amount": 1 },
-    { "item": "bone", "amount": 4 },
-    { "item": "sinew", "amount": 2 }
+    {
+      "item": "meat",
+      "amount": 30
+    },
+    {
+      "item": "rawhide",
+      "amount": 1
+    },
+    {
+      "item": "bone",
+      "amount": 4
+    },
+    {
+      "item": "sinew",
+      "amount": 2
+    }
   ]
 }
