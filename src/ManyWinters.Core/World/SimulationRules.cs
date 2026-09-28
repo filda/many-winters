@@ -252,5 +252,10 @@ public sealed record SimulationRules
     public float ParentWeight { get; } = 0.2f;
     public float ApproachFractionOfReach { get; } = 0.6f;
 
+    // Public: the idle AI reuses this exact number for the autonomous HuntTask and ButcherTask it
+    // installs, so the three autonomous foraging tasks all walk at the same unhurried pace; tests
+    // reuse it too, to build an idle-speed task without duplicating the number.
+    public float GatherSpeedPerTick { get; } = 0.3f;
+
     public Season SeasonAt(long tick) => (Season)((tick / TicksPerSeason) % SeasonsPerYear);
 }

@@ -69,7 +69,7 @@ public class AnimalCardTests
         var world = TestWorld.Create();
         var deer = TestWorld.AddAdultAnimal(world, new Position(0, 0));
         var node = new Entity { Kind = TestWorld.AppleTree, Category = EntityCategory.Growable, Position = new Position(3, 4) };
-        deer.Tasks.Interrupt(new GatherTask(node, reachDistance: 2f));
+        deer.Tasks.Interrupt(new GatherTask(node, reachDistance: 2f, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach));
 
         Assert.Equal("Gathering apple", AnimalCard.For(world, deer).Task);
     }

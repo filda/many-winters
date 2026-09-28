@@ -14,7 +14,7 @@ public class HuntTaskTests
 
     // Most tests here are about the walk itself, not about which speed installed it, so they all
     // share the idle AI's unhurried pace unless the test says otherwise.
-    private const float IdleSpeed = GatherTask.SpeedPerTick;
+    private const float IdleSpeed = 0.3f;
 
     private static Person NewHunter(Position position) =>
         new() { Name = "Ava", BirthTick = 0, Position = position, Mother = Person.Unknown, Father = Person.Unknown, Sex = TestPeople.AnySex };

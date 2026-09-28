@@ -58,7 +58,7 @@ public class InspectorTextTests
     {
         var person = NewPerson();
         var node = new Entity { Kind = new EntityKindId("apple"), Category = EntityCategory.Growable, Position = new Position(3, 4) };
-        person.Tasks.Interrupt(new GatherTask(node, reachDistance: 2f));
+        person.Tasks.Interrupt(new GatherTask(node, reachDistance: 2f, 0.3f, 0.6f));
 
         Assert.Equal("Gathering apple", InspectorText.ForTask(person));
     }
@@ -378,7 +378,7 @@ public class InspectorTextTests
             Growth = new GrowthState { RemainingAmount = 10, MaxAmount = 10 },
         };
         world.AddEntity(node);
-        person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance));
+        person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach));
 
         Assert.Equal("Gathering apple", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));
     }
@@ -397,7 +397,7 @@ public class InspectorTextTests
             StaticAmount = 3,
         };
         world.AddEntity(pile);
-        person.Tasks.Interrupt(new GatherTask(pile, world.Configuration.Rules.MaxInteractionDistance));
+        person.Tasks.Interrupt(new GatherTask(pile, world.Configuration.Rules.MaxInteractionDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach));
 
         Assert.Equal("Going for food", InspectorText.ForWork(person, world.Configuration.ResourceCatalog));
     }

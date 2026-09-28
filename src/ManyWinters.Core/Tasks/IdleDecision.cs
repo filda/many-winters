@@ -171,7 +171,7 @@ public static class IdleDecision
                 // there too, or the creature would stop at the wider tree/building reach and
                 // never get close enough to take anything.
                 var reach = food.Category == EntityCategory.Pile ? world.Configuration.Rules.PileReachDistance : reachDistance;
-                return new GatherTask(food, reach);
+                return new GatherTask(food, reach, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
             }
         }
 
@@ -186,12 +186,12 @@ public static class IdleDecision
         {
             if (IsKnownSkill(world, creature, ButcherCommand.Skill) && FindNearestDeadAnimalWithMeat(world, searchOrigin) is { } carcass)
             {
-                return new ButcherTask(carcass, world.Configuration.Rules.PileReachDistance, GatherTask.SpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
+                return new ButcherTask(carcass, world.Configuration.Rules.PileReachDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
             }
 
             if (IsKnownSkill(world, creature, HuntCommand.Skill) && FindNearestHuntablePrey(world, searchOrigin) is { } prey)
             {
-                return new HuntTask(prey, world.Configuration.Rules.HuntingRange, GatherTask.SpeedPerTick);
+                return new HuntTask(prey, world.Configuration.Rules.HuntingRange, world.Configuration.Rules.GatherSpeedPerTick);
             }
         }
 
@@ -200,7 +200,7 @@ public static class IdleDecision
         var node = FindNearestGatherableEntity(world, creature, searchOrigin, definition => IsKnownSkill(world, creature, definition.Skill));
         if (node is not null)
         {
-            return new GatherTask(node, reachDistance);
+            return new GatherTask(node, reachDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
         }
 
         // Null for a creature with no home (every Person today), exactly IdleTask's own default;

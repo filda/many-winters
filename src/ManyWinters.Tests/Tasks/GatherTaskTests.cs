@@ -18,13 +18,13 @@ public class GatherTaskTests
     private static Entity NewTargetNode() =>
         new() { Kind = new EntityKindId("apple"), Category = EntityCategory.Growable, Position = Target };
 
-    private static GatherTask NewTask(float? reach = null, Entity? target = null) => new(target ?? NewTargetNode(), reach ?? Reach);
+    private static GatherTask NewTask(float reach, Entity target, float speedPerTick, float approachFractionOfReach) => new(target, reach, speedPerTick, approachFractionOfReach);
 
     [Fact]
     public void IsNeverComplete()
     {
         // Whether this is still worth doing gets decided elsewhere in the simulation each tick.
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
         var person = NewPerson(new Position(30, 10));
 
         for (var i = 0; i < 200; i++)
@@ -39,7 +39,7 @@ public class GatherTaskTests
     {
         var node = NewTargetNode();
 
-        var task = NewTask(target: node);
+        var task = NewTask(Reach, node, 0.3f, 0.6f);
 
         Assert.Same(node, task.Target);
         Assert.Equal(Reach, task.ReachDistance);
@@ -49,7 +49,7 @@ public class GatherTaskTests
     public void WalksIntoInteractionRangeOfItsTarget()
     {
         var person = NewPerson(new Position(30, 10));
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 200; i++)
         {
@@ -65,7 +65,7 @@ public class GatherTaskTests
     public void StopsAsSoonAsItIsInReachRatherThanStandingOnTheResource()
     {
         var person = NewPerson(new Position(30, 10));
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 200; i++)
         {
@@ -85,7 +85,7 @@ public class GatherTaskTests
         // not leave people stranded at a point they can't gather from.
         const float shortReach = 0.5f;
         var person = NewPerson(new Position(30, 10));
-        var task = NewTask(shortReach);
+        var task = NewTask(shortReach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 200; i++)
         {
@@ -102,7 +102,7 @@ public class GatherTaskTests
     {
         var start = new Position(11.5, 10);
         var person = NewPerson(start);
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 20; i++)
         {
@@ -118,7 +118,7 @@ public class GatherTaskTests
         // Exactly the reach distance away is within reach, so there is nothing left to walk.
         var start = new Position(Target.X + Reach, Target.Y);
         var person = NewPerson(start);
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 20; i++)
         {
@@ -140,7 +140,7 @@ public class GatherTaskTests
         // one straight walk.
         var start = new Position(startX, startY);
         var person = NewPerson(start);
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 200; i++)
         {
@@ -162,8 +162,8 @@ public class GatherTaskTests
         // Two people converging from opposite sides each stop on their own side of the resource.
         var west = NewPerson(new Position(-20, 10));
         var east = NewPerson(new Position(40, 10));
-        var westTask = NewTask();
-        var eastTask = NewTask();
+        var westTask = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
+        var eastTask = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
 
         for (var i = 0; i < 300; i++)
         {
@@ -180,7 +180,7 @@ public class GatherTaskTests
     {
         // The standoff (60% of reach) is shorter than reach, so the reach check ends the leg
         // first and the walker never arrives at the point they aimed at.
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
         var person = NewPerson(new Position(30, 10));
 
         for (var i = 0; i < 500; i++)
@@ -196,7 +196,7 @@ public class GatherTaskTests
     {
         // A fresh MoveTask each tick would throw away whatever progress the current one keeps,
         // so the walker's position after n ticks has to match one leg advanced n times.
-        var task = NewTask();
+        var task = NewTask(Reach, NewTargetNode(), 0.3f, 0.6f);
         var person = NewPerson(new Position(30, 10));
         var referencePerson = NewPerson(new Position(30, 10));
         var reference = new MoveTask(Position.Approach(referencePerson.Position, Target, Reach * 0.6), 0.3f);

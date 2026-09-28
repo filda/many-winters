@@ -1750,7 +1750,7 @@ public class WorldStateTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var exhausted = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), amount: 0f);
-        person.Tasks.Interrupt(new GatherTask(exhausted, world.Configuration.Rules.MaxInteractionDistance));
+        person.Tasks.Interrupt(new GatherTask(exhausted, world.Configuration.Rules.MaxInteractionDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach));
 
         world.Advance(1);
 
@@ -1766,7 +1766,7 @@ public class WorldStateTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), initialAgeTicks: TestCatalogs.AdultAgeTicks);
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), amount: 100f);
-        var task = new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance);
+        var task = new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach);
         person.Tasks.Interrupt(task);
 
         world.Advance(1);
@@ -1783,7 +1783,7 @@ public class WorldStateTests
         person.KnownTechniques.Add(TestCatalogs.BasicForaging);
         FillTheBackpackWithWood(world, person);
         var node = world.SpawnResourceNode(TestCatalogs.Apple, new Position(30, 0), amount: 100f);
-        person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance));
+        person.Tasks.Interrupt(new GatherTask(node, world.Configuration.Rules.MaxInteractionDistance, world.Configuration.Rules.GatherSpeedPerTick, world.Configuration.Rules.ApproachFractionOfReach));
 
         world.Advance(1);
 
