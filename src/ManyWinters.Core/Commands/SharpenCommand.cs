@@ -28,8 +28,6 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
     // in an item's transitions and the only thing that reads it is the roll's seed.
     private static readonly TechniqueId Verb = new("sharpen");
 
-    private const float SkillGainPerAttempt = 1f;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -85,7 +83,7 @@ public sealed record SharpenCommand(Person Person, Assembly Thing) : ICommand
         // resets here even though only its edge changed.
         Person.Inventory.AddAssembly(WithReplaced(Thing, edge, reworked) with { MadeTick = world.Clock.CurrentTick });
 
-        Person.Skills.Increase(Skill, SkillGainPerAttempt);
+        Person.Skills.Increase(Skill, world.Configuration.Rules.SkillGainPerAttempt);
     }
 
     // Whether there is anything on this object to sharpen at all, which is what the workbench
