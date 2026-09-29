@@ -257,6 +257,10 @@ public sealed record SimulationRules
     // sees it, so the band is already on the move.
     public int MinPauseTicks { get; } = 3;
     public int MaxPauseTicks { get; } = 10;
+    public float SkillGainPerBind { get; } = 1f;
+
+    // Nothing was done to it, so nothing was gained or spoiled: a raw stick is exactly as sound as wood is.
+    public float UnworkedQuality { get; } = 1f;
 
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
     // draw: the same on every reload without being saved, and independent of creation order.

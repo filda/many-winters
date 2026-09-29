@@ -21,12 +21,6 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
     // The verb, as a joint made by it would be named.
     public static readonly TechniqueId Verb = new("bind");
 
-    private const float SkillGainPerBind = 1f;
-
-    // Nothing was done to it, so nothing was gained or spoiled: a raw stick is exactly as sound
-    // as wood is.
-    private const float UnworkedQuality = 1f;
-
     public ActionBlocker Blocker(WorldState world)
     {
         if (!Person.IsAlive)
@@ -81,7 +75,7 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
             });
         }
 
-        Person.Skills.Increase(Skill, SkillGainPerBind);
+        Person.Skills.Increase(Skill, world.Configuration.Rules.SkillGainPerBind);
     }
 
     private static MaterialId? MaterialOf(WorldState world, CarriedThing target) => target switch
@@ -144,7 +138,7 @@ public sealed record BindCommand(Person Person, CarriedThing Left, CarriedThing 
             case CarriedThing.Stock stock:
                 var definition = world.Configuration.ItemCatalog.Get(stock.Kind);
                 Person.Inventory.Remove(stock.Kind, stock.Amount);
-                return new Assembly.Part(definition.Material, definition.Form, UnworkedQuality, definition.Volume * stock.Amount);
+                return new Assembly.Part(definition.Material, definition.Form, world.Configuration.Rules.UnworkedQuality, definition.Volume * stock.Amount);
 
             case CarriedThing.Worked worked:
                 Person.Inventory.RemoveAssembly(worked.Thing);
