@@ -283,6 +283,25 @@ public sealed record SimulationRules
     // layers do not share a pattern.
     public int GroundCloudSeed { get; } = 23;
 
+    // Two spots must be at least this fraction of their combined size apart. Cloud art spans
+    // ~90% of its canvas, so 0.45 would be edge-to-edge; well under that lets neighbours overlap
+    // by more than half a width, as puffs in a bank of low cloud do. The gap, not the requested
+    // count, is what caps the density.
+    public float MinGapFactor { get; } = 0.2f;
+
+    // Random candidates tried per spot wanted: enough headroom for rejection sampling to
+    // saturate the space without looping long over a full map.
+    public int AttemptsPerTargetSpot { get; } = 6;
+
+    // Wavelength of the spatial grain mixed into each spot's roll, in metres - the size of
+    // the clumps and gaps the thinning cover breaks into.
+    public float ClumpScaleMeters { get; } = 22f;
+
+    // How much of the roll is spatial grain rather than independent chance. An independent
+    // roll thins the cover as an even sprinkle, which still reads as regular; shared grain
+    // makes whole patches drop out together, so the cover tears into clumps and openings.
+    public float ClumpWeight { get; } = 0.6f;
+
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
     // draw: the same on every reload without being saved, and independent of creation order.
     public float MaxHungerFor(CreatureId id)

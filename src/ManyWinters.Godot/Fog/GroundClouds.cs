@@ -30,7 +30,11 @@ public sealed class GroundClouds
         float minCenterAboveGroundFraction,
         float maxCenterAboveGroundFraction,
         float meanSpacingMeters,
-        int seed
+        int seed,
+        float minGapFactor,
+        int attemptsPerTargetSpot,
+        float clumpScaleMeters,
+        float clumpWeight
         )
     {
         _fogOfWar = fogOfWar;
@@ -43,7 +47,11 @@ public sealed class GroundClouds
             minWorldSize,
             maxWorldSize,
             CloudScatter.TexturePaths.Length,
-            seed
+            seed,
+            minGapFactor,
+            attemptsPerTargetSpot,
+            clumpScaleMeters,
+            clumpWeight
             );
 
         Refresh();

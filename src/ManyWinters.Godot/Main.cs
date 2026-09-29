@@ -122,7 +122,11 @@ public partial class Main : Node3D
             _world.Configuration.Rules.MinCenterAboveGroundFraction,
             _world.Configuration.Rules.MaxCenterAboveGroundFraction,
             _world.Configuration.Rules.MeanSpacingMeters,
-            _world.Configuration.Rules.GroundCloudSeed
+            _world.Configuration.Rules.GroundCloudSeed,
+            _world.Configuration.Rules.MinGapFactor,
+            _world.Configuration.Rules.AttemptsPerTargetSpot,
+            _world.Configuration.Rules.ClumpScaleMeters,
+            _world.Configuration.Rules.ClumpWeight
             );
         AddChild(_groundClouds.Root);
         _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _workshopController);

@@ -35,20 +35,22 @@ public class CloudSpotScatterTests
     }
 
     [Fact]
-    public void NoTwoSpotsAreCloserThanTheirSizeDerivedGap()
+    public void NoTwoSpotsAreCloserThanAFifthOfTheirCombinedSizeAndTheTightestPairSitsAtThatGap()
     {
+        // The gap is a fixed share of both sizes combined. On a saturated map some pair lands
+        // right at it, so the tightest pair pins the share from both sides.
         var spots = Scatter();
+        var tightest = float.MaxValue;
 
         for (var i = 0; i < spots.Count; i++)
         {
             for (var j = i + 1; j < spots.Count; j++)
             {
-                var gap = CloudSpotScatter.MinGap(spots[i].Size, spots[j].Size);
-                var dx = spots[i].X - spots[j].X;
-                var dz = spots[i].Z - spots[j].Z;
-                Assert.True(MathF.Sqrt((dx * dx) + (dz * dz)) >= gap, $"spots {i} and {j} overlap");
+                tightest = MathF.Min(tightest, Distance(spots[i], spots[j]) / (spots[i].Size + spots[j].Size));
             }
         }
+
+        Assert.InRange(tightest, 0.2f, 0.21f);
     }
 
     [Fact]
@@ -73,28 +75,36 @@ public class CloudSpotScatterTests
     }
 
     [Fact]
-    public void ClumpyRollStaysInRangeAndVariesWithPosition()
+    public void NeighbouringSpotsRollMoreAlikeThanDistantOnes()
     {
-        var rolls = new List<float>();
-        for (var x = -100f; x <= 100f; x += 5f)
+        // Rolls carry a shared spatial grain, so neighbours differ mostly by their own draw
+        // while distant spots differ by the grain as well - that shared part is what makes
+        // whole patches of cover drop out together.
+        var spots = Scatter();
+        var near = new List<float>();
+        var far = new List<float>();
+
+        for (var i = 0; i < spots.Count; i++)
         {
-            var roll = CloudSpotScatter.ClumpyRoll(x, 0f, independent: 0.5f, seed: 7);
-            Assert.InRange(roll, 0f, 1f);
-            rolls.Add(roll);
+            for (var j = i + 1; j < spots.Count; j++)
+            {
+                var distance = Distance(spots[i], spots[j]);
+                var difference = MathF.Abs(spots[i].Roll - spots[j].Roll);
+                if (distance < 8f)
+                {
+                    near.Add(difference);
+                }
+                else if (distance > 60f)
+                {
+                    far.Add(difference);
+                }
+            }
         }
 
-        Assert.True(rolls.Max() - rolls.Min() > 0.2f);
-    }
-
-    [Fact]
-    public void ClumpyRollChangesSmoothlyBetweenNeighbours()
-    {
-        // Neighbouring spots share most of their spatial grain - that shared part is what makes
-        // whole patches of cover drop out together.
-        var a = CloudSpotScatter.ClumpyRoll(10f, 10f, independent: 0.5f, seed: 7);
-        var b = CloudSpotScatter.ClumpyRoll(11f, 10f, independent: 0.5f, seed: 7);
-
-        Assert.True(MathF.Abs(a - b) < 0.1f);
+        // Independent rolls would put both averages at the same ~1/3; the grain pulls the near
+        // one down to about 0.7 of the far one.
+        Assert.True(near.Count > 100);
+        Assert.True(near.Average() < 0.8f * far.Average(), $"near {near.Average()} vs far {far.Average()}");
     }
 
     [Fact]
@@ -110,23 +120,13 @@ public class CloudSpotScatterTests
             for (var j = 0; j < spots.Count; j++)
             {
                 if (i == j) continue;
-                var dx = spots[i].X - spots[j].X;
-                var dz = spots[i].Z - spots[j].Z;
-                best = MathF.Min(best, MathF.Sqrt((dx * dx) + (dz * dz)));
+                best = MathF.Min(best, Distance(spots[i], spots[j]));
             }
 
             nearest.Add(best);
         }
 
         Assert.True(nearest.Max() - nearest.Min() > 4f);
-    }
-
-    [Fact]
-    public void MinGapIsAFixedShareOfBothCloudsSizesCombined()
-    {
-        // Exact: the gap caps how densely the cover can pack, so factor and sum both matter.
-        Assert.Equal(5.4f, CloudSpotScatter.MinGap(9f, 18f), 5);
-        Assert.Equal(7.2f, CloudSpotScatter.MinGap(18f, 18f), 5);
     }
 
     [Fact]
@@ -150,41 +150,47 @@ public class CloudSpotScatterTests
         AssertSpot(spots[2], x: -77.74025f, z: 76.39087f, size: 13.003348f, texture: 1, roll: 0.7170906f, lift: 0.33534238f);
     }
 
-    [Theory]
-    [InlineData(0f, 0f, 7, 0.38902715f)]
-    [InlineData(13.5f, -4.25f, 7, 0.29719213f)]
-    [InlineData(-31f, 62f, 3, 0.17521806f)]
-    [InlineData(5f, 5f, 0, 0.061756227f)]
-    public void ClumpyRollsSpatialGrainIsAFixedFunctionOfPositionAndSeed(float x, float z, int seed, float expected)
-    {
-        // independent: 0 leaves only the spatial grain, so this pins the value noise and its
-        // hash rather than the blend with the per-spot draw.
-        Assert.Equal(expected, CloudSpotScatter.ClumpyRoll(x, z, independent: 0f, seed: seed), 6);
-    }
-
-    [Fact]
-    public void ClumpyRollBlendsTheIndependentDrawInAtAFixedWeight()
-    {
-        // Same position and seed, two independent draws: the difference is the independent
-        // share, so this pins the blend weight alone.
-        var low = CloudSpotScatter.ClumpyRoll(0f, 0f, independent: 0f, seed: 7);
-        var high = CloudSpotScatter.ClumpyRoll(0f, 0f, independent: 1f, seed: 7);
-
-        Assert.Equal(0.4f, high - low, 5);
-    }
-
     [Fact]
     public void ScatteringStopsWhenTheAttemptBudgetRunsOutOnAMapThatCannotHoldTheTarget()
     {
         // A 40m map cannot hold 400 spots at a 5.4m-plus gap, so the attempt budget ends the
         // run. Exact, because that budget alone then decides the count.
-        var spots = CloudSpotScatter.Generate(halfExtentMeters: 20f, meanSpacingMeters: 2f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: 7);
+        var spots = CloudSpotScatter.Generate(
+            20f,
+            2f,
+            9f,
+            18f,
+            3,
+            7,
+            0.2f,
+            6,
+            22f,
+            0.6f
+            );
 
         Assert.Equal(53, spots.Count);
     }
 
     private static IReadOnlyList<CloudSpot> Scatter(int seed = 7) =>
-        CloudSpotScatter.Generate(halfExtentMeters: 100f, meanSpacingMeters: 11f, minSize: 9f, maxSize: 18f, textureCount: 3, seed: seed);
+        CloudSpotScatter.Generate(
+            100f,
+            11f,
+            9f,
+            18f,
+            3,
+            seed,
+            0.2f,
+            6,
+            22f,
+            0.6f
+            );
+
+    private static float Distance(CloudSpot a, CloudSpot b)
+    {
+        var dx = a.X - b.X;
+        var dz = a.Z - b.Z;
+        return MathF.Sqrt((dx * dx) + (dz * dz));
+    }
 
     private static void AssertSpot(CloudSpot spot, float x, float z, float size, int texture, float roll, float lift)
     {

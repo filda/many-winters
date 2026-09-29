@@ -11,26 +11,18 @@ public readonly record struct CloudSpot(float X, float Z, float Size, int Textur
 // sizes, so puffs never sit glued together and no grid shows through.
 public static class CloudSpotScatter
 {
-    // Two spots must be at least this fraction of their combined size apart. Cloud art spans
-    // ~90% of its canvas, so 0.45 would be edge-to-edge; well under that lets neighbours overlap
-    // by more than half a width, as puffs in a bank of low cloud do. The gap, not the requested
-    // count, is what caps the density.
-    private const float MinGapFactor = 0.2f;
-
-    // Random candidates tried per spot wanted: enough headroom for rejection sampling to
-    // saturate the space without looping long over a full map.
-    private const int AttemptsPerTargetSpot = 6;
-
-    // Wavelength of the spatial grain mixed into each spot's roll, in metres - the size of
-    // the clumps and gaps the thinning cover breaks into.
-    private const float ClumpScaleMeters = 22f;
-
-    // How much of the roll is spatial grain rather than independent chance. An independent
-    // roll thins the cover as an even sprinkle, which still reads as regular; shared grain
-    // makes whole patches drop out together, so the cover tears into clumps and openings.
-    private const float ClumpWeight = 0.6f;
-
-    public static IReadOnlyList<CloudSpot> Generate(float halfExtentMeters, float meanSpacingMeters, float minSize, float maxSize, int textureCount, int seed)
+    public static IReadOnlyList<CloudSpot> Generate(
+        float halfExtentMeters,
+        float meanSpacingMeters,
+        float minSize,
+        float maxSize,
+        int textureCount,
+        int seed,
+        float minGapFactor,
+        int attemptsPerTargetSpot,
+        float clumpScaleMeters,
+        float clumpWeight
+        )
     {
         var rng = new Random(seed);
         var extent = 2f * halfExtentMeters;
@@ -39,23 +31,23 @@ public static class CloudSpotScatter
         // Spatial hash keyed by a cell at least as wide as the largest possible gap, so a
         // candidate only ever has to check the 3x3 cells around it.
         // Stryker disable once Arithmetic: any cell at least this wide rejects the same candidates - bucket count, not layout
-        var cell = MathF.Max(2f * MinGapFactor * maxSize, 1f);
+        var cell = MathF.Max(2f * minGapFactor * maxSize, 1f);
         var index = new SpatialSpacingIndex<CloudSpot>(cell, spot => spot.X, spot => spot.Z);
         var spots = new List<CloudSpot>(target);
 
         // Stryker disable once Equality: a give-up budget, not a quantity - one more roll against an already saturated map
-        for (var attempt = 0; attempt < target * AttemptsPerTargetSpot && spots.Count < target; attempt++)
+        for (var attempt = 0; attempt < target * attemptsPerTargetSpot && spots.Count < target; attempt++)
         {
             var size = minSize + ((float)rng.NextDouble() * (maxSize - minSize));
             var x = ((float)rng.NextDouble() * extent) - halfExtentMeters;
             var z = ((float)rng.NextDouble() * extent) - halfExtentMeters;
 
-            if (index.IsTooClose(x, z, existing => MinGap(size, existing.Size)))
+            if (index.IsTooClose(x, z, existing => MinGap(size, existing.Size, minGapFactor)))
             {
                 continue;
             }
 
-            var spot = new CloudSpot(x, z, size, rng.Next(textureCount), ClumpyRoll(x, z, (float)rng.NextDouble(), seed), (float)rng.NextDouble());
+            var spot = new CloudSpot(x, z, size, rng.Next(textureCount), ClumpyRoll(x, z, (float)rng.NextDouble(), seed, clumpScaleMeters, clumpWeight), (float)rng.NextDouble());
             spots.Add(spot);
             index.Add(spot);
         }
@@ -63,14 +55,14 @@ public static class CloudSpotScatter
         return spots;
     }
 
-    public static float MinGap(float sizeA, float sizeB) => MinGapFactor * (sizeA + sizeB);
+    private static float MinGap(float sizeA, float sizeB, float minGapFactor) => minGapFactor * (sizeA + sizeB);
 
     // Blends the spot's own independent chance with smooth value noise sampled at its
     // position, staying in [0, 1).
-    public static float ClumpyRoll(float x, float z, float independent, int seed)
+    private static float ClumpyRoll(float x, float z, float independent, int seed, float clumpScaleMeters, float clumpWeight)
     {
-        var grain = ValueNoise((x / ClumpScaleMeters) + (seed * 0.731f), (z / ClumpScaleMeters) - (seed * 0.377f));
-        return Math.Clamp(((1f - ClumpWeight) * independent) + (ClumpWeight * grain), 0f, 0.99999f);
+        var grain = ValueNoise((x / clumpScaleMeters) + (seed * 0.731f), (z / clumpScaleMeters) - (seed * 0.377f));
+        return Math.Clamp(((1f - clumpWeight) * independent) + (clumpWeight * grain), 0f, 0.99999f);
     }
 
     private static float Hash(int ix, int iz)
