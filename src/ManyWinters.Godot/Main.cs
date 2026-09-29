@@ -113,7 +113,17 @@ public partial class Main : Node3D
 
         await Building(90, "Setting out the band");
         _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
-        _groundClouds = new GroundClouds(_fogOfWar, _terrain.Half, _terrain.SampleHeight);
+        _groundClouds = new GroundClouds(
+            _fogOfWar,
+            _terrain.Half,
+            _terrain.SampleHeight,
+            _world.Configuration.Rules.MinWorldSize,
+            _world.Configuration.Rules.MaxWorldSize,
+            _world.Configuration.Rules.MinCenterAboveGroundFraction,
+            _world.Configuration.Rules.MaxCenterAboveGroundFraction,
+            _world.Configuration.Rules.MeanSpacingMeters,
+            _world.Configuration.Rules.GroundCloudSeed
+            );
         AddChild(_groundClouds.Root);
         _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _workshopController);
         _simulationLoop = new SimulationLoop(_world, _pacing, _presenter, _cameraRig, _fogOfWar, _groundClouds, _orderCoordinator, _mainUi, _selection, _continuity);

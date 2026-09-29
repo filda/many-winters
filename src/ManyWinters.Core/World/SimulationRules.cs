@@ -262,6 +262,27 @@ public sealed record SimulationRules
     // Nothing was done to it, so nothing was gained or spoiled: a raw stick is exactly as sound as wood is.
     public float UnworkedQuality { get; } = 1f;
 
+    // Smaller than the sky clouds but big enough to read as a bank of cloud, not a row of
+    // bushes. The wide size spread keeps the layout from looking stamped out.
+    public float MinWorldSize { get; } = 7f;
+    public float MaxWorldSize { get; } = 20f;
+
+    // Where the sprite's centre sits relative to the terrain, as a fraction of its height, picked
+    // per cloud. The cloud art occupies roughly the middle 27%-72% of its canvas (see
+    // art/generate_sprites.py), so a centre at ground level shows the upper half of
+    // the puff rising out of the terrain; the top of the range lifts it clear. Standing the canvas
+    // bottom on the ground (+0.5) floated the puff like a shrub, and one shared height read as a
+    // row of puffs stuck into the terrain.
+    public float MinCenterAboveGroundFraction { get; } = -0.05f;
+    public float MaxCenterAboveGroundFraction { get; } = 0.3f;
+
+    // Mean centre-to-centre spacing the scatter aims for; actual gaps vary (CloudSpotScatter).
+    public float MeanSpacingMeters { get; } = 5f;
+
+    // Fixed for reproducibility; distinct from the other cloud layer's own seed so the two
+    // layers do not share a pattern.
+    public int GroundCloudSeed { get; } = 23;
+
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
     // draw: the same on every reload without being saved, and independent of creation order.
     public float MaxHungerFor(CreatureId id)
