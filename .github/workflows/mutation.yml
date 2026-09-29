@@ -74,10 +74,10 @@ jobs:
             working-directory: src/ManyWinters.Tests
             args: --project ManyWinters.Tools.SimulationRunner.csproj
           # Its own stryker-config.json, because only the presentation layer's extracted
-          # calculations are mutated - the rest of ManyWinters.Godot is engine wiring with
-          # no tests, which would drown the score in uncovered mutants.
-          - name: godot
-            working-directory: src/ManyWinters.Godot.Tests
+          # calculations are mutated - the rest of ManyWinters.Presentation is engine wiring
+          # with no tests, which would drown the score in uncovered mutants.
+          - name: presentation
+            working-directory: src/ManyWinters.Presentation.Tests
             args: ""
     steps:
       - uses: actions/checkout@v7
@@ -130,4 +130,4 @@ jobs:
           name: mutation-report-${{ matrix.name }}
           path: |
             src/ManyWinters.Tests/StrykerOutput/**/reports/
-            src/ManyWinters.Godot.Tests/StrykerOutput/**/reports/
+            src/ManyWinters.Presentation.Tests/StrykerOutput/**/reports/

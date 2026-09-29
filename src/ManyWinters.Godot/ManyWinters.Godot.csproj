@@ -8,5 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ManyWinters.Core\ManyWinters.Core.csproj" />
+    <ProjectReference Include="..\ManyWinters.Presentation\ManyWinters.Presentation.csproj" />
   </ItemGroup>
 </Project>

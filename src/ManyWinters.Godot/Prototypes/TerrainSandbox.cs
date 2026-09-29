@@ -1,7 +1,8 @@
 using Godot;
-using ManyWinters.Godot.Terrain;
-using ManyWinters.Godot.Interaction;
-using ManyWinters.Godot.Views;
+using ManyWinters.Presentation;
+using ManyWinters.Presentation.Terrain;
+using ManyWinters.Presentation.Interaction;
+using ManyWinters.Presentation.Views;
 
 namespace ManyWinters.Godot.Prototypes;
 

@@ -1,0 +1,504 @@
+using Godot;
+using ManyWinters.Core.Continuity;
+using ManyWinters.Core.Population;
+using ManyWinters.Core.World;
+using ManyWinters.Presentation.Logic;
+
+namespace ManyWinters.Presentation.Views;
+
+public sealed partial class WorldPresenter : Node3D
+{
+    // The radius a decoration must fall back outside of before its view is torn down again -
+    // wider than the create radius, so a decoration sitting right at the edge does not flicker
+    // in and out as the camera drifts by a meter.
+    private const float ViewReleaseRadiusMultiplier = 1.25f;
+
+    private readonly Func<float, float, float> _sampleHeight;
+    private readonly ResourceCatalog _resourceCatalog;
+    private readonly RevealableExploration _exploration;
+    // One cursor, one highlighted thing - the invariant lives here, not in each view.
+    private readonly HoverArbiter _hover = new();
+    private readonly Dictionary<CreatureId, PersonView> _personViews = new();
+    private readonly Dictionary<CreatureId, AnimalView> _animalViews = new();
+    private readonly Dictionary<EntityId, ResourceNodeView> _resourceNodeViews = new();
+    private readonly Dictionary<GraveId, GraveView> _graveViews = new();
+    private readonly Dictionary<EntityId, BuildingView> _buildingViews = new();
+    private readonly Dictionary<EntityId, ItemPileView> _itemPileViews = new();
+
+    // Read every tick by RefreshExploration. The world's live collections, not copies, so a
+    // view created later (a new grave, someone born) is in here as soon as the simulation adds it.
+    private readonly IReadOnlyList<Person> _people;
+    private readonly IReadOnlyList<Animal> _animals;
+    private readonly IReadOnlyList<Grave> _graves;
+    private readonly IReadOnlyList<Entity> _entities;
+
+    // Fog of war: a node outside the ever-explored area gets no view at all, not a hidden one -
+    // creating thousands of decoration views up front was the biggest chunk of startup time.
+    // Kept here until its cell is explored. Only Growable entities ever pile up at decoration
+    // scale, so only those go through pending.
+    //
+    // "Explored" never reverts, so once "Reveal Map" or normal play has explored the whole map,
+    // that gate alone would build a node for every decoration on it in one pass; the second,
+    // camera-distance gate below bounds how many resource nodes exist at once.
+    private readonly Dictionary<EntityId, Entity> _pendingResourceNodes = new();
+
+    // Updated each RefreshExploration call. Simulation space (X, Y on the ground plane), not
+    // render space, so comparing against an entity's position needs no per-node coordinate
+    // conversion. Radius starts at 0 so nothing is in view before the first update - the
+    // constructor passes the camera's actual starting values instead.
+    private Position _viewCenter;
+    private double _viewRadiusSquared;
+
+    public WorldPresenter(
+        WorldState world,
+        RevealableExploration exploration,
+        Vector3 initialCameraPosition,
+        float initialViewRadius,
+        Func<float, float, float> sampleHeight)
+    {
+        _sampleHeight = sampleHeight;
+        _resourceCatalog = world.Configuration.ResourceCatalog;
+        _exploration = exploration;
+        _people = world.People;
+        _animals = world.Animals;
+        _graves = world.Graves;
+        _entities = world.Entities;
+        _viewCenter = WorldSpace.ToSimulation(initialCameraPosition);
+        _viewRadiusSquared = (double)initialViewRadius * initialViewRadius;
+
+        world.PersonAdded += CreatePersonView;
+        world.AnimalAdded += CreateAnimalView;
+        world.EntityAdded += CreateEntityView;
+        world.GraveAdded += CreateGraveView;
+        // Only a pile-category entity ever fires this: a felled or withered resource stays as an
+        // entity that is simply no longer alive instead, and a building is never removed.
+        world.EntityRemoved += entity => RemoveItemPileView(entity.Id);
+        // A dead, unburied animal's bones vanish once the bones-linger time passes decay - the
+        // corpse the presenter has been dimming through fog of war for a season is finally gone
+        // from the world, not merely marked.
+        world.AnimalRemoved += animal => RemoveAnimalView(animal.Id);
+
+        foreach (var person in world.People)
+        {
+            CreatePersonView(person);
+        }
+
+        foreach (var animal in world.Animals)
+        {
+            CreateAnimalView(animal);
+        }
+
+        foreach (var entity in world.Entities)
+        {
+            CreateEntityView(entity);
+        }
+
+        foreach (var grave in world.Graves)
+        {
+            CreateGraveView(grave);
+        }
+    }
+
+    // Raised by the small per-family methods below rather than known about by the views
+    // themselves: a view only reports "I was clicked", and this is the one place that turns that
+    // into an event nobody upstream has to be constructed before this presenter is.
+    public event Action<Person, MouseButton>? PersonClicked;
+
+    public event Action<Animal, MouseButton>? AnimalClicked;
+
+    public event Action<Entity, MouseButton>? ResourceNodeClicked;
+
+    public event Action<Entity, MouseButton>? BuildingClicked;
+
+    public event Action<Grave>? GraveSelected;
+
+    public event Action<Entity, MouseButton>? ItemPileClicked;
+
+    public event CollisionObject3D.InputEventEventHandler? MissedClick;
+
+    // Every rendered frame, not once per tick: camera and people keep moving between ticks, so
+    // whether the cursor is still on the lit thing changes continuously.
+    public void RevalidateHover() => _hover.Revalidate();
+
+    public void SetPersonAlive(CreatureId id, bool isAlive)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.SetAlive(isAlive);
+        }
+    }
+
+    public void SetPersonPosition(CreatureId id, Position position, float overSeconds)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.SetTargetPosition(WorldSpace.ToRender(position, PersonView.Height / 2f, _sampleHeight), overSeconds);
+        }
+    }
+
+    public void SetAnimalAlive(CreatureId id, bool isAlive)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetAlive(isAlive);
+        }
+    }
+
+    public void SetPersonDecayed(CreatureId id, bool isDecayed)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.SetDecayed(isDecayed);
+        }
+    }
+
+    public void SetAnimalDecayed(CreatureId id, bool isDecayed)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetDecayed(isDecayed);
+        }
+    }
+
+    public void SetAnimalPosition(CreatureId id, Position position, float overSeconds)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetTargetPosition(WorldSpace.ToRender(position, view.Size / 2f, _sampleHeight), overSeconds);
+        }
+    }
+
+    // Person or animal, whichever this id belongs to - the one place callers ask "where is the
+    // creature I care about" without knowing which kind of view answers. A person's id space is
+    // disjoint from an animal's (both drawn from the same id generator), so at most one
+    // dictionary ever has it.
+    public Vector3? GetCreatureGlobalPosition(CreatureId id) =>
+        _personViews.TryGetValue(id, out var personView) ? personView.GlobalPosition
+        : _animalViews.TryGetValue(id, out var animalView) ? animalView.GlobalPosition
+        : null;
+
+    // For the screen-space selection marker: how far above the creature's position the top of
+    // the drawn silhouette sits - a nominal half-height would float or sink depending on the
+    // texture's own margins.
+    public float? GetCreatureHeadHeightOffset(CreatureId id) =>
+        _personViews.TryGetValue(id, out var personView) ? personView.TopHeightOffset
+        : _animalViews.TryGetValue(id, out var animalView) ? animalView.TopHeightOffset
+        : null;
+
+    // For the E2E anchor line: a resource node has no CreatureId, so it does not go through
+    // GetCreatureGlobalPosition above. Null both when the id is unknown and when the node is
+    // still pending (out of camera view) - either way there is no view to project a screen
+    // point from.
+    public Vector3? GetResourceNodeGlobalPosition(EntityId id) =>
+        _resourceNodeViews.TryGetValue(id, out var view) ? view.GlobalPosition : null;
+
+    // For the occlusion fade, so the selection's own sprites are not treated as blocking the
+    // view of themselves.
+    public Node3D? GetCreatureNode(CreatureId id) =>
+        (Node3D?)_personViews.GetValueOrDefault(id) ?? _animalViews.GetValueOrDefault(id);
+
+    public void RemovePersonView(CreatureId id)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _personViews.Remove(id);
+        }
+    }
+
+    public void SetResourceNodeHasFruit(EntityId id, bool hasFruit)
+    {
+        if (_resourceNodeViews.TryGetValue(id, out var view))
+        {
+            view.SetHasFruit(hasFruit);
+        }
+    }
+
+    public void RemoveResourceNodeView(EntityId id)
+    {
+        if (_resourceNodeViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _resourceNodeViews.Remove(id);
+        }
+    }
+
+    // Once per simulation tick and when the "Reveal Map" toggle flips - a HashSet lookup per
+    // view at that cadence is cheap even at decoration scale, and each view's early-out ends
+    // most calls at once. Every family of view goes through here, so a grave, hut or corpse the
+    // group walked away from dims with the trees; what the view does with it is its own
+    // business.
+    //
+    // cameraPosition/viewRadius refresh the view-distance gate resource nodes check themselves
+    // against - other view families are few enough in practice to skip the same treatment.
+    public void RefreshExploration(Vector3 cameraPosition, float viewRadius)
+    {
+        _viewCenter = WorldSpace.ToSimulation(cameraPosition);
+        _viewRadiusSquared = (double)viewRadius * viewRadius;
+
+        RefreshResourceNodeExploration();
+
+        // People are read from the world, not _personViews, because the cell to ask about is
+        // wherever they are this tick. Anyone alive is always in sight - they are the eyes the
+        // fog is drawn from - so this only ever dims the dead.
+        foreach (var person in _people)
+        {
+            if (_personViews.TryGetValue(person.Id, out var personView))
+            {
+                personView.SetRemembered(IsOutOfSight(person.Position));
+            }
+        }
+
+        // An animal never contributes to the fog itself (exploration is revealed only by living
+        // people), so unlike a person's own view above, a living animal's view
+        // dims exactly like a resource node's or a building's whenever it drifts out of sight.
+        foreach (var animal in _animals)
+        {
+            if (_animalViews.TryGetValue(animal.Id, out var animalView))
+            {
+                animalView.SetRemembered(IsOutOfSight(animal.Position));
+            }
+        }
+
+        foreach (var grave in _graves)
+        {
+            if (_graveViews.TryGetValue(grave.Id, out var graveView))
+            {
+                graveView.SetRemembered(IsOutOfSight(grave.Position));
+            }
+        }
+
+        foreach (var entity in _entities)
+        {
+            switch (entity.Category)
+            {
+                case EntityCategory.Building when _buildingViews.TryGetValue(entity.Id, out var buildingView):
+                    buildingView.SetRemembered(IsOutOfSight(entity.Position));
+                    break;
+                case EntityCategory.Pile when _itemPileViews.TryGetValue(entity.Id, out var pileView):
+                    pileView.SetRemembered(IsOutOfSight(entity.Position));
+                    break;
+            }
+        }
+    }
+
+    // Fired when the world removes an animal (subscribed in the constructor): unlike
+    // RemovePersonView, which fires from an order the player gave, nothing outside this class
+    // asks for this - the world forgets the animal's bones on its own once they have lingered
+    // long enough.
+    private void RemoveAnimalView(CreatureId id)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _animalViews.Remove(id);
+        }
+    }
+
+    private void RaisePersonClicked(Person person, MouseButton button) => PersonClicked?.Invoke(person, button);
+
+    private void RaiseAnimalClicked(Animal animal, MouseButton button) => AnimalClicked?.Invoke(animal, button);
+
+    private void RaiseResourceNodeClicked(Entity node, MouseButton button) => ResourceNodeClicked?.Invoke(node, button);
+
+    private void RaiseBuildingClicked(Entity building, MouseButton button) => BuildingClicked?.Invoke(building, button);
+
+    private void RaiseGraveSelected(Grave grave) => GraveSelected?.Invoke(grave);
+
+    private void RaiseItemPileClicked(Entity pile, MouseButton button) => ItemPileClicked?.Invoke(pile, button);
+
+    private void RaiseMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
+        MissedClick?.Invoke(camera, @event, position, normal, shapeIdx);
+
+    private void CreatePersonView(Person person)
+    {
+        var view = new PersonView(person, _hover, RaisePersonClicked, RaiseMissedClick)
+        {
+            Name = person.Name,
+            Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
+        };
+        // Snapped, not faded: there is nothing on screen to fade from. Called before the view
+        // enters the tree, which is why SnapRemembered may not touch a node.
+        view.SnapRemembered(IsOutOfSight(person.Position));
+        AddChild(view);
+        _personViews[person.Id] = view;
+    }
+
+    private void CreateAnimalView(Animal animal)
+    {
+        var view = new AnimalView(animal, _hover, RaiseAnimalClicked, RaiseMissedClick);
+        view.Position = WorldSpace.ToRender(animal.Position, view.Size / 2f, _sampleHeight);
+        view.SnapRemembered(IsOutOfSight(animal.Position));
+        AddChild(view);
+        _animalViews[animal.Id] = view;
+    }
+
+    // Picks which kind of view an Entity gets from its Category, since the model no longer
+    // carries that in its static type.
+    private void CreateEntityView(Entity entity)
+    {
+        switch (entity.Category)
+        {
+            case EntityCategory.Growable:
+                CreateResourceNodeView(entity);
+                break;
+            case EntityCategory.Pile:
+                CreateItemPileView(entity);
+                break;
+            case EntityCategory.Building:
+                CreateBuildingView(entity);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(entity), entity.Category, "Unknown entity category.");
+        }
+    }
+
+    private void CreateResourceNodeView(Entity node)
+    {
+        if (!IsWithinViewOfCamera(node.Position, _viewRadiusSquared))
+        {
+            _pendingResourceNodes[node.Id] = node;
+            return;
+        }
+
+        CreateResourceNodeViewNow(node);
+    }
+
+    // Explored (fog of war, never reverts) and close enough to the camera to be worth a node
+    // right now.
+    private bool IsWithinViewOfCamera(Position position, double radiusSquared)
+    {
+        if (!_exploration.IsExplored(ExplorationState.CellFor(position, ExplorationState.CellSizeMeters)))
+        {
+            return false;
+        }
+
+        var dx = position.X - _viewCenter.X;
+        var dy = position.Y - _viewCenter.Y;
+        return dx * dx + dy * dy <= radiusSquared;
+    }
+
+    private void CreateResourceNodeViewNow(Entity node)
+    {
+        var canFell = _resourceCatalog.Get(node.Kind).CanFell;
+        var view = new ResourceNodeView(node, canFell, _hover, RaiseResourceNodeClicked, RaiseMissedClick);
+        view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
+        view.SnapRemembered(IsOutOfSight(node.Position));
+        AddChild(view);
+        _resourceNodeViews[node.Id] = view;
+    }
+
+    private bool IsOutOfSight(Position position) =>
+        !_exploration.IsVisible(ExplorationState.CellFor(position, ExplorationState.CellSizeMeters));
+
+    // Resource nodes' two extra jobs: promote a pending node now explored and in view to a real
+    // view, and send a view that fell out of either back to pending. The latter happens both
+    // when "Reveal Map" is switched off again (a cell never un-explores: the fog shaders assume
+    // nothing is instantiated under unexplored ground, so a view left there shows through as a
+    // fogged silhouette) and continuously as the camera moves away from an already-explored
+    // decoration. Graves and buildings need neither: built by the group's own hands, their cell
+    // is explored before they exist and stays so, and there are never enough of them to threaten
+    // node count the way decorations can.
+    private void RefreshResourceNodeExploration()
+    {
+        if (_pendingResourceNodes.Count > 0)
+        {
+            List<EntityId>? newlyInView = null;
+            foreach (var (id, node) in _pendingResourceNodes)
+            {
+                if (IsWithinViewOfCamera(node.Position, _viewRadiusSquared))
+                {
+                    (newlyInView ??= new List<EntityId>()).Add(id);
+                }
+            }
+
+            if (newlyInView is not null)
+            {
+                foreach (var id in newlyInView)
+                {
+                    var node = _pendingResourceNodes[id];
+                    _pendingResourceNodes.Remove(id);
+                    CreateResourceNodeViewNow(node);
+                }
+            }
+        }
+
+        // Wider than the create radius, so a decoration right at the create boundary does not
+        // tear its view down again next tick.
+        var releaseRadiusSquared = _viewRadiusSquared * ViewReleaseRadiusMultiplier * ViewReleaseRadiusMultiplier;
+
+        List<EntityId>? backToPending = null;
+        foreach (var (id, view) in _resourceNodeViews)
+        {
+            if (!IsWithinViewOfCamera(view.Node.Position, releaseRadiusSquared))
+            {
+                (backToPending ??= new List<EntityId>()).Add(id);
+                continue;
+            }
+
+            view.SetRemembered(IsOutOfSight(view.Node.Position));
+        }
+
+        if (backToPending is not null)
+        {
+            foreach (var id in backToPending)
+            {
+                var view = _resourceNodeViews[id];
+                _pendingResourceNodes[id] = view.Node;
+                RemoveResourceNodeView(id);
+            }
+        }
+    }
+
+    private void CreateBuildingView(Entity building)
+    {
+        // A verbose session follows the game from its log alone; a building's view appearing is
+        // the moment the built thing reaches the screen, and where it landed.
+        if (LaunchOptions.Verbose)
+        {
+            GD.Print($"Building view created for {building.Kind} at {building.Position}.");
+        }
+
+        var view = new BuildingView(building, _hover, RaiseBuildingClicked, RaiseMissedClick)
+        {
+            Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),
+        };
+        view.SnapRemembered(IsOutOfSight(building.Position));
+        AddChild(view);
+        _buildingViews[building.Id] = view;
+    }
+
+    private void CreateGraveView(Grave grave)
+    {
+        var view = new GraveView(grave, RaiseGraveSelected, RaiseMissedClick)
+        {
+            Position = WorldSpace.ToRender(grave.Position, GraveView.Size / 2f, _sampleHeight),
+        };
+        view.SnapRemembered(IsOutOfSight(grave.Position));
+        _graveViews[grave.Id] = view;
+        AddChild(view);
+    }
+
+    private void CreateItemPileView(Entity pile)
+    {
+        var view = new ItemPileView(pile, _hover, RaiseItemPileClicked, RaiseMissedClick)
+        {
+            Position = WorldSpace.ToRender(pile.Position, ItemPileView.Size / 2f, _sampleHeight),
+        };
+        view.SnapRemembered(IsOutOfSight(pile.Position));
+        AddChild(view);
+        _itemPileViews[pile.Id] = view;
+    }
+
+    // Fired when the world removes an item pile, unlike a felled resource or a buried person -
+    // a pile shrinks and vanishes from an ordinary command, not a special one that needs recognising,
+    // so the event is enough.
+    private void RemoveItemPileView(EntityId id)
+    {
+        if (_itemPileViews.TryGetValue(id, out var view))
+        {
+            view.QueueFree();
+            _itemPileViews.Remove(id);
+        }
+    }
+}

@@ -4,12 +4,13 @@ using ManyWinters.Core.Continuity;
 using ManyWinters.Core.Maps;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
-using ManyWinters.Godot.Logic;
-using ManyWinters.Godot.Views;
-using ManyWinters.Godot.Fog;
-using ManyWinters.Godot.Terrain;
-using ManyWinters.Godot.Interaction;
-using ManyWinters.Godot.Ui;
+using ManyWinters.Presentation;
+using ManyWinters.Presentation.Logic;
+using ManyWinters.Presentation.Views;
+using ManyWinters.Presentation.Fog;
+using ManyWinters.Presentation.Terrain;
+using ManyWinters.Presentation.Interaction;
+using ManyWinters.Presentation.Ui;
 
 namespace ManyWinters.Godot;
 

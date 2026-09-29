@@ -1,0 +1,66 @@
+using Godot;
+using ManyWinters.Presentation.Logic;
+
+namespace ManyWinters.Presentation.Tests;
+
+public class IdleSwayTests
+{
+    private static readonly Vector3 MidBounce = new(0f, 0.08f, 0f);
+
+    [Fact]
+    public void AValueEasesTowardItsTargetByTheTimeConstant()
+    {
+        // Half a second against a one-second constant: 1 - e^-0.5, about 39% of the way.
+        Assert.Equal(1f - MathF.Exp(-0.5f), IdleSway.Settle(0f, 1f, delta: 0.5f, settleSeconds: 1f), 5);
+    }
+
+    [Fact]
+    public void AValueEasesDownAsWellAsUp()
+    {
+        Assert.Equal(0.8f * MathF.Exp(-0.5f), IdleSway.Settle(0.8f, 0f, delta: 0.5f, settleSeconds: 1f), 5);
+    }
+
+    [Fact]
+    public void AnOffsetEasesByTheSameShareOnEveryAxis()
+    {
+        var settled = IdleSway.Settle(new Vector3(0.1f, 0.08f, -0.2f), Vector3.Zero, delta: 0.5f, settleSeconds: 1f);
+
+        Assert.Equal(0.1f * MathF.Exp(-0.5f), settled.X, 5);
+        Assert.Equal(0.08f * MathF.Exp(-0.5f), settled.Y, 5);
+        Assert.Equal(-0.2f * MathF.Exp(-0.5f), settled.Z, 5);
+    }
+
+    [Fact]
+    public void AShorterTimeConstantSettlesFaster()
+    {
+        var slow = IdleSway.Settle(MidBounce, Vector3.Zero, delta: 0.1f, settleSeconds: 2f);
+        var fast = IdleSway.Settle(MidBounce, Vector3.Zero, delta: 0.1f, settleSeconds: 0.2f);
+
+        Assert.True(fast.Y < slow.Y);
+        Assert.True(IdleSway.Settle(0f, 1f, 0.1f, 0.2f) > IdleSway.Settle(0f, 1f, 0.1f, 2f));
+    }
+
+    [Fact]
+    public void NoTimeMeansNoMovement()
+    {
+        Assert.Equal(MidBounce, IdleSway.Settle(MidBounce, Vector3.Zero, delta: 0f, settleSeconds: 1f));
+        Assert.Equal(0.3f, IdleSway.Settle(0.3f, 1f, delta: 0f, settleSeconds: 1f));
+    }
+
+    [Fact]
+    public void ALongTimeArrivesWithoutOvershooting()
+    {
+        Assert.Equal(0f, IdleSway.Settle(MidBounce, Vector3.Zero, delta: 100f, settleSeconds: 0.5f).Y, 5);
+        Assert.Equal(1f, IdleSway.Settle(0f, 1f, delta: 100f, settleSeconds: 0.5f), 5);
+    }
+
+    // Settling toward any target from either side moves the same share of the remaining distance.
+    [Fact]
+    public void SettlingWorksTowardAnyTargetFromEitherSide()
+    {
+        var weight = 1f - MathF.Exp(-1f);
+
+        Assert.Equal(0.08f + ((0.02f - 0.08f) * weight), IdleSway.Settle(0.08f, 0.02f, delta: 0.3f, settleSeconds: 0.3f), 5);
+        Assert.Equal(0.02f * weight, IdleSway.Settle(0f, 0.02f, delta: 0.3f, settleSeconds: 0.3f), 5);
+    }
+}

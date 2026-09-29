@@ -240,7 +240,7 @@ jobs:
             exit 0
           fi
           files="$(git diff --name-only "$before" "${{ github.sha }}")"
-          if echo "$files" | grep -qE '^(src/ManyWinters\.(Core|Godot)/|Directory\.Build\.props$|ManyWinters\.sln$|\.github/workflows/)'; then
+          if echo "$files" | grep -qE '^(src/ManyWinters\.(Core|Presentation|Godot)/|Directory\.Build\.props$|ManyWinters\.sln$|\.github/workflows/)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "e2e=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -442,8 +442,10 @@ jobs:
           if (-not (Test-Path $out)) { throw "Export produced no executable" }
           $data = Get-ChildItem build/ManyWinters -Directory -Filter "data_*" | Select-Object -First 1
           if (-not $data) { throw "No data_* folder: the .NET half of the export never ran" }
-          if (-not (Test-Path (Join-Path $data.FullName "ManyWinters.Godot.dll"))) {
-            throw "Export is missing ManyWinters.Godot.dll"
+          foreach ($dll in "ManyWinters.Godot.dll", "ManyWinters.Presentation.dll") {
+            if (-not (Test-Path (Join-Path $data.FullName $dll))) {
+              throw "Export is missing $dll"
+            }
           }
           $errs = Select-String -Path "$root\export.out.log", "$root\export.err.log" -Pattern "^ERROR:"
           if ($errs) {
@@ -612,9 +614,11 @@ jobs:
           if [ ! -f "$out" ]; then echo "Export produced no executable" >&2; exit 1; fi
           data=$(find build/ManyWinters-linux -maxdepth 1 -type d -name "data_*" | head -n1)
           if [ -z "$data" ]; then echo "No data_* folder: the .NET half of the export never ran" >&2; exit 1; fi
-          if [ ! -f "$data/ManyWinters.Godot.dll" ]; then
-            echo "Export is missing ManyWinters.Godot.dll" >&2; exit 1
-          fi
+          for dll in ManyWinters.Godot.dll ManyWinters.Presentation.dll; do
+            if [ ! -f "$data/$dll" ]; then
+              echo "Export is missing $dll" >&2; exit 1
+            fi
+          done
           if grep -H "^ERROR:" "$root/export.out.log" "$root/export.err.log"; then
             echo "Godot logged error(s) during export" >&2; exit 1
           fi

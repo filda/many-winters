@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A plain .NET library that uses Godot's API, deliberately not a Godot.NET.Sdk project:
+       nothing here is a Godot script. The engine never instantiates a type from this assembly on
+       its own; every node in it is built with `new` by ManyWinters.Godot (the scene scripts) or
+       by another type in here, so the constructors may take whatever they need. Rider's Godot
+       plugin reads the Sdk to decide which projects it holds to the scene-script rules
+       (parameterless constructor and friends), and Godot.NET.Sdk would also stamp each class with
+       a res:// path that exists in no Godot project. The two packages below are what that Sdk
+       would reference: the API, and the generators that emit the bridging code letting a `new`ed
+       node override _Ready and friends. Their version follows the Godot project's Sdk version. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- The Godot editor builds the game project as ExportDebug/ExportRelease and passes the
+         configuration down to this reference; Microsoft.NET.Sdk knows only Debug and Release,
+         so map the two the way Godot.NET.Sdk does. -->
+    <Configurations>Debug;Release;ExportDebug;ExportRelease</Configurations>
+
+    <!-- The ScriptPath generator is the one that makes a class a script; without it the
+         GodotPluginsInitializer one still emits an internal entry-point class here, which is
+         inert since the engine resolves the entry point in the game assembly alone. -->
+    <GodotDisabledSourceGenerators>ScriptPathAttribute</GodotDisabledSourceGenerators>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'ExportDebug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'ExportRelease' ">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GodotSharp" Version="4.7.1" />
+    <PackageReference Include="Godot.SourceGenerators" Version="4.7.1" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ManyWinters.Core\ManyWinters.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -7,7 +7,7 @@ using Xunit.v3;
 // hash that never changes, so a test leaning on the one before it keeps passing. This shuffles
 // all three from xunit's own seeded Randomizer: the run prints its seed, and passing it back
 // (`-seed`, or "seed" in xunit.runner.json) replays a failing order exactly. Linked into
-// ManyWinters.Godot.Tests as well.
+// ManyWinters.Presentation.Tests as well.
 [assembly: TestClassOrderer(typeof(RandomTestOrder))]
 [assembly: TestMethodOrderer(typeof(RandomTestOrder))]
 [assembly: TestCaseOrderer(typeof(RandomTestOrder))]

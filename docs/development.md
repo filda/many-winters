@@ -49,14 +49,15 @@ Per the [technical implementation plan](<Of Folk and Many Winters — Technical 
 ```text
 src/
 ├── ManyWinters.Core/          # Pure C# simulation — no Godot dependency, ever
-├── ManyWinters.Godot/         # Godot project: presentation, rendering, input, UI, audio
+├── ManyWinters.Presentation/  # Everything the game builds itself: rendering, input, UI, presentation logic
 │   ├── Logic/                 #   engine-free, unit-tested logic — the only mutated folder
 │   ├── Views/                 #   one Node3D per simulation entity, plus WorldPresenter
 │   ├── Sprites/               #   billboards, hit testing, extents, tint, texture cache
 │   ├── Terrain/               #   the world's backdrop: heightmap mesh, waterways, sky
 │   ├── Fog/                   #   fog of war and the cloud banks over it
 │   ├── Interaction/           #   camera rig, ground picking, hover fallback
-│   ├── Ui/                    #   status bar and floating panels
+│   └── Ui/                    #   status bar and floating panels
+├── ManyWinters.Godot/         # Godot project: scenes, Content/, and only the scripts the engine instantiates
 │   └── Prototypes/            #   experiment scenes, held to a lower bar (see conventions)
 ├── ManyWinters.Audio/         # Sound synthesis: DSP primitives, sound models, analysis. float[] in,
 │                              #   float[] out - no Godot, no Core
@@ -64,12 +65,14 @@ src/
 │   ├── SimulationRunner/      # Headless console runner (no Godot required)
 │   └── SynthPrototype/        # Renders the audio listening set into artifacts/audio
 ├── ManyWinters.Tests/         # Tests for ManyWinters.Core, ManyWinters.Audio and the tools
-└── ManyWinters.Godot.Tests/   # Tests for the presentation layer's own calculations
+└── ManyWinters.Presentation.Tests/  # Tests for the presentation layer's own calculations
 ```
 
-`ManyWinters.Core` must never reference `ManyWinters.Godot`. The simulation must be runnable and testable headlessly, without the engine.
+`ManyWinters.Core` must never reference `ManyWinters.Presentation` or `ManyWinters.Godot`. The simulation must be runnable and testable headlessly, without the engine.
 
-Inside the Godot project, namespaces follow folders — ReSharper's `CheckNamespace` inspection enforces it, so a move means a namespace change and a `using` at each consumer. Two things stay at the project root because Godot pins them by path, and getting either wrong fails *silently* rather than at build time: `Main.cs` (named in `Main.tscn`) and the two `*VisualDefinition.cs` files (named in 17 `.tres` files under `Content/`, whose loader falls back to a default colour rather than complaining). **A folder must not be named after a Godot type** — an `Input/` folder shadows the `Input` singleton and every `Input.IsKeyPressed` call in it stops compiling.
+**Two assemblies, one line between them: who calls `new`.** Godot treats every `.cs` under `res://` (the Godot project folder) as a script it may instantiate itself — attached to a scene node, loaded from a `.tres`, hot-reloaded in the editor — and such a class needs a parameterless constructor (Rider's Godot plugin warns where one is missing). Only four classes are actually made that way, and they are the whole of `ManyWinters.Godot`: `Main.cs` (named in `Main.tscn`), `Prototypes/TerrainSandbox.cs` (its own scene) and the two `*VisualDefinition.cs` files (named in the `.tres` files under `Content/`). All of them are pinned by path, and getting a path wrong fails *silently* rather than at build time — the `.tres` loader falls back to a default colour rather than complaining. Everything else is constructed by our own code with `new` and lives in `ManyWinters.Presentation`, a plain `Microsoft.NET.Sdk` class library outside `res://` that references the `GodotSharp` and `Godot.SourceGenerators` packages directly (versions in step with the Godot project's Sdk): it may take whatever constructor parameters it likes, Godot generates no `.uid` for it, and its `ScriptPath` source generator is switched off because nothing in it is a script. Not `Godot.NET.Sdk` on purpose: Rider's Godot plugin decides by that Sdk which projects it holds to the scene-script rules, and this one is not a Godot project. The Godot project references it; nothing references the Godot project. Where presentation code needs to read a `.tres`-backed `Resource` it does so through an interface the script class implements (`IResourceVisualDefinition`, `IBuildingVisualDefinition`), since the dependency cannot point the other way. What `Main` and `TerrainSandbox` use is the library's `public` surface; `internal` is for what only the library itself and its test project see. (Not `InternalsVisibleTo`: the plugins-initializer source generator emits an `internal` entry-point class into every assembly it runs in and cannot be switched off in 4.7.1, so opening the internals to the Godot project makes that class collide with the game's own.)
+
+Namespaces follow folders in both projects — ReSharper's `CheckNamespace` inspection enforces it, so a move means a namespace change and a `using` at each consumer. **A folder must not be named after a Godot type** — an `Input/` folder shadows the `Input` singleton and every `Input.IsKeyPressed` call in it stops compiling.
 
 ## Building and running
 
@@ -84,7 +87,7 @@ dotnet run --project src/ManyWinters.Tools/SimulationRunner
 dotnet test
 ```
 
-The unit tests run in a random order, drawn afresh every run (`RandomTestOrder` in `ManyWinters.Tests/TestSupport`, linked into `ManyWinters.Godot.Tests`), so a test that leans on state another one left behind fails sooner or later instead of passing by luck. The `Test` target prints the seed it ran with and prints only failures; `--target=Test --seed=N` replays that exact order.
+The unit tests run in a random order, drawn afresh every run (`RandomTestOrder` in `ManyWinters.Tests/TestSupport`, linked into `ManyWinters.Presentation.Tests`), so a test that leans on state another one left behind fails sooner or later instead of passing by luck. The `Test` target prints the seed it ran with and prints only failures; `--target=Test --seed=N` replays that exact order.
 
 Every run of the tool starts a fresh, empty world — nothing persists between separate invocations unless you explicitly `save`/`load` it. The world runs on the same content the game ships with, loaded from `src/ManyWinters.Godot/Content` relative to the working directory (so run it from the repository root, or point it elsewhere with `--content <dir>` as the first argument). Chain as many commands as you want into a single invocation, unquoted:
 
@@ -133,7 +136,7 @@ dotnet build src/ManyWinters.Godot
 
 `dotnet build` writes straight into the assembly Godot loads (`src/ManyWinters.Godot/.godot/mono/temp/bin/`), so no separate editor-side build step is needed.
 
-**Reading the game's output.** `GD.Print` from `ManyWinters.Godot` code lands in `%APPDATA%\Godot\app_userdata\ManyWinters Godot\logs\godot.log`; previous runs sit alongside as `godot<timestamp>.log`. `Console.WriteLine` from `ManyWinters.Core` does not reliably reach that file, so a temporary print goes into the Godot-layer caller.
+**Reading the game's output.** `GD.Print` from presentation code lands in `%APPDATA%\Godot\app_userdata\ManyWinters Godot\logs\godot.log`; previous runs sit alongside as `godot<timestamp>.log`. `Console.WriteLine` from `ManyWinters.Core` does not reliably reach that file, so a temporary print goes into the Godot-layer caller.
 
 **Importing assets.** A game launched with `godot --path` reads assets from the import cache, not from the files under `Content/`. After adding a file (a `.ttf`, say) or after `art/generate_sprites.py` or any other generator overwrites a PNG, run `godot --path src/ManyWinters.Godot --headless --import` first, or you will be looking at the old sprites; commit the `.import` file it writes for a new asset. It prints a harmless "Unable to start the timer" error.
 
@@ -220,16 +223,16 @@ A clone that skips this step is not merely noisy: the editor drops the missing p
 
 ## Testing the presentation layer
 
-Most of `ManyWinters.Godot` is engine wiring, but the calculations mixed into it are ordinary functions worth pinning. `docs/conventions.md` asks for them to be written apart from the code the framework calls; this is what that means in practice here, and what the engine allows.
+Most of `ManyWinters.Presentation` is engine wiring, but the calculations mixed into it are ordinary functions worth pinning. `docs/conventions.md` asks for them to be written apart from the code the framework calls; this is what that means in practice here, and what the engine allows.
 
 **What runs outside the engine, verified rather than assumed:**
 
-- **Godot's math value types are plain managed structs** — `Vector2`, `Vector3`, `Basis`, `Transform3D`, `Color`, `Mathf`, including `Color.FromHsv`. A normal xunit project can reference `ManyWinters.Godot` and call any static method that only uses those.
+- **Godot's math value types are plain managed structs** — `Vector2`, `Vector3`, `Basis`, `Transform3D`, `Color`, `Mathf`, including `Color.FromHsv`. A normal xunit project can reference `ManyWinters.Presentation` and call any static method that only uses those.
 - **Anything `Node`- or `Resource`-derived aborts the whole test host.** `new Node3D()`, `Image`, `Texture2D`, `Camera3D`, `Sprite3D`, `SurfaceTool`, `ResourceLoader`, `Godot.FileAccess` — these enter a native runtime that is not initialised outside the editor. It is not a catchable exception: the process dies, so one such test takes every other test in that project down with it.
 - **Mocking cannot cross that line.** `new Mock<Node3D>()` fails with `AccessViolationException`, because a mock of a *class* is a generated subclass whose constructor still calls the real one. Godot node types are classes, not interfaces, so no mocking library helps. A self-defined interface seam works in principle, but for pure wiring it only ever asserts the mock's own script.
 - **Watch for *indirect* engine access.** A method can look perfectly pure and still reach the runtime underneath — `ResourceNodeView.BaseTexturePathFor` calls `HasTreeSprite`, which calls `ResourceLoader.Exists`; `BuildingView.ColorFor` loads a `.tres`. Check what a candidate actually calls before assuming it is extractable.
 
-**Where an extracted calculation goes.** The signature decides: anything mentioning `Color`, `Vector3` or a sprite extent stays in `ManyWinters.Godot` and is tested from `ManyWinters.Godot.Tests`, because Core must never reference Godot. Only genuinely engine-free logic moves to Core (`BoxBlur`, `CloudSpotScatter`, `GroundCloudCoverage`, `ExplorationState` and `GridDistanceField` all arrived that way). Either way it becomes an `internal` type reached through `InternalsVisibleTo`, so the public API does not widen, and it gets its own small purpose-named file rather than staying where it sat. On the Godot side that file goes in `src/ManyWinters.Godot/Logic/` — engine-free, unit-tested logic only, which is exactly what the mutation config globs, so nothing has to be remembered when something new lands there. Anything in that folder that reaches an engine type has been put in the wrong place.
+**Where an extracted calculation goes.** The signature decides: anything mentioning `Color`, `Vector3` or a sprite extent stays in `ManyWinters.Presentation` and is tested from `ManyWinters.Presentation.Tests`, because Core must never reference Godot. Only genuinely engine-free logic moves to Core (`BoxBlur`, `CloudSpotScatter`, `GroundCloudCoverage`, `ExplorationState` and `GridDistanceField` all arrived that way). Either way it becomes an `internal` type reached through `InternalsVisibleTo`, so the public API does not widen, and it gets its own small purpose-named file rather than staying where it sat. On the Godot side that file goes in `src/ManyWinters.Presentation/Logic/` — engine-free, unit-tested logic only, which is exactly what the mutation config globs, so nothing has to be remembered when something new lands there. Anything in that folder that reaches an engine type has been put in the wrong place.
 
 Testing the *wiring* itself — does a view add the right children, does a signal connect — would need a Godot-hosted runner such as gdUnit4 or GoDotTest, with a Godot binary and a headless display in CI. Not set up, and not worth it while the wiring is not producing bugs.
 
@@ -248,12 +251,12 @@ dotnet tool run dotnet-stryker --project ManyWinters.Core.csproj
 dotnet tool run dotnet-stryker --project ManyWinters.Tools.SimulationRunner.csproj
 
 # The presentation layer has its own test project, and its own config: only the extracted
-# calculations are mutated, since the rest of ManyWinters.Godot is untested engine wiring.
-cd ../ManyWinters.Godot.Tests
+# calculations are mutated, since the rest of ManyWinters.Presentation is untested engine wiring.
+cd ../ManyWinters.Presentation.Tests
 dotnet tool run dotnet-stryker
 ```
 
-Configuration lives in `src/ManyWinters.Tests/stryker-config.json`, and `src/ManyWinters.Godot.Tests/stryker-config.json` for the presentation layer — that second one mutates `**/Logic/*.cs` rather than `**/*.cs`, since mutating the untested engine wiring around it would bury the score. Putting an extracted calculation in that folder is therefore all it takes to have it mutated; there is no list to keep in step. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
+Configuration lives in `src/ManyWinters.Tests/stryker-config.json`, and `src/ManyWinters.Presentation.Tests/stryker-config.json` for the presentation layer — that second one mutates `**/Logic/*.cs` rather than `**/*.cs`, since mutating the untested engine wiring around it would bury the score. Putting an extracted calculation in that folder is therefore all it takes to have it mutated; there is no list to keep in step. The break threshold is currently **100%** — the codebase is small enough that every mutant should be killed; a survivor is either a real test gap (add a test) or a genuinely equivalent mutation (suppress it inline with `// Stryker disable once <Mutator>: <reason>` and explain why). Lower the threshold only as a deliberate, documented, temporary exception — never silently.
 
 **Inputs where the operation cancels out prove nothing.** The most common reason a mutant survives here is not a missing test but a test fed tidy numbers. Three real examples: every ray in the first `BillboardUv` tests ran perpendicular to the billboard's plane, so getting the ray/plane crossing wrong only moved the point along the plane's own normal, which the UV ignores; every `EntityVisualVariation.RangeFor` test used a 0-to-1 range, where multiplying by the width, dividing by it, and using `max + min` all give the same answer; and every food in the content restores exactly 1 hunger per unit, where dividing by the rate and multiplying by it agree. A rate of 1, a range of 0 to 1, an axis-aligned ray, a symmetric loop - if the arithmetic cancels for the input you chose, the test passes whatever the code does. **Pick oblique, off-centre, asymmetric values.**
 

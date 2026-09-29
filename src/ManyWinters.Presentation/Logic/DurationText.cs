@@ -1,0 +1,20 @@
+namespace ManyWinters.Presentation.Logic;
+
+// A span of ticks in the units the game counts time in: winters where there have been any, else
+// seasons. The debug inspector's age reads by the same rule as the time since a band arrived, so
+// both ask here rather than each rounding its own way; the player's card says the age in words
+// instead.
+public static class DurationText
+{
+    public static string For(long elapsedTicks, long ticksPerYear, long ticksPerSeason)
+    {
+        var winters = elapsedTicks / ticksPerYear;
+        if (winters >= 1)
+        {
+            return $"{winters} winter{(winters == 1 ? "" : "s")}";
+        }
+
+        var seasons = elapsedTicks / ticksPerSeason;
+        return $"{seasons} season{(seasons == 1 ? "" : "s")}";
+    }
+}

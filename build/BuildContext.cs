@@ -29,7 +29,7 @@ public sealed class BuildContext(ICakeContext context) : FrostingContext(context
     public IReadOnlyList<string> UnitTestProjectPaths =>
     [
         Path.Combine(RootDirectory, "src", "ManyWinters.Tests", "ManyWinters.Tests.csproj"),
-        Path.Combine(RootDirectory, "src", "ManyWinters.Godot.Tests", "ManyWinters.Godot.Tests.csproj"),
+        Path.Combine(RootDirectory, "src", "ManyWinters.Presentation.Tests", "ManyWinters.Presentation.Tests.csproj"),
     ];
 
     // Not part of ManyWinters.sln — see the comment atop the csproj for why.

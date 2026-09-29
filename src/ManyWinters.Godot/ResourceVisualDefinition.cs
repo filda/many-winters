@@ -1,11 +1,12 @@
 using Godot;
+using ManyWinters.Presentation.Views;
 
 namespace ManyWinters.Godot;
 
 // The [Export] setters are written by Godot itself when the .tres loads, not by any C# caller
 // InspectCode can see - hence its "can be made private" is wrong here.
 // ReSharper disable MemberCanBePrivate.Global
-public partial class ResourceVisualDefinition : Resource
+public partial class ResourceVisualDefinition : Resource, IResourceVisualDefinition
 {
     [Export]
     public Color Color { get; set; } = new Color(0.2f, 0.8f, 0.2f);

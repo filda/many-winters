@@ -1,0 +1,680 @@
+using ManyWinters.Core.Commands;
+using ManyWinters.Core.Materials;
+using ManyWinters.Core.Population;
+using ManyWinters.Core.Tasks;
+using ManyWinters.Core.World;
+using ManyWinters.Presentation.Logic;
+
+namespace ManyWinters.Presentation.Tests;
+
+// What the player is offered for the thing they pointed at. Same rule as a person's own action
+// card: nothing is offered without something to act on, and every offer carries where it happens
+// so a refusal for distance alone turns into a walk.
+public class TargetActionsTests
+{
+    private static readonly Position Camp = new(0, 0);
+    private static readonly Position FarAway = new(50, 0);
+
+    // A tree is named on the heading, so the lines under it are bare verbs rather than a column
+    // repeating what was pointed at.
+    [Fact]
+    public void AResourceIsHeadedByItsOwnName()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Equal("Apple", TargetActions.For(world, person, AddNode(world, TestWorld.AppleTree, Camp)).Heading);
+    }
+
+    [Fact]
+    public void AFellableResourceCanBeGatheredFromOrFelled()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Equal(["Gather", "Fell"], Labels(TargetActions.For(world, person, AddNode(world, TestWorld.AppleTree, Camp))));
+    }
+
+    // Felling is a property of the kind, not of the moment: a standing greyed-out "Fell" on every
+    // mushroom is a line the player learns to ignore.
+    [Fact]
+    public void SomethingThatCannotBeFelledIsNotOfferedFelling()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Equal(["Gather"], Labels(TargetActions.For(world, person, AddNode(world, TestWorld.Stump, Camp))));
+    }
+
+    // Pointing at the tree is itself how the person is shown what to do with it, so never
+    // having learned cannot be what stops the offer.
+    [Fact]
+    public void GatheringAndFellingTeachTheirOwnSkill()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var menu = TargetActions.For(world, person, AddNode(world, TestWorld.AppleTree, Camp));
+
+        Assert.Empty(person.KnownTechniques);
+        Assert.All(menu.Offers, offer => Assert.NotNull(offer.TeachFirst));
+        Assert.All(menu.Offers, offer => Assert.True(offer.IsAvailable));
+    }
+
+    // The whole point of carrying the target: a tree across the clearing is somewhere the person
+    // can be sent, so the offer stands rather than telling the player to walk them over first.
+    [Fact]
+    public void AResourceOutOfReachIsSomethingToWalkTo()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var node = AddNode(world, TestWorld.AppleTree, FarAway);
+
+        var gather = TargetActions.Gather(world, person, node);
+
+        Assert.Equal(ActionBlocker.TooFar, gather.Blocker);
+        Assert.Equal(node.Position, gather.Target);
+        Assert.True(gather.NeedsWalkingTo);
+        Assert.True(gather.IsAvailable);
+    }
+
+    // A refusal that walking will not mend stays a refusal.
+    [Fact]
+    public void AResourceWithNothingLeftIsRefusedRatherThanWalkedTo()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var node = AddNode(world, TestWorld.AppleTree, Camp);
+        node.Growth!.RemainingAmount = 0;
+
+        var gather = TargetActions.Gather(world, person, node);
+
+        Assert.Equal(ActionBlocker.NothingLeft, gather.Blocker);
+        Assert.False(gather.IsAvailable);
+    }
+
+    [Fact]
+    public void GatherIsTheSameOfferWhicheverWayItIsAskedFor()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var node = AddNode(world, TestWorld.AppleTree, Camp);
+
+        Assert.Equal(TargetActions.Gather(world, person, node), TargetActions.For(world, person, node).Offers[0]);
+    }
+
+    // A lesson is one technique, the way the band's own casual teaching hands over at most one
+    // per tick, so a teacher who knows two things offers two lessons, and the player picks which.
+    [Fact]
+    public void ALivingPersonIsOfferedALessonPerThingTheTeacherCouldPassOn()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.KnownTechniques.Add(TestWorld.BasicForaging);
+        ava.KnownTechniques.Add(TestWorld.BasicTeaching);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+
+        var menu = TargetActions.For(world, ava, bran);
+
+        Assert.Equal("Bran", menu.Heading);
+        Assert.Equal(["Teach foraging", "Teach teaching", "Have a child"], Labels(menu));
+    }
+
+    [Fact]
+    public void ALessonCarriesTheOneTechniqueItIsNamedAfter()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.KnownTechniques.Add(TestWorld.BasicForaging);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+
+        var lesson = Labelled(TargetActions.For(world, ava, bran), "Teach foraging");
+
+        Assert.Equal(TestWorld.BasicForaging, Assert.IsType<TeachCommand>(lesson.Command).Technique);
+    }
+
+    // Nothing the teacher does not know themselves, and nothing the student already has: what is
+    // left is exactly the list worth drawing.
+    [Fact]
+    public void NobodyIsOfferedALessonInWhatTheyAlreadyKnow()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.KnownTechniques.Add(TestWorld.BasicForaging);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+        bran.KnownTechniques.Add(TestWorld.BasicForaging);
+
+        Assert.Equal(["Have a child"], Labels(TargetActions.For(world, ava, bran)));
+    }
+
+    [Fact]
+    public void ATeacherWhoKnowsNothingHasNoLessonToGive()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+
+        Assert.Equal(["Have a child"], Labels(TargetActions.For(world, ava, bran)));
+    }
+
+    // An efficient technique is worked out by doing the thing over and over, so it cannot be
+    // handed over - the band's own casual teaching refuses to pass one on for the same reason.
+    [Fact]
+    public void WhatWasWorkedOutByPractiseCannotBeHandedOver()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.KnownTechniques.Add(TestWorld.BasicForaging);
+        ava.KnownTechniques.Add(TestWorld.EfficientForaging);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+
+        var lessons = TargetActions.For(world, ava, bran).Offers
+            .Where(offer => offer.Command is TeachCommand)
+            .Select(offer => Assert.IsType<TeachCommand>(offer.Command).Technique);
+
+        Assert.Equal([TestWorld.BasicForaging], lessons);
+    }
+
+    // Burying somebody who is still talking and teaching a corpse are not choices worth drawing,
+    // so the living and the dead are offered different things rather than one half-refused list.
+    [Fact]
+    public void ADeadPersonCanBeBuried()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Equal(["Bury"], Labels(TargetActions.For(world, ava, AddCorpse(world, "Bran", Camp))));
+    }
+
+    [Fact]
+    public void ADeadPersonCarryingSomethingCanAlsoBeRobbedOfIt()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var bran = AddCorpse(world, "Bran", Camp);
+        bran.Inventory.Add(TestWorld.Wood, 3);
+
+        Assert.Equal(["Bury", "Take what they carried"], Labels(TargetActions.For(world, ava, bran)));
+    }
+
+    // A made thing on the ground is headed by what the band calls it, not by an item name it
+    // does not have.
+    [Fact]
+    public void SomethingMadeLyingOnTheGroundIsHeadedByWhatItIs()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        ava.Inventory.AddAssembly(cord);
+        world.Execute(new DropCommand(ava, new CarriedThing.Worked(cord)));
+        var dropped = Assert.Single(world.Entities, entity => entity.Category == EntityCategory.Pile);
+
+        var menu = TargetActions.For(world, ava, dropped);
+
+        Assert.Equal("plant fibre cord", menu.Heading);
+        Assert.Equal(["Pick up"], Labels(menu));
+    }
+
+    // Somebody who died holding nothing but the thing they made is carrying what is most worth
+    // taking, and the line has to be there to take it.
+    [Fact]
+    public void ADeadPersonCarryingOnlySomethingTheyMadeCanStillBeRobbedOfIt()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var bran = AddCorpse(world, "Bran", Camp);
+        bran.Inventory.AddAssembly(new Assembly.Part(new MaterialId("stone"), new FormId("wedge"), 1f, 1f));
+
+        Assert.Equal(["Bury", "Take what they carried"], Labels(TargetActions.For(world, ava, bran)));
+    }
+
+    // Whose child it would be follows from who they are, not from who happened to be pointed at.
+    [Fact]
+    public void TheMotherIsTheWomanWhicheverOfThemWasPointedAt()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+
+        var pointedAtHim = Labelled(TargetActions.For(world, ava, bran), "Have a child").Command;
+        var pointedAtHer = Labelled(TargetActions.For(world, bran, ava), "Have a child").Command;
+
+        Assert.Equal(ava, Assert.IsType<BirthCommand>(pointedAtHim).Mother);
+        Assert.Equal(ava, Assert.IsType<BirthCommand>(pointedAtHer).Mother);
+        Assert.Equal(bran, Assert.IsType<BirthCommand>(pointedAtHim).Father);
+        Assert.Equal(bran, Assert.IsType<BirthCommand>(pointedAtHer).Father);
+    }
+
+    [Fact]
+    public void TwoOfTheSameSexAreToldWhatIsMissingRatherThanNotOfferedIt()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var sela = TestWorld.AddAdult(world, "Sela", Camp);
+
+        Assert.Equal(ActionBlocker.WrongSex, Labelled(TargetActions.For(world, ava, sela), "Have a child").Blocker);
+    }
+
+    // Everything a person does to themselves is already on their own card, which is on screen
+    // the whole time they are selected.
+    [Fact]
+    public void PointingAtTheSelectedPersonThemselvesOffersNothing()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Empty(TargetActions.For(world, ava, ava).Offers);
+    }
+
+    // Being told to teach is itself how a person learns to teach, so never having learned that
+    // cannot be what stops a lesson.
+    [Fact]
+    public void ALessonIsNotBlockedForTheTeacherNeverHavingBeenTaughtToTeach()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.KnownTechniques.Add(TestWorld.BasicForaging);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+
+        var lesson = Labelled(TargetActions.For(world, ava, bran), "Teach foraging");
+
+        Assert.DoesNotContain(TestWorld.BasicTeaching, ava.KnownTechniques);
+        Assert.Equal(TeachCommand.TeachingSkill, lesson.TeachFirst);
+        Assert.True(lesson.IsAvailable);
+    }
+
+    // A store is a list of what it holds: "Put in" with nothing to put in is not a choice, and
+    // neither is taking out of an empty hut.
+    [Fact]
+    public void AnEmptyStoreAndAnEmptyPackLeaveOnlyMending()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Equal(["Mend"], Labels(TargetActions.For(world, ava, TestWorld.AddStorageHut(world, Camp))));
+    }
+
+    [Fact]
+    public void AStoreOffersALinePerKindThereIsToMoveEitherWay()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+        hut.Storage!.Add(TestWorld.Apple, 2);
+
+        var menu = TargetActions.For(world, ava, hut);
+
+        Assert.Equal("Storage Hut", menu.Heading);
+        Assert.Equal(["Put in wood", "Take out apple", "Mend"], Labels(menu));
+    }
+
+    // Both tiers merge into one alphabetical list rather than stock always leading, so a store's
+    // lines never reshuffle between openings whichever tier a thing happens to belong to.
+    [Fact]
+    public void StockAndMadeThingsToPutInAreMergedIntoOneAlphabeticalList()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        ava.Inventory.Add(TestWorld.Apple, 2);
+        ava.Inventory.AddAssembly(new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f));
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        var menu = TargetActions.For(world, ava, hut);
+
+        Assert.Equal(["Put in apple", "Put in plant fibre cord", "Put in wood", "Mend"], Labels(menu));
+    }
+
+    // Dropped or deposited down to nothing is the same as never having carried it - the line
+    // must not linger showing an offer to put away zero.
+    [Fact]
+    public void HavingNoneOfAKindLeftIsNotOfferedForPuttingIn()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        ava.Inventory.Add(TestWorld.Wood, -4);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        Assert.Equal(["Mend"], Labels(TargetActions.For(world, ava, hut)));
+    }
+
+    [Fact]
+    public void PuttingSomethingInMovesEverythingOfThatKindTheyCarry()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        var deposit = Assert.IsType<DepositCommand>(Labelled(TargetActions.For(world, ava, hut), "Put in wood").Command);
+
+        Assert.Equal(new CarriedThing.Stock(TestWorld.Wood, 4), deposit.What);
+    }
+
+    // Both tiers go on the shelves, and the line is named the way the thing is named everywhere
+    // else.
+    [Fact]
+    public void SomethingTheyMadeCanGoOnTheShelvesToo()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        ava.Inventory.AddAssembly(cord);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+
+        var deposit = Assert.IsType<DepositCommand>(Labelled(TargetActions.For(world, ava, hut), "Put in plant fibre cord").Command);
+
+        Assert.Equal(new CarriedThing.Worked(cord), deposit.What);
+    }
+
+    [Fact]
+    public void SomethingMadeOnTheShelvesCanBeTakenBackOut()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+        var cord = new Assembly.Part(new MaterialId("plant_fibre"), TestWorld.Cord, 0.8f, 5f);
+        hut.Storage!.AddAssembly(cord);
+
+        var withdraw = Assert.IsType<WithdrawCommand>(Labelled(TargetActions.For(world, ava, hut), "Take out plant fibre cord").Command);
+
+        Assert.Equal(new CarriedThing.Worked(cord), withdraw.What);
+    }
+
+    [Fact]
+    public void ASoundHutSaysThereIsNothingToMend()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+
+        var mend = Labelled(TargetActions.For(world, ava, TestWorld.AddStorageHut(world, Camp)), "Mend");
+
+        Assert.Equal(ActionBlocker.NothingToRepair, mend.Blocker);
+    }
+
+    // A pile is always one kind, so the heading already names it and the offer under it is a
+    // bare verb - the same shape as a resource's "Gather".
+    [Fact]
+    public void APileIsHeadedByItsOwnKindAndOffersPickingItUp()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var pile = new Entity { Kind = new EntityKindId(TestWorld.Wood.Value), Category = EntityCategory.Pile, Position = Camp, StaticAmount = 3 };
+
+        var menu = TargetActions.For(world, ava, pile);
+
+        Assert.Equal("Wood", menu.Heading);
+        Assert.Equal(["Pick up"], Labels(menu));
+        Assert.Equal(new EntityKindId(TestWorld.Wood.Value), Assert.IsType<PickUpItemCommand>(menu.Offers[0].Command).Pile.Kind);
+    }
+
+    [Fact]
+    public void APileOutOfReachIsSomethingToWalkTo()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var pile = new Entity { Kind = new EntityKindId(TestWorld.Wood.Value), Category = EntityCategory.Pile, Position = FarAway, StaticAmount = 3 };
+
+        var pickUp = TargetActions.PickUp(world, ava, pile);
+
+        Assert.Equal(ActionBlocker.TooFar, pickUp.Blocker);
+        Assert.Equal(pile.Position, pickUp.Target);
+        Assert.True(pickUp.NeedsWalkingTo);
+    }
+
+    [Fact]
+    public void PickUpIsTheSameOfferWhicheverWayItIsAskedFor()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        var pile = new Entity { Kind = new EntityKindId(TestWorld.Wood.Value), Category = EntityCategory.Pile, Position = Camp, StaticAmount = 3 };
+
+        Assert.Equal(TargetActions.PickUp(world, ava, pile), TargetActions.For(world, ava, pile).Offers[0]);
+    }
+
+    [Fact]
+    public void BareGroundIsSomewhereToWalkTo()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+
+        var menu = TargetActions.For(world, ava, FarAway);
+
+        Assert.Equal("This spot", menu.Heading);
+        Assert.Equal(["Walk here"], Labels(menu));
+    }
+
+    // Building needs a place chosen rather than a thing pointed at, so it lives on the ground's
+    // own menu - offered from the first unit of the material, with the blocker saying how much
+    // more it takes.
+    [Fact]
+    public void SomebodyCarryingSomeOfTheMaterialIsOfferedTheBuildingAndToldWhatIsMissing()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 1);
+
+        var menu = TargetActions.For(world, ava, Camp);
+
+        // Alphabetically, alongside every other building the same wood could go towards.
+        Assert.Equal(["Walk here", "Build hearth", "Build storage hut"], Labels(menu));
+        Assert.Equal(ActionBlocker.MissingMaterials, Labelled(menu, "Build storage hut").Blocker);
+    }
+
+    [Fact]
+    public void SomebodyCarryingNoneOfTheMaterialIsNotOfferedTheBuildingAtAll()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+
+        Assert.Equal(["Walk here"], Labels(TargetActions.For(world, ava, Camp)));
+    }
+
+    [Fact]
+    public void BuildingGoesUpWhereThePlayerPointedRatherThanWhereThePersonStands()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, TestWorld.StorageHutInputAmount);
+
+        var build = Labelled(TargetActions.For(world, ava, FarAway), "Build storage hut");
+
+        Assert.Equal(FarAway, Assert.IsType<MakeCommand>(build.Command).Position);
+        Assert.True(build.NeedsWalkingTo);
+    }
+
+    // Every offer aimed at something carries where it happens, or the walk that would carry the
+    // order has nowhere to go.
+    [Fact]
+    public void EveryOfferKnowsWhereItHappens()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        var bran = TestWorld.AddAdult(world, "Bran", Camp, Sex.Male);
+        var corpse = AddCorpse(world, "Tora", Camp);
+        corpse.Inventory.Add(TestWorld.Apple, 1);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+        hut.Storage!.Add(TestWorld.Apple, 2);
+
+        IReadOnlyList<TargetMenu> menus =
+        [
+            TargetActions.For(world, ava, AddNode(world, TestWorld.AppleTree, Camp)),
+            TargetActions.For(world, ava, bran),
+            TargetActions.For(world, ava, corpse),
+            TargetActions.For(world, ava, hut),
+            TargetActions.For(world, ava, FarAway),
+        ];
+
+        Assert.All(menus, menu => Assert.All(menu.Offers, offer => Assert.NotNull(offer.Target)));
+    }
+
+    [Fact]
+    public void TheSameWorldAlwaysOffersTheSameThingsInTheSameOrder()
+    {
+        var world = TestWorld.Create();
+        var ava = TestWorld.AddAdult(world, "Ava", Camp);
+        ava.Inventory.Add(TestWorld.Wood, 4);
+        ava.Inventory.Add(TestWorld.Apple, 2);
+        var hut = TestWorld.AddStorageHut(world, Camp);
+        hut.Storage!.Add(TestWorld.Wood, 1);
+        hut.Storage!.Add(TestWorld.Apple, 1);
+
+        Assert.Equal(
+            Labels(TargetActions.For(world, ava, hut)),
+            Labels(TargetActions.For(world, ava, hut)));
+    }
+
+    // A living deer and its own carcass are offered entirely different things - the same "living
+    // and dead never share a list" rule as a Person target.
+    [Fact]
+    public void ALivingAnimalIsOfferedHuntAndNothingElse()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+
+        var menu = TargetActions.For(world, person, deer);
+
+        Assert.Equal("Deer", menu.Heading);
+        Assert.Equal(["Hunt"], Labels(menu));
+    }
+
+    [Fact]
+    public void ADeadAnimalIsOfferedButcherAndNothingElse()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+
+        Assert.Equal(["Butcher"], Labels(TargetActions.For(world, person, deer)));
+    }
+
+    // Pointing at the deer is itself how the person is shown how to hunt it, exactly as pointing
+    // at a tree teaches gathering - never having been shown cannot be what stops the order.
+    [Fact]
+    public void HuntTeachesItsOwnSkill()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+
+        var hunt = Labelled(TargetActions.For(world, person, deer), "Hunt");
+
+        Assert.Empty(person.KnownTechniques);
+        Assert.Equal(HuntCommand.Skill, hunt.TeachFirst);
+        Assert.True(hunt.IsAvailable);
+    }
+
+    [Fact]
+    public void ButcherTeachesItsOwnSkill()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+
+        var butcher = Labelled(TargetActions.For(world, person, deer), "Butcher");
+
+        Assert.Empty(person.KnownTechniques);
+        Assert.Equal(ButcherCommand.Skill, butcher.TeachFirst);
+        Assert.True(butcher.IsAvailable);
+    }
+
+    // Both carry the animal itself as what pursues rather than a fixed spot - a deer moves, and a
+    // carcass is reached with the pile's own standoff, so both are handed to the simulation's own
+    // tick loop instead of a one-shot walk-then-fire.
+    [Fact]
+    public void HuntCarriesAPursuitTaskForTheDeerItself()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, FarAway);
+
+        var hunt = Labelled(TargetActions.For(world, person, deer), "Hunt");
+
+        var pursuit = Assert.IsType<HuntTask>(hunt.Pursuit);
+        Assert.Same(deer, pursuit.Prey);
+        Assert.Equal(world.Configuration.Rules.HuntingRange, pursuit.Range);
+        // Directed speed, not the idle AI's own slower pace - a player-directed hunt walks like
+        // every other order the player gives.
+        Assert.Equal(world.Configuration.Rules.SpeedPerTick, pursuit.SpeedPerTick);
+    }
+
+    [Fact]
+    public void ButcherCarriesAPursuitTaskForTheCarcassItself()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, FarAway);
+        deer.IsAlive = false;
+        deer.Inventory.Add(TestWorld.Meat, 30);
+
+        var butcher = Labelled(TargetActions.For(world, person, deer), "Butcher");
+
+        var pursuit = Assert.IsType<ButcherTask>(butcher.Pursuit);
+        Assert.Same(deer, pursuit.Carcass);
+        Assert.Equal(world.Configuration.Rules.PileReachDistance, pursuit.Reach);
+        // Directed speed, not the idle AI's own slower pace - a player-directed butchering walks
+        // like every other order the player gives.
+        Assert.Equal(world.Configuration.Rules.SpeedPerTick, pursuit.SpeedPerTick);
+    }
+
+    // A carcass a butcher cannot reach into (nothing left, or their pack already full) is refused
+    // rather than sent on a pointless walk - the same "walking will not mend it" rule a resource's
+    // own refusal follows.
+    [Fact]
+    public void AnEmptyCarcassRefusesButchering()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+        deer.IsAlive = false;
+
+        var butcher = Labelled(TargetActions.For(world, person, deer), "Butcher");
+
+        Assert.Equal(ActionBlocker.NothingLeft, butcher.Blocker);
+        Assert.False(butcher.IsAvailable);
+    }
+
+    // Butchering something still on its feet is refused outright, the same "still alive" wording
+    // LootCommand gives a looter standing over somebody who is not dead yet.
+    [Fact]
+    public void HuntingACarcassIsNotOnOffer()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", Camp);
+        var deer = TestWorld.AddAdultAnimal(world, Camp);
+
+        Assert.DoesNotContain(TargetActions.For(world, person, deer).Offers, offer => offer.Label == "Butcher");
+    }
+
+    private static Entity AddNode(WorldState world, EntityKindId kind, Position position)
+    {
+        var node = new Entity
+        {
+            Kind = kind,
+            Category = EntityCategory.Growable,
+            Position = position,
+            Growth = new GrowthState { RemainingAmount = 100, MaxAmount = 100 },
+        };
+        world.AddEntity(node);
+        return node;
+    }
+
+    private static Person AddCorpse(WorldState world, string name, Position position)
+    {
+        var person = TestWorld.AddAdult(world, name, position);
+        person.IsAlive = false;
+        return person;
+    }
+
+    private static List<string> Labels(TargetMenu menu) => menu.Offers.Select(offer => offer.Label).ToList();
+
+    private static ActionOffer Labelled(TargetMenu menu, string label) =>
+        Assert.Single(menu.Offers, offer => offer.Label == label);
+}
