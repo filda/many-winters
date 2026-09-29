@@ -9,7 +9,7 @@ public class ExplorationStateTests
     {
         var exploration = new ExplorationState();
 
-        var cell = ExplorationState.CellFor(new Position(0, 0));
+        var cell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
 
         Assert.False(exploration.IsExplored(cell));
         Assert.False(exploration.IsVisible(cell));
@@ -22,7 +22,7 @@ public class ExplorationStateTests
 
         exploration.Update([new Position(0, 0)]);
 
-        var cell = ExplorationState.CellFor(new Position(0, 0));
+        var cell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
         Assert.True(exploration.IsVisible(cell));
         Assert.True(exploration.IsExplored(cell));
     }
@@ -34,7 +34,7 @@ public class ExplorationStateTests
 
         exploration.Update([new Position(0, 0)]);
 
-        var farCell = ExplorationState.CellFor(new Position(ExplorationState.SightRadiusMeters * 10, 0));
+        var farCell = ExplorationState.CellFor(new Position(ExplorationState.SightRadiusMeters * 10, 0), 2.5f);
         Assert.False(exploration.IsVisible(farCell));
         Assert.False(exploration.IsExplored(farCell));
     }
@@ -43,7 +43,7 @@ public class ExplorationStateTests
     public void ExploredCellsStayExploredAfterTheSourceMovesAway()
     {
         var exploration = new ExplorationState();
-        var originCell = ExplorationState.CellFor(new Position(0, 0));
+        var originCell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
 
         exploration.Update([new Position(0, 0)]);
         exploration.Update([new Position(ExplorationState.SightRadiusMeters * 10, 0)]);
@@ -56,13 +56,13 @@ public class ExplorationStateTests
     public void VisibleReflectsOnlyTheMostRecentUpdate()
     {
         var exploration = new ExplorationState();
-        var originCell = ExplorationState.CellFor(new Position(0, 0));
+        var originCell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
         var farPosition = new Position(ExplorationState.SightRadiusMeters * 10, 0);
 
         exploration.Update([new Position(0, 0)]);
         exploration.Update([farPosition]);
 
-        Assert.True(exploration.IsVisible(ExplorationState.CellFor(farPosition)));
+        Assert.True(exploration.IsVisible(ExplorationState.CellFor(farPosition, 2.5f)));
         Assert.False(exploration.IsVisible(originCell));
     }
 
@@ -86,7 +86,7 @@ public class ExplorationStateTests
     public void CellForFloorsTowardNegativeInfinityRatherThanTowardZero(double x, double y, int cellX, int cellY)
     {
         // Truncation would fold -2.5..2.5 into one cell twice the width of every other.
-        Assert.Equal(new ExplorationCell(cellX, cellY), ExplorationState.CellFor(new Position(x, y)));
+        Assert.Equal(new ExplorationCell(cellX, cellY), ExplorationState.CellFor(new Position(x, y), 2.5f));
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class ExplorationStateTests
         var offset = new ExplorationCell(100, -150);
 
         near.Update([new Position(0, 0)]);
-        far.Update([new Position(offset.X * ExplorationState.CellSizeMeters, offset.Y * ExplorationState.CellSizeMeters)]);
+        far.Update([new Position(offset.X * 2.5f, offset.Y * 2.5f)]);
 
         var translated = near.Explored.Select(c => new ExplorationCell(c.X + offset.X, c.Y + offset.Y)).ToHashSet();
         Assert.Equal(translated, far.Explored.ToHashSet());

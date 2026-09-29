@@ -7,7 +7,7 @@ public class RevealableExplorationTests
 {
     // Well outside SightRadiusMeters of the origin, where the one sight source below stands.
     private static readonly ExplorationCell FarCell = new(100, 100);
-    private static readonly ExplorationCell HomeCell = ExplorationState.CellFor(new Position(0, 0));
+    private static readonly ExplorationCell HomeCell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
 
     [Fact]
     public void WithoutTheRevealANeverExploredCellStaysUnknown()

@@ -21,8 +21,8 @@ public sealed class ExplorationState
 
     public IReadOnlyCollection<ExplorationCell> Explored => _explored;
 
-    public static ExplorationCell CellFor(Position position) =>
-        new((int)Math.Floor(position.X / CellSizeMeters), (int)Math.Floor(position.Y / CellSizeMeters));
+    public static ExplorationCell CellFor(Position position, float cellSizeMeters) =>
+        new((int)Math.Floor(position.X / cellSizeMeters), (int)Math.Floor(position.Y / cellSizeMeters));
 
     public bool IsExplored(ExplorationCell cell) => _explored.Contains(cell);
 
@@ -39,7 +39,7 @@ public sealed class ExplorationState
 
         foreach (var source in sightSources)
         {
-            var center = CellFor(source);
+            var center = CellFor(source, CellSizeMeters);
             for (var dx = -radiusCells; dx <= radiusCells; dx++)
             {
                 for (var dy = -radiusCells; dy <= radiusCells; dy++)

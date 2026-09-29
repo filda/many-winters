@@ -26,7 +26,7 @@ internal static class ExplorationMasks
             var worldZ = grid.WorldAt(ty);
             for (var tx = 0; tx < size; tx++)
             {
-                var cell = ExplorationState.CellFor(new Position(grid.WorldAt(tx), worldZ));
+                var cell = ExplorationState.CellFor(new Position(grid.WorldAt(tx), worldZ), ExplorationState.CellSizeMeters);
                 var seen = exploration.IsExplored(cell);
 
                 unexplored[ty, tx] = seen ? 0f : 1f;

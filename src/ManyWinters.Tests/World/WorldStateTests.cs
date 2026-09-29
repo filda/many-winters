@@ -1769,7 +1769,7 @@ public class WorldStateTests
         var person = world.SpawnPerson("Ava", new Position(0, 0), TestCatalogs.AdultAgeTicks);
         world.Execute(new GrantIdleGraceCommand(person, 1000));
         var destination = new Position(500, 500);
-        var destinationCell = ExplorationState.CellFor(destination);
+        var destinationCell = ExplorationState.CellFor(destination, 2.5f);
         Assert.False(world.Exploration.IsExplored(destinationCell));
 
         person.Position = destination;
