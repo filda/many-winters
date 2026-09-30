@@ -26,8 +26,8 @@ internal partial class BuildingView : SpriteEntityView
     private readonly Action<Entity, MouseButton> _onClicked;
 
     // Internal, like other view constructors: only WorldPresenter builds views.
-    internal BuildingView(Entity building, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(Size, hover, onMissedClick)
+    internal BuildingView(Entity building, PresentationSettings presentation, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(Size, presentation, hover, onMissedClick)
     {
         _building = building;
         _onClicked = onClicked;

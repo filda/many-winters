@@ -18,8 +18,8 @@ internal partial class ItemPileView : SpriteEntityView
     private readonly Entity _pile;
     private readonly Action<Entity, MouseButton> _onClicked;
 
-    internal ItemPileView(Entity pile, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(Size, hover, onMissedClick)
+    internal ItemPileView(Entity pile, PresentationSettings presentation, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(Size, presentation, hover, onMissedClick)
     {
         _pile = pile;
         _onClicked = onClicked;

@@ -6,18 +6,11 @@ namespace ManyWinters.Presentation.Logic;
 // "remembered" tier, explored but out of sight - and how long the transition takes each way.
 // One instance per view so all of them dim by the same numbers on the same curve. It only says
 // what to multiply a layer's own base modulate by; the layer's colour stays the view's business.
-//
-// Losing sight is memory gradually taking over, so it eases out over about a second; regaining
-// it is an event, so it snaps back in a fraction of that. Equal durations read as the world
-// lagging behind the group.
-internal sealed class RememberedFade
+internal sealed class RememberedFade(PresentationSettings presentation)
 {
-    public const float ToRememberedSeconds = 1.2f;
-    public const float ToVisibleSeconds = 0.35f;
-
     // Sepia memory of the place: a componentwise multiply that also darkens slightly, so the
-    // tone stays warm rather than merely faded. Deliberately not FogOfWarRenderer's
-    // RememberedTint - that one paints bare ground, this one multiplies into inked art.
+    // tone stays warm rather than merely faded. Deliberately not the fog renderer's ground
+    // tint - that one paints bare ground, this one multiplies into inked art.
     public static readonly Color Tint = new(0.78f, 0.68f, 0.52f);
 
     private bool _isRemembered;
@@ -57,7 +50,7 @@ internal sealed class RememberedFade
     // as the group wanders along the edge of sight.
     public bool Advance(float deltaSeconds)
     {
-        var step = deltaSeconds / (_isRemembered ? ToRememberedSeconds : ToVisibleSeconds);
+        var step = deltaSeconds / (_isRemembered ? presentation.FadeToRememberedSeconds : presentation.FadeToVisibleSeconds);
         _progress = _isRemembered
             ? Math.Min(_progress + step, 1f)
             : Math.Max(_progress - step, 0f);

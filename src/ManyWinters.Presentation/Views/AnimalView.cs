@@ -38,8 +38,8 @@ internal partial class AnimalView : CreatureView
     private Color _aliveModulate;
 
     // Internal, like other view constructors: only WorldPresenter builds views.
-    internal AnimalView(Animal animal, HoverArbiter hover, Action<Animal, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(animal, NominalHeightFor(animal.Species), hover, onMissedClick)
+    internal AnimalView(Animal animal, PresentationSettings presentation, HoverArbiter hover, Action<Animal, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(animal, NominalHeightFor(animal.Species), presentation, hover, onMissedClick)
     {
         _animal = animal;
         _species = animal.Species;

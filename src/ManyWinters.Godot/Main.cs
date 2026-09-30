@@ -98,7 +98,7 @@ public partial class Main : Node3D
         AddChild(_cameraRig);
 
         await Building(75, "Drawing the pages");
-        _presenter = new WorldPresenter(_world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, _terrain.SampleHeight);
+        _presenter = new WorldPresenter(_world, _exploration, _cameraRig.RigGlobalPosition, _cameraRig.ViewRadius, _terrain.SampleHeight, _presentation);
         AddChild(_presenter);
         _occlusionFader = new OcclusionFader(_cameraRig, _presenter, _presentation);
         _orderCoordinator = new OrderCoordinator(_world, _presenter, _presentation);

@@ -36,8 +36,8 @@ public partial class PersonView : CreatureView
 
     // Internal, like the HoverArbiter it takes: only WorldPresenter builds views, and the hover
     // invariant is the presentation layer's business.
-    internal PersonView(Person person, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(person, Height, hover, onMissedClick)
+    internal PersonView(Person person, PresentationSettings presentation, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(person, Height, presentation, hover, onMissedClick)
     {
         _person = person;
         _onClicked = onClicked;

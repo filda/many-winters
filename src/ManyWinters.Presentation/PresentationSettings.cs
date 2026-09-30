@@ -108,4 +108,11 @@ public sealed record PresentationSettings
     public float CameraFar { get; } = 5000f;
 
     public float CameraNear { get; } = 0.5f;
+
+    // Fog of war's "remembered" tier on a sprite: losing sight is memory gradually taking over,
+    // so it eases out over about a second; regaining it is an event, so it snaps back in a
+    // fraction of that. Equal durations read as the world lagging behind the group.
+    public float FadeToRememberedSeconds { get; } = 1.2f;
+
+    public float FadeToVisibleSeconds { get; } = 0.35f;
 }

@@ -95,8 +95,8 @@ internal partial class ResourceNodeView : SpriteEntityView
 
     // Internal: only WorldPresenter builds views, and the hover invariant is the presentation
     // layer's business.
-    internal ResourceNodeView(Entity node, bool canFell, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(NominalHeightFor(node.Kind, canFell), hover, onMissedClick)
+    internal ResourceNodeView(Entity node, bool canFell, PresentationSettings presentation, HoverArbiter hover, Action<Entity, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(NominalHeightFor(node.Kind, canFell), presentation, hover, onMissedClick)
     {
         _node = node;
         _kind = node.Kind;

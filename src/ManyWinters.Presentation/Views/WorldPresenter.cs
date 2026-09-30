@@ -49,15 +49,18 @@ public sealed partial class WorldPresenter : Node3D
     private Position _viewCenter;
     private double _viewRadiusSquared;
     private readonly float _cellSizeMeters;
+    private readonly PresentationSettings _presentation;
 
     public WorldPresenter(
         WorldState world,
         RevealableExploration exploration,
         Vector3 initialCameraPosition,
         float initialViewRadius,
-        Func<float, float, float> sampleHeight)
+        Func<float, float, float> sampleHeight,
+        PresentationSettings presentation)
     {
         _sampleHeight = sampleHeight;
+        _presentation = presentation;
         _resourceCatalog = world.Configuration.ResourceCatalog;
         _cellSizeMeters = world.Configuration.Rules.CellSizeMeters;
         _exploration = exploration;
@@ -314,7 +317,7 @@ public sealed partial class WorldPresenter : Node3D
 
     private void CreatePersonView(Person person)
     {
-        var view = new PersonView(person, _hover, RaisePersonClicked, RaiseMissedClick)
+        var view = new PersonView(person, _presentation, _hover, RaisePersonClicked, RaiseMissedClick)
         {
             Name = person.Name,
             Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
@@ -328,7 +331,7 @@ public sealed partial class WorldPresenter : Node3D
 
     private void CreateAnimalView(Animal animal)
     {
-        var view = new AnimalView(animal, _hover, RaiseAnimalClicked, RaiseMissedClick);
+        var view = new AnimalView(animal, _presentation, _hover, RaiseAnimalClicked, RaiseMissedClick);
         view.Position = WorldSpace.ToRender(animal.Position, view.Size / 2f, _sampleHeight);
         view.SnapRemembered(IsOutOfSight(animal.Position));
         AddChild(view);
@@ -383,7 +386,7 @@ public sealed partial class WorldPresenter : Node3D
     private void CreateResourceNodeViewNow(Entity node)
     {
         var canFell = _resourceCatalog.Get(node.Kind).CanFell;
-        var view = new ResourceNodeView(node, canFell, _hover, RaiseResourceNodeClicked, RaiseMissedClick);
+        var view = new ResourceNodeView(node, canFell, _presentation, _hover, RaiseResourceNodeClicked, RaiseMissedClick);
         view.Position = WorldSpace.ToRender(node.Position, view.Size / 2f, _sampleHeight);
         view.SnapRemembered(IsOutOfSight(node.Position));
         AddChild(view);
@@ -461,7 +464,7 @@ public sealed partial class WorldPresenter : Node3D
             GD.Print($"Building view created for {building.Kind} at {building.Position}.");
         }
 
-        var view = new BuildingView(building, _hover, RaiseBuildingClicked, RaiseMissedClick)
+        var view = new BuildingView(building, _presentation, _hover, RaiseBuildingClicked, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(building.Position, BuildingView.Size / 2f, _sampleHeight),
         };
@@ -472,7 +475,7 @@ public sealed partial class WorldPresenter : Node3D
 
     private void CreateGraveView(Grave grave)
     {
-        var view = new GraveView(grave, RaiseGraveSelected, RaiseMissedClick)
+        var view = new GraveView(grave, _presentation, RaiseGraveSelected, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(grave.Position, GraveView.Size / 2f, _sampleHeight),
         };
@@ -483,7 +486,7 @@ public sealed partial class WorldPresenter : Node3D
 
     private void CreateItemPileView(Entity pile)
     {
-        var view = new ItemPileView(pile, _hover, RaiseItemPileClicked, RaiseMissedClick)
+        var view = new ItemPileView(pile, _presentation, _hover, RaiseItemPileClicked, RaiseMissedClick)
         {
             Position = WorldSpace.ToRender(pile.Position, ItemPileView.Size / 2f, _sampleHeight),
         };

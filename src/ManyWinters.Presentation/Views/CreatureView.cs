@@ -61,8 +61,8 @@ public abstract partial class CreatureView : SpriteEntityView
     private bool _isAlive = true;
     private bool _isDecayed;
 
-    private protected CreatureView(Creature creature, float nominalHeight, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
-        : base(nominalHeight, hover, onMissedClick)
+    private protected CreatureView(Creature creature, float nominalHeight, PresentationSettings presentation, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
+        : base(nominalHeight, presentation, hover, onMissedClick)
     {
         _creature = creature;
     }

@@ -18,7 +18,7 @@ namespace ManyWinters.Presentation.Views;
 public abstract partial class SpriteEntityView : Area3D, IHoverable
 {
     private readonly List<SpriteLayer> _layers = new();
-    private readonly RememberedFade _remembered = new();
+    private readonly RememberedFade _remembered;
 
     // Null for a view that never lights up (a grave, a building). Null _onMissedClick too means
     // nothing can be clicked, and the view gets no collision shape or ray picking.
@@ -28,9 +28,10 @@ public abstract partial class SpriteEntityView : Area3D, IHoverable
     private CollisionShape3D? _collisionShape;
     private bool _isHovered;
 
-    private protected SpriteEntityView(float nominalHeight, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
+    private protected SpriteEntityView(float nominalHeight, PresentationSettings presentation, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
     {
         NominalHeight = nominalHeight;
+        _remembered = new RememberedFade(presentation);
         _hover = hover;
         _onMissedClick = onMissedClick;
     }
