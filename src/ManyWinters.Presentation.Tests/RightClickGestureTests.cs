@@ -7,10 +7,12 @@ namespace ManyWinters.Presentation.Tests;
 // must not end in a menu.
 public class RightClickGestureTests
 {
+    private const float Threshold = 4f;
+
     [Fact]
     public void PressAndReleaseInTheSameSpotIsAClick()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Press(new Vector2(100, 100));
 
         Assert.True(gesture.Release());
@@ -19,7 +21,7 @@ public class RightClickGestureTests
     [Fact]
     public void ADragIsNotAClick()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Press(new Vector2(100, 100));
         gesture.Moved(new Vector2(240, 180));
 
@@ -31,9 +33,9 @@ public class RightClickGestureTests
     [Fact]
     public void ANudgeWithinTheSlackIsStillAClick()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Press(new Vector2(100, 100));
-        gesture.Moved(new Vector2(100 + RightClickGesture.DragThresholdPixels, 100));
+        gesture.Moved(new Vector2(100 + Threshold, 100));
 
         Assert.True(gesture.Release());
     }
@@ -41,7 +43,7 @@ public class RightClickGestureTests
     [Fact]
     public void MotionPastTheSlackIsADragHoweverFarBackItComes()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Press(new Vector2(100, 100));
         gesture.Moved(new Vector2(300, 100));
         gesture.Moved(new Vector2(100, 100));
@@ -52,7 +54,7 @@ public class RightClickGestureTests
     [Fact]
     public void AReleaseNobodyPressedIsNotAClick()
     {
-        Assert.False(new RightClickGesture().Release());
+        Assert.False(new RightClickGesture(Threshold).Release());
     }
 
     // Motion with the button up is nobody's business here: the camera has not been turned, and
@@ -60,7 +62,7 @@ public class RightClickGestureTests
     [Fact]
     public void MotionBeforeThePressDoesNotSpoilIt()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Moved(new Vector2(500, 500));
         gesture.Press(new Vector2(100, 100));
 
@@ -70,7 +72,7 @@ public class RightClickGestureTests
     [Fact]
     public void AClickIsAnsweredOnceAndNotAgain()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Press(new Vector2(100, 100));
 
         Assert.True(gesture.Release());
@@ -80,7 +82,7 @@ public class RightClickGestureTests
     [Fact]
     public void ADragIsForgottenByTheNextPress()
     {
-        var gesture = new RightClickGesture();
+        var gesture = new RightClickGesture(Threshold);
         gesture.Press(new Vector2(100, 100));
         gesture.Moved(new Vector2(400, 400));
         gesture.Release();

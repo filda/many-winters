@@ -32,7 +32,7 @@ public sealed class WorldInputController
     // Telling a right-click apart from the right-drag that turns the camera, and what the press
     // landed on until the button comes up. The world's views report the press; only the release
     // decides whether a menu opens.
-    private readonly RightClickGesture _rightClick = new();
+    private readonly RightClickGesture _rightClick;
     private Func<Person, TargetMenu>? _pointedAt;
 
     public WorldInputController(
@@ -53,6 +53,7 @@ public sealed class WorldInputController
         _orders = orders;
         _statusBar = statusBar;
         _presentation = presentation;
+        _rightClick = new RightClickGesture(presentation.RightClickDragThresholdPixels);
 
         _contextMenu = contextMenu;
         _contextMenu.ActionInvoked += PerformAction;

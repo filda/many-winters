@@ -78,6 +78,12 @@ public sealed record PresentationSettings
 
     public float MouseTiltDegreesPerPixel { get; } = 0.15f;
 
+    // How far (screen pixels) the cursor may wander between a right press and release before it
+    // counts as a drag rather than a click. A few pixels of slack rather than none: a mouse
+    // drifts under a real finger, and a menu that refuses to open half the time is worse than
+    // one that occasionally opens after a nudge.
+    public float RightClickDragThresholdPixels { get; } = 4f;
+
     // Degrees of elevation above the rig's plane; height = zoom * sin, distance = zoom * cos.
     // The clamp keeps the view from going fully overhead or edge-on, both of which break the
     // cutout illusion. The upper bound matters most: FixedY billboards only yaw toward the

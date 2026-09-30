@@ -8,12 +8,8 @@ namespace ManyWinters.Presentation.Logic;
 // opens only if the cursor stayed where it went down - otherwise every look around the camp
 // would end in a menu.
 //
-// A few pixels of slack rather than none: a mouse drifts under a real finger, and a menu that
-// refuses to open half the time is worse than one that occasionally opens after a nudge.
-internal sealed class RightClickGesture
+internal sealed class RightClickGesture(float dragThresholdPixels)
 {
-    internal const float DragThresholdPixels = 4f;
-
     private Vector2 _pressedAt;
     private bool _pressed;
     private bool _dragged;
@@ -29,7 +25,7 @@ internal sealed class RightClickGesture
     // here, and checking the flag first is the same work as ignoring it.
     internal void Moved(Vector2 screenPosition)
     {
-        if (_pressed && screenPosition.DistanceTo(_pressedAt) > DragThresholdPixels)
+        if (_pressed && screenPosition.DistanceTo(_pressedAt) > dragThresholdPixels)
         {
             _dragged = true;
         }
