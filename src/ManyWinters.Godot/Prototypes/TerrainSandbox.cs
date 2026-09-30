@@ -70,12 +70,7 @@ public partial class TerrainSandbox : Node3D
         _terrain.ScatterDecoration(rng, PersonCount, new[] { PersonTexturePath }, PersonHeightMeters, PersonFallbackColor, PropMinScale, PropMaxScale, 0f, 0f, _terrain.Half);
 
         var initialPosition = new Vector3(0f, _terrain.SampleHeight(0f, 0f), 0f);
-        _cameraRig = new FreeCameraRig(
-            initialPosition,
-            Presentation.InitialZoomDistance,
-            Presentation.MinZoom,
-            Presentation.MaxZoom,
-            _terrain.SampleHeight);
+        _cameraRig = new FreeCameraRig(initialPosition, Presentation, _terrain.SampleHeight);
         AddChild(_cameraRig);
     }
 

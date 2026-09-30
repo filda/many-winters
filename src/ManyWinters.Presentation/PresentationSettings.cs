@@ -56,4 +56,56 @@ public sealed record PresentationSettings
     public float MinZoom { get; } = 3f;
 
     public float MaxZoom { get; } = 2000f;
+
+    // Pan speed scales with zoom distance: the zoom range spans 3 to 2000, so a fixed speed is
+    // glacial zoomed out and wild zoomed in - the same reason zoom is multiplicative.
+    public float PanSpeedPerZoomUnit { get; } = 1f;
+
+    // How fast velocity eases toward its target - higher = snappier, lower = floatier.
+    // 1/PanEaseRate is roughly the time constant (seconds) to close ~63% of the gap.
+    public float PanEaseRate { get; } = 10f;
+
+    public float RotateSpeed { get; } = 1.5f;
+
+    public float ZoomRatePerSecond { get; } = 2.5f;
+
+    // A wheel notch has no delta of its own, so it's treated as this many seconds' worth of
+    // R/F's held-key rate - keeps a single zoom feel instead of a separately tuned step.
+    public float ScrollZoomNotchSeconds { get; } = 0.05f;
+
+    // Right-drag rotate/tilt, alongside Q/E and Page Up/Down for mouse-less control.
+    public float MouseRotateRadiansPerPixel { get; } = 0.005f;
+
+    public float MouseTiltDegreesPerPixel { get; } = 0.15f;
+
+    // Degrees of elevation above the rig's plane; height = zoom * sin, distance = zoom * cos.
+    // The clamp keeps the view from going fully overhead or edge-on, both of which break the
+    // cutout illusion. The upper bound matters most: FixedY billboards only yaw toward the
+    // camera's horizontal direction, so at 90 deg every sprite renders edge-on.
+    public float DefaultTiltDegrees { get; } = 20f;
+
+    public float MinTiltDegrees { get; } = 12f;
+
+    public float MaxTiltDegrees { get; } = 70f;
+
+    public float TiltSpeedDegreesPerSecond { get; } = 45f;
+
+    // Minimum clearance the camera keeps above the ground directly under it.
+    public float MinCameraGroundClearance { get; } = 0.3f;
+
+    // ViewRadius's margin over the raw zoom distance: at the default tilt the ground footprint
+    // in view reaches well past the zoom distance itself (perspective spread plus the diagonal
+    // of a non-square viewport), and this is a cheap over-estimate rather than a per-frustum
+    // computation - WorldPresenter only uses it to decide which decorations are worth a node,
+    // where popping in a touch early costs nothing a real culling error would.
+    public float ViewRadiusMultiplier { get; } = 3f;
+
+    // Depth precision depends on the Far/Near ratio, not Far alone. The engine default Near
+    // (0.05) against this Far gave 100,000:1 - so little precision remained at background-tree
+    // depths that the fog-of-war depth-reconstruction shaders (fog_of_war_screen.gdshader,
+    // fog_of_war_remembered.gdshader) cut a flat "ceiling" through unrelated canopies. 0.5 cuts
+    // the ratio 10x; nothing is ever legitimately closer to the camera than that.
+    public float CameraFar { get; } = 5000f;
+
+    public float CameraNear { get; } = 0.5f;
 }

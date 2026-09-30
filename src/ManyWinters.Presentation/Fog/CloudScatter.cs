@@ -22,8 +22,8 @@ public static class CloudScatter
     private const float MinWorldSize = 25f;
     private const float MaxWorldSize = 70f;
 
-    // Well above every tree and well below the camera's Far (FreeCameraRig, 5000): high enough
-    // to read as sky, close enough to keep detail at a normal play zoom.
+    // Well above every tree and well below the camera's far plane: high enough to read as sky,
+    // close enough to keep detail at a normal play zoom.
     private const float MinHeight = 60f;
     private const float MaxHeight = 140f;
 

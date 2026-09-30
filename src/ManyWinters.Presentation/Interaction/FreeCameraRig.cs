@@ -9,47 +9,12 @@ namespace ManyWinters.Presentation.Interaction;
 // orthographic stays available via ToggleProjection.
 public sealed partial class FreeCameraRig : Node3D
 {
-    // Pan speed scales with zoom distance: the zoom range spans 3 to 2000, so a fixed speed is
-    // glacial zoomed out and wild zoomed in - the same reason zoom is multiplicative.
-    private const float PanSpeedPerZoomUnit = 1f;
-    // How fast velocity eases toward its target - higher = snappier, lower = floatier.
-    // 1/PanEaseRate is roughly the time constant (seconds) to close ~63% of the gap.
-    private const float PanEaseRate = 10f;
-    private const float RotateSpeed = 1.5f;
-    private const float ZoomRatePerSecond = 2.5f;
-    // A wheel notch has no delta of its own, so it's treated as this many seconds' worth of
-    // R/F's held-key rate - keeps a single zoom feel instead of a separately tuned step.
-    private const float ScrollZoomNotchSeconds = 0.05f;
-    // Right-drag rotate/tilt, alongside Q/E and Page Up/Down for mouse-less control.
-    private const float MouseRotateRadiansPerPixel = 0.005f;
-    private const float MouseTiltDegreesPerPixel = 0.15f;
-
-    // Degrees of elevation above the rig's plane; height = zoom * sin, distance = zoom * cos.
-    // The clamp keeps the view from going fully overhead or edge-on, both of which break the
-    // cutout illusion. The upper bound matters most: FixedY billboards only yaw toward the
-    // camera's horizontal direction, so at 90 deg every sprite renders edge-on.
-    private const float DefaultTiltDegrees = 20f;
-    private const float MinTiltDegrees = 12f;
-    private const float MaxTiltDegrees = 70f;
-    private const float TiltSpeedDegreesPerSecond = 45f;
-
-    // Minimum clearance the camera keeps above the ground directly under it.
-    private const float MinCameraGroundClearance = 0.3f;
-
-    // ViewRadius's margin over the raw zoom distance: at the default tilt the ground footprint
-    // in view reaches well past the zoom distance itself (perspective spread plus the diagonal
-    // of a non-square viewport), and this is a cheap over-estimate rather than a per-frustum
-    // computation - WorldPresenter only uses it to decide which decorations are worth a node,
-    // where popping in a touch early costs nothing a real culling error would.
-    private const float ViewRadiusMultiplier = 3f;
-
     private readonly Camera3D _camera;
-    private readonly float _minZoom;
-    private readonly float _maxZoom;
+    private readonly PresentationSettings _presentation;
     private readonly Func<float, float, float> _sampleHeight;
     private float _zoomDistance;
     private float _orthographicSize;
-    private float _tiltDegrees = DefaultTiltDegrees;
+    private float _tiltDegrees;
     private bool _isOrthographic;
     private bool _mouseRotating;
     private Vector3 _panVelocity = Vector3.Zero;
@@ -57,23 +22,23 @@ public sealed partial class FreeCameraRig : Node3D
     // sampleHeight: the same ground-height function everything else on the ground uses. Panning
     // only moves the rig in XZ, so without it the rig's Y stays frozen where it started and the
     // camera ends up under a nearby bump after panning.
-    public FreeCameraRig(Vector3 initialPosition, float initialDistance, float minZoom, float maxZoom, Func<float, float, float> sampleHeight)
+    public FreeCameraRig(Vector3 initialPosition, PresentationSettings presentation, Func<float, float, float> sampleHeight)
     {
-        _minZoom = minZoom;
-        _maxZoom = maxZoom;
-        _zoomDistance = initialDistance;
-        _orthographicSize = initialDistance;
+        _presentation = presentation;
+        _zoomDistance = presentation.InitialZoomDistance;
+        _orthographicSize = presentation.InitialZoomDistance;
+        _tiltDegrees = presentation.DefaultTiltDegrees;
         _sampleHeight = sampleHeight;
         Position = initialPosition;
 
-        // Depth precision depends on the Far/Near ratio, not Far alone. The engine default Near
-        // (0.05) against this Far gave 100,000:1 - so little precision remained at background-tree
-        // depths that FogOfWarRenderer's depth-reconstruction shaders (fog_of_war_screen.gdshader,
-        // fog_of_war_remembered.gdshader) cut a flat "ceiling" through unrelated canopies. 0.5 cuts
-        // the ratio 10x; nothing is ever legitimately closer to the camera than that.
         // CullMask excludes the cloud-fog layer bit: that layer holds only the cloud scatter's
         // mask-only cloud proxies, which the default mask would draw on top of each real cloud.
-        _camera = new Camera3D { Far = 5000f, Near = 0.5f, CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit };
+        _camera = new Camera3D
+        {
+            Far = presentation.CameraFar,
+            Near = presentation.CameraNear,
+            CullMask = 0xFFFFFFFF & ~CloudFogMask.CloudLayerBit,
+        };
         AddChild(_camera);
     }
 
@@ -90,7 +55,7 @@ public sealed partial class FreeCameraRig : Node3D
     // How far from RigGlobalPosition a decoration is still worth building a node for. Tracks the
     // current zoom, not a fixed world distance, so zooming out to see the whole map keeps
     // everything in it, not just a fixed radius around the rig.
-    public float ViewRadius => (_isOrthographic ? _orthographicSize : _zoomDistance) * ViewRadiusMultiplier;
+    public float ViewRadius => (_isOrthographic ? _orthographicSize : _zoomDistance) * _presentation.ViewRadiusMultiplier;
 
     // UpdateCamera reads GlobalPosition and calls LookAt, both of which need this node inside the
     // tree - not yet true during the constructor, since composition code adds this rig to the
@@ -146,9 +111,9 @@ public sealed partial class FreeCameraRig : Node3D
             panDirection.X += 1;
         }
 
-        var panSpeed = (_isOrthographic ? _orthographicSize : _zoomDistance) * PanSpeedPerZoomUnit;
+        var panSpeed = (_isOrthographic ? _orthographicSize : _zoomDistance) * _presentation.PanSpeedPerZoomUnit;
         var targetPanVelocity = CameraMotion.PanVelocity(Basis, panDirection, panSpeed);
-        _panVelocity = CameraMotion.Eased(_panVelocity, targetPanVelocity, PanEaseRate, delta);
+        _panVelocity = CameraMotion.Eased(_panVelocity, targetPanVelocity, _presentation.PanEaseRate, delta);
         Position += _panVelocity * delta;
 
         // Every frame, not only while a pan key is held: the rig's Y never drifts from the ground
@@ -170,7 +135,7 @@ public sealed partial class FreeCameraRig : Node3D
 
         if (rotateDirection != 0f)
         {
-            RotateY(rotateDirection * RotateSpeed * delta);
+            RotateY(rotateDirection * _presentation.RotateSpeed * delta);
         }
 
         var zoomDirection = 0f;
@@ -203,15 +168,17 @@ public sealed partial class FreeCameraRig : Node3D
         if (tiltDirection != 0f)
         {
             var before = _tiltDegrees;
-            _tiltDegrees = CameraMotion.Tilted(_tiltDegrees, tiltDirection * TiltSpeedDegreesPerSecond * delta, MinTiltDegrees, MaxTiltDegrees);
+            var minTilt = _presentation.MinTiltDegrees;
+            var maxTilt = _presentation.MaxTiltDegrees;
+            _tiltDegrees = CameraMotion.Tilted(_tiltDegrees, tiltDirection * _presentation.TiltSpeedDegreesPerSecond * delta, minTilt, maxTilt);
 
             // A verbose session follows the game from its log alone; the tilt says when it has
             // gone all the way up or down - the step that crossed the limit and was clamped onto
             // it - which is as far as a held key can ever drive it. Range comparisons, not
             // equality: the clamped value is checked by where it landed, not what it equals.
             if (LaunchOptions.Verbose
-                && (before < MaxTiltDegrees && _tiltDegrees >= MaxTiltDegrees
-                    || before > MinTiltDegrees && _tiltDegrees <= MinTiltDegrees))
+                && (before < maxTilt && _tiltDegrees >= maxTilt
+                    || before > minTilt && _tiltDegrees <= minTilt))
             {
                 GD.Print($"Camera tilted to {_tiltDegrees:0} degrees.");
             }
@@ -239,12 +206,12 @@ public sealed partial class FreeCameraRig : Node3D
                 HandleScrollZoom(1f);
                 break;
             case InputEventMouseMotion mouseMotion when _mouseRotating:
-                RotateY(-mouseMotion.Relative.X * MouseRotateRadiansPerPixel);
+                RotateY(-mouseMotion.Relative.X * _presentation.MouseRotateRadiansPerPixel);
                 _tiltDegrees = CameraMotion.Tilted(
                     _tiltDegrees,
-                    -mouseMotion.Relative.Y * MouseTiltDegreesPerPixel,
-                    MinTiltDegrees,
-                    MaxTiltDegrees);
+                    -mouseMotion.Relative.Y * _presentation.MouseTiltDegreesPerPixel,
+                    _presentation.MinTiltDegrees,
+                    _presentation.MaxTiltDegrees);
                 UpdateCamera();
                 break;
         }
@@ -254,7 +221,7 @@ public sealed partial class FreeCameraRig : Node3D
     // as opposed to HandleInput's held-key rate.
     private void HandleScrollZoom(float direction)
     {
-        Zoom(direction * ScrollZoomNotchSeconds);
+        Zoom(direction * _presentation.ScrollZoomNotchSeconds);
         UpdateCamera();
     }
 
@@ -262,13 +229,16 @@ public sealed partial class FreeCameraRig : Node3D
     // toggling back mid-session lands where it was left rather than being dragged along.
     private void Zoom(float signedSeconds)
     {
+        var rate = _presentation.ZoomRatePerSecond;
+        var minZoom = _presentation.MinZoom;
+        var maxZoom = _presentation.MaxZoom;
         if (_isOrthographic)
         {
-            _orthographicSize = CameraMotion.Zoomed(_orthographicSize, signedSeconds, ZoomRatePerSecond, _minZoom, _maxZoom);
+            _orthographicSize = CameraMotion.Zoomed(_orthographicSize, signedSeconds, rate, minZoom, maxZoom);
         }
         else
         {
-            _zoomDistance = CameraMotion.Zoomed(_zoomDistance, signedSeconds, ZoomRatePerSecond, _minZoom, _maxZoom);
+            _zoomDistance = CameraMotion.Zoomed(_zoomDistance, signedSeconds, rate, minZoom, maxZoom);
         }
     }
 
@@ -281,7 +251,7 @@ public sealed partial class FreeCameraRig : Node3D
         // Belt-and-suspenders on top of HandleInput's rig ground-following: the camera sits offset
         // from the rig, and a close, low tilt can put its own (X, Z) over a bump the rig is not on.
         var globalPosition = _camera.GlobalPosition;
-        var cleared = CameraMotion.ClearedHeight(globalPosition.Y, _sampleHeight(globalPosition.X, globalPosition.Z), MinCameraGroundClearance);
+        var cleared = CameraMotion.ClearedHeight(globalPosition.Y, _sampleHeight(globalPosition.X, globalPosition.Z), _presentation.MinCameraGroundClearance);
         if (cleared > globalPosition.Y)
         {
             globalPosition.Y = cleared;

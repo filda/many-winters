@@ -94,7 +94,7 @@ public partial class Main : Node3D
         var campX = (float)campCenter.X;
         var campZ = (float)campCenter.Y;
         var campPosition = new Vector3(campX, _terrain.SampleHeight(campX, campZ), campZ);
-        _cameraRig = new FreeCameraRig(campPosition, _presentation.InitialZoomDistance, _presentation.MinZoom, _presentation.MaxZoom, _terrain.SampleHeight);
+        _cameraRig = new FreeCameraRig(campPosition, _presentation, _terrain.SampleHeight);
         AddChild(_cameraRig);
 
         await Building(75, "Drawing the pages");
