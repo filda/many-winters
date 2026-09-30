@@ -14,28 +14,8 @@ namespace ManyWinters.Presentation.Fog;
 // distance. The bitmap holds a sharp and a blurred copy of the boundary; see that method.
 public sealed class FogOfWarRenderer
 {
-    // One texel per ExplorationState cell. A coarser texel straddled two cells, so the shader
-    // fogged part of an already-instantiated tree's canopy (a resource node view is only
-    // created once its own cell is Explored).
-    //
-    // The blur is applied to a separate copy and gated by the sharp mask in the shader
-    // (`unexploredSharp * unexploredBlurred`): a genuinely Explored position multiplies its blur
-    // contribution by zero, so softness only ever shows on the unexplored side. Blurring the
-    // boundary itself bled a visible ghost of fog onto Explored trees.
-    private const int BlurRadiusTexels = 3;
-
     private const string UnknownShaderPath = "res://Content/effects/fog_of_war_screen.gdshader";
     private const string RememberedShaderPath = "res://Content/effects/fog_of_war_remembered.gdshader";
-
-    // The shader's vertex() writes straight to clip space and ignores the quad's real size; this
-    // only has to cover the [-1, 1] clip range (2x2), never less.
-    private const float OverlayQuadSize = 4f;
-
-    // One below Godot's maximum: the sheets must draw over every piece of world content (the
-    // quad sits at the near plane, so distance sorting alone would not settle it), but under the
-    // hover rim, which HoverOutline draws at 127 - a remembered tree is still a valid thing to
-    // point at.
-    private const int OverlayRenderPriority = 126;
 
     // The same muted cool grey the cloud sprites use (art/generate_sprites.py, _cloud), so the
     // unknown sheet and GroundClouds' low cover read as one bank of cloud; warm parchment clashed
@@ -46,6 +26,7 @@ public sealed class FogOfWarRenderer
 
     private readonly RevealableExploration _exploration;
     private readonly float _cellSizeMeters;
+    private readonly int _blurRadiusTexels;
     private readonly TexelGrid _grid;
     private readonly ImageTexture _explorationTexture;
 
@@ -57,10 +38,19 @@ public sealed class FogOfWarRenderer
     // The same field on the CPU side, from the last rebuild, for GroundClouds to query.
     private float[,] _distanceCells;
 
-    public FogOfWarRenderer(RevealableExploration exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask, float cellSizeMeters)
+    public FogOfWarRenderer(RevealableExploration exploration,
+        float halfExtentMeters,
+        Camera3D camera,
+        CloudFogMask cloudFogMask,
+        float cellSizeMeters,
+        int blurRadiusTexels,
+        float overlayQuadSize,
+        int overlayRenderPriority
+        )
     {
         _exploration = exploration;
         _cellSizeMeters = cellSizeMeters;
+        _blurRadiusTexels = blurRadiusTexels;
         _grid = TexelGrid.Covering(halfExtentMeters, _cellSizeMeters);
         _distanceCells = new float[_grid.Size, _grid.Size];
 
@@ -78,7 +68,7 @@ public sealed class FogOfWarRenderer
         // person/resource sprites (OpaquePrepass still counts), which then drew on top of these
         // overlays. RenderPriority bypasses that sort: higher draws later regardless of depth. The
         // two overlays never compete for a pixel - a cell is never both unexplored and remembered.
-        var unknownMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(UnknownShaderPath), RenderPriority = OverlayRenderPriority };
+        var unknownMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(UnknownShaderPath), RenderPriority = overlayRenderPriority };
         unknownMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         unknownMaterial.SetShaderParameter("fog_albedo", UnknownColor);
         unknownMaterial.SetShaderParameter("distance_texture", _distanceTexture);
@@ -89,7 +79,7 @@ public sealed class FogOfWarRenderer
         unknownMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
         unknownMaterial.SetShaderParameter("cloud_mask", cloudMaskTexture);
 
-        var rememberedMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(RememberedShaderPath), RenderPriority = OverlayRenderPriority };
+        var rememberedMaterial = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(RememberedShaderPath), RenderPriority = overlayRenderPriority };
         rememberedMaterial.SetShaderParameter("exploration_texture", _explorationTexture);
         rememberedMaterial.SetShaderParameter("remembered_tint", RememberedTint);
         rememberedMaterial.SetShaderParameter("half_extent_meters", halfExtentMeters);
@@ -100,7 +90,7 @@ public sealed class FogOfWarRenderer
         // vertex override, so it needs a transform inside the frustum - beyond Near (0.5) or it
         // is culled as behind the near plane.
         const float overlayLocalZ = -1f;
-        var quadMesh = new QuadMesh { Size = new Vector2(OverlayQuadSize, OverlayQuadSize) };
+        var quadMesh = new QuadMesh { Size = new Vector2(overlayQuadSize, overlayQuadSize) };
         // Not the default layer: the mask camera must not render these quads. The main camera's
         // cull mask includes this layer.
         camera.AddChild(new MeshInstance3D
@@ -139,8 +129,8 @@ public sealed class FogOfWarRenderer
         var masks = ExplorationMasks.Build(_exploration, _grid, _cellSizeMeters);
         var unexploredSharp = masks.Unexplored;
         var rememberedSharp = masks.Remembered;
-        var unexploredBlurred = BoxBlur.Blur(unexploredSharp, BlurRadiusTexels);
-        var rememberedBlurred = BoxBlur.Blur(rememberedSharp, BlurRadiusTexels);
+        var unexploredBlurred = BoxBlur.Blur(unexploredSharp, _blurRadiusTexels);
+        var rememberedBlurred = BoxBlur.Blur(rememberedSharp, _blurRadiusTexels);
 
         _distanceCells = GridDistanceField.DistanceToNearestTrue(masks.Explored);
 

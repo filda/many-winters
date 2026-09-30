@@ -312,6 +312,26 @@ public sealed record SimulationRules
     // about, search is what a person can reach without discovering anything new on the way.
     public float SightRadiusMeters { get; } = 15f;
 
+    // One texel per ExplorationState cell. A coarser texel straddled two cells, so the shader
+    // fogged part of an already-instantiated tree's canopy (a resource node view is only
+    // created once its own cell is Explored).
+    //
+    // The blur is applied to a separate copy and gated by the sharp mask in the shader
+    // (`unexploredSharp * unexploredBlurred`): a genuinely Explored position multiplies its blur
+    // contribution by zero, so softness only ever shows on the unexplored side. Blurring the
+    // boundary itself bled a visible ghost of fog onto Explored trees.
+    public int BlurRadiusTexels { get; } = 3;
+
+    // The shader's vertex() writes straight to clip space and ignores the quad's real size; this
+    // only has to cover the [-1, 1] clip range (2x2), never less.
+    public float OverlayQuadSize { get; } = 4f;
+
+    // One below Godot's maximum: the sheets must draw over every piece of world content (the
+    // quad sits at the near plane, so distance sorting alone would not settle it), but under the
+    // hover rim, which HoverOutline draws at 127 - a remembered tree is still a valid thing to
+    // point at.
+    public int OverlayRenderPriority { get; } = 126;
+
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
     // draw: the same on every reload without being saved, and independent of creation order.
     public float MaxHungerFor(CreatureId id)

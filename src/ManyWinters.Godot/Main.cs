@@ -118,7 +118,10 @@ public partial class Main : Node3D
             _terrain.Half,
             _cameraRig.Camera,
             _cloudFogMask,
-            _world.Configuration.Rules.CellSizeMeters
+            _world.Configuration.Rules.CellSizeMeters,
+            _world.Configuration.Rules.BlurRadiusTexels,
+            _world.Configuration.Rules.OverlayQuadSize,
+            _world.Configuration.Rules.OverlayRenderPriority
             );
         _groundClouds = new GroundClouds(
             _fogOfWar,
