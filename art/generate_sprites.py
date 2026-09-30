@@ -1047,6 +1047,22 @@ def conifer_tree_canopy_v2():
     return _conifer_split("conifer_tree", 2)[2]
 
 
+def conifer_tree_trunk_v3():
+    return _conifer_split("conifer_tree", 3)[1]
+
+
+def conifer_tree_canopy_v3():
+    return _conifer_split("conifer_tree", 3)[2]
+
+
+def conifer_tree_trunk_v4():
+    return _conifer_split("conifer_tree", 4)[1]
+
+
+def conifer_tree_canopy_v4():
+    return _conifer_split("conifer_tree", 4)[2]
+
+
 # Three hand-authored boulder outlines (8 points each, same walk order: top-left facet, top,
 # top-right facet, right, bottom-right facet, bottom, bottom-left facet, left), unit-scaled
 # around the origin. Stones read as flat facets meeting at corners; overlapping ellipses read
@@ -1337,6 +1353,333 @@ def basket():
 
     _ground_shadow_dashes(c, 32, 57, 17, seed + 99)
     c.rough_outline(width=max(1, SCALE // 2))
+    return c
+
+
+def _seat_on_ground(c):
+    """Moves the drawing down until its lowest pixel sits on GROUND_CONTACT_Y. No contact
+    shadow is painted into the sprite - the engine draws one under it (GroundShadow) and two
+    would disagree - so a base left above the canvas bottom reads as floating."""
+    rows = np.nonzero(c.alpha.any(axis=1))[0]
+    dy = min(S - 1, GROUND_CONTACT_Y * SCALE + SCALE // 2) - rows.max()
+    if dy > 0:
+        c.rgb = np.roll(c.rgb, dy, axis=0)
+        c.alpha = np.roll(c.alpha, dy, axis=0)
+        c.alpha[:dy] = False
+
+
+def _stroke(points, width):
+    return _polyline_mask(points, [width] * (len(points) - 1))
+
+
+def _ticks(c, mask, color, rng, n, length, angle_deg, spread=25, width=0.5):
+    """Short strokes scattered over mask - hair on a pelt, fibre grain."""
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        return
+    img = Image.new("L", (S, S), 0)
+    d = ImageDraw.Draw(img)
+    for _ in range(n):
+        i = rng.randrange(len(xs))
+        x, y = xs[i] / SCALE, ys[i] / SCALE
+        a = math.radians(angle_deg + rng.uniform(-spread, spread))
+        l = length * rng.uniform(0.6, 1.2)
+        d.line([(x * SCALE, y * SCALE), ((x + math.cos(a) * l) * SCALE, (y + math.sin(a) * l) * SCALE)],
+               fill=255, width=max(1, round(width * SCALE)))
+    c.flat((np.array(img) > 127) & mask, color)
+
+
+# ---------------------------------------------------------------- animals
+
+def deer():
+    seed = seed_for("deer")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    coat = rgb(0.56, 0.38, 0.22)
+    belly = rgb(0.80, 0.68, 0.50)
+    hoof = rgb(0.20, 0.15, 0.10)
+    antler = rgb(0.74, 0.64, 0.46)
+
+    # Legs as jointed silhouettes, not rods of one width: a heavy thigh or forearm tapering to
+    # the joint, a thin cannon bone below it, and a pastern angled forward onto a small hoof.
+    # The hind leg's hock points backward; the foreleg's knee stays straight. Offsets place the
+    # far pair a step apart, drawn first and a shade darker so the near pair reads in front.
+    def hind_leg(dx, lift):
+        return [(14 + dx, 37), (22 + dx, 37), (20 + dx, 44), (15.8 + dx, 49.5), (17.3 + dx, 59 - lift),
+                (18.9 + dx, 62.4 - lift), (15.9 + dx, 62.4 - lift), (15.7 + dx, 59 - lift),
+                (13.8 + dx, 51.5), (11.8 + dx, 49.5), (12.4 + dx, 44)]
+
+    def fore_leg(dx, lift):
+        return [(40 + dx, 37), (46 + dx, 37), (44.9 + dx, 45), (44.3 + dx, 50), (44.5 + dx, 51.5),
+                (44.1 + dx, 59 - lift), (45.7 + dx, 62.4 - lift), (42.9 + dx, 62.4 - lift),
+                (42.6 + dx, 59 - lift), (42.4 + dx, 51.5), (41.9 + dx, 50), (41.2 + dx, 45)]
+
+    legs_far = [hind_leg(6.5, 0.5), fore_leg(-5.5, 0)]
+    legs_near = [hind_leg(0, 0), fore_leg(0, 0)]
+    for points, tone in [(pts, darken(coat, 0.25)) for pts in legs_far] + [(pts, coat) for pts in legs_near]:
+        leg = poly(jagged_poly(points, rng, amp=0.1, segments_per_edge=1, smooth_passes=0))
+        c.fill(leg, tone)
+        hoof_mask = leg & (_YY >= (points[5][1] - 1.6) * SCALE)
+        c.flat(hoof_mask, hoof)
+
+    body = poly(jagged_poly(
+        [(10, 30), (22, 24), (39, 25), (48, 28), (48, 40), (34, 44), (17, 43), (9, 37)],
+        rng, amp=0.6, segments_per_edge=3, smooth_passes=1))
+    neck = poly(jagged_poly(
+        [(40, 30), (46, 18), (51, 17), (50, 26), (47, 34)], rng, amp=0.4, segments_per_edge=2))
+    c.fill(body | neck, coat)
+    c.flat(ellipse(31, 44, 14, 3.5) & body, belly)
+    c.flat(ellipse(47.5, 31, 2.5, 4) & (body | neck), belly)  # pale throat
+
+    head = poly(jagged_poly(
+        [(45, 15), (50, 12), (53, 14), (58, 19), (57, 22), (52, 21), (47, 20)],
+        rng, amp=0.3, segments_per_edge=2, smooth_passes=1))
+    c.fill(head, coat)
+    c.flat(ellipse(57.2, 20.2, 1.2, 1.0), hoof)  # nose
+    c.flat(ellipse(51.8, 15.8, 0.8, 0.8), INK)    # eye
+    ear = poly([(46.5, 14), (41, 11), (43, 15.5)])
+    c.fill(ear, darken(coat, 0.1))
+
+    # the pale rump patch, and over it a short tail hanging down, dark on top
+    c.flat(ellipse(11.5, 34, 3.4, 5.2) & body, belly)
+    tail = poly(jagged_poly([(11, 29.5), (8.6, 30.5), (7.9, 34), (8.8, 36.4), (10.4, 34.5)],
+                            rng, amp=0.2, segments_per_edge=2, smooth_passes=1))
+    c.fill(tail, darken(coat, 0.2))
+
+    # antlers: a beam curving back with three tines, drawn as ink-backed bone strokes
+    beam = [(49, 13), (48, 8), (45, 4), (41, 2)]
+    tines = [[(48, 8), (51, 4)], [(46, 5), (47.5, 1.5)], [(49, 12), (52, 9.5)]]
+    beam2 = [(51, 13), (52, 9), (54, 6)]
+    for pts in [beam, beam2] + tines:
+        m = _stroke(pts, 1.1)
+        c.flat(m, antler)
+
+    # darker back line along the spine
+    c.flat(_stroke([(12, 29), (22, 25.5), (38, 26.5)], 0.9) & body, darken(coat, 0.3))
+
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+# ---------------------------------------------------------------- carcass items
+
+# A skin as it comes off the animal, split along the belly and laid out flat, in pelt-local
+# units (x along the spine, head at +x; y across it). Legs are tapering flaps flowing out of the
+# body rather than stuck-on rods - that is what makes it read as a skin and not a stick figure.
+_PELT_OUTLINE = [
+    (20, -3), (25, -2), (26, 2), (20, 3),                              # neck
+    (16, 5), (19, 12), (22, 19), (18, 20), (13, 12), (8, 9),           # fore leg, near side
+    (0, 10), (-8, 9),                                                  # belly edge
+    (-12, 11), (-17, 19), (-22, 21), (-20, 14), (-19, 8),              # hind leg, near side
+    (-22, 3), (-28, 1), (-22, -1),                                     # tail
+    (-19, -8), (-20, -14), (-22, -21), (-17, -19), (-12, -11),         # hind leg, far side
+    (-8, -9), (0, -10),                                                # back edge
+    (8, -9), (13, -12), (18, -20), (22, -19), (19, -12), (16, -5),     # fore leg, far side
+]
+# Lying on the ground under the game's tilted camera, so foreshortened across the spine.
+_PELT_CENTRE = (32, 44)
+_PELT_FORESHORTEN = 0.72
+
+
+def _pelt_point(x, y):
+    return _PELT_CENTRE[0] + x, _PELT_CENTRE[1] + y * _PELT_FORESHORTEN
+
+
+def rawhide():
+    """A fresh skin off the carcass, laid out flat and drying stiff: the deer's coat, darker
+    along the spine and paler towards the belly edges where the skin was split, hair lying back
+    towards the tail, and the raw flesh side showing where the drying edge curls up."""
+    seed = seed_for("rawhide")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    fur = rgb(0.56, 0.40, 0.24)
+    pale = rgb(0.68, 0.53, 0.35)
+    flesh = rgb(0.86, 0.72, 0.58)
+
+    pelt = poly(jagged_poly([_pelt_point(x, y) for x, y in _PELT_OUTLINE], rng,
+                            amp=0.6, segments_per_edge=3, smooth_passes=2))
+    c.fill(pelt, fur)
+    c.fill(pelt & ~erode(pelt, round(2.4 * SCALE)), pale)
+    # a darker saddle along the spine, hatched like the rest so it stays part of the coat
+    saddle = ellipse(_PELT_CENTRE[0] - 1, _PELT_CENTRE[1], 20, 4.2) & pelt
+    c.fill(saddle, darken(fur, 0.22))
+
+    # hair lies back from the spine towards the tail and out towards the edges
+    cx, cy = _PELT_CENTRE
+    ys, xs = np.nonzero(erode(pelt, SCALE))
+    hair = Image.new("L", (S, S), 0)
+    draw = ImageDraw.Draw(hair)
+    for _ in range(220):
+        k = rng.randrange(len(xs))
+        x, y = xs[k] / SCALE, ys[k] / SCALE
+        side = 1 if y >= cy else -1
+        a = math.atan2(side * 0.7 * _PELT_FORESHORTEN, -1.0) + rng.uniform(-0.3, 0.3)
+        length = rng.uniform(1.2, 2.2)
+        draw.line([(x * SCALE, y * SCALE),
+                   ((x + math.cos(a) * length) * SCALE, (y + math.sin(a) * length) * SCALE)],
+                  fill=255, width=max(1, SCALE // 3))
+    c.flat((np.array(hair) > 127) & erode(pelt, SCALE), darken(fur, 0.5))
+
+    # the drying edge lifts in patches, showing the pale flesh side
+    rim = pelt & ~erode(pelt, round(0.9 * SCALE))
+    idx = np.floor((_XX * 0.6 + _YY) / (5 * SCALE)).astype(np.int64)
+    c.flat(rim & (_line_hash(idx, seed) > 0.55), flesh)
+    for x, y in ((21, 19.5), (-21.5, -20.5)):
+        px, py = _pelt_point(x, y)
+        curl = ellipse(px, py, 2.6, 1.8) & pelt
+        c.fill(curl, flesh)
+        c.ink(curl & ~erode(curl, 1) & ~dilate(~pelt, 1))
+
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+def hide():
+    """Tanned: the same skin as rawhide, but turned tanned side up - smooth, supple leather with
+    soft creases instead of hair - with a row of stake holes round the edge from the frame it
+    was stretched on while it was worked, and one leg folded back over to show the coat."""
+    seed = seed_for("hide")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    leather = rgb(0.72, 0.55, 0.36)
+    fur = rgb(0.54, 0.38, 0.22)
+
+    pelt = poly(jagged_poly([_pelt_point(x, y) for x, y in _PELT_OUTLINE], rng,
+                            amp=0.9, segments_per_edge=3, smooth_passes=3))
+
+    # the near foreleg, folded back over the body along a line across its root
+    fold_x, fold_y = _pelt_point(6, 5)
+    leg = pelt & (_XX >= fold_x * SCALE) & (_YY >= fold_y * SCALE)
+    mirror_rows = np.clip(2 * round(fold_y * SCALE) - np.arange(S), 0, S - 1)
+    folded = leg[mirror_rows, :]
+    leather_part = pelt & ~leg
+    c.fill(leather_part, leather)
+
+    creases = (((12, 38), (19, 36), (25, 38)), ((28, 46), (34, 44), (41, 45)),
+               ((17, 49), (22, 47), (27, 49)), ((37, 36), (42, 38), (46, 37)))
+    for pts in creases:
+        c.flat(_polyline_mask(list(pts), [0.8, 0.6]) & leather_part, darken(leather, 0.3))
+
+    # stake holes, evenly spaced along the edge and set a little in from it
+    points = [_pelt_point(x, y) for x, y in _PELT_OUTLINE]
+    carry = 0.0
+    for (x0, y0), (x1, y1) in zip(points, points[1:] + points[:1]):
+        length = math.hypot(x1 - x0, y1 - y0)
+        t = carry
+        while t < length:
+            hx, hy = x0 + (x1 - x0) * t / length, y0 + (y1 - y0) * t / length
+            nx, ny = -(y1 - y0) / length * 2.2, (x1 - x0) / length * 2.2
+            for sx, sy in ((hx + nx, hy + ny), (hx - nx, hy - ny)):
+                hole = ellipse(sx, sy, 0.55, 0.5)
+                # the normal that points into the skin, and only where it is not too narrow
+                # (a leg tip) to hold a hole a full margin from both edges
+                if (hole & erode(leather_part, round(1.2 * SCALE))).sum() == hole.sum():
+                    c.flat(hole, INK)
+                    break
+            t += 5.0
+        carry = t - length
+
+    c.fill(folded, fur)
+    _ticks(c, folded, darken(fur, 0.45), rng, 45, 1.3, 200, spread=20)
+    c.ink(dilate(folded, 1) & ~folded & leather_part)
+
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+def meat():
+    """A haunch: a raw red lump with a fat cap and the white knuckle of the bone showing."""
+    seed = seed_for("meat")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    red = rgb(0.62, 0.20, 0.16)
+    fat = rgb(0.90, 0.82, 0.66)
+    bone_c = rgb(0.88, 0.84, 0.74)
+    shank = poly(jagged_poly([(38, 30), (48, 24), (51, 28), (42, 38)], rng, amp=0.3, segments_per_edge=2))
+    c.fill(shank, bone_c)
+    c.fill(ellipse(50, 24, 3.4, 3.0) | ellipse(53, 27, 3.0, 2.8), bone_c)
+    body = ellipse(28, 42, 18, 13) | ellipse(38, 36, 9, 8) | ellipse(20, 46, 10, 9)
+    c.fill(body, red)
+    cap = body & ~shift(body, -3 * SCALE, 3 * SCALE)
+    c.flat(cap, fat)
+    for x0, y0, x1, y1 in ((16, 40, 26, 44), (28, 36, 36, 42), (22, 48, 32, 50)):
+        c.flat(_stroke([(x0, y0), ((x0 + x1) / 2, y0 + 1.5), (x1, y1)], 0.6) & body, fat)
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+def bone():
+    """A long bone: a shaft between two knobbed joint ends, lying across the ground."""
+    seed = seed_for("bone")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    col = rgb(0.86, 0.82, 0.70)
+    a, b = (14, 50), (50, 32)
+    shaft = _stroke([a, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 1), b], 4.2)
+    ends = (ellipse(a[0] - 2, a[1] - 2.5, 4.2, 3.5) | ellipse(a[0] + 1.5, a[1] + 2.5, 4, 3.4)
+            | ellipse(b[0] - 1.5, b[1] - 3, 4, 3.4) | ellipse(b[0] + 2, b[1] + 2, 4.2, 3.5))
+    c.fill(shaft | ends, col)
+    c.flat(_stroke([(20, 45), (44, 34)], 0.6) & shaft, lighten(col, 0.5))
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+def sinew():
+    """A dried tendon, not a gathered bundle like fibre: one flat, glossy ribbon of even width,
+    frayed at both ends where it has been pulled apart into the threads cord is twisted from."""
+    seed = seed_for("sinew")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    color = rgb(0.88, 0.84, 0.72)
+    spine = [(18, 48), (26, 43.5), (36, 41), (45, 36)]
+    band = _polyline_mask(spine, [4.2, 4.4, 4.0])
+    c.fill(band, color)
+    c.flat(_polyline_mask([(19, 47), (26, 42.5), (36, 40), (44, 35)], [0.7, 0.7, 0.7]) & band,
+           lighten(color, 0.6))
+
+    threads = np.zeros((S, S), dtype=bool)
+    for (sx, sy), direction, count in (((45, 36), (1, -0.5), 5), ((18, 48), (-1, 0.55), 4)):
+        for k in range(count):
+            spread = (k - (count - 1) / 2) * 2.6
+            length = rng.uniform(9, 13)
+            end = (sx + direction[0] * length - direction[1] * spread,
+                   sy + direction[1] * length + direction[0] * spread * 0.9)
+            mid = ((sx + end[0]) / 2 + rng.uniform(-0.8, 0.8), (sy + end[1]) / 2 + rng.uniform(-0.8, 0.8))
+            threads |= _polyline_mask([(sx, sy + spread * 0.3), mid, end], [1.0, 0.7])
+    threads &= ~band
+    c.fill(threads, color)
+
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+def rawhide_clothing():
+    """A plain slip-on tunic of rawhide laid flat: sleeves out, a slit neck, a ragged hem, and
+    the side seams and neck stitched with thong."""
+    seed = seed_for("rawhide_clothing")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    color = rgb(0.78, 0.64, 0.44)
+    body = poly(jagged_poly([
+        (27, 12), (32, 15), (37, 12), (46, 14), (57, 24), (53, 30), (45, 25),
+        (46, 57), (38, 55), (32, 58), (25, 55), (18, 57), (19, 25), (11, 30), (7, 24), (18, 14),
+    ], rng, amp=0.4, segments_per_edge=2, smooth_passes=0))
+    c.fill(body, color)
+    c.flat(_stroke([(32, 16), (32, 26)], 0.7) & body, darken(color, 0.5))
+    for y in range(28, 56, 4):
+        for x in (21.5, 43):
+            c.flat(_stroke([(x - 1.2, y), (x + 1.2, y + 2)], 0.6) & body, darken(color, 0.45))
+    for y in (18, 21, 24):
+        c.flat(_stroke([(30.5, y), (33.5, y + 1)], 0.6) & body, darken(color, 0.45))
+    c.flat(_stroke([(20, 40), (44, 40)], 1.6) & body, darken(color, 0.25))  # belt
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
     return c
 
 
@@ -2023,6 +2366,10 @@ SPRITES = {
     "conifer_tree_canopy_v1": conifer_tree_canopy_v1,
     "conifer_tree_trunk_v2": conifer_tree_trunk_v2,
     "conifer_tree_canopy_v2": conifer_tree_canopy_v2,
+    "conifer_tree_trunk_v3": conifer_tree_trunk_v3,
+    "conifer_tree_canopy_v3": conifer_tree_canopy_v3,
+    "conifer_tree_trunk_v4": conifer_tree_trunk_v4,
+    "conifer_tree_canopy_v4": conifer_tree_canopy_v4,
     "deciduous_tree": deciduous_tree,
     "deciduous_tree_trunk": deciduous_tree_trunk,
     "deciduous_tree_canopy": deciduous_tree_canopy,
@@ -2069,6 +2416,13 @@ SPRITES = {
     "cord": cord,
     "bag": bag,
     "basket": basket,
+    "meat": meat,
+    "bone": bone,
+    "rawhide": rawhide,
+    "hide": hide,
+    "sinew": sinew,
+    "rawhide_clothing": rawhide_clothing,
+    "deer": deer,
     "tree_stump": tree_stump,
     "fallen_log": fallen_log,
     "selection_marker": selection_marker,
