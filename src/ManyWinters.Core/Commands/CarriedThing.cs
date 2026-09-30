@@ -18,7 +18,7 @@ public abstract record CarriedThing
 
     // Amount defaults to one because most callers want one of something; dropping is the caller
     // that puts down a whole stack at once.
-    public sealed record Stock(ItemKindId Kind, int Amount = 1) : CarriedThing;
+    public sealed record Stock(ItemKindId Kind, int Amount) : CarriedThing;
 
     public sealed record Worked(Assembly Thing) : CarriedThing;
 }

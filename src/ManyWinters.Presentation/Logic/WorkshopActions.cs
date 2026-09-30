@@ -36,7 +36,7 @@ internal static class WorkshopActions
             .OrderBy(entry => entry.Key.Value, StringComparer.Ordinal)
             .Select(entry => new WorkshopEntry(
                 items.Get(entry.Key).DisplayName,
-                new CarriedThing.Stock(entry.Key),
+                new CarriedThing.Stock(entry.Key, 1),
                 entry.Value));
 
         var worked = person.Inventory.Assemblies

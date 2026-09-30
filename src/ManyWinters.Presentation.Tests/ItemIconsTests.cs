@@ -16,7 +16,7 @@ public class ItemIconsTests
     {
         Assert.Equal(
             ["res://Content/items/wood/wood.png", "res://Content/resources/wood/wood.png"],
-            ItemIcons.For(new CarriedThing.Stock(new ItemKindId("wood"))));
+            ItemIcons.For(new CarriedThing.Stock(new ItemKindId("wood"), 1)));
     }
 
     // A worked thing is its shape before it is its substance: one picture of a stick, whatever it

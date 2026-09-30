@@ -8,8 +8,8 @@ namespace ManyWinters.Tests.Commands;
 
 public class BindCommandTests
 {
-    private static readonly CarriedThing Wood = new CarriedThing.Stock(TestCatalogs.WoodItem);
-    private static readonly CarriedThing Stone = new CarriedThing.Stock(TestCatalogs.StoneItem);
+    private static readonly CarriedThing Wood = new CarriedThing.Stock(TestCatalogs.WoodItem, 1);
+    private static readonly CarriedThing Stone = new CarriedThing.Stock(TestCatalogs.StoneItem, 1);
 
     [Fact]
     public void BindingTwoThingsLeavesOneObjectMadeOfBoth()
@@ -178,7 +178,7 @@ public class BindCommandTests
     {
         var world = TestCatalogs.CreateWorld();
         var person = Binder(world);
-        var command = new BindCommand(person, Wood, new CarriedThing.Stock(TestCatalogs.AppleItem));
+        var command = new BindCommand(person, Wood, new CarriedThing.Stock(TestCatalogs.AppleItem, 1));
 
         Assert.Equal(ActionBlocker.MissingMaterials, command.Blocker(world));
         world.Execute(command);

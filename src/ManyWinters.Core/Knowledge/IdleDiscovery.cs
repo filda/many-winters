@@ -153,7 +153,7 @@ public static class IdleDiscovery
     // IReadOnlyList costs an interface dispatch per pick (CA1859).
     private static CarriedThing TargetAt(List<ItemKindId> stock, IReadOnlyList<Assembly> worked, int index) =>
         index < stock.Count
-            ? new CarriedThing.Stock(stock[index])
+            ? new CarriedThing.Stock(stock[index], 1)
             : new CarriedThing.Worked(worked[index - stock.Count]);
 
     // Deterministic from the person, the verb and the tick, as every other roll is. A person's
