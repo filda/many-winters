@@ -14,7 +14,7 @@ namespace ManyWinters.Presentation.Logic;
 // unexplored side.
 internal static class ExplorationMasks
 {
-    internal static Masks Build(RevealableExploration exploration, TexelGrid grid)
+    internal static Masks Build(RevealableExploration exploration, TexelGrid grid, float cellSizeMeters)
     {
         var size = grid.Size;
         var unexplored = new float[size, size];
@@ -26,7 +26,7 @@ internal static class ExplorationMasks
             var worldZ = grid.WorldAt(ty);
             for (var tx = 0; tx < size; tx++)
             {
-                var cell = ExplorationState.CellFor(new Position(grid.WorldAt(tx), worldZ), ExplorationState.CellSizeMeters);
+                var cell = ExplorationState.CellFor(new Position(grid.WorldAt(tx), worldZ), cellSizeMeters);
                 var seen = exploration.IsExplored(cell);
 
                 unexplored[ty, tx] = seen ? 0f : 1f;

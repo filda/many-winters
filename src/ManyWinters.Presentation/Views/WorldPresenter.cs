@@ -48,6 +48,7 @@ public sealed partial class WorldPresenter : Node3D
     // constructor passes the camera's actual starting values instead.
     private Position _viewCenter;
     private double _viewRadiusSquared;
+    private readonly float _cellSizeMeters;
 
     public WorldPresenter(
         WorldState world,
@@ -58,6 +59,7 @@ public sealed partial class WorldPresenter : Node3D
     {
         _sampleHeight = sampleHeight;
         _resourceCatalog = world.Configuration.ResourceCatalog;
+        _cellSizeMeters = world.Configuration.Rules.CellSizeMeters;
         _exploration = exploration;
         _people = world.People;
         _animals = world.Animals;
@@ -368,7 +370,7 @@ public sealed partial class WorldPresenter : Node3D
     // right now.
     private bool IsWithinViewOfCamera(Position position, double radiusSquared)
     {
-        if (!_exploration.IsExplored(ExplorationState.CellFor(position, ExplorationState.CellSizeMeters)))
+        if (!_exploration.IsExplored(ExplorationState.CellFor(position, _cellSizeMeters)))
         {
             return false;
         }
@@ -389,7 +391,7 @@ public sealed partial class WorldPresenter : Node3D
     }
 
     private bool IsOutOfSight(Position position) =>
-        !_exploration.IsVisible(ExplorationState.CellFor(position, ExplorationState.CellSizeMeters));
+        !_exploration.IsVisible(ExplorationState.CellFor(position, _cellSizeMeters));
 
     // Resource nodes' two extra jobs: promote a pending node now explored and in view to a real
     // view, and send a view that fell out of either back to pending. The latter happens both

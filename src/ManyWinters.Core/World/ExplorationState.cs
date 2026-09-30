@@ -6,16 +6,6 @@ namespace ManyWinters.Core.World;
 // "unknown".
 public sealed class ExplorationState
 {
-    // Far coarser than a Position: every cell costs rendering on the Godot side. Fine enough
-    // that a SightRadiusMeters circle spans a 6-cell radius and reads as a circle rather than an
-    // octagon, while rebuilding the fog mesh (cost scales with cell count squared) on a newly
-    // explored cell stays rare.
-    public const float CellSizeMeters = 2.5f;
-
-    // How far a person sees. Smaller than IdleSearchRadius: sight is what the player knows
-    // about, search is what a person can reach without discovering anything new on the way.
-    public const float SightRadiusMeters = 15f;
-
     private readonly HashSet<ExplorationCell> _explored = new();
     private HashSet<ExplorationCell> _visible = new();
 
@@ -31,23 +21,23 @@ public sealed class ExplorationState
     // Recomputes Visible from the sight sources (every living person, each tick), then folds it
     // into Explored. A cell counts as visible only if its own centre is within
     // SightRadiusMeters, so sight reads as a circle, not a diamond of squares.
-    public void Update(IEnumerable<Position> sightSources)
+    public void Update(IEnumerable<Position> sightSources, float cellSizeMeters, float sightRadiusMeters)
     {
         var visible = new HashSet<ExplorationCell>();
-        var radiusCells = (int)Math.Ceiling(SightRadiusMeters / CellSizeMeters);
-        var radiusSquared = SightRadiusMeters * SightRadiusMeters;
+        var radiusCells = (int)Math.Ceiling(sightRadiusMeters / cellSizeMeters);
+        var radiusSquared = sightRadiusMeters * sightRadiusMeters;
 
         foreach (var source in sightSources)
         {
-            var center = CellFor(source, CellSizeMeters);
+            var center = CellFor(source, cellSizeMeters);
             for (var dx = -radiusCells; dx <= radiusCells; dx++)
             {
                 for (var dy = -radiusCells; dy <= radiusCells; dy++)
                 {
                     // Stryker disable once Arithmetic: dx and dy run symmetrically, so subtracting enumerates the same cells
                     var cell = new ExplorationCell(center.X + dx, center.Y + dy);
-                    var cellCenterX = (cell.X + 0.5) * CellSizeMeters;
-                    var cellCenterY = (cell.Y + 0.5) * CellSizeMeters;
+                    var cellCenterX = (cell.X + 0.5) * cellSizeMeters;
+                    var cellCenterY = (cell.Y + 0.5) * cellSizeMeters;
                     var dxToCenter = cellCenterX - source.X;
                     var dyToCenter = cellCenterY - source.Y;
 

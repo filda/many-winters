@@ -20,12 +20,16 @@ public sealed class WorldState
     private readonly List<Entity> _entities = new();
     private readonly List<Grave> _graves = new();
     private readonly List<HomeRange> _homeRanges = new();
+    private readonly float _cellSizeMeters;
+    private readonly float _sightRadiusMeters;
 
     // Naming's live People/Forebears references make this an ordinary constructor rather than a
     // primary one: a field initializer cannot refer to another instance field.
     public WorldState(WorldConfiguration configuration)
     {
         Configuration = configuration;
+        _cellSizeMeters = Configuration.Rules.CellSizeMeters;
+        _sightRadiusMeters = Configuration.Rules.SightRadiusMeters;
         Naming = new NamingCulture(
             _people,
             _forebears,
@@ -381,5 +385,5 @@ public sealed class WorldState
         && IsWithinReach(creature.Position, mother.Position);
 
     private void RefreshExploration() =>
-        Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position));
+        Exploration.Update(_people.Where(p => p.IsAlive).Select(p => p.Position), _cellSizeMeters, _sightRadiusMeters);
 }

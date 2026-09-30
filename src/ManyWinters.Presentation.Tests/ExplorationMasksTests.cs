@@ -11,7 +11,7 @@ public class ExplorationMasksTests
     [Fact]
     public void GroundNobodyHasSeenIsUnknownAndNothingElse()
     {
-        var masks = ExplorationMasks.Build(WithSightAt(), Grid);
+        var masks = ExplorationMasks.Build(WithSightAt(), Grid, 2.5f);
 
         for (var ty = 0; ty < Grid.Size; ty++)
         {
@@ -29,7 +29,7 @@ public class ExplorationMasksTests
     {
         // The two tiers are exclusive: ground in sight right now is plain visible, so both masks
         // read zero even though it is explored.
-        var masks = ExplorationMasks.Build(WithSightAt(new Position(0, 0)), Grid);
+        var masks = ExplorationMasks.Build(WithSightAt(new Position(0, 0)), Grid, 2.5f);
         var centre = Grid.TexelAt(0f);
 
         Assert.Equal(0f, masks.Unexplored[centre, centre]);
@@ -41,9 +41,9 @@ public class ExplorationMasksTests
     public void GroundSeenBeforeButOutOfSightNowIsRemembered()
     {
         var state = new ExplorationState();
-        state.Update([new Position(0, 0)]);
-        state.Update([new Position(500, 500)]);
-        var masks = ExplorationMasks.Build(new RevealableExploration(state), Grid);
+        state.Update([new Position(0, 0)], 2.5f, 15f);
+        state.Update([new Position(500, 500)], 2.5f, 15f);
+        var masks = ExplorationMasks.Build(new RevealableExploration(state), Grid, 2.5f);
         var centre = Grid.TexelAt(0f);
 
         Assert.Equal(0f, masks.Unexplored[centre, centre]);
@@ -58,7 +58,7 @@ public class ExplorationMasksTests
         var exploration = WithSightAt();
         exploration.RevealAll = true;
 
-        var masks = ExplorationMasks.Build(exploration, Grid);
+        var masks = ExplorationMasks.Build(exploration, Grid, 2.5f);
 
         for (var ty = 0; ty < Grid.Size; ty++)
         {
@@ -76,7 +76,7 @@ public class ExplorationMasksTests
     {
         // The distance field measures out from this flag; disagreeing with the mask the shader
         // gates on would fade from the wrong edge.
-        var masks = ExplorationMasks.Build(WithSightAt(new Position(0, 0)), Grid);
+        var masks = ExplorationMasks.Build(WithSightAt(new Position(0, 0)), Grid, 2.5f);
 
         for (var ty = 0; ty < Grid.Size; ty++)
         {
@@ -92,7 +92,7 @@ public class ExplorationMasksTests
     {
         // Sight far along one axis only: swapped indices would mirror the fog across the
         // diagonal, which a centred source never reveals.
-        var masks = ExplorationMasks.Build(WithSightAt(new Position(8f, -8f)), Grid);
+        var masks = ExplorationMasks.Build(WithSightAt(new Position(8f, -8f)), Grid, 2.5f);
         var tx = Grid.TexelAt(8f);
         var ty = Grid.TexelAt(-8f);
 
@@ -103,7 +103,7 @@ public class ExplorationMasksTests
     [Fact]
     public void EveryMaskCoversTheWholeGrid()
     {
-        var masks = ExplorationMasks.Build(WithSightAt(), Grid);
+        var masks = ExplorationMasks.Build(WithSightAt(), Grid, 2.5f);
 
         Assert.Equal(Grid.Size, masks.Unexplored.GetLength(0));
         Assert.Equal(Grid.Size, masks.Unexplored.GetLength(1));
@@ -114,7 +114,7 @@ public class ExplorationMasksTests
     private static RevealableExploration WithSightAt(params Position[] sources)
     {
         var state = new ExplorationState();
-        state.Update(sources);
+        state.Update(sources, 2.5f, 15f);
 
         return new RevealableExploration(state);
     }

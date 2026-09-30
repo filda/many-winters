@@ -302,6 +302,16 @@ public sealed record SimulationRules
     // makes whole patches drop out together, so the cover tears into clumps and openings.
     public float ClumpWeight { get; } = 0.6f;
 
+    // Far coarser than a Position: every cell costs rendering on the Godot side. Fine enough
+    // that a SightRadiusMeters circle spans a 6-cell radius and reads as a circle rather than an
+    // octagon, while rebuilding the fog mesh (cost scales with cell count squared) on a newly
+    // explored cell stays rare.
+    public float CellSizeMeters { get; } = 2.5f;
+
+    // How far a person sees. Smaller than IdleSearchRadius: sight is what the player knows
+    // about, search is what a person can reach without discovering anything new on the way.
+    public float SightRadiusMeters { get; } = 15f;
+
     // A person's own MaxHunger, drawn once from their id via SeedHash like every other per-entity
     // draw: the same on every reload without being saved, and independent of creation order.
     public float MaxHungerFor(CreatureId id)

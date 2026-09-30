@@ -113,7 +113,13 @@ public partial class Main : Node3D
         _worldFrameUpdater = new WorldFrameUpdater(_cameraRig, _occlusionFader, _selection, _presenter, _cloudFogMask);
 
         await Building(90, "Setting out the band");
-        _fogOfWar = new FogOfWarRenderer(_exploration, _terrain.Half, _cameraRig.Camera, _cloudFogMask);
+        _fogOfWar = new FogOfWarRenderer(
+            _exploration,
+            _terrain.Half,
+            _cameraRig.Camera,
+            _cloudFogMask,
+            _world.Configuration.Rules.CellSizeMeters
+            );
         _groundClouds = new GroundClouds(
             _fogOfWar,
             _terrain.Half,

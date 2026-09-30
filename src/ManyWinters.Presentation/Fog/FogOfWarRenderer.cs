@@ -45,6 +45,7 @@ public sealed class FogOfWarRenderer
     private static readonly Color RememberedTint = new(0.80f, 0.74f, 0.64f);
 
     private readonly RevealableExploration _exploration;
+    private readonly float _cellSizeMeters;
     private readonly TexelGrid _grid;
     private readonly ImageTexture _explorationTexture;
 
@@ -56,10 +57,11 @@ public sealed class FogOfWarRenderer
     // The same field on the CPU side, from the last rebuild, for GroundClouds to query.
     private float[,] _distanceCells;
 
-    public FogOfWarRenderer(RevealableExploration exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask)
+    public FogOfWarRenderer(RevealableExploration exploration, float halfExtentMeters, Camera3D camera, CloudFogMask cloudFogMask, float cellSizeMeters)
     {
         _exploration = exploration;
-        _grid = TexelGrid.Covering(halfExtentMeters, ExplorationState.CellSizeMeters);
+        _cellSizeMeters = cellSizeMeters;
+        _grid = TexelGrid.Covering(halfExtentMeters, _cellSizeMeters);
         _distanceCells = new float[_grid.Size, _grid.Size];
 
         var initialImage = Image.CreateEmpty(_grid.Size, _grid.Size, false, Image.Format.Rgba8);
@@ -134,7 +136,7 @@ public sealed class FogOfWarRenderer
     private void RebuildExplorationTexture()
     {
         var size = _grid.Size;
-        var masks = ExplorationMasks.Build(_exploration, _grid);
+        var masks = ExplorationMasks.Build(_exploration, _grid, _cellSizeMeters);
         var unexploredSharp = masks.Unexplored;
         var rememberedSharp = masks.Remembered;
         var unexploredBlurred = BoxBlur.Blur(unexploredSharp, BlurRadiusTexels);

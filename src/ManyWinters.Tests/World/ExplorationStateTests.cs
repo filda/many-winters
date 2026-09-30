@@ -20,7 +20,7 @@ public class ExplorationStateTests
     {
         var exploration = new ExplorationState();
 
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
 
         var cell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
         Assert.True(exploration.IsVisible(cell));
@@ -32,9 +32,9 @@ public class ExplorationStateTests
     {
         var exploration = new ExplorationState();
 
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
 
-        var farCell = ExplorationState.CellFor(new Position(ExplorationState.SightRadiusMeters * 10, 0), 2.5f);
+        var farCell = ExplorationState.CellFor(new Position(15f * 10, 0), 2.5f);
         Assert.False(exploration.IsVisible(farCell));
         Assert.False(exploration.IsExplored(farCell));
     }
@@ -45,8 +45,8 @@ public class ExplorationStateTests
         var exploration = new ExplorationState();
         var originCell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
 
-        exploration.Update([new Position(0, 0)]);
-        exploration.Update([new Position(ExplorationState.SightRadiusMeters * 10, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
+        exploration.Update([new Position(15f * 10, 0)], 2.5f, 15f);
 
         Assert.True(exploration.IsExplored(originCell));
         Assert.False(exploration.IsVisible(originCell));
@@ -57,10 +57,10 @@ public class ExplorationStateTests
     {
         var exploration = new ExplorationState();
         var originCell = ExplorationState.CellFor(new Position(0, 0), 2.5f);
-        var farPosition = new Position(ExplorationState.SightRadiusMeters * 10, 0);
+        var farPosition = new Position(15f * 10, 0);
 
-        exploration.Update([new Position(0, 0)]);
-        exploration.Update([farPosition]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
+        exploration.Update([farPosition], 2.5f, 15f);
 
         Assert.True(exploration.IsVisible(ExplorationState.CellFor(farPosition, 2.5f)));
         Assert.False(exploration.IsVisible(originCell));
@@ -73,7 +73,7 @@ public class ExplorationStateTests
         // not just its own cell.
         var exploration = new ExplorationState();
 
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
 
         Assert.True(exploration.Explored.Count > 1);
     }
@@ -96,7 +96,7 @@ public class ExplorationStateTests
         // or as a coarse diamond.
         var exploration = new ExplorationState();
 
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
 
         Assert.Equal(112, exploration.Explored.Count);
     }
@@ -109,8 +109,8 @@ public class ExplorationStateTests
         var atOrigin = new ExplorationState();
         var offCentre = new ExplorationState();
 
-        atOrigin.Update([new Position(0, 0)]);
-        offCentre.Update([new Position(2.4, 0)]);
+        atOrigin.Update([new Position(0, 0)], 2.5f, 15f);
+        offCentre.Update([new Position(2.4, 0)], 2.5f, 15f);
 
         Assert.False(atOrigin.IsVisible(new ExplorationCell(6, 0)));
         Assert.True(offCentre.IsVisible(new ExplorationCell(6, 0)));
@@ -125,8 +125,8 @@ public class ExplorationStateTests
         var far = new ExplorationState();
         var offset = new ExplorationCell(100, -150);
 
-        near.Update([new Position(0, 0)]);
-        far.Update([new Position(offset.X * 2.5f, offset.Y * 2.5f)]);
+        near.Update([new Position(0, 0)], 2.5f, 15f);
+        far.Update([new Position(offset.X * 2.5f, offset.Y * 2.5f)], 2.5f, 15f);
 
         var translated = near.Explored.Select(c => new ExplorationCell(c.X + offset.X, c.Y + offset.Y)).ToHashSet();
         Assert.Equal(translated, far.Explored.ToHashSet());
@@ -139,7 +139,7 @@ public class ExplorationStateTests
         // Measuring from the nearest corner would bulge sight into a diamond at the diagonals.
         var exploration = new ExplorationState();
 
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
 
         Assert.True(exploration.IsVisible(new ExplorationCell(3, 3)));
         Assert.False(exploration.IsVisible(new ExplorationCell(5, 5)));
@@ -153,8 +153,8 @@ public class ExplorationStateTests
         var atOrigin = new ExplorationState();
         var offCentre = new ExplorationState();
 
-        atOrigin.Update([new Position(0, 0)]);
-        offCentre.Update([new Position(0, 2.4)]);
+        atOrigin.Update([new Position(0, 0)], 2.5f, 15f);
+        offCentre.Update([new Position(0, 2.4)], 2.5f, 15f);
 
         Assert.False(atOrigin.IsVisible(new ExplorationCell(0, 6)));
         Assert.True(offCentre.IsVisible(new ExplorationCell(0, 6)));
@@ -165,7 +165,7 @@ public class ExplorationStateTests
     {
         var exploration = new ExplorationState();
 
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
 
         var explored = exploration.Explored.ToHashSet();
         foreach (var cell in explored)

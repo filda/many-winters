@@ -52,7 +52,7 @@ public class RevealableExplorationTests
     private static ExplorationState ExploredAroundTheOrigin()
     {
         var exploration = new ExplorationState();
-        exploration.Update([new Position(0, 0)]);
+        exploration.Update([new Position(0, 0)], 2.5f, 15f);
         return exploration;
     }
 }
