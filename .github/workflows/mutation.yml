@@ -13,6 +13,9 @@ on:
 jobs:
   check-changes:
     runs-on: ubuntu-26.04
+    permissions:
+      actions: read
+      contents: read
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
@@ -20,12 +23,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Scheduled runs skip the (slow) mutation run entirely if src/ hasn't changed in
-      # the last day; workflow_dispatch always runs regardless, for a manual check.
-      - name: Check for changes in the last day
+      # Scheduled runs skip the (slow) mutation run entirely if src/ hasn't changed since
+      # the last successful run; workflow_dispatch always runs regardless, for a manual
+      # check. A fixed "last 24 hours" window does not work: GitHub starts scheduled runs
+      # hours late and by a different amount each night, so commits fell into the gap
+      # between two windows. A successful run that skipped Stryker had nothing new to
+      # test, so its commit is still the last one tested. A failed or cancelled run does
+      # not count, and the next night tries again.
+      - name: Check for changes since the last successful run
         id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || git log --since="24 hours ago" --oneline -- src | grep -q .; then
+          last=$(gh run list --workflow mutation.yml --branch "${{ github.ref_name }}" --status success --limit 1 --json headSha --jq '.[0].headSha // empty')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || [ -z "$last" ] \
+            || ! git cat-file -e "$last^{commit}" 2>/dev/null \
+            || ! git diff --quiet "$last" HEAD -- src; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
