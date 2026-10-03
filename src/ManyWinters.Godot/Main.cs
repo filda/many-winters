@@ -36,7 +36,7 @@ public partial class Main : Node3D
     private FreeCameraRig _cameraRig = null!;
 
     private SelectionController _selection = null!;
-    private WorkshopController _workshopController = null!;
+    private PersonPageController _personPage = null!;
     private MainUi _mainUi = null!;
     private WorldInputController _worldInput = null!;
     private BandContinuityController _continuity = null!;
@@ -139,15 +139,14 @@ public partial class Main : Node3D
             _world.Configuration.Rules.ClumpWeight
             );
         AddChild(_groundClouds.Root);
-        _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _workshopController);
+        _continuity = new BandContinuityController(_world, campCenter, _presenter, _fogOfWar, _groundClouds, _cameraRig, _terrain, _mainUi, _selection, _personPage);
         _simulationLoop = new SimulationLoop(_world, _pacing, _presenter, _cameraRig, _fogOfWar, _groundClouds, _orderCoordinator, _mainUi, _selection, _continuity);
 
         // Letting a clock-holding page go primes the tick accumulator, so the world starts again
         // on the next frame rather than a full interval later. Input is disabled until _loading
         // clears below, so nothing can dismiss one of these pages before the loop exists to wire
         // straight to.
-        _selection.Closed += _simulationLoop.TickAsSoonAsPossible;
-        _workshopController.Closed += _simulationLoop.TickAsSoonAsPossible;
+        _personPage.Closed += _simulationLoop.TickAsSoonAsPossible;
         _mainUi.ClockShouldResume += _simulationLoop.TickAsSoonAsPossible;
 
         // The E2E suite's calibration: printed the moment the prologue (or any later inscription)
@@ -232,9 +231,8 @@ public partial class Main : Node3D
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
             _worldInput.CloseContextMenu();
-            _workshopController.HandleEscape();
+            _personPage.HandleEscape();
             _mainUi.HandleEscape();
-            _selection.CloseDetail();
         }
 
         _worldInput.Handle(@event, GetViewport());
@@ -311,7 +309,7 @@ public partial class Main : Node3D
         });
     }
 
-    // Every control SelectionController, WorkshopController and WorldInputController operate is
+    // Every control SelectionController, PersonPageController and WorldInputController operate is
     // already built and attached by the UI's own constructor; here they are only handed the
     // bundle they need and wired to each other and to Main.
     private void SetUpUi()
@@ -323,10 +321,11 @@ public partial class Main : Node3D
         _selection.Refreshed += RefreshInfoLabel;
         _mainUi.StatusBar.BandRequested += _selection.ToggleBandPanel;
 
-        // The workbench, opened from the pack line on the selected person's card. Like the pause
-        // page it holds the clock while it is up: working a thing over is meant to be unhurried.
-        _workshopController = new WorkshopController(_mainUi.Workshop, _world, _orderCoordinator);
-        _selection.WorkshopRequested += _workshopController.Toggle;
+        // The person's page, opened from the name or the pack line on the selected person's card.
+        // Like the pause page it holds the clock while it is up: working a thing over is meant to
+        // be unhurried.
+        _personPage = new PersonPageController(_mainUi.PersonPage, _world, _orderCoordinator);
+        _selection.PageRequested += _personPage.Open;
 
         _worldInput = new WorldInputController(_mainUi.ContextMenu, _world, _cameraRig, _presenter, _terrain, _selection, _orderCoordinator, _mainUi.StatusBar, _presentation);
         _selection.ActionInvoked += _worldInput.PerformAction;

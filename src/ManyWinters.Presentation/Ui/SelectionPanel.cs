@@ -75,11 +75,11 @@ public partial class SelectionPanel : PaperPanel
     // executing one means for the rest of the game.
     internal event Action<ActionOffer>? ActionInvoked;
 
-    // The player asked to see the pack itself. Main opens the workshop over it.
+    // The player asked to see the pack itself. Main opens the person's page, workbench and all.
     internal event Action? PackRequested;
 
-    // The player pressed the name: everything the card knows about this person, laid out with
-    // room to breathe instead of squeezed into this fixed-width column.
+    // The player pressed the name: the person's page, with room to breathe instead of being
+    // squeezed into this fixed-width column.
     internal event Action? DetailRequested;
 
     // The cross in the corner: nobody is selected any more. Main holds the selection, so it is
@@ -169,7 +169,7 @@ public partial class SelectionPanel : PaperPanel
         _personBody.Visible = false;
         _animalBody.Visible = false;
         _graveRecord.Visible = true;
-        // Nothing behind a grave for the detail page to say - the heading stops answering to a
+        // Nothing behind a grave for a page to say - the heading stops answering to a
         // press rather than opening a page about nobody.
         _heading.Disabled = true;
         _detailIcon.Visible = false;
@@ -180,7 +180,7 @@ public partial class SelectionPanel : PaperPanel
         _graveRecord.Text = record;
     }
 
-    // No detail page and nothing pressable about an animal yet, so the heading is inert exactly
+    // No page and nothing pressable about an animal yet, so the heading is inert exactly
     // as a grave's is.
     internal void ShowAnimal(AnimalCard card)
     {

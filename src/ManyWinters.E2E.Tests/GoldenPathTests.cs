@@ -54,18 +54,18 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
     // and resolved. Where the wood pile is comes off the game's own log, not a recorded frame.
     private const int GatherTicks = 30;
 
-    // The selection panel's "Pack" line (the whole line is a button) opens the workbench. The
+    // The selection panel's "Pack" line (the whole line is a button) opens the person's page. The
     // panel is docked to the right edge (width 300 + margin 16); the line sits
     // below the two meters - title bar 30 + padding 14 + the two meter rows + spacing puts it at
     // y 122..149 regardless of what the pack line says.
     private const int PackLineX = 986;
     private const int PackLineY = 135;
 
-    // The "Make basket" recipe line in the centred workbench's recipe column (the recipes are
-    // the offers the person can carry out; basket and warm clothing both come off 20 wood).
-    // Clicking the line runs the recipe the same way the person's own card does.
-    private const int RecipeX = 640;
-    private const int RecipeY = 239;
+    // The "Make basket" recipe line in the recipe column of the centred page's workshop half (the
+    // recipes are the offers the person can carry out; basket and warm clothing both come off 20
+    // wood). Clicking the line runs the recipe the same way the person's own card does.
+    private const int RecipeX = 825;
+    private const int RecipeY = 258;
 
     private readonly GameFixture _game;
 
@@ -101,7 +101,7 @@ public sealed class CraftingUiTests : IClassFixture<GameFixture>
 
         GameFixture.Settle(800); // the last tick's frame, not the one before it
 
-        _game.Click(PackLineX, PackLineY); // open their Workshop panel
+        _game.Click(PackLineX, PackLineY); // open their page
         Assert.NotNull(_game.WaitForGameLog("Workshop opened for ", TimeSpan.FromSeconds(5)));
         GameFixture.Settle(400);
         _game.SaveDebugShot("crafting-workshop");

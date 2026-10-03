@@ -24,7 +24,7 @@ public sealed class BandContinuityController
     private readonly TerrainRenderer _terrain;
     private readonly MainUi _ui;
     private readonly SelectionController _selection;
-    private readonly WorkshopController _workshop;
+    private readonly PersonPageController _page;
 
     private EndingAnnouncements _endingAnnouncements = new();
 
@@ -38,7 +38,7 @@ public sealed class BandContinuityController
         TerrainRenderer terrain,
         MainUi ui,
         SelectionController selection,
-        WorkshopController workshop)
+        PersonPageController page)
     {
         _world = world;
         CampCenter = initialCampCenter;
@@ -49,12 +49,12 @@ public sealed class BandContinuityController
         _terrain = terrain;
         _ui = ui;
         _selection = selection;
-        _workshop = workshop;
+        _page = page;
 
         _ui.InscriptionOverlay.AnotherBandRequested += StartAnotherBand;
         // A word the band coined outlives whoever coined it, so it goes in the chronicle rather
         // than only into the panel that asked for it.
-        _workshop.InscriptionRecorded += Record;
+        _page.InscriptionRecorded += Record;
     }
 
     // Captured the one moment the arrival announcement really means "just arrived"; read again
@@ -142,12 +142,12 @@ public sealed class BandContinuityController
     }
 
     // Every window that shows something about whoever is selected or was, closed together so a
-    // future one is not the one somebody forgets to add here - which is exactly how the detail
+    // future one is not the one somebody forgets to add here - which is exactly how the person's
     // page got left open through an ending it was never told about.
     private void CloseBandWindows()
     {
         _selection.CloseForBandEnd();
-        _workshop.Close();
+        _page.Close();
     }
 
     // Every inscription stops the clock until dismissed; its title goes up on the overlay and

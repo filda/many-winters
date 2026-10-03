@@ -56,6 +56,40 @@ public class WorkshopActionsTests
         Assert.Equal([3, 1], carried.Select(entry => entry.Count));
     }
 
+    // An attempt that used two of a stack leaves the stack in hand: the player is trying again,
+    // and has to see the same thing still picked to do it.
+    [Fact]
+    public void AStackThatGotSmallerStaysPicked()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 5);
+        var picked = WorkshopActions.Carried(world, person);
+
+        person.Inventory.Remove(TestWorld.Wood, 2);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Equal(carried, WorkshopActions.StillPicked(picked, carried));
+        Assert.Equal(3, WorkshopActions.StillPicked(picked, carried)[0].Count);
+    }
+
+    [Fact]
+    public void AThingUsedUpStopsBeingPicked()
+    {
+        var world = TestWorld.Create();
+        var person = TestWorld.AddAdult(world, "Ava", new Position(0, 0));
+        person.Inventory.Add(TestWorld.Wood, 2);
+        var cord = Cord();
+        person.Inventory.AddAssembly(cord);
+        var picked = WorkshopActions.Carried(world, person);
+
+        person.Inventory.Remove(TestWorld.Wood, 2);
+        person.Inventory.RemoveAssembly(cord);
+        var carried = WorkshopActions.Carried(world, person);
+
+        Assert.Empty(WorkshopActions.StillPicked(picked, carried));
+    }
+
     [Fact]
     public void AnEmptyPackPutsNothingOnTheBench()
     {

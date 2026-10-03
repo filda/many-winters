@@ -3,10 +3,10 @@ using Godot;
 namespace ManyWinters.Presentation.Ui;
 
 // The moment a thing nobody in the band has a word for gets one - its own small page, laid over
-// the workshop rather than folded into it, so a discovery does not make the workbench itself
+// the person's page rather than folded into it, so a discovery does not make the workbench itself
 // grow and shrink around it.
 //
-// Time already stands still for this, the same clock the workshop underneath is holding: nothing
+// Time already stands still for this, the same clock the page underneath is holding: nothing
 // here starts or stops it, it only asks a question of the player while the world waits.
 public partial class NamingPanel : PaperPanel
 {
@@ -22,7 +22,7 @@ public partial class NamingPanel : PaperPanel
         : base("Nobody has a word for this")
     {
         CustomMinimumSize = new Vector2(Width, 0);
-        // Centred the same way the workshop is, and added after it - the two land on the same
+        // Centred the same way the page is, and added after it - the two land on the same
         // spot, which is what reads as one page laid on top of the other rather than a second
         // window somewhere else on the screen.
         Placement = PanelPlacement.Centred;

@@ -9,11 +9,12 @@ using ManyWinters.Presentation.Logic;
 
 namespace ManyWinters.Presentation.Ui;
 
-// Everything the workbench does, from the pack line that opens it to naming a thing nobody has a
-// word for yet: panel construction, picked-item offers, recipes, attempts, eating, dropping, and
-// the naming question laid over it. A caller only ever asks to open or close a workshop for a
-// person; how the bench decides what a pick can do stays in WorkshopActions.
-public sealed class WorkshopController
+// Everything the person's page does, from the card that opens it to naming a thing nobody has a
+// word for yet: opening and closing the page, picked-item offers, recipes, attempts, eating,
+// dropping, the naming question laid over it, and redrawing the person's half after anything the
+// bench changes. A caller only ever asks to open or close the page for a person; how the bench
+// decides what a pick can do stays in WorkshopActions.
+public sealed class PersonPageController
 {
     // Said whenever a pick turns out to lead nowhere - several ways to say the same nothing, so
     // trying a few unworkable pairs in a row does not read as the game reciting one stock line
@@ -28,41 +29,44 @@ public sealed class WorkshopController
 
     private readonly WorldState _world;
     private readonly OrderCoordinator _orders;
-    private readonly WorkshopPanel _workshop;
+    private readonly PersonDetailPanel _page;
+    private readonly WorkshopBench _bench;
     private readonly NamingPanel _namingPanel;
 
-    // Who the currently open workshop was opened for - remembered rather than re-asked of a
+    // Who the currently open page was opened for - remembered rather than re-asked of a
     // selection that may have moved on by the time a recipe or naming callback fires.
     private Person? _person;
 
     // What the last attempt turned out, held only long enough for the player to name it.
     private Assembly? _justMade;
 
-    // The workbench, opened from the pack line on the selected person's card. Like the pause page
-    // it holds the clock while it is up: working a thing over is meant to be unhurried.
-    public WorkshopController(WorkshopUi ui, WorldState world, OrderCoordinator orders)
+    // Like the pause page the person's page holds the clock while it is up: working a thing over
+    // is meant to be unhurried.
+    public PersonPageController(PersonPageUi ui, WorldState world, OrderCoordinator orders)
     {
         _world = world;
         _orders = orders;
 
-        // ui.Shield is MainUi's to attach and show/hide alongside the panel - the clock is
-        // stopped while the bench is out, and an order given into a stopped clock lands the
-        // moment it starts again. It draws nothing: the world is what the player is working in
-        // the middle of, and the camera keeps turning over it.
-        _workshop = ui.Panel;
-        _workshop.Closed += () => Closed?.Invoke();
-        _workshop.Attempted += OnAttempt;
-        _workshop.EatRequested += OnEat;
-        _workshop.DropRequested += OnDrop;
-        _workshop.PickChanged += RefreshOffer;
-        _workshop.RecipeInvoked += OnRecipe;
+        // MainUi attaches the page and shows and hides the shield with it - the clock is stopped
+        // while the page is out, and an order given into a stopped clock lands the moment it
+        // starts again. The shield draws nothing: the world is what the player is working in the
+        // middle of, and the camera keeps turning over it.
+        _page = ui.Page;
+        _page.Closed += OnPageClosed;
+
+        _bench = _page.Bench;
+        _bench.Attempted += OnAttempt;
+        _bench.EatRequested += OnEat;
+        _bench.DropRequested += OnDrop;
+        _bench.PickChanged += RefreshOffer;
+        _bench.RecipeInvoked += OnRecipe;
 
         _namingPanel = ui.NamingPanel;
         _namingPanel.Named += OnNamed;
         _namingPanel.Cancelled += () => _justMade = null;
     }
 
-    // Letting the workshop go primes the tick accumulator, so the world starts again on the next
+    // Letting the page go primes the tick accumulator, so the world starts again on the next
     // frame rather than a full interval later - as dismissing the controls page does. Raised
     // rather than done here: priming the accumulator is Main's clock to hold, not this one's.
     public event Action? Closed;
@@ -72,20 +76,14 @@ public sealed class WorkshopController
     // not this controller's to know about.
     public event Action<Inscription>? InscriptionRecorded;
 
-    public void Toggle(Person person)
+    public void Open(Person person)
     {
-        // Pressing the pack line again puts the workbench away: the way in is the way out.
-        if (_workshop.Visible)
-        {
-            _workshop.Close();
-            return;
-        }
-
         _person = person;
 
         // It puts itself in the middle of the screen and stays there: the world stands still
         // while this is open, so it is the thing being done rather than a card to read beside it.
-        _workshop.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));
+        _page.Open(SelectionCard.For(_world, person));
+        _bench.Open(WorkshopActions.Carried(_world, person), WorkshopActions.Recipes(_world, person));
 
         // A verbose session follows the game from its log alone; the bench coming up says so, and
         // for whom.
@@ -97,10 +95,10 @@ public sealed class WorkshopController
         RefreshOffer();
     }
 
-    public void Close() => _workshop.Close();
+    public void Close() => _page.Close();
 
-    // The naming question sits over the workshop rather than beside it, so Escape only reaches
-    // the workshop underneath once there is no question sitting on top of it to answer first.
+    // The naming question sits over the page rather than beside it, so Escape only reaches the
+    // page underneath once there is no question sitting on top of it to answer first.
     public void HandleEscape()
     {
         if (_namingPanel.Visible)
@@ -109,8 +107,18 @@ public sealed class WorkshopController
         }
         else
         {
-            _workshop.Close();
+            _page.Close();
         }
+    }
+
+    // A question left hanging over a page that is gone would be answered about a person nobody is
+    // looking at, and what the player did on the bench is not theirs to name any more.
+    private void OnPageClosed()
+    {
+        _namingPanel.Close();
+        _person = null;
+        _justMade = null;
+        Closed?.Invoke();
     }
 
     // Pressed a "Make X" line rather than picked something to try - the recipe list has its own
@@ -132,7 +140,7 @@ public sealed class WorkshopController
     // only carries the command out and redraws the pack underneath it, the way a recipe does.
     private void OnEat()
     {
-        if (_person is not { } person || WorkshopActions.Eat(_world, person, _workshop.Picked) is not { } offer)
+        if (_person is not { } person || WorkshopActions.Eat(_world, person, _bench.Picked) is not { } offer)
         {
             return;
         }
@@ -143,7 +151,7 @@ public sealed class WorkshopController
 
     private void OnDrop()
     {
-        if (_person is not { } person || WorkshopActions.Drop(_world, person, _workshop.Picked) is not { } offer)
+        if (_person is not { } person || WorkshopActions.Drop(_world, person, _bench.Picked) is not { } offer)
         {
             return;
         }
@@ -153,11 +161,13 @@ public sealed class WorkshopController
     }
 
     // Redrawn after anything that could have changed what is carried - the pack, the recipes it
-    // makes room for, and what the current pick can now do.
+    // makes room for, what the current pick can now do, and the person's own half of the page,
+    // which nothing else redraws while the clock stands still.
     private void RefreshPack(Person person)
     {
-        _workshop.Show(WorkshopActions.Carried(_world, person));
-        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
+        _bench.Show(WorkshopActions.Carried(_world, person));
+        _bench.ShowRecipes(WorkshopActions.Recipes(_world, person));
+        _page.Show(SelectionCard.For(_world, person));
         RefreshOffer();
     }
 
@@ -170,17 +180,17 @@ public sealed class WorkshopController
             return;
         }
 
-        var offer = WorkshopActions.Attempt(_world, person, _workshop.Picked);
-        _workshop.Offer(offer, RefusalFor(offer), WorkshopActions.WordsFor(_world, person, _workshop.Picked));
-        _workshop.OfferItemActions(
-            WorkshopActions.Eat(_world, person, _workshop.Picked),
-            WorkshopActions.Drop(_world, person, _workshop.Picked));
+        var offer = WorkshopActions.Attempt(_world, person, _bench.Picked);
+        _bench.Offer(offer, RefusalFor(offer), WorkshopActions.WordsFor(_world, person, _bench.Picked));
+        _bench.OfferItemActions(
+            WorkshopActions.Eat(_world, person, _bench.Picked),
+            WorkshopActions.Drop(_world, person, _bench.Picked));
     }
 
     // Nothing is said about a pick that leads nowhere until the player has picked something: an
     // empty workbench that already says "nothing comes of it" is answering a question nobody
     // asked.
-    private string? RefusalFor(ActionOffer? offer) => (offer, _workshop.Picked.Count) switch
+    private string? RefusalFor(ActionOffer? offer) => (offer, _bench.Picked.Count) switch
     {
         (null, 0) => null,
         (null, _) => NothingComesOfIt[Random.Shared.Next(NothingComesOfIt.Length)],
@@ -191,7 +201,7 @@ public sealed class WorkshopController
     private void OnAttempt()
     {
         if (_person is not { } person
-            || WorkshopActions.Attempt(_world, person, _workshop.Picked) is not { } offer)
+            || WorkshopActions.Attempt(_world, person, _bench.Picked) is not { } offer)
         {
             return;
         }
@@ -205,14 +215,12 @@ public sealed class WorkshopController
         _world.Advance(_world.Configuration.Rules.TicksPerWorkAttempt);
 
         var made = person.Inventory.Assemblies.FirstOrDefault(held => !before.Remove(held));
-        _workshop.Show(WorkshopActions.Carried(_world, person));
-        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
 
         // Before ReportOutcome, not after: refreshing the offer recomputes the status line from
-        // the pick (now empty, the thing just picked having been consumed or come apart), and
-        // would otherwise overwrite the very sentence this method is about to report.
-        RefreshOffer();
-        _workshop.ReportOutcome(made is null
+        // what is still picked, and would otherwise overwrite the very sentence this method is
+        // about to report.
+        RefreshPack(person);
+        _bench.ReportOutcome(made is null
             ? "It comes apart in your hands."
             : $"It comes out {InspectorText.ForWorkedThing(made, _world)}.");
 
@@ -221,7 +229,7 @@ public sealed class WorkshopController
         if (made is not null && !_world.Vocabulary.HasAWordFor(made))
         {
             _justMade = made;
-            _namingPanel.Open(InspectorText.ForWorkedThing(made, _world), WorkshopPanel.IconFor(new CarriedThing.Worked(made)));
+            _namingPanel.Open(InspectorText.ForWorkedThing(made, _world), WorkshopBench.IconFor(new CarriedThing.Worked(made)));
         }
     }
 
@@ -243,8 +251,7 @@ public sealed class WorkshopController
             // meant only for a band with nobody left.
             "The word is passed along"));
 
-        _workshop.ReportOutcome($"They are calling it {word}.");
-        _workshop.Show(WorkshopActions.Carried(_world, person));
-        _workshop.ShowRecipes(WorkshopActions.Recipes(_world, person));
+        RefreshPack(person);
+        _bench.ReportOutcome($"They are calling it {word}.");
     }
 }

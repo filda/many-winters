@@ -12,26 +12,26 @@ namespace ManyWinters.Presentation.Ui;
 // hypothesis and the simulation rules on it, which is the loop worth playing. A menu of
 // Twist/Bind/Knap would hand them the answer before they had the idea.
 //
-// A fixed shape rather than a page that grows and shrinks with what is laid on it, so the bench
-// doesn't lurch every time something comes off it or is put down.
+// Not a page of its own but the right half of the person's page, so it has no frame or cross of
+// its own: one column for the page to place, headed by its own "Workshop" title with Eat, Drop and
+// Make and the one line about what just happened, and under that the pack and the recipes. Its
+// head is its own, as the person's half has theirs, so neither half's heading decides where the
+// other's content starts.
 //
-// Time stands still while this is open, the way it does for the pause page - tinkering is meant
-// to be unhurried, not something to rush before the world moves on. Main holds the clock for
-// whichever of those is visible.
-public partial class WorkshopPanel : PaperPanel
+// A fixed shape rather than a page that grows and shrinks with what is laid on it, so the bench
+// doesn't lurch every time something comes off it or is put down. Above all the tiles stay where
+// they are: nothing over them ever appears or disappears, it only gains or loses its text.
+public sealed class WorkshopBench
 {
-    // Wider than the cards that sit beside the world: this one is the workbench, in the middle
-    // of the screen, and what a thing is made of runs long enough that a narrow column broke
-    // half the lines. Wide and low rather than tall - a bench is a surface things are laid out
-    // on, and a column of carried things reaching down the screen reads as an inventory screen.
-    private const float Width = 640f;
-    private const float BodyHeight = 280f;
     private const int BodyFontSize = 15;
+    private const int TitleFontSize = 22;
     private const int SectionSpacing = 6;
 
     // The pack sits to the left of the recipe list rather than spanning the whole bench, which is
-    // what leaves it fewer columns than it once had.
-    private const int Columns = 5;
+    // what leaves it fewer columns than it once had. The two together decide how wide the bench
+    // is: it takes no more of the page than its tiles and its recipes fill, so no empty stretch
+    // of paper opens between them.
+    private const int Columns = 4;
 
     // How wide the recipe list's column is, the rest of the bench going to the pack.
     private const float RecipeColumnWidth = 220f;
@@ -39,6 +39,14 @@ public partial class WorkshopPanel : PaperPanel
     // How far either half of the bench may reach before it scrolls within its column instead of
     // growing the column - which is what keeps the whole bench a fixed shape.
     private const float MaxPackHeight = 128f;
+
+    // The title row is as tall as its tallest occupant whether or not the buttons are showing, so
+    // a button appearing under the cursor never pushes the lines under it down.
+    private const float TitleRowHeight = 34f;
+
+    // The status line's height, whatever it holds or does not, so nothing between the title and
+    // the tiles ever changes height.
+    private const float LineHeight = 22f;
 
     // One thing's square of bench, how far its picture sits from the edges of that square, and how
     // much bench is left between two of them.
@@ -60,73 +68,86 @@ public partial class WorkshopPanel : PaperPanel
     private readonly List<PickTile> _tiles = [];
     private readonly List<WorkshopEntry> _picked = [];
 
-    private GridContainer _entries = null!;
-    private ScrollContainer _pack = null!;
-    private Label _hint = null!;
-    private Label _words = null!;
-    private Button _try = null!;
-    private Button _eat = null!;
-    private Button _drop = null!;
-    private Label _outcome = null!;
-    private ActionList _recipes = null!;
+    private readonly GridContainer _entries;
+    private readonly ScrollContainer _pack;
+    private readonly Button _try;
+    private readonly Button _eat;
+    private readonly Button _drop;
+    private readonly Label _status;
+    private readonly ActionList _recipes;
     private IReadOnlyList<WorkshopEntry> _carried = [];
 
-    public WorkshopPanel()
-        : base("Workshop", fixedBodyHeight: BodyHeight)
+    // What the bench last said about an attempt, a refusal or a naming - empty once there is
+    // nothing to say about the current pick.
+    private string _said = string.Empty;
+
+    // What the one thing in hand is like, when anything is known of it.
+    private string _description = string.Empty;
+
+    public WorkshopBench()
     {
-        CustomMinimumSize = new Vector2(Width, 0);
-        // The bench is what the player is doing, not a card beside the world: it holds the middle
-        // of the screen, and keeps it when the window goes fullscreen and back.
-        Placement = PanelPlacement.Centred;
-        Visible = false;
-        Theme = PanelChrome.PaperButtons(BodyFontSize);
-    }
+        // Eat, Drop and Make sit beside the "Workshop" title rather than down in the body - they
+        // read on the selection the way the icons on a toolbar do, not on the pack laid out
+        // underneath.
+        var titleRow = new HBoxContainer { CustomMinimumSize = new Vector2(0, TitleRowHeight) };
+        titleRow.AddThemeConstantOverride("separation", SectionSpacing);
 
-    // Pressed on a recipe line. The owner runs it, the same way it runs a line off the person's
-    // card - this panel knows what an offer is, not what making one means for the rest of the
-    // game.
-    internal event Action<ActionOffer>? RecipeInvoked;
+        var title = InscriptionFont.TitleLabel("Workshop", TitleFontSize, Ink);
+        title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        title.VerticalAlignment = VerticalAlignment.Center;
+        title.AutowrapMode = TextServer.AutowrapMode.Off;
+        titleRow.AddChild(title);
 
-    // Put away, so the world can start moving again.
-    internal event Action? Closed;
+        _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
+        _eat.Visible = false;
+        _eat.Pressed += () => EatRequested?.Invoke();
+        titleRow.AddChild(_eat);
 
-    // Raised for Main to ask the world what the current pick would do and to carry it out; the
-    // panel holds no world.
-    internal event Action? Attempted;
+        // Shown only while there is something for it to do - a button that reads "Make" while
+        // greyed out is a button promising an answer it does not have.
+        _try = WorkshopIcons.Button("Make", WorkshopIcons.Make());
+        _try.Visible = false;
+        _try.Pressed += () => Attempted?.Invoke();
+        titleRow.AddChild(_try);
 
-    // Pressed Eat or Drop on whatever is picked. Main carries it out the same way it does an
-    // attempt or a recipe - this panel only says which button was pressed.
-    internal event Action? EatRequested;
-    internal event Action? DropRequested;
+        // Last, at the far end from Eat: putting a thing down is the one press here that loses it.
+        _drop = WorkshopIcons.Button("Drop", WorkshopIcons.Drop());
+        _drop.Visible = false;
+        _drop.Pressed += () => DropRequested?.Invoke();
+        titleRow.AddChild(_drop);
 
-    internal event Action? PickChanged;
+        // One line under the title, rather than buried under the pack: what the last attempt (or
+        // naming) said, else what the thing in hand is like, else, with nothing picked, how to
+        // begin. Italic for the same
+        // reason a diary entry is: this is the bench speaking, not a label.
+        _status = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, Ink);
+        _status.AutowrapMode = TextServer.AutowrapMode.Off;
+        _status.ClipText = true;
+        _status.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        _status.CustomMinimumSize = new Vector2(0, LineHeight);
 
-    internal IReadOnlyList<WorkshopEntry> Picked => _picked;
+        var root = new VBoxContainer();
+        root.AddThemeConstantOverride("separation", SectionSpacing);
+        Root = root;
 
-    public override void _Ready()
-    {
-        base._Ready();
-        Body.AddThemeConstantOverride("separation", SectionSpacing);
+        var head = new VBoxContainer();
+        head.AddThemeConstantOverride("separation", 0);
+        head.AddChild(titleRow);
+        head.AddChild(_status);
+        root.AddChild(head);
 
-        // Whatever the last attempt (or naming) said, right under the title rather than buried
-        // under the pack - it is the one line about what just happened, and reads as part of the
-        // heading rather than as one more line of body text. Italic for the same reason a diary
-        // entry is: this is the bench speaking about what it just watched happen, not a label.
-        _outcome = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, Ink);
-        _outcome.Visible = false;
-        Body.AddChild(_outcome);
-
-        _hint = InscriptionFont.BodyLabel("Take one thing, or two.", BodyFontSize, QuietInk);
-        Body.AddChild(_hint);
+        var body = new VBoxContainer();
+        body.AddThemeConstantOverride("separation", SectionSpacing);
+        root.AddChild(body);
 
         var columns = new HBoxContainer();
         columns.AddThemeConstantOverride("separation", SectionSpacing * 2);
-        Body.AddChild(columns);
+        body.AddChild(columns);
 
         // The pack keeps its own scroll, so a big haul stays inside the bench rather than growing
         // it - which is what a fixed-size workbench needs, the window's scroll being for a page
         // that is allowed to be as tall as what is written on it.
-        var pack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var pack = new VBoxContainer();
         columns.AddChild(pack);
 
         _pack = new ScrollContainer
@@ -165,12 +186,28 @@ public partial class WorkshopPanel : PaperPanel
         _recipes = new ActionList();
         _recipes.ActionInvoked += offer => RecipeInvoked?.Invoke(offer);
         recipeScroll.AddChild(_recipes);
-
-        // What the thing in hand is like, never what it is for.
-        _words = InscriptionFont.BodyItalicLabel(string.Empty, BodyFontSize, QuietInk);
-        _words.Visible = false;
-        Body.AddChild(_words);
     }
+
+    // Pressed on a recipe line. The owner runs it, the same way it runs a line off the person's
+    // card - the bench knows what an offer is, not what making one means for the rest of the
+    // game.
+    internal event Action<ActionOffer>? RecipeInvoked;
+
+    // Raised for the owner to ask the world what the current pick would do and to carry it out;
+    // the bench holds no world.
+    internal event Action? Attempted;
+
+    // Pressed Eat or Drop on whatever is picked. The owner carries it out the same way it does an
+    // attempt or a recipe - the bench only says which button was pressed.
+    internal event Action? EatRequested;
+    internal event Action? DropRequested;
+
+    internal event Action? PickChanged;
+
+    // The whole bench, for the page to place as its right-hand column.
+    internal Control Root { get; }
+
+    internal IReadOnlyList<WorkshopEntry> Picked => _picked;
 
     // The picture drawn for a thing, or none where nothing has been drawn for it yet - the tile
     // then carries the blank tint instead. Internal rather than private: the naming panel wants
@@ -192,8 +229,7 @@ public partial class WorkshopPanel : PaperPanel
     internal void Open(IReadOnlyList<WorkshopEntry> carried, IReadOnlyList<ActionOffer> recipes)
     {
         _picked.Clear();
-        _outcome.Visible = false;
-        Visible = true;
+        _said = string.Empty;
         Show(carried);
         ShowRecipes(recipes);
     }
@@ -202,23 +238,15 @@ public partial class WorkshopPanel : PaperPanel
     // could have changed what is carried.
     internal void ShowRecipes(IReadOnlyList<ActionOffer> recipes) => _recipes.Show(recipes);
 
-    internal void Close()
-    {
-        if (!Visible)
-        {
-            return;
-        }
-
-        Visible = false;
-        Closed?.Invoke();
-    }
-
-    // Redrawn after every attempt, because the pack has changed underneath it. A pick that is no
-    // longer in the pack - the grass that just became cord - quietly stops being picked.
+    // Redrawn after every attempt, because the pack has changed underneath it. What is still held
+    // stays picked, even a stack the attempt took some of, so trying again is one press; a pick
+    // that is no longer in the pack - the grass that just became cord - quietly stops being picked.
     internal void Show(IReadOnlyList<WorkshopEntry> carried)
     {
         _carried = carried;
-        _picked.RemoveAll(picked => !carried.Contains(picked));
+        var stillPicked = WorkshopActions.StillPicked(_picked, carried);
+        _picked.Clear();
+        _picked.AddRange(stillPicked);
 
         while (_tiles.Count < carried.Count)
         {
@@ -230,15 +258,12 @@ public partial class WorkshopPanel : PaperPanel
             _tiles[i].Apply(i < carried.Count ? carried[i] : null, i < carried.Count && _picked.Contains(carried[i]));
         }
 
-        // Said only once something has been picked - stated up front, before the player has
-        // touched the pack, it is an instruction nobody asked for yet.
-        _hint.Text = carried.Count > 0 ? "Take one thing, or two." : "Carrying nothing to work with.";
-        _hint.Visible = carried.Count == 0 || _picked.Count > 0;
+        SyncStatus();
         // As tall as the pack needs, up to where it starts scrolling instead.
         _pack.CustomMinimumSize = new Vector2(0, Mathf.Min(_entries.GetCombinedMinimumSize().Y, MaxPackHeight));
     }
 
-    // What the panel is currently able to offer, so the button says what pressing it would do.
+    // What the bench is currently able to offer, so the button says what pressing it would do.
     //
     // The refusal fully decides the status line rather than only filling it in when there is one
     // to show: a pick that is undone (or acted on some other way, like Eat or Drop) leaves no
@@ -246,14 +271,14 @@ public partial class WorkshopPanel : PaperPanel
     // whatever it last said.
     internal void Offer(ActionOffer? offer, string? refusal, IReadOnlyList<string> words)
     {
-        _words.Text = words.Count > 0 ? $"It is {string.Join(", ", words)}." : string.Empty;
-        _words.Visible = words.Count > 0;
+        // What the thing in hand is like, never what it is for.
+        _description = words.Count > 0 ? $"It is {string.Join(", ", words)}." : string.Empty;
 
         _try.Visible = offer is { IsAvailable: true };
         _try.Text = _picked.Count > 1 ? $"Make ({_picked.Count})" : "Make";
 
-        _outcome.Text = refusal ?? string.Empty;
-        _outcome.Visible = refusal is { Length: > 0 };
+        _said = refusal ?? string.Empty;
+        SyncStatus();
     }
 
     // Eat and Drop, for whatever is picked right now - each hidden rather than disabled when
@@ -270,36 +295,9 @@ public partial class WorkshopPanel : PaperPanel
     // What came of the last attempt, in the player's own words rather than a number (section 9).
     internal void ReportOutcome(string sentence)
     {
-        _outcome.Text = sentence;
-        _outcome.Visible = sentence.Length > 0;
+        _said = sentence;
+        SyncStatus();
     }
-
-    // Eat, Drop and the one verb the current pick can answer, set beside the "Workshop" title
-    // rather than down in the body - they read on the selection the way the icons on a toolbar
-    // do, not on the pack laid out underneath. Built while the title bar is still going up, so
-    // their Pressed handlers are wired here too rather than back in _Ready.
-    protected override void BuildTitleBarExtras(HBoxContainer titleBar)
-    {
-        _eat = WorkshopIcons.Button("Eat", WorkshopIcons.Eat());
-        _eat.Visible = false;
-        _eat.Pressed += () => EatRequested?.Invoke();
-        titleBar.AddChild(_eat);
-
-        _drop = WorkshopIcons.Button("Drop", WorkshopIcons.Drop());
-        _drop.Visible = false;
-        _drop.Pressed += () => DropRequested?.Invoke();
-        titleBar.AddChild(_drop);
-
-        // Shown only while there is something for it to do - a button that reads "Make" while
-        // greyed out is a button promising an answer it does not have.
-        _try = WorkshopIcons.Button("Make", WorkshopIcons.Make());
-        _try.Visible = false;
-        _try.Pressed += OnTryPressed;
-        titleBar.AddChild(_try);
-    }
-
-    // The clock is held while the bench is out, so the cross cannot simply hide it.
-    protected override void OnCloseRequested() => Close();
 
     // The same shading every pressed thing on paper takes, with a line of ink round it.
     private static StyleBoxFlat PickedBox()
@@ -313,7 +311,19 @@ public partial class WorkshopPanel : PaperPanel
         return box;
     }
 
-    private void OnTryPressed() => Attempted?.Invoke();
+    // The status line: what was last said wins; with nothing said, what the thing in hand is like,
+    // or how to begin while nothing is in hand. Cut short rather than wrapped
+    // when it runs long, and silent as empty text rather than a hidden line, because a line that
+    // wrapped or vanished would move the tiles under it.
+    private void SyncStatus()
+    {
+        var hint = _carried.Count == 0 ? "Carrying nothing to work with."
+            : _picked.Count == 0 ? "Take one thing, or two."
+            : _description;
+        var saying = _said.Length > 0;
+        _status.Text = saying ? _said : hint;
+        _status.AddThemeColorOverride("font_color", saying ? Ink : QuietInk);
+    }
 
     // One square of bench per thing: its picture, the count in the corner where there is more
     // than one of it, and its name under the cursor. Not a line of text - a pack is things, and
@@ -324,7 +334,7 @@ public partial class WorkshopPanel : PaperPanel
         {
             ToggleMode = true,
             CustomMinimumSize = new Vector2(TileSize, TileSize),
-            SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+            SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin,
         };
 
         // A picked thing is outlined as well as shaded: two of these decide what is being tried,
@@ -334,24 +344,24 @@ public partial class WorkshopPanel : PaperPanel
 
         // A Button draws its own box before its children, which is what lays the picture on the
         // tile rather than behind it.
-        var undrawn = new ColorRect { Color = Undrawn, MouseFilter = MouseFilterEnum.Ignore };
-        undrawn.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, IconMargin * 2);
+        var undrawn = new ColorRect { Color = Undrawn, MouseFilter = Control.MouseFilterEnum.Ignore };
+        undrawn.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.KeepSize, IconMargin * 2);
         button.AddChild(undrawn);
 
         var icon = new TextureRect
         {
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            MouseFilter = MouseFilterEnum.Ignore,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        icon.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, IconMargin);
+        icon.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.KeepSize, IconMargin);
         button.AddChild(icon);
 
         var count = InscriptionFont.BodyBoldLabel(string.Empty, CountFontSize, Ink);
         count.HorizontalAlignment = HorizontalAlignment.Right;
         count.VerticalAlignment = VerticalAlignment.Bottom;
-        count.MouseFilter = MouseFilterEnum.Ignore;
-        count.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.KeepSize, IconMargin / 2);
+        count.MouseFilter = Control.MouseFilterEnum.Ignore;
+        count.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect, Control.LayoutPresetMode.KeepSize, IconMargin / 2);
         button.AddChild(count);
 
         var tile = new PickTile(button, icon, undrawn, count);

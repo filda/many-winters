@@ -9,8 +9,8 @@ using ManyWinters.Presentation.Views;
 namespace ManyWinters.Presentation.Ui;
 
 // Who the player has picked out of the world - a person or a grave, never both - and everything
-// on screen that shows it: the card, the full page behind it, the band's roster, and the marker
-// over the selected person's head. A caller only ever asks for a selection transition; this is
+// on screen that shows it: the card, the band's roster, and the marker over the selected
+// person's head. A caller only ever asks for a selection transition; this is
 // the one place the mutual exclusion between a person and a grave is kept.
 public sealed class SelectionController
 {
@@ -21,7 +21,6 @@ public sealed class SelectionController
     private readonly TextureRect _marker;
     private readonly SelectionPanel _selectionPanel;
     private readonly BandPanel _bandPanel;
-    private readonly PersonDetailPanel _detailPanel;
 
     private Person? _person;
     private Animal? _animal;
@@ -45,22 +44,12 @@ public sealed class SelectionController
         // open.
         _selectionPanel = ui.Panel;
         _selectionPanel.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
-        _selectionPanel.PackRequested += OnPackRequested;
-        _selectionPanel.DetailRequested += OpenDetail;
+        _selectionPanel.PackRequested += OnPageRequested;
+        _selectionPanel.DetailRequested += OnPageRequested;
         _selectionPanel.CloseRequested += Clear;
 
         _bandPanel = ui.BandPanel;
         _bandPanel.PersonChosen += SelectAndFocus;
-
-        // The full page, opened from the name on the selected person's card. Like the workbench
-        // it holds the clock while it is up and shields everything under it from the click that
-        // would otherwise land on the world or another window through it - reading or acting on
-        // somebody here is meant to have the player's whole attention, the same as working
-        // something over is.
-        _detailPanel = ui.DetailPanel;
-        _detailPanel.Closed += () => Closed?.Invoke();
-        _detailPanel.ActionInvoked += offer => ActionInvoked?.Invoke(offer);
-        _detailPanel.PackRequested += OnPackRequested;
 
         // The world forgets an animal's bones on its own, with nobody asking - if that was the
         // one selected, its card must come down with it rather than keep showing a corpse whose
@@ -68,23 +57,19 @@ public sealed class SelectionController
         world.AnimalRemoved += OnAnimalRemoved;
     }
 
-    // Forwarded from the selection card, the detail page, or (in composition code) the contextual
-    // menu - all three draw offers for whoever is selected, so this is the one signal a caller
-    // needs to carry an offer out.
+    // Forwarded from the selection card or (in composition code) the contextual menu - both draw
+    // offers for whoever is selected, so this is the one signal a caller needs to carry an offer
+    // out.
     public event Action<ActionOffer>? ActionInvoked;
 
-    // The pack line, pressed on the card or on the detail page - who it was pressed for, since a
-    // workshop is opened for somebody rather than for whoever happens to be selected when it
-    // finally opens.
-    public event Action<Person>? WorkshopRequested;
+    // The person's page, asked for from the name or the pack line on the card - who it was asked
+    // for, since a page is opened for somebody rather than for whoever happens to be selected when
+    // it finally opens.
+    public event Action<Person>? PageRequested;
 
     // Raised after every selection change, so the still-separate debug inspector can redraw from
     // Person or Grave without this controller knowing that window exists.
     public event Action? Refreshed;
-
-    // Letting the detail page go primes the tick accumulator, the same reason WorkshopController
-    // raises its own Closed.
-    public event Action? Closed;
 
     public Person? Person => _person;
 
@@ -127,17 +112,13 @@ public sealed class SelectionController
     }
 
     // Every window that shows something about whoever is selected or was, closed together so a
-    // future one is not the one somebody forgets to add here - which is exactly how the detail
+    // future one is not the one somebody forgets to add here - which is exactly how the person's
     // page got left open through an ending it was never told about.
     public void CloseForBandEnd()
     {
         _bandPanel.Visible = false;
         Clear();
     }
-
-    // Nothing else answers to Escape for the detail page - unlike the workshop and naming panel,
-    // it never sits under a page of its own, so there is no priority to keep straight.
-    public void CloseDetail() => _detailPanel.Close();
 
     // Everything on screen that is about people: the player's panel for whoever is selected, and
     // the band's roster, whose lines go stale on exactly the same occasions.
@@ -148,32 +129,19 @@ public sealed class SelectionController
         if (_grave is { } grave)
         {
             _selectionPanel.ShowGrave(InspectorText.ForGraveRecord(grave, _world.Configuration.SkillCatalog));
-            _detailPanel.Close();
         }
         else if (_person is { } person)
         {
-            var card = SelectionCard.For(_world, person);
-            var offers = PersonActions.For(_world, person);
-            _selectionPanel.ShowPerson(card, offers);
-
-            // Only while it is open, and on the same person it was opened for - the summary card
-            // it reads from is rebuilt every refresh, and the page left open behind it should
-            // read as true as the card does rather than freezing on the moment it was opened.
-            if (_detailPanel.Visible)
-            {
-                _detailPanel.Show(card, offers);
-            }
+            _selectionPanel.ShowPerson(SelectionCard.For(_world, person), PersonActions.For(_world, person));
         }
         else if (_animal is { } animal)
         {
-            // No detail page and no actions for an animal yet: the card is everything there is
-            // to show, so nothing else here has to close.
+            // No page and no actions for an animal yet: the card is everything there is to show.
             _selectionPanel.ShowAnimal(AnimalCard.For(_world, animal));
         }
         else
         {
             _selectionPanel.ClearSelection();
-            _detailPanel.Close();
         }
 
         Refreshed?.Invoke();
@@ -252,23 +220,12 @@ public sealed class SelectionController
         }
     }
 
-    // The player asked to see the selected person's full page.
-    private void OpenDetail()
-    {
-        if (_person is not { } person)
-        {
-            return;
-        }
-
-        _detailPanel.Open(SelectionCard.For(_world, person), PersonActions.For(_world, person));
-    }
-
-    // Pressed on the pack line, on the selected person's own card or on their detail page.
-    private void OnPackRequested()
+    // Pressed on the name or the pack line on the selected person's card.
+    private void OnPageRequested()
     {
         if (_person is { } person)
         {
-            WorkshopRequested?.Invoke(person);
+            PageRequested?.Invoke(person);
         }
     }
 

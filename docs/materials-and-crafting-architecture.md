@@ -100,8 +100,9 @@ destroyed by tying a knot. What may serve as cordage is content's call, not the
 command's: `FormDefinition.LashingStrength` gates it and feeds the joint's strength
 along with the cord's own durability and the binder's practice.
 
-The panel (`WorkshopPanel` + the testable `WorkshopActions` beside it) opens from the
-pack line on the person's card, holds the clock exactly as the pause page does, and
+The workshop (`WorkshopBench` + the testable `WorkshopActions` beside it) is the right
+half of the person's page, which opens from the name or the pack line on the person's
+card, holds the clock exactly as the pause page does, and
 offers one button: "Try it". The number of things picked is the whole question - one is
 a reductive verb, two a combinative one - so the panel's shape does not grow as the verb
 vocabulary does, and nothing anywhere lists the verbs. A pick that leads nowhere comes
@@ -754,10 +755,12 @@ on it — and it lets a player outpace what the simulation would have discovered
 own, which is where the skill expression lives. Both paths feed the same three layers;
 neither is a shortcut around the other.
 
-### Player path UI: a workshop panel, not a recipe menu
+### Player path UI: a workshop beside the person, not a recipe menu
 
-A dedicated panel, opened from the selected person's card ("Workshop"), rather than
-folding this into the selection card's existing action list. Combining reaches across
+The workshop is the right half of the person's page (`PersonDetailPanel`), opened from
+the selected person's card, with the person - measures, what they know - on the left,
+so what a person knows sits beside what they can make of what they carry. It is
+not folded into the selection card's existing action list. Combining reaches across
 everything a person carries, and a single-item verb (squeezing an apple, twisting
 grass) still needs its own screen real estate for the outcome - neither fits the
 one-button-per-row shape `ActionList` already has.

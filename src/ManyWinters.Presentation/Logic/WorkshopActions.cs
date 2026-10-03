@@ -48,6 +48,16 @@ internal static class WorkshopActions
         return stock.Concat(worked).ToList();
     }
 
+    // What is still picked once the pack has changed underneath the pick: each picked thing as the
+    // pack now holds it, kept for as long as any of it is held. Matched by what the thing is rather
+    // than by the whole entry, so a stack of wood that an attempt took two from is still the wood
+    // the player had in hand - they are trying again, not starting over. A thing that is gone
+    // altogether, used up or come apart, quietly stops being picked.
+    internal static IReadOnlyList<WorkshopEntry> StillPicked(IReadOnlyList<WorkshopEntry> picked, IReadOnlyList<WorkshopEntry> carried) =>
+        picked
+            .SelectMany(held => carried.Where(entry => entry.Target == held.Target).Take(1))
+            .ToList();
+
     // What the one thing in hand is like, in plain words - what the player has to go on when
     // forming a hypothesis, since the numbers behind it are never shown. Only for a single pick:
     // two things at once is a question about the pair, and

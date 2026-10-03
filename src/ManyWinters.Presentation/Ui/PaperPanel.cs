@@ -89,10 +89,6 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
         heading.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _titleBar.AddChild(heading);
 
-        // Room for a panel to put something of its own beside its title - actions that read on
-        // the current selection rather than on the window as a whole.
-        BuildTitleBarExtras(_titleBar);
-
         // Centred on the first line of the title bar rather than on the whole of it, so a heading
         // that runs to several lines (a portrait beside the name) keeps the cross in the corner.
         var crossLine = new CenterContainer
@@ -142,15 +138,10 @@ public partial class PaperPanel(string title, float? fixedBodyHeight = null) : P
 
     // What goes in the title bar where the title is: the title itself, unless a panel sets it
     // inside something of its own - the summary card makes the whole line a button that opens the
-    // person's page. Called while the title bar is still being built, like BuildTitleBarExtras.
+    // person's page, and the person's page lays both its halves there. Called while the title bar
+    // is still being built, so it has to stand on its own rather than reach for fields the rest of
+    // _Ready has not created yet.
     protected virtual Control Heading(Label titleLabel) => titleLabel;
-
-    // Nothing, unless a panel overrides it. Called while the title bar is still being built, so
-    // it has to stand on its own rather than reach for fields the rest of _Ready has not created
-    // yet.
-    protected virtual void BuildTitleBarExtras(HBoxContainer titleBar)
-    {
-    }
 
     // Body height is its natural size, capped to the room left over so an overlong body scrolls
     // internally. A centred window measures that room against the whole screen less the clearance

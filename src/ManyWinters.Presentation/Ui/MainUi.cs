@@ -4,19 +4,19 @@ using ManyWinters.Core.World;
 namespace ManyWinters.Presentation.Ui;
 
 // Everything SelectionController shows about who is picked: the marker over their head, the
-// card, the roster, and the full page behind the card. Built here, in the one order the screen
+// card, and the roster. Built here, in the one order the screen
 // draws them, so SelectionController only ever wires behaviour onto controls it did not itself
 // create or attach.
-public sealed record SelectionUi(TextureRect Marker, SelectionPanel Panel, BandPanel BandPanel, PersonDetailPanel DetailPanel);
+public sealed record SelectionUi(TextureRect Marker, SelectionPanel Panel, BandPanel BandPanel);
 
-// Everything WorkshopController shows: the workbench itself and the naming question laid over
-// it. The shield that blocks the world while it is open is MainUi's alone to show and hide, so
-// it is not handed down here.
-public sealed record WorkshopUi(WorkshopPanel Panel, NamingPanel NamingPanel);
+// Everything PersonPageController shows: the person's page, workbench included, and the naming
+// question laid over it. The shield that blocks the world while the page is open is MainUi's
+// alone to show and hide, so it is not handed down here.
+public sealed record PersonPageUi(PersonDetailPanel Page, NamingPanel NamingPanel);
 
 // The screen's own furniture: the status bar, the debug inspector, the chronicle, the
 // inscription overlay, and the pause and help pages - plus every control SelectionController,
-// WorkshopController, and WorldInputController operate. This is the one place that builds and
+// PersonPageController, and WorldInputController operate. This is the one place that builds and
 // attaches every one of them, in the order the screen draws them; the controllers above only
 // wire behaviour onto what they are handed.
 public sealed partial class MainUi : CanvasLayer
@@ -81,42 +81,27 @@ public sealed partial class MainUi : CanvasLayer
         StatusBar.ChronicleRequested += Chronicle.Toggle;
         RegisterModal(Chronicle, holdsClock: false, blocksPause: true);
 
-        // The workbench. Laid in before the panel itself, so the shield sits under it and over
-        // everything added earlier - the roster, the selected person's card, the status bar, the
-        // world itself. The clock is stopped while the bench is out; it draws nothing, since the
-        // world is what the player is working in the middle of and the camera keeps turning
-        // over it.
-        var workshopShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        workshopShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        AddChild(workshopShield);
+        // The person's page, workbench and all. Laid in after the roster and the card, so the
+        // shield sits under it and over everything added earlier - the card, the status bar, the
+        // world itself. The clock is stopped while it is out; the shield draws nothing, since the
+        // world is what the player is working in the middle of and the camera keeps turning over
+        // it. Reading or acting on somebody here is meant to have the player's whole attention.
+        var pageShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
+        pageShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        AddChild(pageShield);
 
-        var workshopPanel = new WorkshopPanel();
-        workshopPanel.VisibilityChanged += () => workshopShield.Visible = workshopPanel.Visible;
-        AddChild(workshopPanel);
+        var detailPanel = new PersonDetailPanel();
+        detailPanel.VisibilityChanged += () => pageShield.Visible = detailPanel.Visible;
+        AddChild(detailPanel);
+        RegisterModal(detailPanel, holdsClock: true, blocksPause: true);
 
-        // Added after the workshop, so it lands on top of it rather than beside it - both are
-        // centred on the same spot, which is what makes the one read as a page laid over the
-        // other.
+        // Added after the page, so it lands on top of it rather than beside it - both are centred
+        // on the same spot, which is what makes the one read as a page laid over the other.
         var namingPanel = new NamingPanel();
         AddChild(namingPanel);
 
-        Workshop = new WorkshopUi(workshopPanel, namingPanel);
-        RegisterModal(workshopPanel, holdsClock: true, blocksPause: true);
-
-        // The full page behind the selected person's card. Laid in after the workbench, so it
-        // sits under it and over everything added earlier, and drawn to land later than the
-        // workbench so it covers it - reading or acting on somebody here is meant to have the
-        // player's whole attention, the same as working something over is.
-        var detailShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
-        detailShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        AddChild(detailShield);
-
-        var detailPanel = new PersonDetailPanel();
-        detailPanel.VisibilityChanged += () => detailShield.Visible = detailPanel.Visible;
-        AddChild(detailPanel);
-
-        Selection = new SelectionUi(marker, selectionPanel, bandPanel, detailPanel);
-        RegisterModal(detailPanel, holdsClock: true, blocksPause: true);
+        PersonPage = new PersonPageUi(detailPanel, namingPanel);
+        Selection = new SelectionUi(marker, selectionPanel, bandPanel);
 
         // After the windows, so a menu opened over one of them is on top of it; before the
         // inscription overlay and the pause panel, which are on top of everything.
@@ -148,7 +133,7 @@ public sealed partial class MainUi : CanvasLayer
         // letting it go primes the tick accumulator so the world starts again on the next frame
         // rather than a full interval later.
         // The shield under it swallows clicks anywhere on screen, not just over the page, the
-        // same as the workbench's does.
+        // same as the person's page does.
         var helpShield = new Control { MouseFilter = Control.MouseFilterEnum.Stop, Visible = false };
         helpShield.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         AddChild(helpShield);
@@ -175,7 +160,7 @@ public sealed partial class MainUi : CanvasLayer
 
     public SelectionUi Selection { get; }
 
-    public WorkshopUi Workshop { get; }
+    public PersonPageUi PersonPage { get; }
 
     public ContextMenu ContextMenu { get; }
 
@@ -225,9 +210,9 @@ public sealed partial class MainUi : CanvasLayer
     }
 
     // Nothing else answers to Escape, and a menu or a page that can only be dismissed by
-    // clicking one particular thing is one the player fights. The naming question, the workbench,
-    // the context menu, and the detail page each dismiss themselves through their own owner;
-    // this is only the piece that is purely about controls this type owns.
+    // clicking one particular thing is one the player fights. The person's page with its naming
+    // question, and the context menu, each dismiss themselves through their own owner; this is
+    // only the piece that is purely about controls this type owns.
     public void HandleEscape()
     {
         if (_helpPanel.Visible)

@@ -103,6 +103,14 @@ public static class PanelChrome
         // Distinctly fainter than anything beside it, so the eye sorts what can be pressed from
         // what cannot before it reads a word.
         theme.SetColor("font_disabled_color", "Button", new Color(InscriptionFont.DarkInk, 0.38f));
+
+        // Ink on paper, the way every other mark on the page is, rather than the engine's pale
+        // thumb in a dark trough - which on parchment read as a hole cut through the page.
+        theme.SetStylebox("scroll", "VScrollBar", ScrollBox(new Color(InscriptionFont.DarkInk, 0.08f)));
+        theme.SetStylebox("scroll_focus", "VScrollBar", ScrollBox(new Color(InscriptionFont.DarkInk, 0.08f)));
+        theme.SetStylebox("grabber", "VScrollBar", ScrollBox(new Color(InscriptionFont.DarkInk, 0.45f)));
+        theme.SetStylebox("grabber_highlight", "VScrollBar", ScrollBox(new Color(InscriptionFont.DarkInk, 0.65f)));
+        theme.SetStylebox("grabber_pressed", "VScrollBar", ScrollBox(new Color(InscriptionFont.DarkInk, 0.8f)));
         return theme;
     }
 
@@ -162,6 +170,14 @@ public static class PanelChrome
         return rule;
     }
 
+    // The same hairline standing upright, between two columns of a page.
+    public static VSeparator VerticalRule()
+    {
+        var rule = new VSeparator();
+        rule.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(InscriptionFont.DarkInk, 0.28f), Vertical = true });
+        return rule;
+    }
+
     // The age on the page: broad blotches where it was handled, and the printer's hatching under
     // them, the same diagonal stroke the sprites are drawn with. Both faint - past a certain
     // strength this stops being paper and becomes wallpaper, and the ink has to fight it.
@@ -182,6 +198,18 @@ public static class PanelChrome
         grain.AddChild(Hatching(paper));
         return grain;
     }
+
+    // A scroll bar's trough or thumb: a thin rounded stroke, as wide as its margins make it.
+    private static StyleBoxFlat ScrollBox(Color color) => new()
+    {
+        BgColor = color,
+        ContentMarginLeft = 3,
+        ContentMarginRight = 3,
+        CornerRadiusTopLeft = 3,
+        CornerRadiusTopRight = 3,
+        CornerRadiusBottomLeft = 3,
+        CornerRadiusBottomRight = 3,
+    };
 
     // Tighter than Filled: a cross is one glyph, and a line of text's padding around it would
     // push it off the corner it belongs in.
