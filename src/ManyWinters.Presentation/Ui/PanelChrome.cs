@@ -20,6 +20,17 @@ public static class PanelChrome
 
     private const int CrossFontSize = 16;
 
+    // How far the paper's grain wanders from its own colour, as a fraction of full ink. The title
+    // page's is barely there - a tooth to the paper rather than a pattern - and so is this.
+    private const float GrainDeviation = 0.03f;
+
+    private const int GrainTile = 128;
+
+    // The title page's paper and the colour it darkens to towards its edges. Kept the same as the
+    // title page, so the first page the player holds is the one the game opened on.
+    private static readonly Color Paper = new(0.878f, 0.843f, 0.769f);
+    private static readonly Color PaperEdge = new(0.753f, 0.698f, 0.596f);
+
     public static StyleBoxFlat Background() => new()
     {
         BgColor = new Color(0f, 0f, 0f, 0.6f),
@@ -42,7 +53,7 @@ public static class PanelChrome
     // the caller's to add inside the grain instead.
     public static StyleBoxFlat Parchment() => new()
     {
-        BgColor = new Color(0.87f, 0.82f, 0.71f, 0.96f),
+        BgColor = new Color(Paper, 0.96f),
         BorderColor = new Color(0.42f, 0.33f, 0.23f, 0.55f),
         BorderWidthLeft = 1,
         BorderWidthRight = 1,
@@ -178,9 +189,10 @@ public static class PanelChrome
         return rule;
     }
 
-    // The age on the page: broad blotches where it was handled, and the printer's hatching under
-    // them, the same diagonal stroke the sprites are drawn with. Both faint - past a certain
-    // strength this stops being paper and becomes wallpaper, and the ink has to fight it.
+    // The age on the page, the way the title page wears it: broad blotches where it was handled, a
+    // fine tooth over all of it, edges gone darker than the middle, and under the stains the same
+    // scratched diagonal hatching the title page's plates are drawn with. All of it faint - past a certain strength this stops being paper and
+    // becomes wallpaper, and the ink has to fight it.
     //
     // `of` is which page this is (the panel's type, "pause", "menu"): every panel is cut
     // from the same sheet, and the name is what decides how this one aged, so two pages open side
@@ -196,6 +208,8 @@ public static class PanelChrome
         grain.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         grain.AddChild(Blotches(paper));
         grain.AddChild(Hatching(paper));
+        grain.AddChild(Tooth(paper));
+        grain.AddChild(Vignette());
         return grain;
     }
 
@@ -239,31 +253,66 @@ public static class PanelChrome
         return Tiled(new NoiseTexture2D { Noise = noise, Width = 256, Height = 256, Seamless = true }, new Color(0.34f, 0.24f, 0.13f, paper.BlotchStrength));
     }
 
-    // Drawn rather than noised: a hatch is regular by nature, and a tile of diagonal strokes
-    // repeats seamlessly because the period divides the tile - so the tile is cut to a multiple
-    // of whatever spacing this page came out with.
+    // Drawn rather than noised: a hatch is strokes, and noise has no strokes in it.
     private static TextureRect Hatching(PaperWeathering paper)
     {
-        var spacing = paper.HatchSpacing;
-        var tile = spacing * 4;
+        var data = PaperScratches.Rgba(paper.HatchSpacing, paper.HatchRising, paper.Seed);
+        var image = Image.CreateFromData(PaperScratches.Tile, PaperScratches.Tile, false, Image.Format.Rgba8, data);
+        return Tiled(ImageTexture.CreateFromImage(image), new Color(0.30f, 0.22f, 0.12f, 0.24f));
+    }
 
-        var image = Image.CreateEmpty(tile, tile, false, Image.Format.Rgba8);
-        image.Fill(new Color(1f, 1f, 1f, 0f));
-        for (var y = 0; y < tile; y++)
+    // Noise per pixel, half of it a speck of ink and half a speck of bare paper, so the grain
+    // roughens the page without darkening it overall. Uncorrelated pixels tile without a seam.
+    private static TextureRect Tooth(PaperWeathering paper)
+    {
+        var random = new RandomNumberGenerator { Seed = (uint)paper.Seed };
+        var image = Image.CreateEmpty(GrainTile, GrainTile, false, Image.Format.Rgba8);
+        for (var y = 0; y < GrainTile; y++)
         {
-            for (var x = 0; x < tile; x++)
+            for (var x = 0; x < GrainTile; x++)
             {
-                // Which way the stroke leans. Written so both directions stay positive, because
-                // the remainder of a negative number is not the stroke we want.
-                if ((paper.HatchRising ? x + y : x - y + tile) % spacing == 0)
-                {
-                    image.SetPixel(x, y, Colors.White);
-                }
+                var speck = random.Randfn(0f, GrainDeviation);
+                image.SetPixel(x, y, speck > 0f ? new Color(InscriptionFont.DarkInk, speck) : new Color(Paper.Lightened(0.5f), -speck));
             }
         }
 
-        return Tiled(ImageTexture.CreateFromImage(image), new Color(0.30f, 0.22f, 0.12f, 0.07f));
+        return Tiled(ImageTexture.CreateFromImage(image), Colors.White);
     }
+
+    // Stretched over the whole page, whatever its shape, so a tall narrow panel darkens along its
+    // long sides the way the wide title page does along its short ones. The ramp is the title
+    // page's: clean to just past the middle, then darkening straight towards the corners.
+    private static TextureRect Vignette()
+    {
+        var gradient = new Gradient
+        {
+            Offsets = [0f, 0.39f, 0.71f, 1f],
+            Colors = [new Color(PaperEdge, 0f), new Color(PaperEdge, 0f), new Color(PaperEdge, 0.49f), new Color(PaperEdge, 0.8f)],
+        };
+
+        // Measured from the middle to a corner rather than to an edge, so the corner is where the
+        // ramp ends instead of where it was cut off.
+        var texture = new GradientTexture2D
+        {
+            Gradient = gradient,
+            Fill = GradientTexture2D.FillEnum.Radial,
+            FillFrom = new Vector2(0.5f, 0.5f),
+            FillTo = new Vector2(1f, 1f),
+            Width = 128,
+            Height = 128,
+        };
+
+        var rect = new TextureRect
+        {
+            Texture = texture,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        rect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        return rect;
+    }
+
 
     private static TextureRect Tiled(Texture2D texture, Color modulate)
     {

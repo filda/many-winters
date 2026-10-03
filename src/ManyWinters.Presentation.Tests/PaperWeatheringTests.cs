@@ -65,18 +65,20 @@ public class PaperWeatheringTests
 
         Assert.InRange(paper.BlotchFrequency, 0.009f, 0.015f);
         Assert.InRange(paper.BlotchStrength, 0.16f, 0.28f);
-        Assert.InRange(paper.HatchSpacing, 3, 5);
+        Assert.InRange(paper.HatchSpacing, 5, 7);
     }
 
-    // The tile the hatching is drawn into is cut to a multiple of the spacing, so whatever spacing
-    // a page came out with, the strokes still repeat seamlessly.
+    // The tile the hatching is drawn into is cut to a multiple of the spacing and of the crossing
+    // course's one wider, so whatever spacing a page came out with, the strokes still repeat
+    // seamlessly.
     [Theory]
     [MemberData(nameof(ManyNames))]
     public void TheHatchingAlwaysDividesItsTile(string name)
     {
         var spacing = PaperWeathering.Of(name).HatchSpacing;
 
-        Assert.Equal(0, spacing * 4 % spacing);
+        Assert.Equal(0, PaperScratches.Tile % spacing);
+        Assert.Equal(0, PaperScratches.Tile % (spacing + 1));
     }
 
     // Variety that never varies is a constant with extra steps: across the pages a game might
@@ -86,7 +88,7 @@ public class PaperWeatheringTests
     {
         var pages = Names().Select(PaperWeathering.Of).ToList();
 
-        Assert.Equal([3, 4, 5], pages.Select(paper => paper.HatchSpacing).Distinct().Order());
+        Assert.Equal([5, 6, 7], pages.Select(paper => paper.HatchSpacing).Distinct().Order());
         Assert.Equal([false, true], pages.Select(paper => paper.HatchRising).Distinct().Order());
     }
 

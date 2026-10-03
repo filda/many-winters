@@ -35,9 +35,9 @@ internal readonly record struct PaperWeathering
             // Faint on every page: past a certain strength this stops being paper and becomes
             // wallpaper, and the ink has to fight it.
             BlotchStrength = 0.16f + (Fraction(seed, salt: 2) * 0.12f),
-            // Three to five pixels apart. The tile is cut to a multiple of this, so whatever the
-            // spacing the strokes still repeat seamlessly.
-            HatchSpacing = 3 + Pick(seed, salt: 3, count: 3),
+            // Five to seven pixels apart: wide enough that a stroke's wobble does not run into the
+            // next one and fill the page in. Every value divides the scratches' tile.
+            HatchSpacing = 5 + Pick(seed, salt: 3, count: 3),
             HatchRising = Pick(seed, salt: 4, count: 2) == 0,
         };
     }
