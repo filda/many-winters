@@ -65,6 +65,21 @@ public sealed class FormatJsonCheckTask : FrostingTask<BuildContext>
     }
 }
 
+[TaskName("TextureMipmaps")]
+public sealed class TextureMipmapsTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        var offenders = TextureImports.WithoutMipmaps(context);
+        if (offenders.Count != 0)
+        {
+            throw new InvalidOperationException(
+                "Textures imported without mipmaps; set mipmaps/generate=true in their .import files and reimport:"
+                + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+        }
+    }
+}
+
 [TaskName("Restore")]
 public sealed class RestoreTask : FrostingTask<BuildContext>
 {
@@ -193,6 +208,7 @@ public sealed class RenderAudioTask : FrostingTask<BuildContext>
 [TaskName("CI")]
 [IsDependentOn(typeof(LineEndingsTask))]
 [IsDependentOn(typeof(FormatJsonCheckTask))]
+[IsDependentOn(typeof(TextureMipmapsTask))]
 [IsDependentOn(typeof(RestoreTask))]
 [IsDependentOn(typeof(FormatTask))]
 [IsDependentOn(typeof(BuildTask))]
@@ -305,5 +321,23 @@ internal static class ContentJson
         Files(context)
             .Where(path => File.ReadAllText(path) != Format(File.ReadAllText(path)))
             .Select(path => Path.GetRelativePath(context.RootDirectory, path))
+            .ToList();
+}
+
+internal static class TextureImports
+{
+    // Drawn only as the boot splash, flat on the screen at its own size, where a mip chain is
+    // never sampled.
+    private static readonly string[] ScreenOnly = ["splash/title_page.png.import"];
+
+    // Every sprite is minified on screen, and its engraved hatching shimmers and reads sharper
+    // than its neighbours without a mip chain. The project's importer default covers new files;
+    // this catches one imported before that default, or switched off by hand.
+    public static IReadOnlyList<string> WithoutMipmaps(BuildContext context) =>
+        Directory.EnumerateFiles(context.ContentDirectory, "*.png.import", SearchOption.AllDirectories)
+            .Where(path => !ScreenOnly.Contains(Path.GetRelativePath(context.ContentDirectory, path).Replace('\\', '/'), StringComparer.Ordinal))
+            .Where(path => !File.ReadLines(path).Contains("mipmaps/generate=true", StringComparer.Ordinal))
+            .Select(path => Path.GetRelativePath(context.RootDirectory, path))
+            .Order(StringComparer.Ordinal)
             .ToList();
 }

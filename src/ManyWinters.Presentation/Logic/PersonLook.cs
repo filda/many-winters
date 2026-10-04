@@ -25,6 +25,11 @@ internal readonly record struct PersonLook(string Body, string Clothing, Color C
     // "_dead", so the same pick gives the same hairstyle and garment either way.
     private const string LyingDownSuffix = "_dead";
 
+    // A child's layers are the adult ones redrawn in a child's proportions, under the same name
+    // plus "_child" - same count and order, so the same pick is the garment and hair they grow
+    // into.
+    private const string ChildSuffix = "_child";
+
     // A body of the person's own sex, and among those the seed's pick - one each so far, so a new
     // body drawn for either sex is one more entry here.
     private static readonly string[] MaleBodies = ["person_body_male"];
@@ -50,9 +55,10 @@ internal readonly record struct PersonLook(string Body, string Clothing, Color C
     // The salts are the ones the world sprite has always drawn with, so nobody's clothes or hair
     // change. The body has its own, distinct from the hairstyle/clothing picks, so it is not
     // correlated with them.
-    internal static PersonLook For(int seed, Sex sex, bool lyingDown)
+    internal static PersonLook For(int seed, Sex sex, LifeStage stage, bool lyingDown)
     {
-        var suffix = lyingDown ? LyingDownSuffix : string.Empty;
+        var suffix = (stage is LifeStage.Infant or LifeStage.Child ? ChildSuffix : string.Empty)
+            + (lyingDown ? LyingDownSuffix : string.Empty);
         var bodies = sex == Sex.Male ? MaleBodies : FemaleBodies;
         return new PersonLook(
             Path(bodies[EntityVisualVariation.IndexFor(seed, salt: 4, bodies.Length)], suffix),

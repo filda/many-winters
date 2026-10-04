@@ -71,6 +71,9 @@ public sealed class SimulationLoop(
         foreach (var person in world.People)
         {
             presenter.SetPersonAlive(person.Id, person.IsAlive);
+            // Before the position: the target it is given is lifted by the ground-contact
+            // correction this tick's size produced. A corpse keeps the age it died at.
+            presenter.SetPersonAge(person.Id, world.ExactAgeInYearsAt(person, person.DeathTick ?? world.Clock.CurrentTick));
             // Never true before IsAlive is false, so this is always the second of the two - a
             // dead person's bones never vanish, only their look deepens once the record of them
             // has decayed.
@@ -84,6 +87,7 @@ public sealed class SimulationLoop(
         foreach (var animal in world.Animals)
         {
             presenter.SetAnimalAlive(animal.Id, animal.IsAlive);
+            presenter.SetAnimalAge(animal.Id, world.ExactAgeInYearsAt(animal, animal.DeathTick ?? world.Clock.CurrentTick));
             presenter.SetAnimalDecayed(animal.Id, world.IsDecayed(animal));
             presenter.SetAnimalPosition(animal.Id, animal.Position, animal.IsAlive ? (float)pacing.TickIntervalSeconds : 0f);
         }

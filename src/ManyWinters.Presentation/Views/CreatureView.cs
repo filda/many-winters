@@ -44,6 +44,7 @@ public abstract partial class CreatureView : SpriteEntityView
     private const float StepSettleSeconds = 0.25f;
 
     private readonly Creature _creature;
+    private readonly LifeCycle _lifeCycle;
 
     private float _walkCyclesPerSecond;
     private float _bobAmplitude;
@@ -55,16 +56,25 @@ public abstract partial class CreatureView : SpriteEntityView
     private float _idleWeight;
     private float _standingSeconds;
 
+    // The two factors of this creature's scale: the seeded variation it was born with and what
+    // its age makes of it. Kept apart because age changes while the seed never does.
+    private float _seedScale = 1f;
+    private double _ageInYears;
+    private LifeStage _stage;
+
     // The walk's bob, exact while walking and easing away once standing; ApplyPose adds the
     // idle bob, whose weight fades the other way, so the hand-over is never a jump.
     private Vector3 _stepOffset;
     private bool _isAlive = true;
     private bool _isDecayed;
 
-    private protected CreatureView(Creature creature, float nominalHeight, PresentationSettings presentation, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
+    private protected CreatureView(Creature creature, LifeCycle lifeCycle, double ageInYears, float nominalHeight, PresentationSettings presentation, HoverArbiter? hover, InputEventEventHandler? onMissedClick)
         : base(nominalHeight, presentation, hover, onMissedClick)
     {
         _creature = creature;
+        _lifeCycle = lifeCycle;
+        _ageInYears = ageInYears;
+        _stage = Stature.StageAt(ageInYears, lifeCycle);
     }
 
     // The walk cycle runs whether or not anything is fading, so processing never switches off.
@@ -75,6 +85,13 @@ public abstract partial class CreatureView : SpriteEntityView
     // and the hover flickers.
     protected sealed override Vector3? PixelHitAnchor => GlobalPosition;
 
+    // What a subclass needs to draw itself as it is now, rather than as it last changed.
+    protected bool IsAlive => _isAlive;
+
+    protected bool IsDecayed => _isDecayed;
+
+    protected LifeStage Stage => _stage;
+
     // `target` is the position an unscaled creature would render at; this view stands a little
     // higher than that, and so must its target.
     public void SetTargetPosition(Vector3 target, float overSeconds)
@@ -82,6 +99,25 @@ public abstract partial class CreatureView : SpriteEntityView
         var corrected = target + GroundContactCorrection;
         _interpolationSpeed = WalkCycle.InterpolationSpeed(Position.DistanceTo(corrected), overSeconds);
         _targetPosition = corrected;
+    }
+
+    // Called every tick for every creature, so the no-change case - every grown one - must cost
+    // nothing. The collision box is not re-measured: it is in local metres and the node's own
+    // scale carries it along.
+    public void SetAge(double ageInYears)
+    {
+        _ageInYears = ageInYears;
+        ApplyScale();
+
+        var stage = Stature.StageAt(ageInYears, _lifeCycle);
+        if (stage == _stage)
+        {
+            return;
+        }
+
+        _stage = stage;
+        OnStageChanged(stage);
+        ApplyTints();
     }
 
     // Main calls this every tick for every creature whether or not IsAlive changed; without the
@@ -126,9 +162,17 @@ public abstract partial class CreatureView : SpriteEntityView
         OnDecayedChanged();
     }
 
+    // Called from a subclass's Build() in place of scaling itself: the age this view was created
+    // at is applied at once, so the first tick has nothing left to change.
+    protected void ApplySeedScale(float seedScale)
+    {
+        _seedScale = seedScale;
+        ApplyScale();
+    }
+
     // Draws this creature's own walk/idle rates from its seed and primes the tick target at
     // wherever WorldPresenter placed the node. Called from a subclass's Build(), after
-    // ScaleAndKeepGroundContact - the same order every subclass follows.
+    // ApplySeedScale - the same order every subclass follows.
     protected void InitializeMotion()
     {
         var seed = _creature.Id.Seed;
@@ -203,11 +247,28 @@ public abstract partial class CreatureView : SpriteEntityView
     {
     }
 
+    // What a subclass does the moment this creature's life stage actually changes, so a growing
+    // child is redrawn once, not every tick. Nothing by default.
+    protected virtual void OnStageChanged(LifeStage stage)
+    {
+    }
+
     // What a subclass does the moment its corpse decays past recognition - there is no bones art,
     // so both PersonView and AnimalView only deepen the tint their own dead look already applied.
     // Nothing by default.
     protected virtual void OnDecayedChanged()
     {
+    }
+
+    private void ApplyScale()
+    {
+        var scale = _seedScale * (float)Stature.ScaleFor(_ageInYears, _lifeCycle);
+        if (Mathf.IsEqualApprox(scale, Scale.Y))
+        {
+            return;
+        }
+
+        ScaleAndKeepGroundContact(scale, scale);
     }
 
     private void ApplyPose() => ApplyPose(_stepOffset + WalkCycle.BobAt(_idlePhase, _idleBobAmplitude * _idleWeight));

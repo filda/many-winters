@@ -174,6 +174,9 @@ public sealed class WorldState
     // Age as of some other moment than now - a death tick, say.
     public long AgeInYearsAt(Creature creature, long tick) => (tick - creature.BirthTick) / Configuration.Rules.TicksPerYear;
 
+    // The same age with its fraction kept, for what grows smoothly rather than in yearly steps.
+    public double ExactAgeInYearsAt(Creature creature, long tick) => (tick - creature.BirthTick) / (double)Configuration.Rules.TicksPerYear;
+
     public long AgeInSeasons(Person person) => (Clock.CurrentTick - person.BirthTick) / Configuration.Rules.TicksPerSeason;
 
     public LifeStage LifeStageOf(Creature creature) => LifeCycleOf(creature).StageFor(AgeInYears(creature));

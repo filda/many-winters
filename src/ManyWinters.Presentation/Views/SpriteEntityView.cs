@@ -58,8 +58,9 @@ public abstract partial class SpriteEntityView : Area3D, IHoverable
     protected virtual bool NeedsEveryFrame => false;
 
     // How far ScaleAndKeepGroundContact lifted this node above where an unscaled one would
-    // render, so a later position handed in (PersonView's per-tick target) is lifted
-    // the same; otherwise the first tick walks every person down to the uncorrected height.
+    // render (below it when it shrank), so a later position handed in (PersonView's per-tick
+    // target) is lifted the same; otherwise the first tick walks every person down to the
+    // uncorrected height.
     protected Vector3 GroundContactCorrection { get; private set; }
 
     // Pins the hit-test plane to a stable anchor instead of each sprite's own GlobalPosition: a
@@ -215,12 +216,14 @@ public abstract partial class SpriteEntityView : Area3D, IHoverable
     // WorldPresenter puts the origin at groundHeight + NominalHeight/2, which seats the bottom
     // edge on the ground only at scale 1: scaling multiplies that half-height, so anything
     // shorter floats and anything taller sinks. Shifting Position by the same displacement
-    // cancels it.
+    // cancels it. Only the change against the last correction is applied, so a view rescaled
+    // again (a child growing) does not accumulate corrections.
     protected void ScaleAndKeepGroundContact(float widthScale, float heightScale)
     {
         Scale = new Vector3(widthScale, heightScale, widthScale);
-        GroundContactCorrection = new Vector3(0f, (NominalHeight / 2f) * (heightScale - 1f), 0f);
-        Position += GroundContactCorrection;
+        var correction = GroundContact.Lift(NominalHeight, heightScale);
+        Position += correction - GroundContactCorrection;
+        GroundContactCorrection = correction;
     }
 
     // Cut to the drawn silhouette, not the full square canvas, or the shape would hover and

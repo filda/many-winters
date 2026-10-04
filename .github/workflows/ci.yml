@@ -50,6 +50,9 @@ jobs:
       - name: Check content JSON formatting
         run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=FormatJsonCheck
 
+      - name: Check texture mipmaps
+        run: dotnet run --project build/ManyWinters.Build.csproj --configuration Release -- --target=TextureMipmaps
+
   # One job on purpose: Build runs once and Test and InspectCode consume it from the shared
   # working directory. The E2E target used to sit in here too, but on ubuntu it can only ever
   # skip itself (Windows only), so it lives in e2e-windows, where it actually runs. It runs only

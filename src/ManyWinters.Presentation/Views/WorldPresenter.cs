@@ -50,6 +50,7 @@ public sealed partial class WorldPresenter : Node3D
     private double _viewRadiusSquared;
     private readonly float _cellSizeMeters;
     private readonly PresentationSettings _presentation;
+    private readonly WorldState _world;
 
     public WorldPresenter(
         WorldState world,
@@ -59,6 +60,7 @@ public sealed partial class WorldPresenter : Node3D
         Func<float, float, float> sampleHeight,
         PresentationSettings presentation)
     {
+        _world = world;
         _sampleHeight = sampleHeight;
         _presentation = presentation;
         _resourceCatalog = world.Configuration.ResourceCatalog;
@@ -133,6 +135,14 @@ public sealed partial class WorldPresenter : Node3D
         }
     }
 
+    public void SetPersonAge(CreatureId id, double ageInYears)
+    {
+        if (_personViews.TryGetValue(id, out var view))
+        {
+            view.SetAge(ageInYears);
+        }
+    }
+
     public void SetPersonPosition(CreatureId id, Position position, float overSeconds)
     {
         if (_personViews.TryGetValue(id, out var view))
@@ -162,6 +172,14 @@ public sealed partial class WorldPresenter : Node3D
         if (_animalViews.TryGetValue(id, out var view))
         {
             view.SetDecayed(isDecayed);
+        }
+    }
+
+    public void SetAnimalAge(CreatureId id, double ageInYears)
+    {
+        if (_animalViews.TryGetValue(id, out var view))
+        {
+            view.SetAge(ageInYears);
         }
     }
 
@@ -315,9 +333,14 @@ public sealed partial class WorldPresenter : Node3D
     private void RaiseMissedClick(Node camera, InputEvent @event, Vector3 position, Vector3 normal, long shapeIdx) =>
         MissedClick?.Invoke(camera, @event, position, normal, shapeIdx);
 
+    // A corpse stops growing, so a view built for one must start at the age it died at, as
+    // every later tick will hand it.
+    private double AgeAtDeathOrNow(Creature creature) =>
+        _world.ExactAgeInYearsAt(creature, creature.DeathTick ?? _world.Clock.CurrentTick);
+
     private void CreatePersonView(Person person)
     {
-        var view = new PersonView(person, _presentation, _hover, RaisePersonClicked, RaiseMissedClick)
+        var view = new PersonView(person, _world.LifeCycleOf(person), AgeAtDeathOrNow(person), _presentation, _hover, RaisePersonClicked, RaiseMissedClick)
         {
             Name = person.Name,
             Position = WorldSpace.ToRender(person.Position, PersonView.Height / 2f, _sampleHeight),
@@ -331,7 +354,7 @@ public sealed partial class WorldPresenter : Node3D
 
     private void CreateAnimalView(Animal animal)
     {
-        var view = new AnimalView(animal, _presentation, _hover, RaiseAnimalClicked, RaiseMissedClick);
+        var view = new AnimalView(animal, _world.LifeCycleOf(animal), AgeAtDeathOrNow(animal), _presentation, _hover, RaiseAnimalClicked, RaiseMissedClick);
         view.Position = WorldSpace.ToRender(animal.Position, view.Size / 2f, _sampleHeight);
         view.SnapRemembered(IsOutOfSight(animal.Position));
         AddChild(view);

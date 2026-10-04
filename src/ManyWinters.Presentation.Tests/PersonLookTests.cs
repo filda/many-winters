@@ -14,7 +14,7 @@ public class PersonLookTests
     [Fact]
     public void TheSameSeedAlwaysGivesTheSameLook()
     {
-        Assert.Equal(PersonLook.For(42, Sex.Female, lyingDown: false), PersonLook.For(42, Sex.Female, lyingDown: false));
+        Assert.Equal(PersonLook.For(42, Sex.Female, LifeStage.Adult, lyingDown: false), PersonLook.For(42, Sex.Female, LifeStage.Adult, lyingDown: false));
     }
 
     // Whatever the seed, a woman is drawn with a woman's body and a man with a man's - the card
@@ -24,8 +24,8 @@ public class PersonLookTests
     {
         foreach (var seed in Enumerable.Range(0, 20))
         {
-            Assert.Equal(Path("person_body", "male"), PersonLook.For(seed, Sex.Male, lyingDown: false).Body);
-            Assert.Equal(Path("person_body", "female"), PersonLook.For(seed, Sex.Female, lyingDown: false).Body);
+            Assert.Equal(Path("person_body", "male"), PersonLook.For(seed, Sex.Male, LifeStage.Adult, lyingDown: false).Body);
+            Assert.Equal(Path("person_body", "female"), PersonLook.For(seed, Sex.Female, LifeStage.Adult, lyingDown: false).Body);
         }
     }
 
@@ -34,8 +34,8 @@ public class PersonLookTests
     [Fact]
     public void ClothesAndHairAreTheSeedsWhateverTheSex()
     {
-        var man = PersonLook.For(42, Sex.Male, lyingDown: false);
-        var woman = PersonLook.For(42, Sex.Female, lyingDown: false);
+        var man = PersonLook.For(42, Sex.Male, LifeStage.Adult, lyingDown: false);
+        var woman = PersonLook.For(42, Sex.Female, LifeStage.Adult, lyingDown: false);
 
         Assert.Equal(Path("clothing", Garments[EntityVisualVariation.IndexFor(42, 5, 3)]), man.Clothing);
         Assert.Equal(Path("hair", Hairstyles[EntityVisualVariation.IndexFor(42, 7, 3)]), man.Hair);
@@ -47,8 +47,8 @@ public class PersonLookTests
     [Fact]
     public void LyingDownIsTheSameLookLaidOnItsSide()
     {
-        var standing = PersonLook.For(42, Sex.Male, lyingDown: false);
-        var lying = PersonLook.For(42, Sex.Male, lyingDown: true);
+        var standing = PersonLook.For(42, Sex.Male, LifeStage.Adult, lyingDown: false);
+        var lying = PersonLook.For(42, Sex.Male, LifeStage.Adult, lyingDown: true);
 
         Assert.Equal(standing.Body.Replace(".png", "_dead.png"), lying.Body);
         Assert.Equal(standing.Clothing.Replace(".png", "_dead.png"), lying.Clothing);
@@ -57,10 +57,100 @@ public class PersonLookTests
         Assert.Equal(standing.HairColor, lying.HairColor);
     }
 
+    // Only the grown are drawn as they always were; a child's layers are the same names with
+    // "_child" before any "_dead".
+    [Theory]
+    [InlineData(LifeStage.Infant)]
+    [InlineData(LifeStage.Child)]
+    public void ChildrenAreDrawnWithTheirOwnLayers(LifeStage stage)
+    {
+        var standing = PersonLook.For(42, Sex.Female, stage, lyingDown: false);
+
+        Assert.Equal(Path("person_body", "female_child"), standing.Body);
+        Assert.Equal(Path("clothing", Garments[EntityVisualVariation.IndexFor(42, 5, 3)] + "_child"), standing.Clothing);
+        Assert.Equal(Path("hair", Hairstyles[EntityVisualVariation.IndexFor(42, 7, 3)] + "_child"), standing.Hair);
+    }
+
+    [Theory]
+    [InlineData(LifeStage.Adult)]
+    [InlineData(LifeStage.Elder)]
+    public void TheGrownAreDrawnWithoutTheChildSuffix(LifeStage stage)
+    {
+        var look = PersonLook.For(42, Sex.Male, stage, lyingDown: false);
+
+        Assert.Equal(Path("person_body", "male"), look.Body);
+        Assert.DoesNotContain("_child", look.Clothing);
+        Assert.DoesNotContain("_child", look.Hair);
+    }
+
+    // A child grows into their own garment, hair and colours, so who they are survives the
+    // change of stage.
+    [Fact]
+    public void AChildGrowsIntoTheSameGarmentHairAndColours()
+    {
+        foreach (var seed in Enumerable.Range(0, 30))
+        {
+            var child = PersonLook.For(seed, Sex.Male, LifeStage.Child, lyingDown: false);
+            var adult = PersonLook.For(seed, Sex.Male, LifeStage.Adult, lyingDown: false);
+
+            Assert.Equal(adult.Clothing, child.Clothing.Replace("_child", string.Empty));
+            Assert.Equal(adult.Hair, child.Hair.Replace("_child", string.Empty));
+            Assert.Equal(adult.Body, child.Body.Replace("_child", string.Empty));
+            Assert.Equal(adult.ClothingColor, child.ClothingColor);
+            Assert.Equal(adult.HairColor, child.HairColor);
+        }
+    }
+
+    [Fact]
+    public void ADeadChildLiesInTheChildLayers()
+    {
+        var look = PersonLook.For(42, Sex.Male, LifeStage.Child, lyingDown: true);
+
+        Assert.EndsWith("_child_dead.png", look.Body);
+        Assert.EndsWith("_child_dead.png", look.Clothing);
+        Assert.EndsWith("_child_dead.png", look.Hair);
+    }
+
+    // The portrait is the child the world draws, at the age they are, or were when they died.
+    [Fact]
+    public void TheCardShowsAChildAsAChild()
+    {
+        var world = TestWorld.Create();
+        var mother = TestWorld.AddAdult(world, "Sela", new Position(0, 0));
+        var father = TestWorld.AddAdult(world, "Doran", new Position(0, 0), Sex.Male);
+        var child = TestWorld.AddChildOf(world, "Bran", mother, father);
+
+        Assert.Equal(PersonLook.For(child.Id.Seed, child.Sex, LifeStage.Infant, lyingDown: false), SelectionCard.For(world, child).Look);
+    }
+
+    // Death freezes the age: a child who died long ago is still the child on the card, however
+    // many winters have passed since.
+    [Fact]
+    public void TheCardOfAChildWhoDiedStaysAChild()
+    {
+        var world = TestWorld.Create();
+        var ticksPerYear = world.Configuration.Rules.TicksPerYear;
+        var child = new Person
+        {
+            Name = "Bran",
+            Position = new Position(0, 0),
+            BirthTick = world.Clock.CurrentTick - (ticksPerYear * 10),
+            Mother = Person.Unknown,
+            Father = Person.Unknown,
+            Sex = Sex.Male,
+            Home = TestWorld.AnyHome,
+        };
+        world.AddPerson(child);
+        child.IsAlive = false;
+        child.DeathTick = child.BirthTick + (ticksPerYear / 2);
+
+        Assert.Equal(PersonLook.For(child.Id.Seed, child.Sex, LifeStage.Infant, lyingDown: false), SelectionCard.For(world, child).Look);
+    }
+
     [Fact]
     public void PeopleDoNotAllLookAlike()
     {
-        var looks = Enumerable.Range(0, 50).Select(seed => PersonLook.For(seed, Sex.Female, lyingDown: false)).Distinct();
+        var looks = Enumerable.Range(0, 50).Select(seed => PersonLook.For(seed, Sex.Female, LifeStage.Adult, lyingDown: false)).Distinct();
 
         Assert.True(looks.Count() > 1);
     }
@@ -75,7 +165,7 @@ public class PersonLookTests
 
         var card = SelectionCard.For(world, person);
 
-        Assert.Equal(PersonLook.For(person.Id.Seed, person.Sex, lyingDown: false), card.Look);
+        Assert.Equal(PersonLook.For(person.Id.Seed, person.Sex, LifeStage.Adult, lyingDown: false), card.Look);
         Assert.False(card.IsAlive);
     }
 

@@ -1331,6 +1331,18 @@ public class WorldStateTests
     }
 
     [Fact]
+    public void ExactAgeInYearsAtKeepsTheFractionAndAgreesWithTheWholeYears()
+    {
+        var world = CreateWorld(new SimulationRules { TicksPerSeason = 5 });
+        world.Clock.Advance(20);
+        var person = world.SpawnPerson("Ava", new Position(0, 0));
+
+        Assert.Equal(0.5, world.ExactAgeInYearsAt(person, 30), 10);
+        Assert.Equal(0.0, world.ExactAgeInYearsAt(person, 20), 10);
+        Assert.Equal(world.AgeInYearsAt(person, 85), (long)world.ExactAgeInYearsAt(person, 85));
+    }
+
+    [Fact]
     public void AutonomousGatherTasksCarryTheWorldsReachDistance()
     {
         var world = CreateWorld(new SimulationRules { MaxInteractionDistance = 0.75f });

@@ -24,8 +24,8 @@ public partial class PersonView : CreatureView
 
     // The same layers twice, standing and laid on their side, so SetAlive swaps to the *same*
     // hairstyle/clothing lying down.
-    private readonly PersonLook _standing;
-    private readonly PersonLook _lying;
+    private PersonLook _standing;
+    private PersonLook _lying;
     private SpriteLayer _body = null!;
     private SpriteLayer _clothing = null!;
     private SpriteLayer _hair = null!;
@@ -36,20 +36,19 @@ public partial class PersonView : CreatureView
 
     // Internal, like the HoverArbiter it takes: only WorldPresenter builds views, and the hover
     // invariant is the presentation layer's business.
-    internal PersonView(Person person, PresentationSettings presentation, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(person, Height, presentation, hover, onMissedClick)
+    internal PersonView(Person person, LifeCycle lifeCycle, double ageInYears, PresentationSettings presentation, HoverArbiter hover, Action<Person, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(person, lifeCycle, ageInYears, Height, presentation, hover, onMissedClick)
     {
         _person = person;
         _onClicked = onClicked;
-        _standing = PersonLook.For(_person.Id.Seed, _person.Sex, lyingDown: false);
-        _lying = PersonLook.For(_person.Id.Seed, _person.Sex, lyingDown: true);
+        _standing = PersonLook.For(_person.Id.Seed, _person.Sex, Stage, lyingDown: false);
+        _lying = PersonLook.For(_person.Id.Seed, _person.Sex, Stage, lyingDown: true);
     }
 
     protected override void Build()
     {
         // A narrow range, but the ground-contact correction applies all the same.
-        var scale = EntityVisualVariation.Scale(_person.Id.Seed, MinScale, MaxScale);
-        ScaleAndKeepGroundContact(scale, scale);
+        ApplySeedScale(EntityVisualVariation.Scale(_person.Id.Seed, MinScale, MaxScale));
         InitializeMotion();
 
         SetUpGroundShadow(ShadowDiameter);
@@ -94,13 +93,17 @@ public partial class PersonView : CreatureView
     // Each layer swaps to its own generated lying-down variant - the same hairstyle/clothing
     // this person had standing. Retexture carries the new base colour, since applying a new
     // texture resets the tint to white.
-    protected override void OnAliveChanged(bool isAlive)
+    protected override void OnAliveChanged(bool isAlive) =>
+        ApplyLook(isAlive ? _standing : _lying, PersonLook.TintFor(isAlive, isDecayed: false));
+
+    // The child's layers are another silhouette from the grown ones, and a child who dies stays a
+    // child: the new look is worked out for the state the person is in, living, dead or decayed.
+    protected override void OnStageChanged(LifeStage stage)
     {
-        var look = isAlive ? _standing : _lying;
-        var tint = PersonLook.TintFor(isAlive, isDecayed: false);
-        Retexture(_body, look.Body, tint ?? _aliveBodyModulate, AliveColor);
-        Retexture(_clothing, look.Clothing, tint ?? SpriteTint.ModulateFor(look.ClothingColor), look.ClothingColor);
-        Retexture(_hair, look.Hair, tint ?? SpriteTint.ModulateFor(look.HairColor), look.HairColor);
+        _standing = PersonLook.For(_person.Id.Seed, _person.Sex, stage, lyingDown: false);
+        _lying = PersonLook.For(_person.Id.Seed, _person.Sex, stage, lyingDown: true);
+        ApplyLook(IsAlive ? _standing : _lying, PersonLook.TintFor(IsAlive, IsDecayed));
+        RefreshCollisionShape();
     }
 
     // Once decayed: the same lying-down layers, tinted one step further towards
@@ -108,9 +111,13 @@ public partial class PersonView : CreatureView
     // the lying-down look is already in place.
     protected override void OnDecayedChanged()
     {
-        var tint = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;
-        Retexture(_body, _lying.Body, tint, AliveColor);
-        Retexture(_clothing, _lying.Clothing, tint, _lying.ClothingColor);
-        Retexture(_hair, _lying.Hair, tint, _lying.HairColor);
+        ApplyLook(_lying, PersonLook.TintFor(isAlive: false, isDecayed: true));
+    }
+
+    private void ApplyLook(PersonLook look, Color? tint)
+    {
+        Retexture(_body, look.Body, tint ?? _aliveBodyModulate, AliveColor);
+        Retexture(_clothing, look.Clothing, tint ?? SpriteTint.ModulateFor(look.ClothingColor), look.ClothingColor);
+        Retexture(_hair, look.Hair, tint ?? SpriteTint.ModulateFor(look.HairColor), look.HairColor);
     }
 }

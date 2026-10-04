@@ -81,8 +81,9 @@ internal sealed record SelectionCard(
             person.IsAlive ? "Knows" : "Knew",
             InspectorText.ForKnowledge(person.KnownTechniques, world.Configuration.SkillCatalog),
             // Standing even for the dead: a portrait is of who they were, not of the body on the
-            // ground - the page drains it of colour instead.
-            PersonLook.For(person.Id.Seed, person.Sex, lyingDown: false),
+            // ground - the page drains it of colour instead. At the age they are or were last
+            // seen at, the same as the figure in the world.
+            PersonLook.For(person.Id.Seed, person.Sex, Stature.StageAt(world.ExactAgeInYearsAt(person, person.DeathTick ?? world.Clock.CurrentTick), lifeCycle), lyingDown: false),
             person.IsAlive,
             // The person's page only, not the summary card: nothing in the simulation moves
             // fatigue yet, and the narrow strip down the edge has no room for a bar that says

@@ -347,24 +347,25 @@ def robe_silhouette(rng, sx, sy):
     return [(sx(x), sy(y)) for x, y in blended]
 
 
-def arm_points(side, elbow_bulge):
+def arm_points(side, elbow_bulge, prop=None):
     """Perimeter order, so the polygon stays simple - mirroring by a multiplier tangled the
     inner and outer edges into a bowtie."""
+    prop = ADULT if prop is None else prop
     if side == "l":
-        shoulder_outer, shoulder_inner = 22, 26
-        wrist_inner, wrist_outer = 24, 19
+        shoulder_outer, shoulder_inner = 64 - prop.arm_shoulder_outer, 64 - prop.arm_shoulder_inner
+        wrist_inner, wrist_outer = 64 - prop.arm_wrist_inner, 64 - prop.arm_wrist_outer
         bulge_dir = -1
     else:
-        shoulder_outer, shoulder_inner = 42, 38
-        wrist_inner, wrist_outer = 40, 45
+        shoulder_outer, shoulder_inner = prop.arm_shoulder_outer, prop.arm_shoulder_inner
+        wrist_inner, wrist_outer = prop.arm_wrist_inner, prop.arm_wrist_outer
         bulge_dir = 1
     return [
-        (shoulder_outer, 24),
-        (shoulder_inner, 24),
-        (wrist_inner + bulge_dir * elbow_bulge * 0.4, 34),
-        (wrist_inner, 44),
-        (wrist_outer, 43),
-        (wrist_outer + bulge_dir * elbow_bulge, 34),
+        (shoulder_outer, prop.arm_shoulder_y),
+        (shoulder_inner, prop.arm_shoulder_y),
+        (wrist_inner + bulge_dir * elbow_bulge * 0.4, prop.arm_elbow_y),
+        (wrist_inner, prop.arm_wrist_inner_y),
+        (wrist_outer, prop.arm_wrist_outer_y),
+        (wrist_outer + bulge_dir * elbow_bulge, prop.arm_elbow_y),
     ]
 
 
@@ -380,6 +381,74 @@ def cowled_hood_mask(rng):
 # The left boot: cuff, toe box and a heel past the ankle. The right boot mirrors around x=32.
 LEFT_BOOT_PTS = [(25, 55), (30, 55), (31, 57), (29, 59), (22, 58), (23, 56)]
 RIGHT_BOOT_PTS = [(64 - x, y) for x, y in LEFT_BOOT_PTS]
+
+
+class Proportions:
+    """Where the parts of a standing person sit on the 64-unit grid. Everything the body, hair
+    and clothing layers draw comes from one of these, so a child is a second set of numbers
+    rather than a second set of drawing code. Both share the canvas and the ground line (the
+    boots end at y=59); only the proportions differ."""
+
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+    def head_point(self, x, y):
+        """Maps a point authored against the adult head onto this head."""
+        return (self.head_cx + (x - ADULT_HEAD[0]) * self.head_rx / ADULT_HEAD[2],
+                self.head_cy + (y - ADULT_HEAD[1]) * self.head_ry / ADULT_HEAD[3])
+
+    def robe_point(self, x, y):
+        """Maps a point authored against the adult torso (ROBE_VARIANTS) onto this torso:
+        x scaled around the centre line, y from the adult shoulder line to this one."""
+        if self.robe_xf is None:
+            return (x, y)
+        sx, top_y, sy, adult_top = self.robe_xf
+        return (32 + (x - 32) * sx, top_y + (y - adult_top) * sy)
+
+
+ADULT_HEAD = (32, 15, 8, 9)
+
+ADULT = Proportions(
+    head_cx=32, head_cy=15, head_rx=8, head_ry=9,
+    eyes=[(28, 15, 29, 16), (35, 15, 36, 16)],
+    hair_cap=(27, 8, 37, 11),
+    # torso: half widths at the shoulder, waist and hip heights, plus the bottom edge
+    torso_top_y=22, torso_shoulder_half=5,
+    torso_waist_y=34, torso_waist_half=7,
+    torso_hip_y=44, torso_hip_half=10,
+    torso_bottom_y=55, torso_bottom_inset=2,
+    legs=[(26, 46, 30, 56), (34, 46, 38, 56)],
+    boots=LEFT_BOOT_PTS,
+    # arms, right side (the left mirrors around x=32)
+    arm_shoulder_y=24, arm_shoulder_outer=42, arm_shoulder_inner=38,
+    arm_elbow_y=34, arm_wrist_inner=40, arm_wrist_inner_y=44,
+    arm_wrist_outer=45, arm_wrist_outer_y=43,
+    hand_dx=11, hand_y=45, hand_r=3,
+    robe_xf=None, belt=(24, 38, 40, 39),
+)
+
+# A child, from the PEOPLE row of docs/ZemanConceptArt.png (measurements in
+# art/prototypes/child-sprites/notes.md): same canvas, same top and same ground line as the
+# adult, but a bigger head, narrower shoulders, shorter arms and legs. Size on screen is the
+# game's own scaling, so the figure is not drawn small.
+CHILD = Proportions(
+    head_cx=32, head_cy=17, head_rx=9.5, head_ry=10.5,
+    eyes=[(28, 19, 29.5, 20.5), (34.5, 19, 36, 20.5)],
+    hair_cap=(26, 7, 38, 12.5),
+    torso_top_y=27, torso_shoulder_half=4.5,
+    torso_waist_y=37, torso_waist_half=5.5,
+    torso_hip_y=43, torso_hip_half=6.5,
+    torso_bottom_y=52, torso_bottom_inset=1.5,
+    legs=[(28, 45, 31, 56), (33, 45, 36, 56)],
+    boots=[(32 + (x - 32) * 0.9, 59 + (y - 59) * 0.9) for x, y in LEFT_BOOT_PTS],
+    arm_shoulder_y=28, arm_shoulder_outer=39, arm_shoulder_inner=36,
+    arm_elbow_y=34.5, arm_wrist_inner=37.5, arm_wrist_inner_y=41,
+    arm_wrist_outer=41, arm_wrist_outer_y=40,
+    hand_dx=9.5, hand_y=42, hand_r=2.6,
+    # the adult robe (shoulder line y=20, hem about y=51) squeezed onto the child torso
+    # (shoulder line y=26.5, hem about y=47)
+    robe_xf=(0.75, 26.5, 0.68, 20), belt=(26, 38.5, 38, 39.5),
+)
 
 CLOAK_OPTIONS = [
     rgb(0.34, 0.24, 0.16),  # sepia
@@ -479,39 +548,46 @@ BODY_UNDERCLOTHES = rgb(0.55, 0.50, 0.45)
 NEUTRAL_RECOLOURABLE = rgb(0.82, 0.80, 0.78)
 
 
-def _body_layer(gender):
+def _body_layer(gender, prop=ADULT, name=None):
     """Boots, hands, head and a plain covered torso/legs, kept simple since clothing and hair
     cover nearly all of it. Only the hip width differs by gender."""
-    seed = seed_for(f"body_{gender}")
+    seed = seed_for(name or f"body_{gender}")
     rng = random.Random(seed)
     c = Canvas(seed)
 
     hip_scale = 1.12 if gender == "female" else 1.0
-    hip_l, hip_r = 32 - (10 * hip_scale), 32 + (10 * hip_scale)
+    hip_l, hip_r = 32 - (prop.torso_hip_half * hip_scale), 32 + (prop.torso_hip_half * hip_scale)
 
-    c.fill(rect(26, 46, 30, 56) | rect(34, 46, 38, 56), BOOT)
-    boot_l = poly(jagged_poly(LEFT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
-    boot_r = poly(jagged_poly(RIGHT_BOOT_PTS, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
+    leg_l, leg_r = prop.legs
+    c.fill(rect(*leg_l) | rect(*leg_r), BOOT)
+    boot_pts_l = prop.boots
+    boot_pts_r = [(64 - x, y) for x, y in boot_pts_l]
+    boot_l = poly(jagged_poly(boot_pts_l, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
+    boot_r = poly(jagged_poly(boot_pts_r, rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
     c.fill(boot_l | boot_r, darken(BOOT, 0.25))
 
+    sh, wa = prop.torso_shoulder_half, prop.torso_waist_half
     torso_pts = [
-        (27, 22), (37, 22), (39, 34), (hip_r, 44),
-        (hip_r - 2, 55), (hip_l + 2, 55), (hip_l, 44), (25, 34),
+        (32 - sh, prop.torso_top_y), (32 + sh, prop.torso_top_y),
+        (32 + wa, prop.torso_waist_y), (hip_r, prop.torso_hip_y),
+        (hip_r - prop.torso_bottom_inset, prop.torso_bottom_y),
+        (hip_l + prop.torso_bottom_inset, prop.torso_bottom_y),
+        (hip_l, prop.torso_hip_y), (32 - wa, prop.torso_waist_y),
     ]
     torso = poly(jagged_poly(torso_pts, rng, amp=0.8, segments_per_edge=3, smooth_passes=1))
     c.fill(torso, BODY_UNDERCLOTHES)
 
     elbow_bulge = rng.uniform(0.5, 2.5)
-    arm_l = poly(jagged_poly(arm_points("l", elbow_bulge), rng, amp=0.8, segments_per_edge=3))
-    arm_r = poly(jagged_poly(arm_points("r", elbow_bulge), rng, amp=0.8, segments_per_edge=3))
+    arm_l = poly(jagged_poly(arm_points("l", elbow_bulge, prop), rng, amp=0.8, segments_per_edge=3))
+    arm_r = poly(jagged_poly(arm_points("r", elbow_bulge, prop), rng, amp=0.8, segments_per_edge=3))
     c.fill(arm_l, SKIN)
     c.fill(arm_r, SKIN)
-    c.fill(ellipse(21, 45, 3, 3), SKIN)
-    c.fill(ellipse(43, 45, 3, 3), SKIN)
+    c.fill(ellipse(32 - prop.hand_dx, prop.hand_y, prop.hand_r, prop.hand_r), SKIN)
+    c.fill(ellipse(32 + prop.hand_dx, prop.hand_y, prop.hand_r, prop.hand_r), SKIN)
 
-    c.fill(ellipse(32, 15, 8, 9), SKIN)
-    c.flat(rect(28, 15, 29, 16), rgb(0.10, 0.09, 0.10))
-    c.flat(rect(35, 15, 36, 16), rgb(0.10, 0.09, 0.10))
+    c.fill(ellipse(prop.head_cx, prop.head_cy, prop.head_rx, prop.head_ry), SKIN)
+    for eye in prop.eyes:
+        c.flat(rect(*eye), rgb(0.10, 0.09, 0.10))
 
     c.rough_outline(width=max(1, SCALE // 2))
     return c
@@ -525,27 +601,34 @@ def person_body_female():
     return _body_layer("female")
 
 
-def hair_short():
+def _hair_cap(prop):
+    return rect(*prop.hair_cap) & ellipse(prop.head_cx, prop.head_cy, prop.head_rx, prop.head_ry)
+
+
+def _hair_points(prop, points):
+    return points if prop is ADULT else [prop.head_point(x, y) for x, y in points]
+
+
+def hair_short(prop=ADULT, name="hair_short"):
     """A close-cropped cap on its own transparent layer."""
-    seed = seed_for("hair_short")
+    seed = seed_for(name)
     c = Canvas(seed)
-    mask = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
-    c.flat(mask, NEUTRAL_RECOLOURABLE)
+    c.flat(_hair_cap(prop), NEUTRAL_RECOLOURABLE)
     c.rough_outline(width=1)
     return c
 
 
-def hair_long():
-    seed = seed_for("hair_long")
+def hair_long(prop=ADULT, name="hair_long"):
+    seed = seed_for(name)
     rng = random.Random(seed)
     c = Canvas(seed)
-    top = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
+    top = _hair_cap(prop)
     left = poly(jagged_poly(
-        [(24, 10), (28, 9), (26, 26), (22, 30), (20, 24)],
+        _hair_points(prop, [(24, 10), (28, 9), (26, 26), (22, 30), (20, 24)]),
         rng, amp=0.6, segments_per_edge=2, smooth_passes=1,
     ))
     right = poly(jagged_poly(
-        [(40, 10), (36, 9), (38, 26), (42, 30), (44, 24)],
+        _hair_points(prop, [(40, 10), (36, 9), (38, 26), (42, 30), (44, 24)]),
         rng, amp=0.6, segments_per_edge=2, smooth_passes=1,
     ))
     c.fill(top | left | right, NEUTRAL_RECOLOURABLE)
@@ -553,13 +636,13 @@ def hair_long():
     return c
 
 
-def hair_tied():
-    seed = seed_for("hair_tied")
+def hair_tied(prop=ADULT, name="hair_tied"):
+    seed = seed_for(name)
     rng = random.Random(seed)
     c = Canvas(seed)
-    top = rect(27, 8, 37, 11) & ellipse(32, 15, 8, 9)
+    top = _hair_cap(prop)
     tail = poly(jagged_poly(
-        [(30, 10), (34, 10), (35, 22), (32, 26), (29, 22)],
+        _hair_points(prop, [(30, 10), (34, 10), (35, 22), (32, 26), (29, 22)]),
         rng, amp=0.5, segments_per_edge=2, smooth_passes=1,
     ))
     c.fill(top | tail, NEUTRAL_RECOLOURABLE)
@@ -567,16 +650,16 @@ def hair_tied():
     return c
 
 
-def _clothing_layer(variant_index):
+def _clothing_layer(variant_index, prop=ADULT, name=None):
     """One of the ROBE_VARIANTS used directly, not blended: a discrete clothing type to pick
-    at runtime."""
-    seed = seed_for(f"clothing_{variant_index}")
+    at runtime. A child wears the same cut, mapped onto its torso by Proportions.robe_point."""
+    seed = seed_for(name or f"clothing_{variant_index}")
     rng = random.Random(seed)
     c = Canvas(seed)
-    pts = [(x, y) for x, y in ROBE_VARIANTS[variant_index]]
+    pts = [prop.robe_point(x, y) for x, y in ROBE_VARIANTS[variant_index]]
     body = poly(jagged_poly(pts, rng, amp=1.0, segments_per_edge=3, smooth_passes=2))
     c.fill(body, NEUTRAL_RECOLOURABLE)
-    c.flat(rect(24, 38, 40, 39) & body, lighten(NEUTRAL_RECOLOURABLE, 0.25))
+    c.flat(rect(*prop.belt) & body, lighten(NEUTRAL_RECOLOURABLE, 0.25))
     c.rough_outline(width=max(1, SCALE // 2))
     return c
 
@@ -593,16 +676,17 @@ def clothing_cloak():
     return _clothing_layer(2)
 
 
-def _dead_layer_drop():
+def _dead_layer_drop(body=None):
     """Ground-contact drop shared by every _dead layer, computed from the body (whose boots
     define the ground) so hair and clothing shift by exactly as much as the body they are
     paired with. Each layer's own lowest pixel differs and would misalign them."""
-    alpha = np.array(person_body_male().image())[..., 3] > 127
+    body = person_body_male if body is None else body
+    alpha = np.array(body().image())[..., 3] > 127
     rows = np.flatnonzero(np.rot90(alpha, k=1).any(axis=1))
     return (S - 6 * SCALE) - rows.max() if len(rows) else 0
 
 
-def _lay_down(image, seed):
+def _lay_down(image, seed, body=None):
     """Rotates a standing cutout 90 degrees onto its side and re-seats it at the shared ground
     line (_dead_layer_drop), so every composited layer gets a matching dead variant."""
     arr = np.array(image).astype(np.uint8)
@@ -611,10 +695,42 @@ def _lay_down(image, seed):
     mask = rot[..., 3] > 127
     c.rgb[mask] = rot[..., :3][mask]
     c.alpha |= mask
-    drop = _dead_layer_drop()
+    drop = _dead_layer_drop(body)
     c.rgb = np.roll(c.rgb, drop, axis=0)
     c.alpha = np.roll(c.alpha, drop, axis=0)
     return c
+
+
+def person_body_male_child():
+    return _body_layer("male", CHILD, "body_male_child")
+
+
+def person_body_female_child():
+    return _body_layer("female", CHILD, "body_female_child")
+
+
+def hair_short_child():
+    return hair_short(CHILD, "hair_short_child")
+
+
+def hair_long_child():
+    return hair_long(CHILD, "hair_long_child")
+
+
+def hair_tied_child():
+    return hair_tied(CHILD, "hair_tied_child")
+
+
+def clothing_robe_child():
+    return _clothing_layer(0, CHILD, "clothing_0_child")
+
+
+def clothing_tunic_child():
+    return _clothing_layer(1, CHILD, "clothing_1_child")
+
+
+def clothing_cloak_child():
+    return _clothing_layer(2, CHILD, "clothing_2_child")
 
 
 def person_body_male_dead():
@@ -647,6 +763,43 @@ def clothing_tunic_dead():
 
 def clothing_cloak_dead():
     return _lay_down(clothing_cloak().image(), seed_for("clothing_cloak_dead"))
+
+
+def _child_dead(layer, name):
+    """A child layer laid down, seated by the child body so the layers stay aligned."""
+    return _lay_down(layer().image(), seed_for(name), person_body_male_child)
+
+
+def person_body_male_child_dead():
+    return _child_dead(person_body_male_child, "person_body_male_child_dead")
+
+
+def person_body_female_child_dead():
+    return _child_dead(person_body_female_child, "person_body_female_child_dead")
+
+
+def hair_short_child_dead():
+    return _child_dead(hair_short_child, "hair_short_child_dead")
+
+
+def hair_long_child_dead():
+    return _child_dead(hair_long_child, "hair_long_child_dead")
+
+
+def hair_tied_child_dead():
+    return _child_dead(hair_tied_child, "hair_tied_child_dead")
+
+
+def clothing_robe_child_dead():
+    return _child_dead(clothing_robe_child, "clothing_robe_child_dead")
+
+
+def clothing_tunic_child_dead():
+    return _child_dead(clothing_tunic_child, "clothing_tunic_child_dead")
+
+
+def clothing_cloak_child_dead():
+    return _child_dead(clothing_cloak_child, "clothing_cloak_child_dead")
 
 
 def _wood_log(canvas, cx, cy, rx, ry, bark_color, core_color, seed):
@@ -1456,6 +1609,75 @@ def deer():
 
     # darker back line along the spine
     c.flat(_stroke([(12, 29), (22, 25.5), (38, 26.5)], 0.9) & body, darken(coat, 0.3))
+
+    c.rough_outline(width=max(1, SCALE // 2))
+    _seat_on_ground(c)
+    return c
+
+
+def deer_fawn():
+    """A fawn on the adult deer's canvas and ground line; the game shrinks it by age, so it is
+    not drawn small. What makes it young is the proportions: a small trunk on long thin legs, a
+    short neck, a big round head with a short muzzle and large ears, no antlers, and pale spots
+    along the back and flanks."""
+    seed = seed_for("deer_fawn")
+    rng = random.Random(seed)
+    c = Canvas(seed)
+    coat = rgb(0.58, 0.40, 0.24)
+    belly = rgb(0.82, 0.71, 0.54)
+    hoof = rgb(0.20, 0.15, 0.10)
+    spot = mix(coat, belly, 0.7)
+
+    def hind_leg(dx, lift):
+        return [(14 + dx, 36), (20 + dx, 36), (19 + dx, 43), (16.2 + dx, 48.5), (17.2 + dx, 59 - lift),
+                (18.6 + dx, 62.4 - lift), (16 + dx, 62.4 - lift), (15.9 + dx, 59 - lift),
+                (14.4 + dx, 50.5), (12.9 + dx, 48.5), (13.2 + dx, 43)]
+
+    def fore_leg(dx, lift):
+        return [(36 + dx, 36), (41 + dx, 36), (40.4 + dx, 44), (40 + dx, 50), (40.2 + dx, 51.5),
+                (39.9 + dx, 59 - lift), (41.3 + dx, 62.4 - lift), (38.7 + dx, 62.4 - lift),
+                (38.5 + dx, 59 - lift), (38.4 + dx, 51.5), (38 + dx, 50), (37.4 + dx, 44)]
+
+    legs_far = [hind_leg(5.5, 0.5), fore_leg(-4.5, 0)]
+    legs_near = [hind_leg(0, 0), fore_leg(0, 0)]
+    for points, tone in [(pts, darken(coat, 0.25)) for pts in legs_far] + [(pts, coat) for pts in legs_near]:
+        leg = poly(jagged_poly(points, rng, amp=0.1, segments_per_edge=1, smooth_passes=0))
+        c.fill(leg, tone)
+        hoof_mask = leg & (_YY >= (points[5][1] - 1.6) * SCALE)
+        c.flat(hoof_mask, hoof)
+
+    body = poly(jagged_poly(
+        [(11, 31), (20, 27), (33, 28), (42, 30), (42, 40), (31, 43), (18, 42), (10, 37)],
+        rng, amp=0.5, segments_per_edge=3, smooth_passes=1))
+    neck = poly(jagged_poly(
+        [(35, 32), (40, 22), (46, 21), (46, 29), (43, 36)], rng, amp=0.4, segments_per_edge=2))
+    c.fill(body | neck, coat)
+    c.flat(ellipse(29, 43, 12, 3) & body, belly)
+    c.flat(ellipse(44.5, 30, 2.2, 3.5) & (body | neck), belly)  # pale throat
+
+    head = poly(jagged_poly(
+        [(39, 19), (42, 14), (48, 12), (53, 15), (54.5, 19.5), (52.5, 22.5), (48, 24), (42, 24)],
+        rng, amp=0.3, segments_per_edge=2, smooth_passes=1))
+    c.fill(head, coat)
+    c.flat(ellipse(53.6, 19.6, 1.1, 0.9), hoof)  # nose
+    c.flat(ellipse(48.2, 17.6, 1.1, 1.1), INK)  # eye, big for the size of the face
+    c.fill(poly([(42, 14.5), (36, 8.5), (35.5, 16.5)]), darken(coat, 0.1))  # far ear
+    c.fill(poly([(46, 13), (43.5, 5.5), (50, 11.5)]), darken(coat, 0.1))    # near ear
+    c.flat(poly([(46.4, 11.8), (44.4, 7.2), (48.6, 10.8)]), belly)         # pale inside of the near ear
+
+    c.flat(ellipse(11.5, 35, 2.8, 4.4) & body, belly)  # rump patch
+    tail = poly(jagged_poly([(11, 31.5), (9, 32.3), (8.4, 35), (9.2, 37), (10.6, 35.5)],
+                            rng, amp=0.2, segments_per_edge=2, smooth_passes=1))
+    c.fill(tail, darken(coat, 0.2))
+
+    # spots in loose rows along the back and over the flanks, each jittered so none lines up
+    for sx, sy in [(15, 31), (21, 29.5), (27, 29.5), (33, 30), (38, 32),
+                   (17, 36), (24, 35), (31, 36), (37, 37), (21, 40), (28, 40.5)]:
+        sx += rng.uniform(-0.8, 0.8)
+        sy += rng.uniform(-0.6, 0.6)
+        c.flat(ellipse(sx, sy, rng.uniform(1.1, 1.5), rng.uniform(0.8, 1.1)) & body, spot)
+
+    c.flat(_stroke([(12, 30), (21, 27.5), (34, 28.5)], 0.8) & body, darken(coat, 0.3))
 
     c.rough_outline(width=max(1, SCALE // 2))
     _seat_on_ground(c)
@@ -2351,6 +2573,22 @@ SPRITES = {
     "clothing_robe_dead": clothing_robe_dead,
     "clothing_tunic_dead": clothing_tunic_dead,
     "clothing_cloak_dead": clothing_cloak_dead,
+    "person_body_male_child": person_body_male_child,
+    "person_body_female_child": person_body_female_child,
+    "hair_short_child": hair_short_child,
+    "hair_long_child": hair_long_child,
+    "hair_tied_child": hair_tied_child,
+    "clothing_robe_child": clothing_robe_child,
+    "clothing_tunic_child": clothing_tunic_child,
+    "clothing_cloak_child": clothing_cloak_child,
+    "person_body_male_child_dead": person_body_male_child_dead,
+    "person_body_female_child_dead": person_body_female_child_dead,
+    "hair_short_child_dead": hair_short_child_dead,
+    "hair_long_child_dead": hair_long_child_dead,
+    "hair_tied_child_dead": hair_tied_child_dead,
+    "clothing_robe_child_dead": clothing_robe_child_dead,
+    "clothing_tunic_child_dead": clothing_tunic_child_dead,
+    "clothing_cloak_child_dead": clothing_cloak_child_dead,
     "wood": wood,
     "apple": apple,
     "pear": pear,
@@ -2423,6 +2661,7 @@ SPRITES = {
     "sinew": sinew,
     "rawhide_clothing": rawhide_clothing,
     "deer": deer,
+    "deer_fawn": deer_fawn,
     "tree_stump": tree_stump,
     "fallen_log": fallen_log,
     "selection_marker": selection_marker,

@@ -37,6 +37,12 @@ project/assembly_name="ManyWinters.Godot"
 
 enabled=PackedStringArray("res://addons/beckett/plugin.cfg")
 
+[importer_defaults]
+
+texture={
+"mipmaps/generate": true
+}
+
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.32, 0.29, 0.26, 1)

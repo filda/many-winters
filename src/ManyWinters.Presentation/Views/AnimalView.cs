@@ -35,11 +35,12 @@ internal partial class AnimalView : CreatureView
     private readonly Color _fallbackColor;
 
     private SpriteLayer _body = null!;
+    private Color _tintedFallback;
     private Color _aliveModulate;
 
     // Internal, like other view constructors: only WorldPresenter builds views.
-    internal AnimalView(Animal animal, PresentationSettings presentation, HoverArbiter hover, Action<Animal, MouseButton> onClicked, InputEventEventHandler onMissedClick)
-        : base(animal, NominalHeightFor(animal.Species), presentation, hover, onMissedClick)
+    internal AnimalView(Animal animal, LifeCycle lifeCycle, double ageInYears, PresentationSettings presentation, HoverArbiter hover, Action<Animal, MouseButton> onClicked, InputEventEventHandler onMissedClick)
+        : base(animal, lifeCycle, ageInYears, NominalHeightFor(animal.Species), presentation, hover, onMissedClick)
     {
         _animal = animal;
         _species = animal.Species;
@@ -53,16 +54,16 @@ internal partial class AnimalView : CreatureView
 
     protected override void Build()
     {
-        var scale = EntityVisualVariation.RangeFor(_animal.Id.Seed, ScaleSalt, MinScale, MaxScale);
-        ScaleAndKeepGroundContact(scale, scale);
+        ApplySeedScale(EntityVisualVariation.RangeFor(_animal.Id.Seed, ScaleSalt, MinScale, MaxScale));
         InitializeMotion();
 
         SetUpGroundShadow(Size * ShadowDiameterRatio);
 
         // Every layer excluded from the occlusion fade, the same call PersonView makes: an animal
         // is no bigger a thing to hide behind than a person is.
-        var texturePath = TexturePathFor(_species);
-        var sprite = BillboardSprite.Create(texturePath, Size, EntityVisualVariation.Tint(_fallbackColor, _animal.Id.Seed), excludeFromOcclusionFade: true);
+        var texturePath = TexturePathFor(_species, Stage);
+        _tintedFallback = EntityVisualVariation.Tint(_fallbackColor, _animal.Id.Seed);
+        var sprite = BillboardSprite.Create(texturePath, Size, _tintedFallback, excludeFromOcclusionFade: true);
         _aliveModulate = sprite.Modulate;
         _body = Register(sprite, texturePath);
     }
@@ -90,10 +91,32 @@ internal partial class AnimalView : CreatureView
     protected override void OnDecayedChanged() =>
         _body.BaseModulate = PersonLook.TintFor(isAlive: false, isDecayed: true)!.Value;
 
+    // The young picture is another silhouette from the grown one, and a young animal that dies
+    // stays young: the texture is worked out for the state it is in, living, dead or decayed.
+    protected override void OnStageChanged(LifeStage stage)
+    {
+        var tint = PersonLook.TintFor(IsAlive, IsDecayed) ?? _aliveModulate;
+        Retexture(_body, TexturePathFor(_species, stage), tint, _tintedFallback);
+        RefreshCollisionShape();
+    }
+
     // A kind with a species PNG (res://Content/species/{id}/{id}.png) draws it; absent,
     // sprite creation already falls back to a flat tinted quad, so a new species is visible
-    // before anyone has drawn it.
-    private static string TexturePathFor(SpeciesId species) => $"res://Content/species/{species.Value}/{species.Value}.png";
+    // before anyone has drawn it. A young animal takes its species' young picture where one has
+    // been drawn, else the grown one.
+    private static string TexturePathFor(SpeciesId species, LifeStage stage)
+    {
+        if (TexturePaths.IsYoung(stage))
+        {
+            var young = TexturePaths.ForYoungSpecies(species);
+            if (ResourceLoader.Exists(young))
+            {
+                return young;
+            }
+        }
+
+        return TexturePaths.ForSpecies(species);
+    }
 
     // A species' own height where its .tres sets one, else a plausible default rather than a
     // resource's decoration-scale fallback. Static because the base class needs it before this

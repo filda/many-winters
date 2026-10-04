@@ -1,3 +1,4 @@
+using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
 using ManyWinters.Presentation.Logic;
 
@@ -49,5 +50,27 @@ public class TexturePathTests
         Assert.Equal(
             "res://Content/buildings/storage_hut/storage_hut.png",
             TexturePaths.ForBuilding(new EntityKindId("storage_hut")));
+    }
+
+    [Fact]
+    public void ASpeciesIsDrawnFromItsOwnFolderUnderItsOwnName()
+    {
+        Assert.Equal("res://Content/species/deer/deer.png", TexturePaths.ForSpecies(new SpeciesId("deer")));
+    }
+
+    [Fact]
+    public void TheYoungPictureSitsBesideTheGrownOneWithASuffix()
+    {
+        Assert.Equal("res://Content/species/deer/deer_fawn.png", TexturePaths.ForYoungSpecies(new SpeciesId("deer")));
+    }
+
+    [Theory]
+    [InlineData(LifeStage.Infant, true)]
+    [InlineData(LifeStage.Child, true)]
+    [InlineData(LifeStage.Adult, false)]
+    [InlineData(LifeStage.Elder, false)]
+    public void OnlyInfantAndChildAreDrawnYoung(LifeStage stage, bool expected)
+    {
+        Assert.Equal(expected, TexturePaths.IsYoung(stage));
     }
 }
