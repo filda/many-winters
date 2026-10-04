@@ -121,6 +121,30 @@ public class SaveGameServiceTests
     }
 
     [Fact]
+    public void ARestoredWorldFindsItsEntitiesByWhereTheyStand()
+    {
+        // Loading files entities by a path of its own, not AddEntity; a nearby search that came
+        // back empty after a load would leave the band unable to find anything to gather.
+        var world = TestCatalogs.CreateWorld();
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(4f, 5f), 42f);
+        world.SpawnResourceNode(TestCatalogs.Apple, new Position(400f, 500f), 42f);
+
+        var path = Path.Combine(Path.GetTempPath(), $"manywinters-savetest-{Guid.NewGuid():N}.json");
+        try
+        {
+            SaveGameService.Save(world, path);
+            var restored = SaveGameService.Load(path, TestCatalogs.CreateConfiguration());
+
+            var found = Assert.Single(restored.EntitiesWithin(new Position(0, 0), 10));
+            Assert.Equal(new Position(4f, 5f), found.Position);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void RoundTripPreservesFamilyTiesAndCauseOfDeath()
     {
         var world = TestCatalogs.CreateWorld();

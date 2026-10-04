@@ -9,7 +9,12 @@ public sealed class ResourceCatalog
     public ResourceCatalog(IEnumerable<ResourceDefinition> definitions)
     {
         _definitions = definitions.ToDictionary(d => d.Id);
+        MaxCollisionRadius = _definitions.Values.Select(d => d.CollisionRadius).DefaultIfEmpty(0f).Max();
     }
+
+    // The widest any growing thing stands, so a collision search knows how far out an obstacle
+    // can still reach a creature.
+    public float MaxCollisionRadius { get; }
 
     public static ResourceCatalog LoadFromDirectory(string rootPath)
         => LoadFromJson(JsonDefinitions.ReadDirectory(rootPath));

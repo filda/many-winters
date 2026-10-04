@@ -94,6 +94,35 @@ public class BoxBlurTests
         Assert.Equal(1f, total, 4);
     }
 
+    [Fact]
+    public void EveryCellIsTheMeanOfItsClampedWindowInBothDirections()
+    {
+        // An irregular field and a window wider than a third of the grid: a sliding sum that let
+        // one sample in or out at the wrong place would be off somewhere along every line.
+        const int size = 9;
+        const int radius = 3;
+        var source = Grid(size, (x, y) => ((x * 7) + (y * 13)) % 5);
+
+        var blurred = BoxBlur.Blur(source, radius);
+
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var sum = 0f;
+                for (var dy = -radius; dy <= radius; dy++)
+                {
+                    for (var dx = -radius; dx <= radius; dx++)
+                    {
+                        sum += source[Math.Clamp(y + dy, 0, size - 1), Math.Clamp(x + dx, 0, size - 1)];
+                    }
+                }
+
+                Assert.Equal(sum / ((2 * radius) + 1) / ((2 * radius) + 1), blurred[y, x], 4);
+            }
+        }
+    }
+
     private static float[,] Grid(int size, Func<int, int, float> value)
     {
         var grid = new float[size, size];

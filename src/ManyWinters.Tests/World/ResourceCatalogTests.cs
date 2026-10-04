@@ -28,6 +28,24 @@ public class ResourceCatalogTests
     }
 
     [Fact]
+    public void MaxCollisionRadiusIsTheWidestOfAnyDefinition()
+    {
+        var catalog = new ResourceCatalog([
+            new ResourceDefinition(TestCatalogs.Apple, "Apple", TestCatalogs.Foraging, CollisionRadius: 0.4f),
+            new ResourceDefinition(TestCatalogs.Pear, "Pear", TestCatalogs.Foraging, CollisionRadius: 1.2f),
+            new ResourceDefinition(TestCatalogs.Mushroom, "Mushroom", TestCatalogs.Foraging),
+        ]);
+
+        Assert.Equal(1.2f, catalog.MaxCollisionRadius);
+    }
+
+    [Fact]
+    public void AnEmptyCatalogHasNothingToCollideWith()
+    {
+        Assert.Equal(0f, new ResourceCatalog([]).MaxCollisionRadius);
+    }
+
+    [Fact]
     public void LoadFromDirectoryReadsOneDefinitionPerSubdirectory()
     {
         var root = Path.Combine(Path.GetTempPath(), $"manywinters-resourcecatalog-{Guid.NewGuid():N}");

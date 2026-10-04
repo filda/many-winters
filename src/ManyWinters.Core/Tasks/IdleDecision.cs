@@ -267,10 +267,11 @@ public static class IdleDecision
         return NearestGatherableEntity(
                 world,
                 creature,
-                nearestTo: creature.Position,
+                home.Anchor,
+                home.Radius + margin,
                 matches,
-                inBounds: entity => WorldState.Distance(home.Anchor, entity.Position) <= home.Radius + margin && HasAFullHarvestFor(world, creature, entity))
-            ?? NearestGatherableEntity(world, creature, nearestTo: creature.Position, matches, inBounds: entity => WorldState.Distance(home.Anchor, entity.Position) <= world.Configuration.Rules.IdleSearchRadius);
+                alsoRequires: entity => HasAFullHarvestFor(world, creature, entity))
+            ?? NearestGatherableEntity(world, creature, home.Anchor, world.Configuration.Rules.IdleSearchRadius, matches, alsoRequires: null);
     }
 
     // IsWorthGathering has already confirmed entity.Growth is alive by the time this runs
@@ -278,18 +279,27 @@ public static class IdleDecision
     private static bool HasAFullHarvestFor(WorldState world, Creature creature, Entity entity) =>
         GatherCommand.WouldYieldAFullHarvest(world, creature, world.Configuration.ResourceCatalog.Get(entity.Kind), entity.Growth!.RemainingAmount);
 
-    private static Entity? NearestGatherableEntity(WorldState world, Creature creature, Position nearestTo, Func<ResourceDefinition, bool> matches, Func<Entity, bool> inBounds)
+    // Only the entities inside the bound are read at all: with every decoration a gatherable
+    // entity nearly all of the map lies outside any one home, and pricing each of them was nearly
+    // the whole tick.
+    private static Entity? NearestGatherableEntity(WorldState world, Creature creature, Position boundsCenter, double boundsRadius, Func<ResourceDefinition, bool> matches, Func<Entity, bool>? alsoRequires)
     {
         Entity? nearest = null;
         var nearestDistance = double.MaxValue;
-        foreach (var entity in world.Entities)
+        foreach (var entity in world.EntitiesWithin(boundsCenter, boundsRadius))
         {
-            if (!IsWorthGathering(world, creature, entity) || !matches(world.Configuration.ResourceCatalog.Get(entity.Kind)) || !inBounds(entity))
+            // Kind before amount: whether the creature knows the skill is one lookup, what a
+            // harvest would yield is priced through the catalogs, and a band that knows little
+            // turns nearly everything down on the first.
+            if (entity.Growth is null
+                || !matches(world.Configuration.ResourceCatalog.Get(entity.Kind))
+                || !IsWorthGathering(world, creature, entity)
+                || (alsoRequires is not null && !alsoRequires(entity)))
             {
                 continue;
             }
 
-            var distance = WorldState.Distance(nearestTo, entity.Position);
+            var distance = WorldState.Distance(creature.Position, entity.Position);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;

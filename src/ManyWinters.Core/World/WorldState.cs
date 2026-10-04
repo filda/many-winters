@@ -14,10 +14,15 @@ public sealed class WorldState
     // A floor, not a tuning knob - a building can't be in negative repair.
     private const float MinCondition = 0f;
 
+    // Bucket size for what-is-near-here lookups: a few cells across a home's grazing radius, few
+    // enough entities in each that a creature's own neighbourhood reads quickly.
+    private const double EntityGridCellMeters = 16;
+
     private readonly List<Person> _people = new();
     private readonly List<Person> _forebears = new();
     private readonly List<Animal> _animals = new();
     private readonly List<Entity> _entities = new();
+    private readonly EntityGrid _entityGrid = new(EntityGridCellMeters);
     private readonly List<Grave> _graves = new();
     private readonly List<HomeRange> _homeRanges = new();
     private readonly float _cellSizeMeters;
@@ -103,6 +108,9 @@ public sealed class WorldState
         return Math.Sqrt((dx * dx) + (dy * dy));
     }
 
+    // The entities no further than radius from center, in the order Entities lists them.
+    public IReadOnlyList<Entity> EntitiesWithin(Position center, double radius) => _entityGrid.Within(center, radius);
+
     // Add* take a finished object: what it is made of is the caller's business
     // (SpawnPersonCommand, BuryCommand, ...), the world only keeps the list and tells the
     // presentation layer. Ids are drawn by the entity itself.
@@ -134,6 +142,7 @@ public sealed class WorldState
     public void AddEntity(Entity entity)
     {
         _entities.Add(entity);
+        _entityGrid.Add(entity);
         EntityAdded?.Invoke(entity);
     }
 
@@ -154,6 +163,7 @@ public sealed class WorldState
     public void RemoveEntity(Entity entity)
     {
         _entities.Remove(entity);
+        _entityGrid.Remove(entity);
         EntityRemoved?.Invoke(entity);
     }
 
@@ -370,7 +380,11 @@ public sealed class WorldState
 
     internal void RestoreAnimal(Animal animal) => _animals.Add(animal);
 
-    internal void RestoreEntity(Entity entity) => _entities.Add(entity);
+    internal void RestoreEntity(Entity entity)
+    {
+        _entities.Add(entity);
+        _entityGrid.Add(entity);
+    }
 
     internal void RestoreGrave(Grave grave) => _graves.Add(grave);
 

@@ -37,7 +37,9 @@ public static class Collisions
         {
             var creature = creatures[i];
             var (pushX, pushY) = pushes[i];
-            foreach (var entity in world.Entities)
+            // Only what stands close enough to touch: nothing further than both radii at their
+            // widest can push.
+            foreach (var entity in world.EntitiesWithin(creature.Position, radii[i] + resourceCatalog.MaxCollisionRadius))
             {
                 if (entity.Growth is not { IsAlive: true })
                 {

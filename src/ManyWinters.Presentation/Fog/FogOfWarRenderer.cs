@@ -134,16 +134,8 @@ public sealed class FogOfWarRenderer
 
         _distanceCells = GridDistanceField.DistanceToNearestTrue(masks.Explored);
 
-        var image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
-        var distanceImage = Image.CreateEmpty(size, size, false, Image.Format.Rf);
-        for (var ty = 0; ty < size; ty++)
-        {
-            for (var tx = 0; tx < size; tx++)
-            {
-                image.SetPixel(tx, ty, new Color(unexploredSharp[ty, tx], rememberedSharp[ty, tx], unexploredBlurred[ty, tx], rememberedBlurred[ty, tx]));
-                distanceImage.SetPixel(tx, ty, new Color(_distanceCells[ty, tx] * _grid.MetresPerTexel, 0f, 0f));
-            }
-        }
+        var image = Image.CreateFromData(size, size, false, Image.Format.Rgba8, TexelBytes.Rgba8(unexploredSharp, rememberedSharp, unexploredBlurred, rememberedBlurred));
+        var distanceImage = Image.CreateFromData(size, size, false, Image.Format.Rf, TexelBytes.Rf(_distanceCells, _grid.MetresPerTexel));
 
         _explorationTexture.Update(image);
         _distanceTexture.Update(distanceImage);
