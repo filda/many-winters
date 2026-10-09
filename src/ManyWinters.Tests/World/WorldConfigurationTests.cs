@@ -1,5 +1,6 @@
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Maps;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.World;
@@ -49,12 +50,13 @@ public class WorldConfigurationTests
                 "recipes" => [("axe.json", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""")],
                 "materials" => [("stone.json", """{ "id": "stone", "displayName": "Stone", "density": 2 }""")],
                 "forms" => [("wedge.json", """{ "id": "wedge", "displayName": "Wedge", "edgeSharpness": 1 }""")],
+                "terrain" => [("praha/features.json", """{ "rockAreas": [ { "rings": [ [[0, 0], [10, 0], [0, 7], [0, 0]] ] } ] }""")],
                 "items" => [("axe.json", """{ "id": "axe", "displayName": "Axe", "material": "stone", "form": "wedge", "volume": 2.5 }""")],
                 _ => throw new InvalidOperationException($"Unexpected catalog folder '{catalog}'."),
             };
         });
 
-        Assert.Equal(["species", "materials", "forms", "resources", "skills", "recipes", "items"], asked);
+        Assert.Equal(["species", "materials", "forms", "resources", "skills", "recipes", "items", "terrain"], asked);
         Assert.Equal("Human", configuration.SpeciesCatalog.Get(new SpeciesId("human")).DisplayName);
         Assert.Equal(10, configuration.SpeciesCatalog.Get(new SpeciesId("human")).LifeCycle.MaxLifespanYears);
         Assert.Equal("Apple", configuration.ResourceCatalog.Get(new EntityKindId("apple")).DisplayName);
@@ -66,6 +68,14 @@ public class WorldConfigurationTests
         Assert.Equal(5f, configuration.ItemCatalog.WeightFor(new ItemKindId("axe")));
         Assert.Same(SeasonParameters.Default, configuration.SeasonParameters);
         Assert.Same(SimulationRules.Default, configuration.Rules);
+        Assert.True(configuration.Terrain.IsRock(new Position(2.5, 1.5)));
+        Assert.False(configuration.Terrain.IsRock(new Position(8, 6)));
+    }
+
+    [Fact]
+    public void ANewConfigurationHasNoTerrainFeatures()
+    {
+        Assert.Same(TerrainFeatures.None, new WorldConfiguration().Terrain);
     }
 
     [Fact]
@@ -78,6 +88,7 @@ public class WorldConfigurationTests
         WriteDefinition(root, "recipes", "axe", """{ "output": "axe", "inputItem": "wood", "inputAmount": 5 }""");
         WriteDefinition(root, "materials", "stone", """{ "id": "stone", "displayName": "Stone", "density": 2 }""");
         WriteDefinition(root, "forms", "wedge", """{ "id": "wedge", "displayName": "Wedge", "edgeSharpness": 1 }""");
+        WriteDefinition(root, "terrain", "features", """{ "waterAreas": [ { "rings": [ [[0, 0], [10, 0], [0, 7], [0, 0]] ] } ] }""");
         WriteDefinition(root, "items", "axe", """{ "id": "axe", "displayName": "Axe", "material": "stone", "form": "wedge", "volume": 2.5 }""");
 
         try
@@ -92,6 +103,7 @@ public class WorldConfigurationTests
             Assert.Equal("Stone", configuration.MaterialCatalog.Find(new MaterialId("stone"))?.DisplayName);
             Assert.Equal("Wedge", configuration.FormCatalog.Find(new FormId("wedge"))?.DisplayName);
             Assert.Equal(5f, configuration.ItemCatalog.WeightFor(new ItemKindId("axe")));
+            Assert.True(configuration.Terrain.IsWater(new Position(2.5, 1.5)));
         }
         finally
         {

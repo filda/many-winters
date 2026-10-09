@@ -1,12 +1,14 @@
 using System.Text.Json;
 using Godot;
+using ManyWinters.Core.Maps;
+using ManyWinters.Core.World;
 using ManyWinters.Presentation.Logic;
 using ManyWinters.Presentation.Sprites;
 
 namespace ManyWinters.Presentation.Terrain;
 
 // Real-terrain rendering (docs/terrain-and-world-scale-architecture.md): loads one
-// elevation/waterway patch and builds it into its own subtree. Shared by the terrain sandbox
+// elevation/terrain-feature patch and builds it into its own subtree. Shared by the terrain sandbox
 // prototype and the game's own entry point so both render identical terrain.
 public sealed partial class TerrainRenderer : Node3D
 {
@@ -14,11 +16,23 @@ public sealed partial class TerrainRenderer : Node3D
     // constructs it - more than one caller renders this same patch, and neither is where the
     // shipped asset paths belong.
     private const string DefaultHeightmapPath = "res://Content/terrain/praha-liben/heightmap.json";
-    private const string DefaultWaterwaysPath = "res://Content/terrain/praha-liben/waterways.json";
+    private const string DefaultFeaturesPath = "res://Content/terrain/praha-liben/features.json";
     private const string DefaultGroundTexturePath = "res://Content/terrain/ground.png";
 
     private const float TextureTileMeters = 16f;
-    private const float WaterSurfaceOffset = 0.15f;
+    // How far water and rock layers float above the ground mesh, so they never z-fight it;
+    // water a little higher, so where a cliff meets a river the water lies on top.
+    private const float WaterLift = 0.15f;
+    private const float RockLift = 0.1f;
+    private const float RockRuggedness = 1f;
+
+    // How far the shader pushes a rock edge in or out, so a cliff's even strip has bays and
+    // spurs. Must stay within the exact-distance band, LayerBandCells cells of FineCellSize.
+    private const float RockEdgeWobble = 2f;
+    private const int LayerBandCells = 2;
+    private const string SurfaceLayerShaderPath = "res://Content/effects/surface_layer.gdshader";
+    private const string WaterShaderPath = "res://Content/effects/water_surface.gdshader";
+    private const string GroundShaderPath = "res://Content/effects/ground.gdshader";
 
     // Minimum gap so two decorations never land (near-)exactly on top of each other, which reads
     // as z-fighting rather than the deliberate clumped-forest overlap. Rejects only coincidence,
@@ -28,28 +42,40 @@ public sealed partial class TerrainRenderer : Node3D
 
     // Bump whenever the vertex/colour/UV formula in BuildMeshAndCollision changes shape: the hash
     // covers every value that goes into the mesh, not the code that combines them.
-    private const int TerrainMeshCacheVersion = 1;
+    private const int TerrainMeshCacheVersion = 3;
     private const string TerrainMeshCacheDirectory = "user://terrain_mesh_cache";
 
-    private static readonly Color LowColor = new(0.22f, 0.24f, 0.16f);
-    private static readonly Color HighColor = new(0.55f, 0.52f, 0.46f);
-    private static readonly Color WaterColor = new(0.24f, 0.34f, 0.40f, 0.8f);
+    // Dark and cool, so an outcrop does not read as a sandbank; the shader roughens it.
+    private static readonly Color RockColor = new(0.30f, 0.31f, 0.33f);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly string _groundTexturePath;
-    private readonly string _waterwaysPath;
     private Heightmap _heightmap = null!;
     private string _heightmapJson = null!;
+    private TerrainFeatures _features = TerrainFeatures.None;
+    private string _featuresJson = string.Empty;
+
+    // Water, worked out before the ground mesh because the ground is carved to lie under it:
+    // the water areas' signed distance and level per fine vertex, and the rivers in short
+    // stretches, each with its level at both ends.
+    private float[,] _waterDistances = null!;
+    private float[,] _waterLevels = null!;
+    private List<RiverStretch> _rivers = null!;
+
+    // Metres from each fine vertex to the nearest water, area or river - how much the grass
+    // there drinks from it.
+    private float[,] _waterProximity = null!;
 
     // Spatial hash (cell size = MinDecorationSpacing) of every decoration placed so far, across
     // every ScatterDecoration call - O(1)-ish neighbour lookup once the total reaches thousands.
     private readonly Dictionary<(int, int), List<Vector2>> _occupiedPositions = new();
 
-    private TerrainRenderer(string heightmapPath, string waterwaysPath, string groundTexturePath)
+    private TerrainRenderer(string heightmapPath, string featuresPath, string groundTexturePath)
     {
-        _waterwaysPath = waterwaysPath;
         _groundTexturePath = groundTexturePath;
         LoadHeightmap(heightmapPath);
+        LoadFeatures(featuresPath);
+        PrepareWater();
     }
 
     // Published rather than taken as a constructor callback: a click on the ground body is
@@ -66,9 +92,10 @@ public sealed partial class TerrainRenderer : Node3D
     // code to AddChild once and never construct a second one from these same paths.
     public static TerrainRenderer CreateDefault()
     {
-        var terrain = new TerrainRenderer(DefaultHeightmapPath, DefaultWaterwaysPath, DefaultGroundTexturePath);
+        var terrain = new TerrainRenderer(DefaultHeightmapPath, DefaultFeaturesPath, DefaultGroundTexturePath);
         terrain.BuildTerrainMesh();
         terrain.BuildWaterways();
+        terrain.BuildSurfaceLayers();
         return terrain;
     }
 
@@ -132,27 +159,32 @@ public sealed partial class TerrainRenderer : Node3D
 
     private static void AddTriangle(
         SurfaceTool tool,
-        (Vector3 Position, Color Color, Vector2 Uv) a,
-        (Vector3 Position, Color Color, Vector2 Uv) b,
-        (Vector3 Position, Color Color, Vector2 Uv) c)
+        (Vector3 Position, Color Color, Vector2 Uv2) a,
+        (Vector3 Position, Color Color, Vector2 Uv2) b,
+        (Vector3 Position, Color Color, Vector2 Uv2) c)
     {
         foreach (var vertex in new[] { a, b, c })
         {
             tool.SetColor(vertex.Color);
-            tool.SetUV(vertex.Uv);
+            tool.SetUV2(vertex.Uv2);
             tool.AddVertex(vertex.Position);
         }
     }
 
-    private static void AddPlainTriangle(SurfaceTool tool, Vector3 a, Vector3 b, Vector3 c)
-    {
-        tool.AddVertex(a);
-        tool.AddVertex(b);
-        tool.AddVertex(c);
-    }
-
     private static (int, int) CellFor(Vector2 position) =>
         ((int)MathF.Floor(position.X / MinDecorationSpacing), (int)MathF.Floor(position.Y / MinDecorationSpacing));
+
+    // Its colours, shallow and deep, live in the shader: nothing else draws water.
+    private static ShaderMaterial WaterMaterial() => new() { Shader = ResourceLoader.Load<Shader>(WaterShaderPath) };
+
+    private static ShaderMaterial RockMaterial()
+    {
+        var material = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(SurfaceLayerShaderPath) };
+        material.SetShaderParameter("albedo", RockColor);
+        material.SetShaderParameter("ruggedness", RockRuggedness);
+        material.SetShaderParameter("edge_wobble", RockEdgeWobble);
+        return material;
+    }
 
     private void BuildTerrainMesh()
     {
@@ -176,21 +208,12 @@ public sealed partial class TerrainRenderer : Node3D
             ResourceSaver.Save(collisionShape, shapeCachePath);
         }
 
-        var groundTexture = ResourceLoader.Load<Texture2D>(_groundTexturePath);
-        var meshInstance = new MeshInstance3D
-        {
-            Mesh = mesh,
-            MaterialOverride = new StandardMaterial3D
-            {
-                AlbedoTexture = groundTexture,
-                // LinearWithMipmaps to match how sprites are filtered; Nearest made the ground's
-                // tiling read as blocky next to them.
-                TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
-                VertexColorUseAsAlbedo = true,
-                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            },
-        };
-        AddChild(meshInstance);
+        // The shader samples the texture with mipmapped linear filtering, as sprites are filtered;
+        // Nearest made the ground's tiling read as blocky next to them.
+        var material = new ShaderMaterial { Shader = ResourceLoader.Load<Shader>(GroundShaderPath) };
+        material.SetShaderParameter("ground_texture", ResourceLoader.Load<Texture2D>(_groundTexturePath));
+        material.SetShaderParameter("tile_meters", TextureTileMeters);
+        AddChild(new MeshInstance3D { Mesh = mesh, MaterialOverride = material });
 
         var collisionBody = new StaticBody3D { InputRayPickable = true };
         collisionBody.AddChild(new CollisionShape3D { Shape = collisionShape });
@@ -199,48 +222,111 @@ public sealed partial class TerrainRenderer : Node3D
         AddChild(collisionBody);
     }
 
-    // Real OSM waterway centerlines (art/fetch_stream.py) as flat ribbons following the terrain's
-    // raw height at each point - the DEM already holds the valley the river cut.
+    // Real OSM waterway centerlines (art/fetch_features.py) as ribbons, level across their width
+    // and falling along their length; the ground under them is already carved below. Three
+    // vertices across, edges and centerline, so the water shader gets its distance in from the
+    // edge as for a water area: zero at both banks, half the width midstream.
     private void BuildWaterways()
     {
-        if (!ContentFiles.Exists(_waterwaysPath))
+        var surfaceTool = new SurfaceTool();
+        surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
+
+        void AddVertex(Vector2 at, float y, float inside)
         {
-            return;
+            surfaceTool.SetUV(new Vector2(inside, 0f));
+            surfaceTool.AddVertex(new Vector3(at.X, y, at.Y));
         }
 
-        var json = ContentFiles.ReadText(_waterwaysPath);
-        var data = JsonSerializer.Deserialize<WaterwaysData>(json, JsonOptions)
-            ?? throw new InvalidDataException($"Waterways '{_waterwaysPath}' could not be parsed.");
+        foreach (var stretch in _rivers)
+        {
+            var side = new Vector2(-(stretch.To.Y - stretch.From.Y), stretch.To.X - stretch.From.X).Normalized() * stretch.HalfWidth;
+            var fromY = stretch.FromLevel + WaterLift;
+            var toY = stretch.ToLevel + WaterLift;
 
+            foreach (var bank in new[] { -side, side })
+            {
+                AddVertex(stretch.From + bank, fromY, 0f);
+                AddVertex(stretch.To + bank, toY, 0f);
+                AddVertex(stretch.From, fromY, stretch.HalfWidth);
+
+                AddVertex(stretch.From, fromY, stretch.HalfWidth);
+                AddVertex(stretch.To + bank, toY, 0f);
+                AddVertex(stretch.To, toY, stretch.HalfWidth);
+            }
+        }
+
+        if (_rivers.Count > 0)
+        {
+            AddLayerMesh(surfaceTool, WaterMaterial());
+        }
+    }
+
+    // Water areas and rock as their own meshes laid over the ground's own triangles, lifted
+    // clear of it. Tinting the ground's vertex colours instead cannot work: the ground texture
+    // multiplies them, and a green texture turns any blue into green. Waterways are left to
+    // their ribbons, which follow the centerline a grid could only render as a staircase.
+    private void BuildSurfaceLayers()
+    {
+        var fineGridSize = FineGridSize;
+        var positions = new Position[fineGridSize, fineGridSize];
+        var ground = new float[fineGridSize, fineGridSize];
+        var waterSurface = new float[fineGridSize, fineGridSize];
+        for (var row = 0; row < fineGridSize; row++)
+        {
+            for (var col = 0; col < fineGridSize; col++)
+            {
+                positions[row, col] = FinePosition(row, col);
+                ground[row, col] = _heightmap.FineVertexAt(row, col);
+                var level = _waterLevels[row, col];
+                waterSurface[row, col] = float.IsNaN(level) ? ground[row, col] : level;
+            }
+        }
+
+        var rock = SignedDistanceBand.Build(
+            fineGridSize,
+            (row, col) => _features.IsRock(positions[row, col]),
+            (row, col) => _features.RockSignedDistance(positions[row, col]),
+            LayerBandCells,
+            LayerBandCells * FineCellSize);
+
+        AddSurfaceLayer(positions, ground, rock, RockLift, RockMaterial(), RockEdgeWobble);
+        AddSurfaceLayer(positions, waterSurface, _waterDistances, WaterLift, WaterMaterial(), 0f);
+    }
+
+    private void AddSurfaceLayer(Position[,] positions, float[,] heights, float[,] distances, float lift, Material material, float reach)
+    {
+        var fineGridSize = FineGridSize;
         var surfaceTool = new SurfaceTool();
         surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
         var builtAny = false;
 
-        foreach (var polyline in data.Polylines)
+        void AddVertex((int Row, int Col) at)
         {
-            var points = polyline.Points;
-            var halfWidth = polyline.WidthMeters / 2f;
+            surfaceTool.SetUV(new Vector2(distances[at.Row, at.Col], 0f));
+            var position = positions[at.Row, at.Col];
+            surfaceTool.AddVertex(new Vector3((float)position.X, heights[at.Row, at.Col] + lift, (float)position.Y));
+        }
 
-            for (var i = 0; i < points.Length - 1; i++)
+        void AddCoveredTriangle((int Row, int Col) a, (int Row, int Col) b, (int Row, int Col) c)
+        {
+            if (!SignedDistanceBand.Touches(distances[a.Row, a.Col], distances[b.Row, b.Col], distances[c.Row, c.Col], reach))
             {
-                var p0 = points[i];
-                var p1 = points[i + 1];
-                var direction = new Vector2(p1[0] - p0[0], p1[1] - p0[1]);
-                if (direction.LengthSquared() < 0.0001f)
-                {
-                    continue;
-                }
+                return;
+            }
 
-                var side = new Vector2(-direction.Y, direction.X).Normalized() * halfWidth;
+            AddVertex(a);
+            AddVertex(b);
+            AddVertex(c);
+            builtAny = true;
+        }
 
-                var a = WaterVertex(p0[0] - side.X, p0[1] - side.Y);
-                var b = WaterVertex(p0[0] + side.X, p0[1] + side.Y);
-                var c = WaterVertex(p1[0] - side.X, p1[1] - side.Y);
-                var d = WaterVertex(p1[0] + side.X, p1[1] + side.Y);
-
-                AddPlainTriangle(surfaceTool, a, c, b);
-                AddPlainTriangle(surfaceTool, b, c, d);
-                builtAny = true;
+        // The same two triangles per cell, in the same winding, as the ground mesh.
+        for (var row = 0; row < fineGridSize - 1; row++)
+        {
+            for (var col = 0; col < fineGridSize - 1; col++)
+            {
+                AddCoveredTriangle((row, col), (row, col + 1), (row + 1, col));
+                AddCoveredTriangle((row, col + 1), (row + 1, col + 1), (row + 1, col));
             }
         }
 
@@ -249,19 +335,126 @@ public sealed partial class TerrainRenderer : Node3D
             return;
         }
 
-        surfaceTool.GenerateNormals();
-        var mesh = surfaceTool.Commit();
+        AddLayerMesh(surfaceTool, material);
+    }
 
-        AddChild(new MeshInstance3D
+    private void AddLayerMesh(SurfaceTool surfaceTool, Material material)
+    {
+        surfaceTool.GenerateNormals();
+        AddChild(new MeshInstance3D { Mesh = surfaceTool.Commit(), MaterialOverride = material });
+    }
+
+    // Levels the water and carves the ground under it. Levels come from the DEM without the
+    // bump, which samples a lake or river at its surface; the ground, bump and all, is then
+    // held below them.
+    private void PrepareWater()
+    {
+        var fineGridSize = FineGridSize;
+        var reach = LayerBandCells * FineCellSize;
+
+        _waterDistances = SignedDistanceBand.Build(
+            fineGridSize,
+            (row, col) => _features.IsWaterArea(FinePosition(row, col)),
+            (row, col) => _features.WaterAreaSignedDistance(FinePosition(row, col)),
+            LayerBandCells,
+            reach);
+        _waterLevels = WaterSurface.AreaLevels(_waterDistances, RawAtFineVertex, LayerBandCells);
+        _rivers = RiverStretches();
+
+        var ceiling = new float[fineGridSize, fineGridSize];
+        var wet = new bool[fineGridSize, fineGridSize];
+        for (var row = 0; row < fineGridSize; row++)
         {
-            Mesh = mesh,
-            MaterialOverride = new StandardMaterial3D
+            for (var col = 0; col < fineGridSize; col++)
             {
-                AlbedoColor = WaterColor,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            },
-        });
+                wet[row, col] = _waterDistances[row, col] > 0f;
+                var level = _waterLevels[row, col];
+                ceiling[row, col] = float.IsNaN(level)
+                    ? float.PositiveInfinity
+                    : WaterSurface.Ceiling(level, _waterDistances[row, col], reach);
+            }
+        }
+
+        foreach (var stretch in _rivers)
+        {
+            var margin = stretch.HalfWidth + reach;
+            var (rowFrom, rowTo) = FineRange(Math.Min(stretch.From.Y, stretch.To.Y) - margin, Math.Max(stretch.From.Y, stretch.To.Y) + margin);
+            var (colFrom, colTo) = FineRange(Math.Min(stretch.From.X, stretch.To.X) - margin, Math.Max(stretch.From.X, stretch.To.X) + margin);
+            for (var row = rowFrom; row <= rowTo; row++)
+            {
+                for (var col = colFrom; col <= colTo; col++)
+                {
+                    var at = new Vector2((col * FineCellSize) - Half, (row * FineCellSize) - Half);
+                    var (distance, along) = WaterSurface.ToSegment(at, stretch.From, stretch.To);
+                    var level = Mathf.Lerp(stretch.FromLevel, stretch.ToLevel, along);
+                    ceiling[row, col] = Math.Min(ceiling[row, col], WaterSurface.Ceiling(level, stretch.HalfWidth - distance, reach));
+                    wet[row, col] |= distance <= stretch.HalfWidth;
+                }
+            }
+        }
+
+        _heightmap = _heightmap.WithCeiling(ceiling);
+
+        var cells = GridDistanceField.DistanceToNearestTrue(wet);
+        _waterProximity = new float[fineGridSize, fineGridSize];
+        for (var row = 0; row < fineGridSize; row++)
+        {
+            for (var col = 0; col < fineGridSize; col++)
+            {
+                _waterProximity[row, col] = cells[row, col] * FineCellSize;
+            }
+        }
+    }
+
+    // Each waterway cut to the patch and split at the fine grid's spacing, so its level follows
+    // the valley closely; the level never rises toward the mouth.
+    private List<RiverStretch> RiverStretches()
+    {
+        var stretches = new List<RiverStretch>();
+        foreach (var waterway in _features.Waterways)
+        {
+            var halfWidth = (float)waterway.WidthMeters / 2f;
+            var pieces = new List<(Vector2 From, Vector2 To)>();
+            for (var i = 0; i < waterway.Points.Count - 1; i++)
+            {
+                var from = new Vector2((float)waterway.Points[i].X, (float)waterway.Points[i].Y);
+                var to = new Vector2((float)waterway.Points[i + 1].X, (float)waterway.Points[i + 1].Y);
+                if (from.DistanceSquaredTo(to) < 0.0001f || SquareClip.Clip(from, to, Half) is not var (start, end))
+                {
+                    continue;
+                }
+
+                var steps = Math.Max(1, Mathf.CeilToInt(start.DistanceTo(end) / FineCellSize));
+                for (var step = 0; step < steps; step++)
+                {
+                    pieces.Add((start.Lerp(end, (float)step / steps), start.Lerp(end, (float)(step + 1) / steps)));
+                }
+            }
+
+            if (pieces.Count == 0)
+            {
+                continue;
+            }
+
+            // One sample per piece start plus the last piece's end, so neighbouring pieces share
+            // the level where they meet.
+            var samples = pieces.Select(piece => piece.From).Append(pieces[^1].To).ToList();
+            var levels = WaterSurface.Descending(samples.Select(p => _heightmap.RawAt(p.X, p.Y)).ToList());
+            for (var i = 0; i < pieces.Count; i++)
+            {
+                // Where a stream runs into a lake or a wider river, that water is already drawn;
+                // a ribbon over it would double the colour and fight it for the same depth.
+                var middle = (pieces[i].From + pieces[i].To) / 2f;
+                if (_features.IsWaterArea(new Position(middle.X, middle.Y)))
+                {
+                    continue;
+                }
+
+                stretches.Add(new RiverStretch(pieces[i].From, pieces[i].To, levels[i], levels[i + 1], halfWidth));
+            }
+        }
+
+        return stretches;
     }
 
     private void LoadHeightmap(string heightmapPath)
@@ -275,8 +468,20 @@ public sealed partial class TerrainRenderer : Node3D
         Half = _heightmap.HalfExtentMeters;
     }
 
-    // The mesh build is a pure function of the heightmap file and the constants above, and took
-    // ~1.2s per start - the biggest chunk of startup. A hash-keyed cache loads it in a few ms and
+    // No features file simply means a patch without water or rock marked.
+    private void LoadFeatures(string featuresPath)
+    {
+        if (!ContentFiles.Exists(featuresPath))
+        {
+            return;
+        }
+
+        _featuresJson = ContentFiles.ReadText(featuresPath);
+        _features = TerrainFeatures.LoadFromJson([(featuresPath, _featuresJson)]);
+    }
+
+    // The mesh build is a pure function of the heightmap and features files and the constants
+    // above, and took ~1.2s per start - the biggest chunk of startup. A hash-keyed cache loads it in a few ms and
     // invalidates itself on any heightmap or tuning change.
     private string ComputeMeshCacheKey()
     {
@@ -284,9 +489,10 @@ public sealed partial class TerrainRenderer : Node3D
             '|',
             TerrainMeshCacheVersion,
             Heightmap.ShapeFingerprint,
-            LowColor,
-            HighColor,
-            _heightmapJson);
+            WaterSurface.Fingerprint,
+            LayerBandCells,
+            _heightmapJson,
+            _featuresJson);
         var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hash);
     }
@@ -296,7 +502,7 @@ public sealed partial class TerrainRenderer : Node3D
         var heightRange = Math.Max(0.001f, _heightmap.MaxHeight - _heightmap.MinHeight);
 
         // The heightmap is a 41x41 grid at 25m - far too coarse for the bump's wavelength, so
-        // each source cell is subdivided without changing the source data. RawAt + BumpAt per
+        // each source cell is subdivided without changing the source data. FineVertexAt per
         // vertex, not SampleHeight: HeightAt blends between these very vertices, so calling it
         // here would add a pointless interpolation.
         var fineGridSize = FineGridSize;
@@ -306,6 +512,7 @@ public sealed partial class TerrainRenderer : Node3D
         // the bump noise up to 4x over (~640,000 instead of 160,801 on a 401x401 grid).
         var vertices = new Vector3[fineGridSize, fineGridSize];
         var colors = new Color[fineGridSize, fineGridSize];
+        var situations = new Vector2[fineGridSize, fineGridSize];
         for (var row = 0; row < fineGridSize; row++)
         {
             for (var col = 0; col < fineGridSize; col++)
@@ -313,12 +520,13 @@ public sealed partial class TerrainRenderer : Node3D
                 var x = (col * fineCellSize) - Half;
                 var z = (row * fineCellSize) - Half;
                 var rawHeight = _heightmap.RawAt(x, z);
-                vertices[row, col] = new Vector3(x, rawHeight + Heightmap.BumpAt(x, z), z);
-                colors[row, col] = LowColor.Lerp(HighColor, rawHeight / heightRange);
+                vertices[row, col] = new Vector3(x, _heightmap.FineVertexAt(row, col), z);
+                // What the ground shader colours by (see ground.gdshader): elevation as a
+                // fraction of the patch's range, distance to water, and the real slope.
+                colors[row, col] = new Color(rawHeight / heightRange, 0f, 0f);
+                situations[row, col] = new Vector2(_waterProximity[row, col], _heightmap.SlopeAt(x, z));
             }
         }
-
-        Vector2 UvFor(Vector3 vertex) => new Vector2(vertex.X, vertex.Z) / TextureTileMeters;
 
         var surfaceTool = new SurfaceTool();
         surfaceTool.Begin(Mesh.PrimitiveType.Triangles);
@@ -334,14 +542,14 @@ public sealed partial class TerrainRenderer : Node3D
 
                 AddTriangle(
                     surfaceTool,
-                    (a, colors[row, col], UvFor(a)),
-                    (b, colors[row, col + 1], UvFor(b)),
-                    (c, colors[row + 1, col], UvFor(c)));
+                    (a, colors[row, col], situations[row, col]),
+                    (b, colors[row, col + 1], situations[row, col + 1]),
+                    (c, colors[row + 1, col], situations[row + 1, col]));
                 AddTriangle(
                     surfaceTool,
-                    (b, colors[row, col + 1], UvFor(b)),
-                    (d, colors[row + 1, col + 1], UvFor(d)),
-                    (c, colors[row + 1, col], UvFor(c)));
+                    (b, colors[row, col + 1], situations[row, col + 1]),
+                    (d, colors[row + 1, col + 1], situations[row + 1, col + 1]),
+                    (c, colors[row + 1, col], situations[row + 1, col]));
             }
         }
 
@@ -351,7 +559,13 @@ public sealed partial class TerrainRenderer : Node3D
         return (mesh, collisionShape);
     }
 
-    private Vector3 WaterVertex(float x, float z) => new Vector3(x, _heightmap.RawAt(x, z) + WaterSurfaceOffset, z);
+    private Position FinePosition(int row, int col) => new((col * FineCellSize) - Half, (row * FineCellSize) - Half);
+
+    private float RawAtFineVertex(int row, int col) => _heightmap.RawAt((col * FineCellSize) - Half, (row * FineCellSize) - Half);
+
+    // The fine-grid indices covering [from, to] metres along one axis, clamped to the grid.
+    private (int From, int To) FineRange(float from, float to) =>
+        (Math.Max(0, Mathf.FloorToInt((from + Half) / FineCellSize)), Math.Min(FineGridSize - 1, Mathf.CeilToInt((to + Half) / FineCellSize)));
 
     // The candidate's cell plus its 8 neighbours - two points within MinDecorationSpacing can
     // sit in adjacent cells.
@@ -392,6 +606,8 @@ public sealed partial class TerrainRenderer : Node3D
         positions.Add(position);
     }
 
+    private readonly record struct RiverStretch(Vector2 From, Vector2 To, float FromLevel, float ToLevel, float HalfWidth);
+
     private sealed record HeightmapData(
         string Source,
         double CenterLatitude,
@@ -399,15 +615,4 @@ public sealed partial class TerrainRenderer : Node3D
         float CellSizeMeters,
         int GridSize,
         float[][] Heights);
-
-    private sealed record WaterwaysData(
-        string Source,
-        double CenterLatitude,
-        double CenterLongitude,
-        WaterwayPolyline[] Polylines);
-
-    // The JSON carries name/waterway-type per polyline too; only the geometry is read here.
-    // Instantiated by JsonSerializer, which InspectCode doesn't see as usage.
-    // ReSharper disable once ClassNeverInstantiated.Local
-    private sealed record WaterwayPolyline(float WidthMeters, float[][] Points);
 }

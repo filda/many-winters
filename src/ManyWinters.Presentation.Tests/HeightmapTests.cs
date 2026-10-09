@@ -192,5 +192,75 @@ public class HeightmapTests
         Assert.DoesNotContain(fingerprint.Split('|'), part => part.Length == 0);
     }
 
+    [Fact]
+    public void ACeilingHoldsAFineVertexDownOnlyWhereItIsBelowTheGround()
+    {
+        var map = NewMap();
+        var ceiling = new float[map.FineGridSize, map.FineGridSize];
+        for (var row = 0; row < map.FineGridSize; row++)
+        {
+            for (var col = 0; col < map.FineGridSize; col++)
+            {
+                ceiling[row, col] = float.PositiveInfinity;
+            }
+        }
+
+        ceiling[3, 1] = 4.25f;
+        ceiling[8, 6] = 31.5f;
+        var carved = map.WithCeiling(ceiling);
+
+        Assert.Equal(4.25f, carved.FineVertexAt(3, 1), 4);
+        Assert.Equal(29.197924f, carved.FineVertexAt(8, 6), 4);
+        Assert.Equal(map.FineVertexAt(12, 5), carved.FineVertexAt(12, 5), 4);
+    }
+
+    [Fact]
+    public void TheWalkableHeightFollowsTheCarvedVertices()
+    {
+        var map = NewMap();
+        var ceiling = new float[map.FineGridSize, map.FineGridSize];
+        for (var row = 0; row < map.FineGridSize; row++)
+        {
+            for (var col = 0; col < map.FineGridSize; col++)
+            {
+                ceiling[row, col] = -1.5f;
+            }
+        }
+
+        Assert.Equal(-1.5f, map.WithCeiling(ceiling).HeightAt(3.7f, -6.1f), 4);
+    }
+
+    [Fact]
+    public void ACarvedMapKeepsTheSourcesExtentAndElevationRange()
+    {
+        var map = NewMap();
+        var carved = map.WithCeiling(new float[map.FineGridSize, map.FineGridSize]);
+
+        Assert.Equal(map.HalfExtentMeters, carved.HalfExtentMeters);
+        Assert.Equal(map.MinHeight, carved.MinHeight);
+        Assert.Equal(map.MaxHeight, carved.MaxHeight);
+        Assert.Equal(map.FineGridSize, carved.FineGridSize);
+        Assert.Equal(map.RawAt(5f, -3f), carved.RawAt(5f, -3f));
+    }
+
+    [Fact]
+    public void TheSlopeIsTheRiseOverRunOfTheRealElevation()
+    {
+        // The grid is a plane: 10 m per 20 m along X, 30 m per 20 m along Z, so the slope is
+        // sqrt(0.5^2 + 1.5^2) wherever a step either way stays on the map - at the centre, the
+        // steps land exactly on the edges.
+        Assert.Equal(MathF.Sqrt(2.5f), NewMap().SlopeAt(0f, 0f), 4);
+    }
+
+    [Fact]
+    public void TheSlopeEasesOffWhereTheStepRunsPastTheEdge()
+    {
+        // At x = 12 the step east lands at 32, clamped to the edge at 20 (60 m), and the step
+        // west at -8 (46 m): 14 m over the 40 m the difference assumes.
+        var slope = NewMap().SlopeAt(12f, 0f);
+
+        Assert.Equal(MathF.Sqrt((0.35f * 0.35f) + (1.5f * 1.5f)), slope, 4);
+    }
+
     private static Heightmap NewMap() => new(Heights, gridSize: 3, cellSizeMeters: 20f);
 }

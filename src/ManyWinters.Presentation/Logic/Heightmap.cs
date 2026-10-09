@@ -29,6 +29,9 @@ internal sealed class Heightmap
     private readonly int _gridSize;
     private readonly float _cellSizeMeters;
 
+    // Per fine vertex, the highest the ground may stand there - where water has carved it.
+    private readonly float[,]? _ceiling;
+
     internal Heightmap(float[][] heights, int gridSize, float cellSizeMeters)
     {
         _heights = heights;
@@ -49,6 +52,17 @@ internal sealed class Heightmap
         MinHeight = min;
         MaxHeight = max;
         HalfExtentMeters = (gridSize - 1) * cellSizeMeters / 2f;
+    }
+
+    private Heightmap(Heightmap source, float[,] ceiling)
+    {
+        _heights = source._heights;
+        _gridSize = source._gridSize;
+        _cellSizeMeters = source._cellSizeMeters;
+        MinHeight = source.MinHeight;
+        MaxHeight = source.MaxHeight;
+        HalfExtentMeters = source.HalfExtentMeters;
+        _ceiling = ceiling;
     }
 
     // Every number that changes the ground's shape, so a mesh cached under different tuning
@@ -80,14 +94,30 @@ internal sealed class Heightmap
     internal float RawAt(float x, float z) =>
         Bilinear(_gridSize, _cellSizeMeters, x, z, (row, col) => _heights[row][col]) - MinHeight;
 
-    // Elevation plus bump at one fine-grid vertex - what the mesh's vertices are, and what
-    // HeightAt blends between.
+    // The same ground held at or below a ceiling at each fine vertex (FineGridSize square,
+    // +infinity where nothing limits it), so water can lie level over it.
+    internal Heightmap WithCeiling(float[,] ceiling) => new(this, ceiling);
+
+    // Elevation plus bump at one fine-grid vertex, under the ceiling if there is one - what the
+    // mesh's vertices are, and what HeightAt blends between.
     internal float FineVertexAt(int row, int col)
     {
         var x = (col * FineCellSize) - HalfExtentMeters;
         var z = (row * FineCellSize) - HalfExtentMeters;
+        var height = RawAt(x, z) + BumpAt(x, z);
 
-        return RawAt(x, z) + BumpAt(x, z);
+        return _ceiling is null ? height : Math.Min(height, _ceiling[row, col]);
+    }
+
+    // How steep the real elevation is here, rise over run, without the bump: a central
+    // difference one source cell either way, so it eases across cell edges instead of jumping
+    // from one cell's flat slope to the next.
+    internal float SlopeAt(float x, float z)
+    {
+        var step = _cellSizeMeters;
+        var east = (RawAt(x + step, z) - RawAt(x - step, z)) / (2f * step);
+        var north = (RawAt(x, z + step) - RawAt(x, z - step)) / (2f * step);
+        return MathF.Sqrt((east * east) + (north * north));
     }
 
     // Ground height for anything standing on the terrain. Blends between the mesh's own

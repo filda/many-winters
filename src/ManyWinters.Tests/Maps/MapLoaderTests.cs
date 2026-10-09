@@ -7,11 +7,28 @@ namespace ManyWinters.Tests.Maps;
 
 public class MapLoaderTests
 {
+    private const string FeaturesRelativePath = "src/ManyWinters.Godot/Content/terrain/praha-liben/features.json";
+    private const string WholePatchRing = "[[-600, -600], [600, -600], [600, 600], [-600, 600], [-600, -600]]";
+
     // Spawning recurses into a person's recorded parent before spawning that person, so
     // the spawned people end up in this order of original age/parent-table indices - traced from
     // those tables, not from any name. Naming is procedural now, so a test can no longer identify
     // a starting person by a literal name; it identifies them by this fixed spawn position instead.
     private static readonly int[] SpawnOrderOriginalIndex = [10, 1, 0, 2, 3, 6, 4, 8, 11, 5, 7, 9, 12, 13, 14];
+
+    private static readonly Lazy<TerrainFeatures> ShippedTerrain = new(() =>
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, FeaturesRelativePath)))
+        {
+            directory = directory.Parent;
+        }
+
+        var path = Path.Combine(
+            directory?.FullName ?? throw new FileNotFoundException($"Found no '{FeaturesRelativePath}' above '{AppContext.BaseDirectory}'."),
+            FeaturesRelativePath);
+        return TerrainFeatures.LoadFromJson([(path, File.ReadAllText(path))]);
+    });
 
     // The family table settles who bore whom before any id gets a say.
     [Fact]
@@ -596,6 +613,92 @@ public class MapLoaderTests
             ResourceNodes(withoutDeer.World).Select(e => e.Position),
             ResourceNodes(withDeer.World).Select(e => e.Position));
     }
+
+    // Without the shipped features some scattered nodes stand in the river, so the test below
+    // that none do is proving something.
+    [Fact]
+    public void WithoutTerrainFeaturesSomeScatteredNodesStandInTheShippedWater()
+    {
+        var world = LoadDefault().World;
+
+        Assert.Contains(ResourceNodes(world), node => ShippedTerrain.Value.IsWater(node.Position));
+    }
+
+    [Fact]
+    public void LoadDefaultSpawnsNothingOnWaterWhenTheTerrainSaysWhereItIs()
+    {
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateConfiguration() with { Terrain = ShippedTerrain.Value });
+
+        Assert.DoesNotContain(map.World.Entities, entity => ShippedTerrain.Value.IsWater(entity.Position));
+        Assert.True(ResourceNodes(map.World).Count > 5000, "Water should thin the scatter, not erase it.");
+    }
+
+    [Fact]
+    public void LoadDefaultGrowsRocksOnTheShippedOutcropWhateverTheNoiseSays()
+    {
+        var terrain = ShippedTerrain.Value;
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateConfiguration() with { Terrain = terrain });
+        var rockKinds = new[] { TestCatalogs.RockPile, TestCatalogs.RockBoulder, TestCatalogs.RockCluster };
+
+        var onRock = ResourceNodes(map.World).Where(node => terrain.IsRock(node.Position)).ToList();
+
+        Assert.True(onRock.Count(node => rockKinds.Contains(node.Kind)) >= 20, "An outcrop of this size should hold a good many rocks.");
+        Assert.All(onRock, node => Assert.Contains(node.Kind, rockKinds));
+    }
+
+    // A skipped spawn, not a placement in the river: only the band's hand-placed stock is left.
+    [Fact]
+    public void LoadDefaultSkipsEverySpawnWhenTheWholePatchIsWater()
+    {
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateConfiguration() with { Terrain = Terrain("waterAreas", WholePatchRing) });
+
+        Assert.Equal(2, ResourceNodes(map.World).Count);
+    }
+
+    [Fact]
+    public void LoadDefaultMakesEveryOpenWorldCandidateARockWhenThePatchIsAllRock()
+    {
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateConfiguration() with { Terrain = Terrain("rockAreas", WholePatchRing) });
+        var rockKinds = new[] { TestCatalogs.RockPile, TestCatalogs.RockBoulder, TestCatalogs.RockCluster };
+
+        // The density roll alone would leave most of the 16000 candidates empty.
+        Assert.True(ResourceNodes(map.World).Count(node => rockKinds.Contains(node.Kind)) > 15000);
+    }
+
+    [Fact]
+    public void ASuccessorCampIsNeverRedrawnIntoWater()
+    {
+        var terrain = ShippedTerrain.Value;
+        var oldCamp = new Position(-380, -380);
+        var configuration = TestCatalogs.CreateConfiguration();
+        var landings = new List<Position>();
+
+        for (var seed = 1; seed <= 80; seed++)
+        {
+            var open = MapLoader.SpawnNewBand(new WorldState(configuration), new Random(seed), oldCamp);
+            var dry = MapLoader.SpawnNewBand(new WorldState(configuration with { Terrain = terrain }), new Random(seed), oldCamp);
+
+            landings.Add(open);
+            Assert.False(terrain.IsWater(dry), $"seed {seed} put the successor camp at {dry} in water.");
+        }
+
+        Assert.Contains(landings, terrain.IsWater);
+    }
+
+    [Fact]
+    public void LoadDefaultNeverCentresAHerdInWater()
+    {
+        var terrain = ShippedTerrain.Value;
+        var map = MapLoader.LoadDefault(TestCatalogs.CreateConfigurationWithDeer() with { Terrain = terrain });
+
+        var herdHomes = map.World.HomeRanges.Where(home => !ReferenceEquals(home, map.World.People[0].Home)).ToList();
+
+        Assert.NotEmpty(herdHomes);
+        Assert.All(herdHomes, home => Assert.False(terrain.IsWater(home.Anchor)));
+    }
+
+    private static TerrainFeatures Terrain(string kind, string ring) =>
+        TerrainFeatures.LoadFromJson([("features.json", $$"""{ "{{kind}}": [ { "rings": [ {{ring}} ] } ] }""")]);
 
     private static LoadedMap LoadDefault() => MapLoader.LoadDefault(TestCatalogs.CreateConfiguration());
 

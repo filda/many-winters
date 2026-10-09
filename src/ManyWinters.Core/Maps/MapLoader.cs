@@ -179,7 +179,7 @@ public static class MapLoader
     // one, and returns the camp center for the caller to move the camera.
     public static Position SpawnNewBand(WorldState world, Random idRng, Position oldCampCenter)
     {
-        var campCenter = NextCampPosition(idRng, oldCampCenter);
+        var campCenter = NextCampPosition(idRng, oldCampCenter, world.Configuration.Terrain);
 
         SpawnBand(world, idRng, new Random(AlternativeNamingSeed), campCenter, world.Clock.CurrentTick - world.Configuration.Rules.TicksPerYear);
         SpawnCampFood(world, new Random(idRng.Next()), idRng, campCenter);
@@ -235,12 +235,12 @@ public static class MapLoader
     // a single draw always was.
     private static Position BestHerdCenter(WorldState world, Random rng, float homeRadius)
     {
-        var best = NextHerdCenter(rng);
+        var best = NextHerdCenter(rng, world.Configuration.Terrain);
         var bestGrassCount = GrassNodesWithin(world, best, homeRadius);
 
         for (var i = 1; i < HerdCenterCandidateCount; i++)
         {
-            var candidate = NextHerdCenter(rng);
+            var candidate = NextHerdCenter(rng, world.Configuration.Terrain);
             var grassCount = GrassNodesWithin(world, candidate, homeRadius);
             if (grassCount > bestGrassCount)
             {
@@ -263,10 +263,10 @@ public static class MapLoader
         return new Position(center.X + (distance * Math.Cos(angle)), center.Y + (distance * Math.Sin(angle)));
     }
 
-    // Anywhere on the terrain patch at least MinHerdDistanceFromCamp from CampCenter; the attempt
-    // cap is a give-up guard a real draw turns up well before, given how small a fraction of the
-    // ~1km map that exclusion circle covers.
-    private static Position NextHerdCenter(Random rng)
+    // Anywhere on the terrain patch at least MinHerdDistanceFromCamp from CampCenter and out of
+    // the water; the attempt cap is a give-up guard a real draw turns up well before, given how
+    // small a fraction of the ~1km map that exclusion circle and the water cover.
+    private static Position NextHerdCenter(Random rng, TerrainFeatures terrain)
     {
         var limit = TerrainHalfMeters - GroveRadius;
         var candidate = new Position(0, 0);
@@ -278,7 +278,7 @@ public static class MapLoader
                 (rng.NextDouble() - 0.5) * 2 * limit,
                 (rng.NextDouble() - 0.5) * 2 * limit);
 
-            if (WorldState.Distance(candidate, CampCenter) >= MinHerdDistanceFromCamp)
+            if (WorldState.Distance(candidate, CampCenter) >= MinHerdDistanceFromCamp && !terrain.IsWater(candidate))
             {
                 return candidate;
             }
@@ -291,8 +291,8 @@ public static class MapLoader
     // it, leaving part of the crowd, stock and food off the map - and the walk itself could
     // shrink to nothing, spawning the successor on top of its predecessor. So the center is
     // clamped to the inset square instead, and a draw whose clamped result no longer honours
-    // the walk is redrawn.
-    private static Position NextCampPosition(Random rng, Position oldCampCenter)
+    // the walk, or one that came down in water, is redrawn.
+    private static Position NextCampPosition(Random rng, Position oldCampCenter, TerrainFeatures terrain)
     {
         var limit = TerrainHalfMeters - CampEdgeInset;
         var candidate = new Position(0, 0);
@@ -308,7 +308,7 @@ public static class MapLoader
                 Math.Max(-limit, Math.Min(limit, oldCampCenter.X + (Math.Cos(angle) * distance))),
                 Math.Max(-limit, Math.Min(limit, oldCampCenter.Y + (Math.Sin(angle) * distance))));
 
-            if (WorldState.Distance(candidate, oldCampCenter) >= MinCampDistance)
+            if (WorldState.Distance(candidate, oldCampCenter) >= MinCampDistance && !terrain.IsWater(candidate))
             {
                 return candidate;
             }
@@ -503,12 +503,17 @@ public static class MapLoader
     {
         var rng = new Random(DecorationScatterSeed);
         var occupied = new SpatialSpacingIndex<Position>(MinDecorationSpacing, p => p.X, p => p.Y);
+        var terrain = world.Configuration.Terrain;
 
         void SpawnKind(EntityKindId kind, int count, float amount, double centerX, double centerY, double radius)
         {
             for (var i = 0; i < count; i++)
             {
-                var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
+                if (NextDecorationPosition(rng, occupied, terrain, centerX, centerY, radius) is not { } position)
+                {
+                    continue;
+                }
+
                 world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), kind, position, amount));
             }
         }
@@ -517,7 +522,11 @@ public static class MapLoader
         {
             for (var i = 0; i < count; i++)
             {
-                var position = NextDecorationPosition(rng, occupied, centerX, centerY, radius);
+                if (NextDecorationPosition(rng, occupied, terrain, centerX, centerY, radius) is not { } position)
+                {
+                    continue;
+                }
+
                 var kind = RockKinds[rng.Next(RockKinds.Length)];
                 world.Execute(new SpawnResourceNodeCommand(EntityId.New(idRng), kind, position, RockAmount));
             }
@@ -584,6 +593,7 @@ public static class MapLoader
     {
         var densityNoise = new Noise2D(OpenWorldDensityNoiseSeed);
         var biomeNoise = new Noise2D(OpenWorldBiomeNoiseSeed);
+        var terrain = world.Configuration.Terrain;
 
         // Two bands grow a little food so the open world is worth foraging: wild fruit trees in
         // the thicket, roots in the meadow (mushrooms come with ScatterClump). Both are rare tails
@@ -635,24 +645,35 @@ public static class MapLoader
         {
             var x = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
             var y = (rng.NextDouble() - 0.5) * 2 * TerrainHalfMeters;
+            var position = new Position(x, y);
 
-            // A roll against the density field, not a hard threshold, so region edges fade out.
-            var density = densityNoise.Fbm(x, y, 3, DensityNoiseFrequency);
-
-            // Stryker disable once Equality: a draw landing exactly on the density value has
-            // probability zero, so > and >= reject the same points
-            if (rng.NextDouble() > density)
+            if (terrain.IsWater(position))
             {
                 continue;
             }
 
-            var position = new Position(x, y);
+            // A real outcrop is rocky whatever the noise says, so rock needs no density roll.
+            var onRock = terrain.IsRock(position);
+
+            if (!onRock)
+            {
+                // A roll against the density field, not a hard threshold, so region edges fade out.
+                var density = densityNoise.Fbm(x, y, 3, DensityNoiseFrequency);
+
+                // Stryker disable once Equality: a draw landing exactly on the density value has
+                // probability zero, so > and >= reject the same points
+                if (rng.NextDouble() > density)
+                {
+                    continue;
+                }
+            }
+
             if (occupied.IsTooClose(position.X, position.Y, _ => MinDecorationSpacing))
             {
                 continue;
             }
 
-            var biome = biomeNoise.Fbm(x, y, 3, BiomeNoiseFrequency);
+            var biome = onRock ? 0 : biomeNoise.Fbm(x, y, 3, BiomeNoiseFrequency);
 
             // Stryker disable Equality: the noise landing exactly on a band edge has
             // probability zero, so >= and > put the same points in the same band
@@ -673,7 +694,9 @@ public static class MapLoader
 
     // Rejection sampling over a shared SpatialSpacingIndex, one instance per ScatterDecorations
     // pass. TerrainRenderer keeps its own copy of this sampling for TerrainSandbox's preview only.
-    private static Position NextDecorationPosition(Random rng, SpatialSpacingIndex<Position> occupied, double centerX, double centerY, double radius)
+    // Water counts as too close; when the attempts run out in it, nothing is placed (null),
+    // whereas running out beside a neighbour still places the last try.
+    private static Position? NextDecorationPosition(Random rng, SpatialSpacingIndex<Position> occupied, TerrainFeatures terrain, double centerX, double centerY, double radius)
     {
         var position = new Position(centerX, centerY);
 
@@ -684,10 +707,15 @@ public static class MapLoader
             var angle = rng.NextDouble() * Math.Tau;
             var distance = radius * Math.Sqrt(rng.NextDouble());
             position = new Position(centerX + (Math.Cos(angle) * distance), centerY + (Math.Sin(angle) * distance));
-            if (!occupied.IsTooClose(position.X, position.Y, _ => MinDecorationSpacing))
+            if (!terrain.IsWater(position) && !occupied.IsTooClose(position.X, position.Y, _ => MinDecorationSpacing))
             {
                 break;
             }
+        }
+
+        if (terrain.IsWater(position))
+        {
+            return null;
         }
 
         occupied.Add(position);

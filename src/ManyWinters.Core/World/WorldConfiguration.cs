@@ -1,5 +1,6 @@
 using ManyWinters.Core.Items;
 using ManyWinters.Core.Knowledge;
+using ManyWinters.Core.Maps;
 using ManyWinters.Core.Materials;
 using ManyWinters.Core.Population;
 using ManyWinters.Core.Serialization;
@@ -28,6 +29,10 @@ public sealed record WorldConfiguration(
     {
     }
 
+    // Where water and rock lie; nothing anywhere unless the content says so, so a configuration
+    // built in code needs no map data.
+    public TerrainFeatures Terrain { get; init; } = TerrainFeatures.None;
+
     // The shipped content folder off the filesystem, for a headless runner. The Godot build
     // cannot read the filesystem this way and goes through LoadFromJson with its own reader.
     public static WorldConfiguration LoadFromDirectory(string contentRoot) =>
@@ -53,6 +58,9 @@ public sealed record WorldConfiguration(
             forms,
             ItemCatalog.LoadFromJson(readCatalog("items"), materials, forms),
             SeasonParameters.Default,
-            SimulationRules.Default);
+            SimulationRules.Default)
+        {
+            Terrain = TerrainFeatures.LoadFromJson(readCatalog("terrain")),
+        };
     }
 }
